@@ -1,0 +1,280 @@
+# templates for global configuration, tasks, and conditions
+
+#############################################################################
+# command task
+scheduler_tick_seconds = 5
+
+
+#############################################################################
+# command task
+[[task]]
+name = "CommandTaskName"
+type = "command"
+startup_path = "/some/startup/directory"    # must exist
+command = "executable_name"
+command_arguments = [
+    "arg1",
+    "arg2",
+    ]
+
+# optional parameters (if omitted, defaults are used)
+match_exact = false
+match_regular_expression = false
+success_stdout = "expected"
+success_stderr = "expected_error"
+success_status = 0
+failure_stdout = "unexpected"
+failure_stderr = "unexpected_error"
+failure_status = 2
+
+case_sensitive = false
+include_environment = false
+set_envvironment_variables = false
+environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2", }
+
+
+#############################################################################
+# lua task
+[[task]]
+name = "LuaTaskName"
+type = "lua"
+script = '''
+    log.info("hello from Lua");
+    result = 10;
+    '''
+
+# optional parameters (if omitted, defaults are used)
+expect_all = false
+expected_results = { result = 10, }
+
+
+#############################################################################
+# interval condition
+[[condition]]
+name = "IntervalConditionName"
+type = "interval"
+
+interval_seconds = 3600
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [
+    "Task1",
+    "Task2",
+    ]
+
+
+#############################################################################
+# idle condition
+[[condition]]
+name = "IdleConditionName"
+type = "idle"
+
+idle_seconds = 3600
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [
+    "Task1",
+    "Task2",
+    ]
+
+
+#############################################################################
+# command condition
+[[condition]]
+name = "CommandConditionName"
+type = "command"                            # mandatory value
+
+startup_path = "/some/startup/directory"    # must exist
+command = "executable_name"
+command_arguments = [
+    "arg1",
+    "arg2",
+    ]
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = false
+tasks = [
+    "Task1",
+    "Task2",
+    ]
+check_after = 10
+
+match_exact = false
+match_regular_expression = false
+success_stdout = "expected"
+success_stderr = "expected_error"
+success_status = 0
+failure_stdout = "unexpected"
+failure_stderr = "unexpected_error"
+failure_status = 2
+
+case_sensitive = false
+include_environment = true
+set_envvironment_variables = true
+evvironment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
+
+
+#############################################################################
+# lua condition
+[[condition]]
+name = "LuaConditionName"
+type = "lua"                                # mandatory value
+script = '''
+    log.info("hello from Lua");
+    result = 10;
+    '''
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = false
+tasks = [
+    "Task1",
+    "Task2",
+    ]
+check_after = 10
+
+expect_all = false
+expected_results = { result = 10 }
+
+
+#############################################################################
+# time condition
+[[condition]]
+name = "TimeConditionName"
+type = "time"                               # mandatory value
+
+# optional parameters (if omitted, defaults are used)
+time_specifications = [
+    { hour = 17, minute = 30 },
+    { hour = 12, minute = 0, weekday = "wed" },
+    ]
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [
+    "Task1",
+    "Task2",
+    ]
+
+
+#############################################################################
+# bucket/event condition
+[[condition]]
+name = "BucketConditionName"
+type = "bucket"         # "bucket" or "event" are the allowed values
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = false
+tasks = [
+    "Task1",
+    "Task2",
+    ]
+
+
+#############################################################################
+# DBus method invocation condition
+# definition (mandatory)
+[[condition]]
+name = "DbusMethodConditionName"
+type = "dbus"                       # mandatory value
+bus = ":session"                    # either ":session" or ":system"
+service = "org.freedesktop.DBus"
+object_path = "/org/freedesktop/DBus"
+interface = "org.freedesktop.DBus"
+method = "NameHasOwner"
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [ "Task1", "Task2" ]
+check_after = 60
+parameter_call = """[
+        "SomeObject",
+        [42, "a structured parameter"],
+        ["the following is an u64", "\\t42"]
+    ]"""
+parameter_check_all = false
+parameter_check = """[
+         { "index": 0, "operator": "eq", "value": false },
+         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
+         {
+             "index": [2, "mapidx", 5],
+             "operator": "match",
+             "value": "^[A-Z][a-zA-Z0-9_]*$"
+         }
+    ]"""
+
+
+#############################################################################
+# Filesystem Change Event
+[[event]]
+name = "FilesystemChangeEventName"
+type = "fschange"
+condition = "AssignedConditionName"
+
+# optional parameters (if omitted, defaults are used)
+watch = [
+    "/path/to/resource",
+    "/another/path/to/file.txt",
+    ]
+recursive = false
+poll_seconds = 2
+
+
+#############################################################################
+# DBus Message Event
+[[event]]
+name = "DbusMessageEventName"
+type = "dbus"                       # mandatory value
+bus = ":session"                    # either ":session" or ":system"
+condition = "AssignedConditionName"
+rule = """\
+    type='signal',\
+    sender='org.freedesktop.DBus',\
+    interface='org.freedesktop.DBus',\
+    member='NameOwnerChanged',\
+    arg0='org.freedesktop.zbus.MatchRuleStreamTest42'\
+"""
+
+# optional parameters (if omitted, defaults are used)
+parameter_check_all = false
+parameter_check = """[
+         { "index": 0, "operator": "eq", "value": false },
+         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
+         {
+             "index": [2, "mapidx", 5],
+             "operator": "match",
+             "value": "^[A-Z][a-zA-Z0-9_]*$"
+         }
+    ]"""
+
+
+
+
+# end.

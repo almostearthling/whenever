@@ -1,0 +1,51 @@
+[package]
+name = "whenever"
+version = "0.1.0"
+authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+time = "0.3.17"
+chrono = "0.4.24"
+regex = "1.7.1"
+log = "0.4.17"
+flexi_logger = "0.25.3"
+nu-ansi-term = "0.47.0"
+clokwerk = "0.4.0"
+listenfd = "1.0.1"
+toml = "0.7.2"
+serde = "1.0"
+lazy_static = "1.4.0"
+subprocess = "0.2.9"
+ctrlc = { version = "3.2.5", features = ["termination"] }
+cfgmap = { version = "0.4.0", features = ["from_toml", "from_json"] }
+clap = { version = "4.1.4", features = ["derive"] }
+rlua = "0.19.4"
+unique_id = "0.1.5"
+serde_json = "1.0.95"
+single-instance = "0.3.3"
+notify = "6.0.0"
+async-std = "1.12.0"
+zbus = "3.13.1"
+
+# user-idle has a problem on wayland-based sessions: work around by using
+# user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }
+user-idle = "0.5.3"
+
+# support DBus on all platforms, although it will not work outside Linux
+# [target.'cfg(unix)'.dependencies]
+# zbus = { version = "3.13.1" }
+# [target.'cfg(macos)'.dependencies]
+# zbus = { version = "3.13.1" }
+# [target.'cfg(windows)'.dependencies]
+# zbus = { version = "3.13.1", features=["windows-gdbus"] }
+
+
+# Make the executable memory footprint as small as possible
+[profile.release]
+strip = true        # strip executable
+opt-level = "z"     # optimize for size
+lto = true
+panic = 'abort'     # remove garbage strings from executable
