@@ -64,6 +64,9 @@ lazy_static! {
 
     // set this if the application must exit
     static ref APPLICATION_MUST_EXIT: Mutex<bool> = Mutex::new(false);
+
+    // set this if the application must exit
+    static ref APPLICATION_IS_PAUSED: Mutex<bool> = Mutex::new(false);
 }
 
 
@@ -91,6 +94,16 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // finish and get out of the way for subsequent ticks to be able to be executed
 fn sched_tick() -> std::io::Result<bool> {
     for name in CONDITION_REGISTRY.condition_names().unwrap() {
+        // skip if application is paused
+        if *APPLICATION_IS_PAUSED.lock().unwrap() {
+            log(
+                LogType::Trace,
+                "MAIN scheduler_tick",
+                &format!("[PROC/MSG] application is paused: tick skipped"),
+            );
+            return Ok(false);
+        }
+
         // create a new thread for each check: note that each thread will
         // attempt to lock the condition registry, thus wait for it to be
         // released by the previous owner
@@ -504,9 +517,48 @@ fn interpret_commands() -> std::io::Result<bool> {
                 log(
                     LogType::Warn, 
                     "MAIN command", 
-                    &format!("[PROC/MSG] caught exit request: terminating application")
+                    &format!("[PROC/MSG] exit request received: terminating application")
                 );
                 *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+            }
+            "pause" => {
+                if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    log(
+                        LogType::Warn, 
+                        "MAIN command", 
+                        &format!("[PROC/FAIL] ignoring pause request: scheduler already paused")
+                    );
+                } else {
+                    log(
+                        LogType::Debug, 
+                        "MAIN command", 
+                        &format!("[PROC/MSG] pausing scheduler ticks: conditions not checked until resume")
+                    );
+                    *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+                }
+            }
+            "resume" => {
+                if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    log(
+                        LogType::Debug, 
+                        "MAIN command", 
+                        &format!("[PROC/MSG] resuming scheduler ticks and condition checks")
+                    );
+                    // clear execution bucket because events may still have
+                    // occurred and maybe the user wanted to also pause event
+                    // based conditions (NOTE: this is questionable, since
+                    // multiple insertions are debounced it is probably more
+                    // correct to just obey instructions and verify conditions
+                    // associated to these events: commented out for now)
+                    // EXECUTION_BUCKET.clear();
+                    *APPLICATION_IS_PAUSED.lock().unwrap() = false;
+                } else {
+                    log(
+                        LogType::Warn, 
+                        "MAIN command", 
+                        &format!("[PROC/FAIL] ignoring resume request: scheduler is not paused")
+                    );
+                }
             }
             "" => { /* do nothing here */ }
             t => {

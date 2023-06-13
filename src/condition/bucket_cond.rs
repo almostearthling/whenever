@@ -69,6 +69,16 @@ impl ExecutionBucket {
             false
         }
     }
+
+    /// Clear the execution list (result can be ignored)
+    pub fn clear(&self) -> bool {
+        if self.execution_list.clone().lock().unwrap().is_empty() {
+            false
+        } else {
+            self.execution_list.clone().lock().unwrap().clear();
+            true
+        }
+    }
 }
 
 
