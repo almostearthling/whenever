@@ -21,6 +21,7 @@ use lazy_static::lazy_static;
 use clokwerk::{Scheduler, TimeUnits};
 use cfgmap::{CfgValue, CfgMap};
 use toml;
+use rand::{thread_rng, RngCore};
 
 use ctrlc;
 use single_instance::SingleInstance;
@@ -72,6 +73,7 @@ lazy_static! {
 
 // default values
 const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
+const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 
 // check whether an instance is already running, and return an error if so
@@ -91,23 +93,30 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // execute a (very basic but working) scheduler tick: the call to this function
 // is executed in a separate thread; the function itself will spawn as many
 // threads as there are conditions to check, so that the short-running ones can
-// finish and get out of the way for subsequent ticks to be able to be executed
-fn sched_tick() -> std::io::Result<bool> {
-    for name in CONDITION_REGISTRY.condition_names().unwrap() {
-        // skip if application is paused
-        if *APPLICATION_IS_PAUSED.lock().unwrap() {
-            log(
-                LogType::Trace,
-                "MAIN scheduler_tick",
-                &format!("[PROC/MSG] application is paused: tick skipped"),
-            );
-            return Ok(false);
-        }
+// finish and get out of the way to allow execution of subsequent ticks; within
+// the new thread the tick might wait for a random duration, 
+fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
+    // skip if application is paused
+    if *APPLICATION_IS_PAUSED.lock().unwrap() {
+        log(
+            LogType::Trace,
+            "MAIN scheduler_tick",
+            &format!("[PROC/MSG] application is paused: tick skipped"),
+        );
+        return Ok(false);
+    }
 
+    for name in CONDITION_REGISTRY.condition_names().unwrap() {
         // create a new thread for each check: note that each thread will
         // attempt to lock the condition registry, thus wait for it to be
         // released by the previous owner
         std::thread::spawn(move || {
+            if let Some(ms) = rand_millis_range {
+                let mut rng = thread_rng();
+                let rms = rng.next_u64() % ms;
+                let dur = std::time::Duration::from_millis(rms);
+                std::thread::sleep(dur);
+            }
             if let Ok(outcome) = CONDITION_REGISTRY.tick(&name) {
                 match outcome {
                     Some(res) => {
@@ -693,6 +702,11 @@ fn main() {
         .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
         .as_int()
         .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS) as u64;
+    let randomize_checks_within_ticks = *configuration
+        .get("randomize_checks_within_ticks")
+        .unwrap_or(&CfgValue::from(DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS))
+        .as_bool()
+        .unwrap_or(&DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS);
 
     // configure items: the order is crucial (tasks -> conditions -> events)
     exit_if_fails!(args.quiet, configure_tasks(
@@ -715,14 +729,23 @@ fn main() {
     _handles.push(thread::spawn(|| interpret_commands()));
 
     // shortcut to spawn a tick in the background
-    fn spawn_tick() {
-        std::thread::spawn(|| { let _ = sched_tick(); });
+    fn spawn_tick(rand_millis_range: Option<u64>) {
+        std::thread::spawn(move || { let _ = sched_tick(rand_millis_range); });
     }
 
-    // set up a very minimal scheduler
+    // set up a very minimal scheduler, and pass the option to randomize
+    // condition tests within ticks if the user made the choice to do so
+    // via the configuration file
     let mut sched = Scheduler::new();
+    let rand_millis_range = {
+        if randomize_checks_within_ticks {
+            Some(scheduler_tick_seconds * 1000)
+        } else {
+            None
+        }
+    };
     sched.every((scheduler_tick_seconds as u32).seconds()).run(
-        || { spawn_tick(); }
+        move || { spawn_tick(rand_millis_range); }
     );
 
     // free_pending must be a fraction of scheduler tick interval (say 1/10)

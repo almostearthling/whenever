@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 time = "0.3.17"
 chrono = "0.4.24"
+rand = "0.8.5"
 regex = "1.7.1"
 log = "0.4.17"
 flexi_logger = "0.25.3"

@@ -1,8 +1,9 @@
 # templates for global configuration, tasks, and conditions
 
 #############################################################################
-# command task
+# global configuration
 scheduler_tick_seconds = 5
+randomize_checks_within_ticks = false
 
 
 #############################################################################
