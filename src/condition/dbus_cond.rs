@@ -495,7 +495,7 @@ impl DbusMethodCondition {
     /// keys are _not_ supported.
     ///
     /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"interval"` mandatorily for this type of `Condition`.
+    /// *must* be set to `"dbus"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<DbusMethodCondition> {
 
         fn _invalid_cfg(key: & str, value: &str, message: &str) -> std::io::Result<DbusMethodCondition> {

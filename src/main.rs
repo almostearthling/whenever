@@ -68,6 +68,14 @@ lazy_static! {
 
     // set this if the application must exit
     static ref APPLICATION_IS_PAUSED: Mutex<bool> = Mutex::new(false);
+
+    // types of conditions whose tick cannot be delayed
+    static ref NO_DELAY_CONDITIONS: Vec<String> = vec![
+        String::from("interval"),
+        String::from("time"),
+        String::from("idle"),
+        ];
+
 }
 
 
@@ -94,7 +102,7 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // is executed in a separate thread; the function itself will spawn as many
 // threads as there are conditions to check, so that the short-running ones can
 // finish and get out of the way to allow execution of subsequent ticks; within
-// the new thread the tick might wait for a random duration, 
+// the new thread the tick might wait for a random duration,
 fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
     // skip if application is paused
     if *APPLICATION_IS_PAUSED.lock().unwrap() {
@@ -111,11 +119,13 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
         // attempt to lock the condition registry, thus wait for it to be
         // released by the previous owner
         std::thread::spawn(move || {
-            if let Some(ms) = rand_millis_range {
-                let mut rng = thread_rng();
-                let rms = rng.next_u64() % ms;
-                let dur = std::time::Duration::from_millis(rms);
-                std::thread::sleep(dur);
+            if !NO_DELAY_CONDITIONS.contains(&CONDITION_REGISTRY.condition_type(&name).unwrap()) {
+                if let Some(ms) = rand_millis_range {
+                    let mut rng = thread_rng();
+                    let rms = rng.next_u64() % ms;
+                    let dur = std::time::Duration::from_millis(rms);
+                    std::thread::sleep(dur);
+                }
             }
             if let Ok(outcome) = CONDITION_REGISTRY.tick(&name) {
                 match outcome {
@@ -524,8 +534,8 @@ fn interpret_commands() -> std::io::Result<bool> {
         match buffer.trim() {
             "exit" | "quit" => {
                 log(
-                    LogType::Warn, 
-                    "MAIN command", 
+                    LogType::Warn,
+                    "MAIN command",
                     &format!("[PROC/MSG] exit request received: terminating application")
                 );
                 *APPLICATION_MUST_EXIT.lock().unwrap() = true;
@@ -533,14 +543,14 @@ fn interpret_commands() -> std::io::Result<bool> {
             "pause" => {
                 if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
-                        LogType::Warn, 
-                        "MAIN command", 
+                        LogType::Warn,
+                        "MAIN command",
                         &format!("[PROC/FAIL] ignoring pause request: scheduler already paused")
                     );
                 } else {
                     log(
-                        LogType::Debug, 
-                        "MAIN command", 
+                        LogType::Debug,
+                        "MAIN command",
                         &format!("[PROC/MSG] pausing scheduler ticks: conditions not checked until resume")
                     );
                     *APPLICATION_IS_PAUSED.lock().unwrap() = true;
@@ -549,8 +559,8 @@ fn interpret_commands() -> std::io::Result<bool> {
             "resume" => {
                 if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
-                        LogType::Debug, 
-                        "MAIN command", 
+                        LogType::Debug,
+                        "MAIN command",
                         &format!("[PROC/MSG] resuming scheduler ticks and condition checks")
                     );
                     // clear execution bucket because events may still have
@@ -563,8 +573,8 @@ fn interpret_commands() -> std::io::Result<bool> {
                     *APPLICATION_IS_PAUSED.lock().unwrap() = false;
                 } else {
                     log(
-                        LogType::Warn, 
-                        "MAIN command", 
+                        LogType::Warn,
+                        "MAIN command",
                         &format!("[PROC/FAIL] ignoring resume request: scheduler is not paused")
                     );
                 }
@@ -572,8 +582,8 @@ fn interpret_commands() -> std::io::Result<bool> {
             "" => { /* do nothing here */ }
             t => {
                 log(
-                    LogType::Debug, 
-                    "MAIN command", 
+                    LogType::Debug,
+                    "MAIN command",
                     &format!("[PROC/ERR] unrecognized command: `{t}`")
                 );
             }
