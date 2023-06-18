@@ -11,18 +11,18 @@
   - [Configuration](#configuration)
     - [Globals](#globals)
     - [Tasks](#tasks)
-      - [Command based tasks](#command-based-tasks)
-      - [Lua based tasks](#lua-based-tasks)
+      - [Command](#command)
+      - [Lua script tasks](#lua-script-tasks)
     - [Conditions](#conditions)
       - [Interval](#interval)
       - [Time](#time)
       - [Idle session](#idle-session)
-      - [Command based conditions](#command-based-conditions)
-      - [Lua based condition](#lua-based-condition)
-      - [DBus method invocation](#dbus-method-invocation)
+      - [Command tasks](#command-tasks)
+      - [Lua script](#lua-script)
+      - [DBus method](#dbus-method)
       - [Event based conditions](#event-based-conditions)
     - [Events](#events)
-      - [Filesystem changes based events](#filesystem-changes-based-events)
+      - [Filesystem changes](#filesystem-changes)
       - [DBus signals](#dbus-signals)
   - [Conclusion](#conclusion)
 
@@ -74,7 +74,7 @@ The **_events_** that can fire _event_ based conditions are, at the moment:
 
 Note that _DBus_ events and conditions are also theoretically supported on Windows, being one of the _DBus_ target platforms.
 
-All of the above listed items are fully configurable via a single TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following section.
+All of the above listed items are fully configurable via a single TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
 All checks are performed periodically, even the ones regarding _event_ based conditions[^4]: the times at which the conditions are checked is usually referred here as _tick_ and the tick interval can be specified in the configuration file -- defaulting at 5 seconds. Note that, since performing all checks in the same instant at every tick could cause usage peaks in terms of computational resources, there is the option to attempt to randomly distribute checks within the tick interval, by explicitly specifying this behaviour in the configuration file.
 
@@ -142,7 +142,7 @@ Tasks are defined via a dedicated table, which means that every task definition 
 
 Task names are mandatory, and must be provided as alphanumeric strings (may include underscores), beginning with a letter. The task type must be either `"command"` or `"lua"` according to what is configured, any other value is considered a configuration error.
 
-#### Command based tasks
+#### Command
 
 _Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard erro channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It si possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error stream both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
@@ -198,7 +198,7 @@ and the following table provides a detailed description of the entries:
 
 The priority used by **Whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`.
 
-#### Lua based tasks
+#### Lua script tasks
 
 Tasks based on _Lua_ scripts might be useful when an action has to be performed that requires a non-trivial sequence of operations but for which it would be excessive to write a specific script to be run as a command. The script to be run is embedded directly in the configuration file -- TOML helps in this sense, by allowing multiline strings to be used in its specification.
 
@@ -391,7 +391,7 @@ for a condition that will be verified each time that an hour has passed since th
 
 The check for this type of condition is never randomized.ù
 
-#### Command based conditions
+#### Command tasks
 
 This type of condition gives the possibility to execute an OS _command_ and decide whether or not the condition is verified testing the command exit code and/or what the command writes on its standard output or standard error channel. The available checks are of the same type as the ones available for command based tasks. In fact it is possible to:
 
@@ -464,7 +464,7 @@ The following table illustrates the parameters specific to _Command_ based condi
 
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
-#### Lua based condition
+#### Lua script
 
 A _Lua_ script can be used to determine the verification of a condition: after te execution of the script, one or more variables can be checked against expected values and thus decide whether or not the associated tasks have to be run. Given the power of _Lua_ and its standard library, this type of condition can constitute a lightweigth alternative to complex scripts to call implementing a _command_ based condition. The definition of a _Lua_ condition is actually much simpler:
 
@@ -519,7 +519,7 @@ External scripts can be executed via `dofile("/path/to/script.lua")` or by using
 
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
-#### DBus method invocation
+#### DBus method
 
 The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result[^7]. One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
 
@@ -665,7 +665,7 @@ Note that if an event arises more that one time within the tick interval, it is 
 
 The associated conditions must exist, otherwise an error is raised and **Whenever** aborts.
 
-#### Filesystem changes based events
+#### Filesystem changes
 
 This type of event arises when there is a modification in the filesystems, regarding one of more monitored files and/or directories. **Whenever** allows to monitor a list of items for each defined event of this type, and to associate an _event_ based condition to the event itself. A sample configuration follows:
 
