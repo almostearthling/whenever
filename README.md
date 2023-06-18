@@ -11,13 +11,13 @@
   - [Configuration](#configuration)
     - [Globals](#globals)
     - [Tasks](#tasks)
-      - [Command](#command)
+      - [Command tasks](#command-tasks)
       - [Lua script tasks](#lua-script-tasks)
     - [Conditions](#conditions)
       - [Interval](#interval)
       - [Time](#time)
       - [Idle session](#idle-session)
-      - [Command tasks](#command-tasks)
+      - [Command](#command)
       - [Lua script](#lua-script)
       - [DBus method](#dbus-method)
       - [Event based conditions](#event-based-conditions)
@@ -142,7 +142,7 @@ Tasks are defined via a dedicated table, which means that every task definition 
 
 Task names are mandatory, and must be provided as alphanumeric strings (may include underscores), beginning with a letter. The task type must be either `"command"` or `"lua"` according to what is configured, any other value is considered a configuration error.
 
-#### Command
+#### Command tasks
 
 _Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard erro channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It si possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error stream both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
@@ -391,7 +391,7 @@ for a condition that will be verified each time that an hour has passed since th
 
 The check for this type of condition is never randomized.ù
 
-#### Command tasks
+#### Command
 
 This type of condition gives the possibility to execute an OS _command_ and decide whether or not the condition is verified testing the command exit code and/or what the command writes on its standard output or standard error channel. The available checks are of the same type as the ones available for command based tasks. In fact it is possible to:
 
