@@ -1,10 +1,8 @@
 [package]
 name = "whenever"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 time = "0.3.17"
@@ -35,16 +33,8 @@ zbus = "3.13.1"
 # user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }
 user-idle = "0.5.3"
 
-# support DBus on all platforms, although it will not work outside Linux
-# [target.'cfg(unix)'.dependencies]
-# zbus = { version = "3.13.1" }
-# [target.'cfg(macos)'.dependencies]
-# zbus = { version = "3.13.1" }
-# [target.'cfg(windows)'.dependencies]
-# zbus = { version = "3.13.1", features=["windows-gdbus"] }
 
-
-# Make the executable memory footprint as small as possible
+# Make the executable memory footprint as small as possible for release
 [profile.release]
 strip = true        # strip executable
 opt-level = "z"     # optimize for size

@@ -49,7 +49,6 @@ pub struct IntervalCondition {
 }
 
 
-
 #[allow(dead_code)]
 impl IntervalCondition {
 

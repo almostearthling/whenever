@@ -10,8 +10,8 @@
 //! ID is used for _inactive_ tasks.
 
 
-
 use crate::common::logging::{log, LogType};
+
 
 
 /// Define the interface for `Task` objects.
@@ -71,7 +71,7 @@ pub trait Task: Send {
     /// records used to mimic the _history_ feature seen in the Python version
     /// (**When**): in fact these records, although human readable, are very
     /// brief and expected to be used by GUI/TUI wrappers.
-    /// 
+    ///
     /// # Panics
     ///
     /// This function panics if the task is not **registered**: any call to an
@@ -89,7 +89,7 @@ pub trait Task: Send {
         }
 
         self.log(
-            LogType::Trace, 
+            LogType::Trace,
             &format!("[HIST/START]:OK/trigger:{trigger_name} starting task"),
         );
         let res = self._run(trigger_name);
@@ -98,25 +98,25 @@ pub trait Task: Send {
                 if let Some(b) = v {
                     if *b {
                         self.log(
-                            LogType::Trace, 
+                            LogType::Trace,
                             &format!("[HIST/END]:OK/trigger:{trigger_name} task succeeded"),
                         );
                     } else {
                         self.log(
-                            LogType::Trace, 
+                            LogType::Trace,
                             &format!("[HIST/END]:FAIL/trigger:{trigger_name} task failed"),
                         );
                     }
                 } else {
                     self.log(
-                        LogType::Trace, 
+                        LogType::Trace,
                         &format!("[HIST/END]:IND/trigger:{trigger_name} no outcome"),
                     );
                 }
             }
             Err(e) => {
                 self.log(
-                    LogType::Trace, 
+                    LogType::Trace,
                     &format!("[HIST/END]:ERR/trigger:{trigger_name} error: {}", e.to_string()),
                 );
             }
@@ -125,7 +125,6 @@ pub trait Task: Send {
     }
 
 }
-
 
 
 // end.

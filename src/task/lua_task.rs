@@ -385,8 +385,8 @@ impl Task for LuaTask {
     /// means for example that it will be prefixed with the context. All of
     /// these functions take a _Lua_ string as input and write it to the log
     /// with appropriate severity: in case a certain severity level is
-    /// configured for the log, only messages above that everity level will
-    /// be logged.
+    /// configured for the log, only messages above that severity level are
+    /// logged.
     fn _run(
         &mut self,
         trigger_name: &str,

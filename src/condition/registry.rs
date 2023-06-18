@@ -21,7 +21,6 @@ use super::base::Condition;
 use crate::common::logging::{log, LogType};
 
 
-
 // module-wide values
 lazy_static! {
     // the main task ID generator
@@ -30,8 +29,6 @@ lazy_static! {
         _uidgen
     };
 }
-
-
 
 // the specific condition ID generator: used internally to register a condition
 #[allow(dead_code)]
@@ -224,7 +221,6 @@ impl ConditionRegistry {
     }
 
 
-
     /// Check whether a condition is busy
     ///
     /// This function allows to test whether or not a condition is in a busy
@@ -285,7 +281,6 @@ impl ConditionRegistry {
             true
         }
     }
-
 
 
     /// Perform a condition test and run associated tasks if successful

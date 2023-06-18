@@ -30,22 +30,22 @@
 
 **Whenever** is a simple task scheduler capable of executing _tasks_ (OS commands and _Lua_ scripts) according to specific _conditions_. Conditions are of various types: depending on time (both intervals or specific more-or-less defined instants), execution of OS commands or _Lua_ scripts, changes in specific files and directories, session inactivity, DBus signals or property checks[^1]. The scheduler intends to be as lightweight as possible in terms of used computational resources, and to run at a low priority level.
 
-Configuration is provided to the scheduler via a TOML file, which must contain all definitions for conditions and associated tasks, as well as events that the scheduler should listen to.
+Configuration is provided to the scheduler via a [TOML](https://toml.io/) file, which must contain all definitions for conditions and associated tasks, as well as events that the scheduler should listen to.
 
 Ideally, **Whenever** is the successor of the _Python_ based [_When_](https://github.com/almostearthling/when-command) scheduler, with the intention of being cross platform, more efficient and as least resource-consuming as possible. It also gained some features (eg. _Lua_ scripting) that _When_ did not have, at no cost in terms of performance since **Whenever** is a self-contained, optimized, and thin executable instead of being an interpreted program.
 
-Although a command line application, it is designed for desktops - therefore it should be executed via a controlling GUI wrapper.
+Although a command line application, it is designed for desktops -- therefore it should be executed via a controlling GUI wrapper.
 
 
 ## Introduction
 
 The purpose of **Whenever** is to provide the user, possibly without administrative credentials, the ability to define conditions that do not only depend on time, but also on particular states of the session, result of commands run in a shell, execution of _Lua_ scripts, or other events that may occur while the system is being used. This scheduler is a terminal (or console, on Windows) application, however it is meant to run in the background without interaction with the user. The application is able to produce detailed logs, so that the user can review what the application is doing or has done.
 
-Just like its predecessor, **Whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible - although less precise than _cron_ - and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **Whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at providing an easy solution to those who need to automatically perform some actions depending on other situations or events that may occur.
+Just like its predecessor, **Whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible -- although less precise than _cron_ -- and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **Whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at providing an easy solution to those who need to automatically perform some actions depending on other situations or events that may occur.
 
-Also, **Whenever** tries to be as cross-platform as possible: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **Whenever** tries to be the smallest possible in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at the lowest possible priority. For this reason, **Whenever** does not implement a GUI by itself: on the contrary, it implements a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this scheduler: the only form of supported persistence is the use of a simple configuration file that, as many modern tools do, uses the well known [TOML](https://toml.io/) format[^2].
+Also, **Whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **Whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **Whenever** does not implement a GUI by itself: on the contrary, it implements a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a simple configuration file that, as many modern tools do, uses the well known TOML format[^2].
 
-A very lightweight cross-platform wrapper is provided, written in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it is designed to implement the least possible functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ utility had an occupation in RAM of about 70MB on Ubuntu Linux, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3]. Nevertheless, **Whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also happens in full parallelism - with the exception of tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper is provided, written in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ utility had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **Whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also happens in full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
 
 
 ## Features
@@ -136,7 +136,7 @@ Both parameters can be omitted, in which case the default values are used: 5 sec
 
 ### Tasks
 
-_Tasks_ are handled first in this document, because _conditions_ must specify mandatorily the tasks to be executed upon verification. There are two types of task, each of which is described in detail in its specific subsection.
+_Tasks_ are handled first in this document, because _conditions_ must mandatorily specify the tasks to be executed upon verification. There are two types of task, each of which is described in detail in its specific subsection.
 
 Tasks are defined via a dedicated table, which means that every task definition must start with the TOML `[[task]]` section header.
 
@@ -144,7 +144,7 @@ Task names are mandatory, and must be provided as alphanumeric strings (may incl
 
 #### Command tasks
 
-_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard erro channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It si possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error stream both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
+_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It si possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error stream both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
 A sample configuration for a command based task is the following:
 
@@ -179,7 +179,7 @@ and the following table provides a detailed description of the entries:
 | Entry                       | Default | Description                                                                                          |
 |-----------------------------|:-------:|------------------------------------------------------------------------------------------------------|
 | `name`                      | N/A     | the unique name of the task (mandatory)                                                              |
-| `type`                      | N/A     | must be set to `"command"`                                                                           |
+| `type`                      | N/A     | must be set to `"command"` (mandatory)                                                               |
 | `startup_path`              | N/A     | the directory in which the command is started                                                        |
 | `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search_PATH_)               |
 | `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
@@ -233,7 +233,7 @@ and the following table provides a detailed description of the entries:
 | Entry              | Default | Description                                                                                                    |
 |--------------------|:-------:|----------------------------------------------------------------------------------------------------------------|
 | `name`             | N/A     | the unique name of the task (mandatory)                                                                        |
-| `type`             | N/A     | must be set to `"lua"`                                                                                         |
+| `type`             | N/A     | must be set to `"lua"` (mandatory)                                                                             |
 | `script`           | N/A     | the _Lua_ code that has to be executed by the internal interpreter (mandatory)                                 |
 | `expect_all`       | _false_ | if _true_, all the expected results have to be matched to consider the task successful, otherwise at least one |
 | `expected_results` | `{}`    | a dictionary of variable names and their expected values to be checked after execution                         |
@@ -274,6 +274,8 @@ Another entry is common to several condition types, that is `check_after`: it ca
 Note that all listed tasks must be defined, otherwise an error is raised and **Whenever** will not start.
 
 The following paragraphs describe in detail each condition type. For the sake of brevity, only specific configuration entries will be described for each type.
+
+All _condition_ definition sections must start with the TOML `[[condition]]` header.
 
 #### Interval
 
@@ -318,7 +320,7 @@ _Time_ based conditions occur just after one of the provided time specifications
 * `year`: an integer expressing the (full) year
 * `month`: an integer expressing the month, between 1 (January) and 12 (December)
 * `day`: an integer expressing the day of themonth, between 1 and 31
-* `weekday`: the name of the weekday in english, either whole or abbreviated to three letters.
+* `weekday`: the name of the weekday in English, either whole or abbreviated to three letters.
 
 Not all the entries must be specified: for instance, specifying the day of week and a full date (as year, month, date) may cause the event to never occur if that particular date does not occur om that specific week day. Normally a day of the month will be specified, and then a time of the day, or a weekday and a time of the day. However full freedom is given in specifying or omitting part of the date:
 
@@ -362,7 +364,7 @@ The check for this type of condition is never randomized.
 
 #### Idle session
 
-Conditions of the _idle_ type are verified after the session has been idle (that is, without user interaction), for the specified of seconds[^6]. This does normally not interfere with other idle time based actions provided by the environment such as screensavers, and automatic session lock. The following is a sample configuration for this type of condition:
+Conditions of the _idle_ type are verified after the session has been idle (that is, without user interaction), for the specified number of seconds[^6]. This does normally not interfere with other idle time based actions provided by the environment such as screensavers, and automatic session lock. The following is a sample configuration for this type of condition:
 
 ```toml
 [[condition]]
@@ -386,7 +388,7 @@ for a condition that will be verified each time that an hour has passed since th
 
 | Entry          | Default | Description                                                                                         |
 |----------------|:-------:|-----------------------------------------------------------------------------------------------------|
-| `type`         | N/A     | has to be set to `"interval"` (mandatory)                                                           |
+| `type`         | N/A     | has to be set to `"idle"` (mandatory)                                                               |
 | `idle_seconds` | N/A     | the number of idle seconds to be waited for in order to consider the condition verified (mandatory) |
 
 The check for this type of condition is never randomized.ù
@@ -398,7 +400,7 @@ This type of condition gives the possibility to execute an OS _command_ and deci
 * identify a provided exit code as a failure or as a success
 * specifying that the presence of a substring or matching a regular expression corresponds to either a failure or a success.
 
-Of course only a success causes the corresponding tasks to be executed: as for command based tasks, it is not mandatory to follow the usual conventions - this means, for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a success. A non-success has the same effect as a failure on task execution.
+Of course only a success causes the corresponding tasks to be executed: as for command based tasks, it is not mandatory to follow the usual conventions -- this means, for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a success. A non-success has the same effect as a failure on task execution.
 
 An example of command based condition follows:
 
@@ -440,7 +442,7 @@ set_environment_variables = true
 environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
 ```
 
-The following table illustrates the parameters specific to _Command_ based conditions:
+The following table illustrates the parameters specific to _command_ based conditions:
 
 | Entry                       | Default | Description                                                                                                                  |
 |-----------------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
@@ -549,7 +551,7 @@ A further difficulty is due to the fact that, while DBus is strictly typed and s
 * _List_: `ARRAY`
 * _Map_: `DICTIONARY`
 
-This means that there are a lot of value types that are not directly derived from the native JSON types. **Whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\`, followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^8]) identifying the type. For example, the string `"\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^9] containing the value _/com/example/MusicPlayer1_. A specially crafted string will only be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\w100"` is translated into a `STRING` holding the value _\w100_.
+This means that there are a lot of value types that are not directly derived from the native JSON types. **Whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\`, followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^8]) identifying the type. For example, the string `"\\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^9] containing the value _/com/example/MusicPlayer1_. A specially crafted string will only be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\\w100"` is translated into a `STRING` holding the value _\w100_.
 
 For return values, while the structure of complex entities received from DBus is kept, all values are automatically converted to more generic types: a returned `BYTE` is converted to a JSON _Integer_, and a returned `OBJECT_PATH` is consdered a JSON _String_ which, as a side effect, supports the `"match"` operator.
 
@@ -615,11 +617,11 @@ The specific parameters are described in the following table:
 
 More often than not, the value corresponding to the `service` entry is referred to as _bus name_ in various doocuments: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
-Method resulting in an error will _always_ be considered a failure: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure.
+Method resulting in an error will _always_ be considered as failed: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure.
 
-Working on a file that mixes TOML and JSON, it is worth to remind that JSON supports inline maps distributed on multiple lines (see the example above, the third constraint) and that in JSON trailing commas are considered an error.
+Working on a file that mixes TOML and JSON, it is worth to remind that JSON supports inline maps distributed on multiple lines (see the example above, the third constraint) and that in JSON trailing commas are considered an error. Also, JSON does not support _literal_ strings, therefore when using backslashes (for instance when specifying typed values with strings as described above), the backslashes themselves have to be escaped within the provided JSON strings.
 
-Note that DBus based conditions are supported on Windows, however DBus should be running for such conditions to be useful -- which is most unlikely to say the least.
+Note that DBus based conditions are supported on Windows, however DBus should be running for such conditions to be useful -- which is very unlikely to say the least.
 
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
@@ -662,6 +664,8 @@ Only two types of event are supported, at least for now. The reason is that whil
 One notable exception, which is also particularly useful, is the _notification_ of changes in the filesystem for watched entities (files or directories), which is implemented in **Whenever** as one of the possible events that can fire conditions, the other being _DBus signals_ which are generally available on linux desktops (at least _Gnome_ and _KDE_).
 
 Note that if an event arises more that one time within the tick interval, it is automatically _debounced_ and a single occurrence is counted.
+
+All _event_ definition sections must start with the TOML `[[event]]` header.
 
 The associated conditions must exist, otherwise an error is raised and **Whenever** aborts.
 

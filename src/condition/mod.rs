@@ -1,8 +1,7 @@
-/// condition module: defines all types of condition
+//! condition module: defines all types of condition
 
 pub mod base;       // this only defines the trait
 pub mod registry;   // the main condition registry
-
 
 // specific condition types
 pub mod interval_cond;

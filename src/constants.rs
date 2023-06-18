@@ -57,7 +57,6 @@ pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
 
 
-
 // crate-wide values
 lazy_static! {
     // environment variables set by the command based task
@@ -73,7 +72,7 @@ lazy_static! {
     pub static ref LUAVAR_NAME_TASK: String = String::from(format!("{}_task", APP_NAME.to_ascii_lowercase()));
     pub static ref LUAVAR_NAME_COND: String = String::from(format!("{}_condition", APP_NAME.to_ascii_lowercase()));
 
-    // DBus names reglar expressions (see https://dbus.freedesktop.org/doc/dbus-specification.html)
+    // DBus names regular expressions (see https://dbus.freedesktop.org/doc/dbus-specification.html)
     // Note that bus names adhere to specification as in (quoting): "only
     // elements that are part of a unique connection name may begin with a
     // digit", so the case must be taken into account. The other definitions
@@ -90,9 +89,7 @@ lazy_static! {
     pub static ref RE_DBUS_MEMBER_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_DBUS_ERROR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
 
-
 }
-
 
 
 // end.

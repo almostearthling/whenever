@@ -26,7 +26,6 @@ use crate::common::logging::{log, LogType};
 use crate::constants::*;
 
 
-
 // see the DBus specification
 const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 
@@ -254,6 +253,7 @@ impl ToVariant for CfgValue {
 }
 
 
+
 /// DBus Method Based Condition
 ///
 /// This condition is verified whenever a value returned by a DBus method
@@ -292,7 +292,6 @@ pub struct DbusMethodCondition {
     // internal values
     check_last: Instant,
 }
-
 
 
 #[allow(dead_code)]

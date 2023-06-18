@@ -6,19 +6,16 @@
 //! always results as a failure.
 
 
-
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, Duration};
 
 use cfgmap::CfgMap;
 use rlua;
 
-
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
 use crate::constants::*;
-
 
 
 /// The possible values to be checked from Lua
@@ -27,7 +24,6 @@ enum LuaValue {
     LuaNumber(f64),
     LuaBoolean(bool),
 }
-
 
 
 /// In case of failure, the reason will be one of the provided values
@@ -75,7 +71,6 @@ pub struct LuaCondition {
     // internal values
     check_last: Instant,
 }
-
 
 
 #[allow(dead_code)]
@@ -835,7 +830,6 @@ impl Condition for LuaCondition {
     }
 
 }
-
 
 
 // end.

@@ -49,8 +49,8 @@ pub struct FilesystemChangeEvent {
     recursive: bool,
 
     // internal values
+    // (none here)
 }
-
 
 
 #[allow(dead_code)]

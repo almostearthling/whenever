@@ -84,6 +84,7 @@ const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
 const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 
+
 // check whether an instance is already running, and return an error if so
 fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
     if !instance.is_single() {
@@ -158,6 +159,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
 
     Ok(true)
 }
+
 
 
 // this is similar to my usual exiterror
@@ -523,9 +525,10 @@ fn configure_events(
 }
 
 
-// the following is a separate thread that reads sdin and interprets commands
+
+// the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
-// from the standard input
+// from the standard input, therefore no explicit synchronization
 fn interpret_commands() -> std::io::Result<bool> {
     let mut buffer = String::new();
     let rest_time = Duration::from_millis(DEFAULT_SCHEDULER_TICK_SECONDS as u64 * 100);

@@ -22,7 +22,6 @@
 //! _active_).
 
 
-
 use std::time::Instant;
 use std::io::{Error, ErrorKind};
 use crate::common::logging::{log, LogType};
@@ -436,7 +435,6 @@ pub trait Condition: Send {
 
 
 }
-
 
 
 // end.

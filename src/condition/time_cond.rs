@@ -152,7 +152,6 @@ pub struct TimeCondition {
 }
 
 
-
 #[allow(dead_code)]
 impl TimeCondition {
 
@@ -750,7 +749,6 @@ impl Condition for TimeCondition {
     }
 
 
-
     /// Mandatory check function.
     ///
     /// This function actually performs the test: if at least `self.interval`
@@ -802,7 +800,6 @@ impl Condition for TimeCondition {
     }
 
 }
-
 
 
 // end.

@@ -73,6 +73,7 @@ struct ParameterCheckTest {
 }
 
 
+
 /// DBus Based Event
 ///
 /// Implements an event based upon DBus suscription to certain events, using
@@ -101,6 +102,7 @@ pub struct DbusMessageEvent {
     param_checks_all: bool,
 
     // internal values
+    // (none here)
 }
 
 

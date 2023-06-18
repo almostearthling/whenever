@@ -50,7 +50,6 @@ pub struct IdleCondition {
 }
 
 
-
 #[allow(dead_code)]
 impl IdleCondition {
 
@@ -492,7 +491,6 @@ impl Condition for IdleCondition {
     }
 
 }
-
 
 
 // end.

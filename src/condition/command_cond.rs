@@ -252,7 +252,7 @@ impl CommandCondition {
     ///
     /// case_sensitive = false
     /// include_environment = true
-    /// set_envvironment_variables = true
+    /// set_environment_variables = true
     /// environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2", ... }
     /// ```
     ///
@@ -283,7 +283,7 @@ impl CommandCondition {
             "match_regular_expression",
             "case_sensitive",
             "include_environment",
-            "set_envvironment_variables",
+            "set_environment_variables",
             "environment_variables",
             "check_after",
             "success_stdout",
@@ -551,7 +551,7 @@ impl CommandCondition {
             }
         }
 
-        let cur_key = "set_envvironment_variables";
+        let cur_key = "set_environment_variables";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
@@ -1450,8 +1450,6 @@ impl Condition for CommandCondition {
     }
 
 }
-
-
 
 
 // end.
