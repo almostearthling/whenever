@@ -24,6 +24,7 @@
     - [Events](#events)
       - [Filesystem changes](#filesystem-changes)
       - [DBus signals](#dbus-signals)
+  - [Logging](#logging)
   - [Conclusion](#conclusion)
 
 <!-- /code_chunk_output -->
@@ -39,44 +40,44 @@ Although a command line application, it is designed for desktops -- therefore it
 
 ## Introduction
 
-The purpose of **Whenever** is to provide the user, possibly without administrative credentials, the ability to define conditions that do not only depend on time, but also on particular states of the session, result of commands run in a shell, execution of _Lua_ scripts, or other events that may occur while the system is being used. This scheduler is a terminal (or console, on Windows) application, however it is meant to run in the background without interaction with the user. The application is able to produce detailed logs, so that the user can review what the application is doing or has done.
+The purpose of **Whenever** is to provide the user, possibly without administrative credentials, with the ability to define conditions that do not only depend on time, but also on particular states of the session, result of commands run in a shell, execution of _Lua_ scripts, or other events that may occur while the system is being used. This scheduler is a terminal (or console, on Windows) application, however it is meant to run in the background without interaction with the user. The application is able to produce detailed logs, so that the user can review what the application is doing or has done.
 
-Just like its predecessor, **Whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible -- although less precise than _cron_ -- and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **Whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at providing an easy solution to those who need to automatically perform some actions depending on other situations or events that may occur.
+Just like its predecessor, **Whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible -- although less precise than _cron_ -- and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **Whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at providing an easy solution to those who need to automate some actions depending on other situations or events that may occur.
 
-Also, **Whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **Whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **Whenever** does not implement a GUI by itself: on the contrary, it implements a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a simple configuration file that, as many modern tools do, uses the well known TOML format[^2].
+Also, **Whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **Whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **Whenever** does not implement a GUI by itself: on the contrary, it implements a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format[^2].
 
-A very lightweight cross-platform wrapper is provided, written in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ utility had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **Whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also happens in full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper will soon be available (it is actually ready, under test on Windows, to be checked on Linux and possibly other operating systems), written in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **Whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
 
 
 ## Features
 
-**Whenever** can perform the following types of **_task_**:
+**Whenever** can perform the following types of [**_task_**](#tasks):
 
-* _Execution of groups of OS executables_, either sequentially or concurrently, checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
-* _Execution of_ Lua _scripts_, using an embedded interpreter, with the possibility of checking the contents of _Lua_ variables for expected outcomes
+* [_Execution of groups of OS executables_](#command-tasks), either sequentially or concurrently, checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
+* [_Execution of_ Lua _scripts_](#lua-script-tasks), using an embedded interpreter, with the possibility of checking the contents of _Lua_ variables for expected outcomes
 
-as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based **When** scheduler: how tasks and conditions work is almost identical in both tools -- in fact, a tool will be provided to convert from **When** export files to **Whenever** configuration files.
+as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based **When** scheduler: how tasks and conditions work is almost identical in both tools -- in fact, a tool will be made available to convert from **When** _export files_ to **Whenever** configuration files.
 
-The supported types of condition are the following:
+The supported types of [**_condition_**](#conditions) are the following:
 
-* _Interval_ based: the _periodic_ conditions are verified after a certain time interval has passed since **Whenever** has started, and may be verified again after the same amount of time if the condition is set to be _recurrent_
-* _Time_ based: one or more instants in time can be specified when the condition is verified
-* _Idle_ user session: this type of condition is verified after the session has been idle for the specified amount of time
-* _Command_ execution: an available executable (be it a script, a batch file on Windows, a binary) is run, and its exit code or output is checked and, when an expected/undesired outcome is found, the condition is considered verified
-* _Lua_ script execution: a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
-* _DBus_ inspection: a _DBus_ method is executed and the result is checked against some criteria that have to be provided
-* _Event_ based: are verified when a certain event occurs that fires the condition.
+* [_Interval_ based](#interval): the _periodic_ conditions are verified after a certain time interval has passed since **Whenever** has started, and may be verified again after the same amount of time if the condition is set to be _recurrent_
+* [_Time_ based](#time): one or more instants in time can be specified when the condition is verified
+* [_Idle_ user session](#command): this type of condition is verified after the session has been idle for the specified amount of time
+* [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected/undesired outcome is found, the condition is considered verified
+* [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
+* [_DBus_ inspection](#dbus-method): a _DBus_ method is executed and the result is checked against some criteria that have to be provided
+* [_Event_ based](#event-based-conditions): are verified when a certain event occurs that fires the condition.
 
-The **_events_** that can fire _event_ based conditions are, at the moment:
+The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
 
-* _Filesystem changes_, that is, changes in files and/or directories that are set to be monitored
-* _DBus signals_ that may be filtered for an expected payload.
+* [_Filesystem changes_](#filesystem-changes), that is, changes in files and/or directories that are set to be monitored
+* [_DBus signals_](#dbus-signals) that may be filtered for an expected payload.
 
-Note that _DBus_ events and conditions are also theoretically supported on Windows, being one of the _DBus_ target platforms.
+Note that _DBus_ events and conditions are also (theoretically) supported on Windows, being one of the _DBus_ target platforms.
 
-All of the above listed items are fully configurable via a single TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
+All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
-All checks are performed periodically, even the ones regarding _event_ based conditions[^4]: the times at which the conditions are checked is usually referred here as _tick_ and the tick interval can be specified in the configuration file -- defaulting at 5 seconds. Note that, since performing all checks in the same instant at every tick could cause usage peaks in terms of computational resources, there is the option to attempt to randomly distribute checks within the tick interval, by explicitly specifying this behaviour in the configuration file.
+Every type of check is performed periodically, even the ones involving _event_ based conditions[^4]: the times at which the conditions are checked is usually referred here as _tick_ and the tick interval can be specified in the configuration file -- defaulting at 5 seconds. Note that, since performing all checks in the same instant at every tick could cause usage peaks in terms of computational resources, there is the option to attempt to randomly distribute checks within the tick interval, by explicitly specifying this behaviour in the configuration file.
 
 
 ## CLI
@@ -106,7 +107,7 @@ Options:
   -V, --version            Print version
 ```
 
-As the available options are minimal, and mostly impact on logging, the only things to notice are the following:
+As the available options are minimal, and mostly impact on [logging](#logging), the only elements that should be highlighted are the following:
 
 * **Whenever** requires a log file to run in _quiet_ mode (which also suppresses errors)
 * it is possible to suppress colors on console logging, by specifying `--log-plain` to the command
@@ -131,7 +132,7 @@ Globals must be specified at the beginning of the configuration file. The suppor
 | `scheduler_tick_seconds`        | 5       | Number of seconds between scheduler ticks                                            |
 | `randomize_checks_within_ticks` | _false_ | Whether or not condition checks hould be uniformly randomized within the tick period |
 
-Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a very short value for the tick period, but in fact it mimics a certain responsiveness and synchronicity in checking _event_ based conditions. Note that condition strictly depending on time do not comply to the request of randomizing the check time.
+Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a very short value for the tick period, but in fact it mimics a certain responsiveness and synchronicity in checking _event_ based conditions. Note that conditions strictly depending on time do not comply to the request of randomizing the check time.
 
 
 ### Tasks
@@ -144,7 +145,7 @@ Task names are mandatory, and must be provided as alphanumeric strings (may incl
 
 #### Command tasks
 
-_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It si possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error stream both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
+_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
 A sample configuration for a command based task is the following:
 
@@ -181,7 +182,7 @@ and the following table provides a detailed description of the entries:
 | `name`                      | N/A     | the unique name of the task (mandatory)                                                              |
 | `type`                      | N/A     | must be set to `"command"` (mandatory)                                                               |
 | `startup_path`              | N/A     | the directory in which the command is started                                                        |
-| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search_PATH_)               |
+| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)              |
 | `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
 | `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                         |
 | `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                |
@@ -198,11 +199,18 @@ and the following table provides a detailed description of the entries:
 
 The priority used by **Whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`.
 
+if `set_environment_variables` is _true_, **Whenever** sets the following environment variables:
+
+* `WHENEVER_TASK` to the unique name of the task
+* `WHENEVER_CONDITION` to the unique name of the condition that triggered the task
+
+for scripts or other executables that might be aware of **Whenever**.
+
 #### Lua script tasks
 
 Tasks based on _Lua_ scripts might be useful when an action has to be performed that requires a non-trivial sequence of operations but for which it would be excessive to write a specific script to be run as a command. The script to be run is embedded directly in the configuration file -- TOML helps in this sense, by allowing multiline strings to be used in its specification.
 
-_Lua_ based tasks can be considered more lightweigth than _command_ tasks, as the interpreter is embedded in **Whenever**. Also, the embedded _Lua_ interpreter is enriched with library functions that allow to write to the **Whenever** log, at all logging levels (_error_, _warn_, _info_, _debug_, _trace_). The library functions are the following:
+_Lua_ based tasks can be considered more lightweight than _command_ tasks, as the interpreter is embedded in **Whenever**. Also, the embedded _Lua_ interpreter is enriched with library functions that allow to write to the **Whenever** log, at all logging levels (_error_, _warn_, _info_, _debug_, _trace_). The library functions are the following:
 
 * `log.error`
 * `log.warn`
@@ -322,9 +330,9 @@ _Time_ based conditions occur just after one of the provided time specifications
 * `day`: an integer expressing the day of themonth, between 1 and 31
 * `weekday`: the name of the weekday in English, either whole or abbreviated to three letters.
 
-Not all the entries must be specified: for instance, specifying the day of week and a full date (as year, month, date) may cause the event to never occur if that particular date does not occur om that specific week day. Normally a day of the month will be specified, and then a time of the day, or a weekday and a time of the day. However full freedom is given in specifying or omitting part of the date:
+Not all the entries must be specified: for instance, specifying the day of week and a full date (as year, month, date) may cause the event to never occur if that particular date does not occur on that specific week day. Normally a day of the month will be specified, and then a time of the day, or a weekday and a time of the day. However full freedom is given in specifying or omitting part of the date:
 
-* missing parts in the date will be considered verified on each of the missing parts (years, months, days, and weekdays)
+* missing parts in the date will be considered verified at every change of each of them (years, months, days, and weekdays)
 * a missing hour specification will be considered verified at every hour
 * a missing minute or second specification will be considered verified respectively at the first minute of the hour and first second of the minute.
 
@@ -391,7 +399,7 @@ for a condition that will be verified each time that an hour has passed since th
 | `type`         | N/A     | has to be set to `"idle"` (mandatory)                                                               |
 | `idle_seconds` | N/A     | the number of idle seconds to be waited for in order to consider the condition verified (mandatory) |
 
-The check for this type of condition is never randomized.ù
+The check for this type of condition is never randomized.
 
 #### Command
 
@@ -449,7 +457,7 @@ The following table illustrates the parameters specific to _command_ based condi
 | `type`                      | N/A     | has to be set to `"interval"` (mandatory)                                                                                    |
 | `check_after`               | _empty_ | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
 | `startup_path`              | N/A     | the directory in which the command is started (mandatory)                                                                    |
-| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search_PATH_)               |
+| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)              |
 | `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
 | `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                                                 |
 | `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                                        |
@@ -464,11 +472,17 @@ The following table illustrates the parameters specific to _command_ based condi
 | `set_environment_variables` | _false_ | if _true_, **Whenever** sets environment variables reporting the names of the task and the condition                         |
 | `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                              |
 
+if `set_environment_variables` is _true_, **Whenever** sets the following environment variable:
+
+* `WHENEVER_CONDITION` to the unique name of the condition that triggered the task
+
+for scripts or other executables used in checks that might be aware of **Whenever**.
+
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
 #### Lua script
 
-A _Lua_ script can be used to determine the verification of a condition: after te execution of the script, one or more variables can be checked against expected values and thus decide whether or not the associated tasks have to be run. Given the power of _Lua_ and its standard library, this type of condition can constitute a lightweigth alternative to complex scripts to call implementing a _command_ based condition. The definition of a _Lua_ condition is actually much simpler:
+A _Lua_ script can be used to determine the verification of a condition: after the execution of the script, one or more variables can be checked against expected values and thus decide whether or not the associated tasks have to be run. Given the power of _Lua_ and its standard library, this type of condition can constitute a lightweight alternative to complex scripts to call to implement a _command_ based condition. The definition of a _Lua_ condition is actually much simpler:
 
 ```toml
 [[condition]]
@@ -512,9 +526,8 @@ The same rules and possibilities seen for _Lua_ based tasks also apply to condit
 * `log.debug`
 * `log.trace`
 
-and take a single string as their argument. Also, from the embedded _Lua_ interpreter there are two values set that can be accessed:
+and take a single string as their argument. Also, from the embedded _Lua_ interpreter there is a value that can be accessed:
 
-* `whenever_task` is the name of the task that executes the script
 * `whenever_condition` is the name of the condition that triggered the task.
 
 External scripts can be executed via `dofile("/path/to/script.lua")` or by using the `require` function. While a successful execution is always determined by matching the provided criteria, an error in the script is always considered a failure.
@@ -529,7 +542,7 @@ So, as a rule of thumb:
 
 * arguments to be passed to the DBus method are specified in a string containing the _exact_ JSON representation of those arguments
 * criteria to determine expected return values (which can be complex structures) are expressed as inline tables of three elements, that is:
-  * `"index"`: a list of elements, which can be either integers or strings (the first is _always_ an integer) representing each a positional 0-based index or a key in a dictionary; this allows to index deeply nested structures in which part of the nested elements are dictionaries
+  * `"index"`: a list of elements, which can be either integers or strings (the first one is _always_ an integer) representing each a positional 0-based index or a string key in a dictionary; this allows to index deeply nested structures in which part of the nested elements are dictionaries
   * `"operator"`: one of the following strings
     * `"eq"` for _equality_
     * `"neq"` for _inequality_
@@ -551,7 +564,7 @@ A further difficulty is due to the fact that, while DBus is strictly typed and s
 * _List_: `ARRAY`
 * _Map_: `DICTIONARY`
 
-This means that there are a lot of value types that are not directly derived from the native JSON types. **Whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\`, followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^8]) identifying the type. For example, the string `"\\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^9] containing the value _/com/example/MusicPlayer1_. A specially crafted string will only be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\\w100"` is translated into a `STRING` holding the value _\w100_.
+This means that there are a lot of value types that are not directly derived from the native JSON types. **Whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\`, followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^8]) identifying the type. For example, the string `"\\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^9] containing the value _/com/example/MusicPlayer1_. A specially crafted string will be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\\w100"` is translated into a `STRING` holding the value _\w100_.
 
 For return values, while the structure of complex entities received from DBus is kept, all values are automatically converted to more generic types: a returned `BYTE` is converted to a JSON _Integer_, and a returned `OBJECT_PATH` is consdered a JSON _String_ which, as a side effect, supports the `"match"` operator.
 
@@ -598,6 +611,8 @@ As shown below, `parameter_check` is the list of criteria against which the _ret
 2. the second element is considered to be an array, whose sixth element (with index 5) must not be the string _"forbidden"_
 3. the third element is highly nested, containing a map whose element with key _"mapidx"_ is an array, containing a string at its sixth position, which should be an alphanumeric beginning with a letter that also can contain underscores (that is, matches the _regular expression_ `^[A-Z][a-zA-Z0-9_]*$`).
 
+Note that the first check shows a `0` index not embedded in a list: if a returned parameter is not an array or a dictionary and its value is required directly, the square brackets around this single index can be omitted and **Whenever** does not complain: since this is probably the most frequent use case, this is a way to make configuration for such cases more readable and concise.
+
 Since `parameter_check_all` is _false_, satisfaction of one of the provided criteria is sufficient to determine the success of the condition.
 
 The specific parameters are described in the following table:
@@ -617,13 +632,13 @@ The specific parameters are described in the following table:
 
 More often than not, the value corresponding to the `service` entry is referred to as _bus name_ in various doocuments: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
-Method resulting in an error will _always_ be considered as failed: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure.
+Methods resulting in an error will _always_ be considered as failed: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure.
 
 Working on a file that mixes TOML and JSON, it is worth to remind that JSON supports inline maps distributed on multiple lines (see the example above, the third constraint) and that in JSON trailing commas are considered an error. Also, JSON does not support _literal_ strings, therefore when using backslashes (for instance when specifying typed values with strings as described above), the backslashes themselves have to be escaped within the provided JSON strings.
 
 Note that DBus based conditions are supported on Windows, however DBus should be running for such conditions to be useful -- which is very unlikely to say the least.
 
-For this type of condition the actual test can be performed at a random time within the tick interval.
+For this type of conditions the actual test can be performed at a random time within the tick interval.
 
 #### Event based conditions
 
@@ -646,7 +661,7 @@ tasks = [
     ]
 ```
 
-that is, these conditions have no specific fields, if not for the mandatory `type` that should be either `"bucket"` or `"event"`:
+that is, these conditions have no specific fields, if not for the mandatory `type` that should be either `"bucket"` or `"event"` (with no operational difference, at least for the moment being):
 
 | Entry  | Default | Description                                          |
 |--------|:-------:|------------------------------------------------------|
@@ -654,7 +669,7 @@ that is, these conditions have no specific fields, if not for the mandatory `typ
 
 These conditions are associated to _events_ for verification, no other criteria can be specified.
 
-For this type of condition the actual test can be performed at a random time within the tick interval.
+For this type of conditions the actual test can be performed at a random time within the tick interval.
 
 
 ### Events
@@ -663,7 +678,7 @@ Only two types of event are supported, at least for now. The reason is that whil
 
 One notable exception, which is also particularly useful, is the _notification_ of changes in the filesystem for watched entities (files or directories), which is implemented in **Whenever** as one of the possible events that can fire conditions, the other being _DBus signals_ which are generally available on linux desktops (at least _Gnome_ and _KDE_).
 
-Note that if an event arises more that one time within the tick interval, it is automatically _debounced_ and a single occurrence is counted.
+Note that if an event arises more that once within the tick interval, it is automatically _debounced_ and a single occurrence is counted.
 
 All _event_ definition sections must start with the TOML `[[event]]` header.
 
@@ -705,7 +720,7 @@ DBus provides signals that can be subscribed by applications, to receive informa
 
 Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility, therefore JSON is not used for this purpose. JSON is used instead to specify the criteria that the _signal parameters_ must meet in order for the event to arise, using the same format that is used for _return message parameter_ checks in _DBus method_ based conditions.
 
-A sample configuration follows:
+A sample configuration section follows:
 
 ```toml
 name = "DbusMessageEventName"
@@ -744,19 +759,71 @@ and the details of the configuration entries are described in the table below:
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient |
 | `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be verified                                    |
 
-If no parameters checks are provided, the event arises simply when the signal is caught.
+The consideration about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
+
+If no parameter checks are provided, the event arises simply when the signal is caught.
+
+
+## Logging
+
+Log messages are not dissimilar to the ones provided by servers and other applications running in the background: a date/time specification is reported, as long as the name of the application (_whenever_), the logging level to which the message line is pertinent, and then a message (the so-called _payload_). The message itself is structured: it consists of a short _context_ specification, followed by a string enclosed in square brackets describing the nature of the message (for instance if the message is referred to the start or to the end of a process, and whether the message indicates a normal condition or something that went wrong). The context can be either the _MAIN_ control program (or one of its threads), a _TASK_, a _CONDITION_, an _EVENT_ or a _REGISTRY_ -- there are many registries in **Whenever**, used by the main control program to reach the _item_ collections.
+
+Logging is quite verbose in **Whenever** at the _trace_ log level, and can be very brief when enabling logging just for warnings and errors.
+
+A short description of the log levels follows:
+
+1. **trace:** every single step is logged, some message can be redundant because if an acknowledgement or an issue takes place in more than one context of the program, each of the involved parts may decide to log about what happened. Sometimes, for example, the same error may be reported by a condition that is checked and by the registry that has been used to reach this condition. Also, _history_ messages are issued only at the trace level: _wrappers_ will want to use the _trace_ level in order to catch these messages and calculate, for instance, the execution time for a particular task.
+2. **debug:** there is plenty of informational messages at each execution step, however redundant messages are not emitted. In particular, _history_ messages are not present at this level.
+3. **info:** a reduced amount of informational messages is emitted, mostly related to the outcome of condition and execution of related tasks; information about what is being checked is less verbose. Very reduced logging is performed at this level by the main control program, thus most of the logging is left to items.
+4. **warn:** only **warnings** are logged, erratic situations that can be handled by **Whenever** without having to stop or abort -- except for termination requests, which are logged as **warnings** instead of **errors**, even though causing the process to exit.
+5. **error:** only **errors** are reported, which are erratic situations that may prevent **Whenever** to keep running.
+
+Note that, since _Lua_ scripts are allowed to log at each of the above described levels, lines emitted by _Lua_ script might not always correspond to what is illustrated above.
+
+As mentioned above, just after the _context_, in the message _payload_, a string of this form `[NATURE/OUTCOME]` appears that can be used to identify the nature of the message, where
+
+* _NATURE_ is one of
+  * `INIT` when the message is related to an initialization phase (mostly around startup)
+  * `START` when the message is issued when _starting_ something, for instance a check or a new process
+  * `PROC` when the message is issued in the middle of something, for instance while executing a check
+  * `END` when the message is emitted at the end of something, before returning control
+  * `HIST` when the message is intended for some receiver (generally a wrapper) that keeps track of the history
+
+* _OUTCOME_ is one of the following:
+  * `OK` for successful operations
+  * `FAIL` for unsuccessful operations
+  * `IND` when the outcome is undetermined
+  * `MSG` when the message is merely informational
+  * `ERR` (possibly followed by `-nnn` where nnn is a code that should be notified), when the outcome fails with a known error
+
+This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
+
+```text
+[2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/[6]: [PROC/OK] failure: condition checked with negative outcome
+```
+
+while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected more often than not, this is the reason why the message documenting a failed check is reported as a positive (`[PROC/OK]`) log entry.
+
+There is an option that can be specified on the [command line](#cli), that forces the log lines to be emitted in the JSON format: this allows to separate the parts more easily in
+
+* timestamp
+* application name
+* log level
+* message (payload)
+
+in order to better handle the logs and to provide feedback to the user.
 
 
 ## Conclusion
 
-The configuration of **Whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **Whenever** does not provide a GUI, the features of the Python based **When** are not matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **Whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to soe versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage.
+The configuration of **Whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **Whenever** does not provide a GUI, the features of the Python based **When** are not completely matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **Whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to some versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage.
 
 I am considering **Whenever** as the evolution of the **When** operational engine, and future versions of **When** itself (which will bump its version number to something more near to the awaited _2.0.0_) will only implement the GUIs that might (or might not) be used to configure **Whenever** and to control it from the system tray in a more sophisticated way than the one allowed by the minimal C++ based utility.
 
 
 [^1]: Although DBus support is available on Windows too, it is mostly useful on Linux desktops.
 [^2]: Because TOML is sometimes too strict and is not able to represent certain types of structured data, [JSON](https://www.json.org/) is used in some cases within the TOML configuration file.
-[^3]: When run alone, with no wrapper: using the minimal provided wrapper, both programs together use less than 4MB of RAM and the CPU consumption in rare occasions reaches the 0.2% -- as reported by the Windows _Task Manager_.
+[^3]: When run alone, with no wrapper: using the minimal provided wrapper, both programs together use less than 4MB of RAM and the combined CPU consumption in rare occasions reaches the 0.2% -- as reported by the Windows _Task Manager_.
 [^4]: The occurrence of an _event_, in fact, raises a flag that specifies that the associated condition will be considered as verified at the following tick: the condition is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the scheduler that executes the related tasks. Therefore _event_ based conditions are also referred to as _bucket_ conditions.
 [^5]: In this case the execution will continue as long as the outcome is _undefined_ until the first success or failure happens.
 [^6]: Except on _Wayland_ based Linux systems (e.g. Ubuntu), on which the idle time starts _after the session has been locked_.

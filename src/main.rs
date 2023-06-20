@@ -168,9 +168,11 @@ macro_rules! exit_if_fails {
         match $might_fail {
             Err(e) => {
                 if !$quiet {
-                    eprintln!("{APP_NAME} error: {:?}", e);
-                    // NOTE: will become
-                    // eprintln!("{APP_NAME} error: {}", e.to_string());
+                    if cfg!(debug_assertions) {
+                        eprintln!("{APP_NAME} error: {:?}", e);
+                    } else {
+                        eprintln!("{APP_NAME} error: {}", e.to_string());
+                    }
                 }
                 std::process::exit(2);
             }
@@ -779,7 +781,6 @@ fn main() {
     std::process::exit(0);
 
 }
-
 
 
 // end.

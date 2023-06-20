@@ -36,9 +36,10 @@
 //!
 //! * _OK_ for expected outcomes or behaviours
 //! * _FAIL_ for unexpected outcomes or behaviours
-//! * _IND_ for indeterminate outcomes (mostly in )
+//! * _IND_ for indeterminate outcomes
 //! * _MSG_ if the human-readable part is exclusively informational
-//! * _ERR_ (may be followed by a slash and a code) for errors to be notified.
+//! * _ERR_ (may be followed by a dash `-` and a code) for errors to be
+//!   notified.
 //!
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to
