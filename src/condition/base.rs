@@ -433,7 +433,6 @@ pub trait Condition: Send {
         Ok(Some(true))
     }
 
-
 }
 
 

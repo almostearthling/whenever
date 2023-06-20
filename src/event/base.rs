@@ -147,7 +147,6 @@ pub trait Event: Send + Sync {
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);
 
-
 }
 
 
