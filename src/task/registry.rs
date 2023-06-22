@@ -257,17 +257,27 @@ impl TaskRegistry {
             panic!("(trigger: {trigger_name}) run_tasks_seq task(s) not found in registry")
         }
 
+        // although this function runs a task sequentially, we must handle the
+        // task registry in the same way as if the tasks were concurrent: in
+        // fact there might be other branches accessing the registry right at
+        // the same moment when this sequence is running
         for name in names.into_iter() {
             let mut breaks = false;
-            let cur_res = self.task_list
-                .lock()
-                .expect("cannot lock task registry")
-                .get_mut(*name)
-                .unwrap()
-                .clone()
+            let task;
+            {
+                let mut guard = self.task_list
+                    .lock()
+                    .expect("cannot lock task registry");
+                task = guard
+                    .get_mut(*name)
+                    .expect(&format!("cannot retrieve task {name} for running"))
+                    .clone();
+            }
+            let cur_res = task
                 .lock()
                 .expect(&format!("cannot lock task {name} while extracting"))
                 .run(trigger_name);
+
             if let Ok(outcome) = cur_res {
                 if let Some(success) = outcome {
                     if (success && break_success) || (!success && break_failure) {
@@ -344,7 +354,6 @@ impl TaskRegistry {
             let atrname = atrname.clone().to_string();
             let atasklist = aself.clone().task_list.clone();
             let atx = atx.clone();
-
 
             // here we extract the task first, in an inner scope to ensure
             // that the lock on the task list is dropped before spawning a

@@ -116,6 +116,17 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
     }
 
     for name in CONDITION_REGISTRY.condition_names().unwrap() {
+        // go away if condition is busy
+        if CONDITION_REGISTRY.condition_busy(&name) {
+            log(
+                LogType::Debug,
+                "MAIN scheduler_tick",
+                &format!("[PROC/MSG] condition {name} is busy: tick skipped"),
+            );
+            continue
+        }
+        // else...
+
         // create a new thread for each check: note that each thread will
         // attempt to lock the condition registry, thus wait for it to be
         // released by the previous owner

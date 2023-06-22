@@ -241,11 +241,11 @@ impl ConditionRegistry {
             panic!("condition {name} not found in registry");
         }
 
-        log(
-            LogType::Trace,
-            "CONDITION_REGISTRY condition_busy",
-            &format!("[START/MSG] checking whether or not condition {name} is busy")
-        );
+        // log(
+        //     LogType::Trace,
+        //     "CONDITION_REGISTRY condition_busy",
+        //     &format!("[START/MSG] checking whether or not condition {name} is busy")
+        // );
 
         // both the registry and the conditions are synchronized: to ensure
         // that the condition registry is not locked while the tests are
@@ -267,16 +267,16 @@ impl ConditionRegistry {
         // acquired lock is immediately released
         if let Ok(_) = cond.clone().try_lock() {
             log(
-                LogType::Debug,
+                LogType::Trace,
                 "CONDITION_REGISTRY condition_busy",
-                &format!("[START/OK] condition {name} resulted not busy")
+                &format!("[START/OK] condition {name} is not busy")
             );
             false
         } else {
             log(
-                LogType::Debug,
+                LogType::Trace,
                 "CONDITION_REGISTRY condition_busy",
-                &format!("[START/FAIL] condition {name} resulted busy")
+                &format!("[START/FAIL] condition {name} is busy")
             );
             true
         }

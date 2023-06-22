@@ -396,7 +396,6 @@ pub trait Condition: Send {
                 self.break_on_failure(),
                 self.break_on_success(),
             );
-
         } else {
             self.log(LogType::Info, &format!(
                 "[PROC/OK] running tasks simultaneously: {s_task_names}"));
@@ -405,6 +404,7 @@ pub trait Condition: Send {
                 &names.iter().map(|s| s.as_str()).collect(),
             );
         }
+
         for name in res.keys() {
             match res.get(name).unwrap() {
                 Ok(outcome) => {
