@@ -776,7 +776,7 @@ A short description of the log levels follows:
 2. **debug:** there is plenty of informational messages at each execution step, however redundant messages are not emitted. In particular, _history_ messages are not present at this level.
 3. **info:** a reduced amount of informational messages is emitted, mostly related to the outcome of condition and execution of related tasks; information about what is being checked is less verbose. Very reduced logging is performed at this level by the main control program, thus most of the logging is left to items.
 4. **warn:** only **warnings** are logged, erratic situations that can be handled by **Whenever** without having to stop or abort -- except for termination requests, which are logged as **warnings** instead of **errors**, even though causing the process to exit.
-5. **error:** only **errors** are reported, which are erratic situations that may prevent **Whenever** to keep running.
+5. **error:** only **errors** are reported, which are erratic situations that may prevent **Whenever** to perform the requested operations or, in some cases, to keep running correctly.
 
 Note that, since _Lua_ scripts are allowed to log at each of the above described levels, lines emitted by _Lua_ script might not always correspond to what is illustrated above.
 
