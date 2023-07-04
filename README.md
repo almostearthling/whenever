@@ -169,6 +169,7 @@ success_status = 0
 failure_stdout = "unexpected"
 failure_stderr = "unexpected_error"
 failure_status = 2
+timeout_seconds = 60
 case_sensitive = false
 include_environment = false
 set_envvironment_variables = false
@@ -177,27 +178,28 @@ environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
 
 and the following table provides a detailed description of the entries:
 
-| Entry                       | Default | Description                                                                                          |
-|-----------------------------|:-------:|------------------------------------------------------------------------------------------------------|
-| `name`                      | N/A     | the unique name of the task (mandatory)                                                              |
-| `type`                      | N/A     | must be set to `"command"` (mandatory)                                                               |
-| `startup_path`              | N/A     | the directory in which the command is started                                                        |
-| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)              |
-| `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
-| `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                         |
-| `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                |
-| `case_sensitive`            | _false_ | if _true_, substring search or match and regular expressions match is performed case-sensitively     |
-| `success_status`            | (empty) | if set, when the execution ends with the provided exit code the task is considered successful        |
-| `failure_status`            | (empty) | if set, when the execution ends with the provided exit code the task is considered failed            |
-| `success_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task successful               |
-| `success_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task successful               |
-| `failure_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task failed                   |
-| `failure_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task failed                   |
-| `include_environment`       | _false_ | if _true_, the command is executed in the same environment in which **Whenever** was started         |
-| `set_environment_variables` | _false_ | if _true_, **Whenever** sets environment variables reporting the names of the task and the condition |
-| `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs      |
+| Entry                       | Default | Description                                                                                                     |
+|-----------------------------|:-------:|-----------------------------------------------------------------------------------------------------------------|
+| `name`                      | N/A     | the unique name of the task (mandatory)                                                                         |
+| `type`                      | N/A     | must be set to `"command"` (mandatory)                                                                          |
+| `startup_path`              | N/A     | the directory in which the command is started                                                                   |
+| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_) |
+| `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                     |
+| `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                                    |
+| `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                           |
+| `case_sensitive`            | _false_ | if _true_, substring search or match and regular expressions match is performed case-sensitively                |
+| `timeout_seconds`           | (empty) | if set, the number of seconds to wait before the command is terminated (with unsuccessful outcome)              |
+| `success_status`            | (empty) | if set, when the execution ends with the provided exit code the task is considered successful                   |
+| `failure_status`            | (empty) | if set, when the execution ends with the provided exit code the task is considered failed                       |
+| `success_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task successful                          |
+| `success_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task successful                          |
+| `failure_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task failed                              |
+| `failure_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task failed                              |
+| `include_environment`       | _false_ | if _true_, the command is executed in the same environment in which **Whenever** was started                    |
+| `set_environment_variables` | _false_ | if _true_, **Whenever** sets environment variables reporting the names of the task and the condition            |
+| `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                 |
 
-The priority used by **Whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`.
+The priority used by **Whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`. If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for process exit: after this amount of seconds the process is terminated and fails.
 
 if `set_environment_variables` is _true_, **Whenever** sets the following environment variables:
 
@@ -410,6 +412,8 @@ This type of condition gives the possibility to execute an OS _command_ and deci
 
 Of course only a success causes the corresponding tasks to be executed: as for command based tasks, it is not mandatory to follow the usual conventions -- this means, for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a success. A non-success has the same effect as a failure on task execution.
 
+If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for process exit: after this amount of seconds the process is terminated and fails.
+
 An example of command based condition follows:
 
 ```toml
@@ -444,6 +448,7 @@ success_status = 0
 failure_stdout = "unexpected"
 failure_stderr = "unexpected_error"
 failure_status = 2
+timeout_seconds = 60
 case_sensitive = false
 include_environment = true
 set_environment_variables = true
@@ -462,6 +467,7 @@ The following table illustrates the parameters specific to _command_ based condi
 | `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                                                 |
 | `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                                        |
 | `case_sensitive`            | _false_ | if _true_, substring search or match and regular expressions match is performed case-sensitively                             |
+| `timeout_seconds`           | (empty) | if set, the number of seconds to wait before the command is terminated (with unsuccessful outcome)                           |
 | `success_status`            | _empty_ | if set, when the execution ends with the provided exit code the condition is considered verified                             |
 | `failure_status`            | N/A     | if set, when the execution ends with the provided exit code the condition is considered failed                               |
 | `success_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task successful                                       |
