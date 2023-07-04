@@ -264,22 +264,30 @@ impl TaskRegistry {
         for name in names.into_iter() {
             let mut breaks = false;
             let task;
-            {
-                let mut guard = self.task_list
-                    .lock()
-                    .expect("cannot lock task registry");
-                task = guard
-                    .get_mut(*name)
-                    .expect(&format!("cannot retrieve task {name} for running"))
-                    .clone();
-            }
-            let cur_res = task
+            let mut guard = self.task_list
                 .lock()
-                .expect(&format!("cannot lock task {name} while extracting"))
-                .run(trigger_name);
+                .expect("cannot lock task registry");
+            task = guard
+                .get_mut(*name)
+                .expect(&format!("cannot retrieve task {name} for running"))
+                .clone();
+            drop(guard);
+            let cur_res;
+            let mut guard = task
+                .lock()
+                .expect(&format!("cannot lock task {name} while extracting"));
+            cur_res = guard.run(trigger_name);
+            log(
+                LogType::Trace,
+                "TASK_REGISTRY run (sequential)",
+                &format!("[END/MSG] task {name} finished running")
+            );
+            drop(guard);
 
+            let mut task_success = false;
             if let Ok(outcome) = cur_res {
                 if let Some(success) = outcome {
+                    task_success = success;
                     if (success && break_success) || (!success && break_failure) {
                         breaks = true;
                     }
@@ -288,9 +296,28 @@ impl TaskRegistry {
                 }
             }
             res.insert(String::from(*name), cur_res);
-            if breaks { break; }
+            if breaks {
+                log(
+                    LogType::Debug,
+                    "TASK_REGISTRY run (sequential)",
+                    &format!(
+                        "[END/MSG] breaking on {}",
+                        { if task_success { "success" } else { "failure" } }
+                    )
+                );
+                break;
+            }
         }
 
+        log(
+            LogType::Trace,
+            "TASK_REGISTRY run (sequential)",
+            &format!(
+                "[END/MSG] finished running {}/{} tasks",
+                res.len(),
+                names.len(),
+            )
+        );
         res
     }
 
@@ -366,15 +393,14 @@ impl TaskRegistry {
             //       there another way - such as grabbing the mutex, locking
             //       it and then explicitly dropping it?
             let task;
-            {
-                let mut guard = atasklist
-                    .lock()
-                    .expect("cannot lock task registry");
-                task = guard
-                    .get_mut(&aname.clone().to_string())
-                    .expect(&format!("cannot retrieve task {name} for running"))
-                    .clone();
-            }
+            let mut guard = atasklist
+                .lock()
+                .expect("cannot lock task registry");
+            task = guard
+                .get_mut(&aname.clone().to_string())
+                .expect(&format!("cannot retrieve task {name} for running"))
+                .clone();
+            drop(guard);
 
             let handle = spawn(move || {
                 let outcome = task
@@ -384,7 +410,6 @@ impl TaskRegistry {
                 atx.lock().unwrap().send((aname.clone(), outcome)).unwrap();
             });
             handles.push(handle);
-
         }
 
         // wait for all threads to finish prior to returning to caller
@@ -405,7 +430,7 @@ impl TaskRegistry {
         // report if any of the outcomes could not be retrieved (is an error)
         if outcomes_received < outcomes_total {
             log(
-                LogType::Error,
+                LogType::Warn,
                 "TASK_REGISTRY run (parallel)",
                 &format!("[END/MSG] not all outcomes received ({outcomes_received}/{outcomes_total})")
             );

@@ -9,19 +9,19 @@
 //! the match can be either case sensitive or insensitive.
 //!
 //! The environment can be passed to the command as is, or adding further
-//! variable. If requested, the condition can set an extra variable set to
+//! variables. If requested, the condition can set an extra variable set to
 //! its name, so that commands or scripts that are aware of being invoked by
 //! the application can have further info about the context.
 
 
 use std::collections::HashMap;
 use std::env;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 use std::time::{Instant, SystemTime, Duration};
 use std::path::PathBuf;
 use std::ffi::OsString;
 
-use subprocess::{Popen, PopenConfig, Redirection, ExitStatus};
+use subprocess::{Popen, PopenConfig, Redirection, ExitStatus, PopenError};
 
 use cfgmap::CfgMap;
 
@@ -85,6 +85,7 @@ pub struct CommandCondition {
     failure_stdout: Option<String>,
     failure_stderr: Option<String>,
     failure_status: Option<u32>,
+    timeout: Option<Duration>,
 
     // internal values
     check_last: Instant,
@@ -149,6 +150,7 @@ impl CommandCondition {
             failure_stdout: None,
             failure_stderr: None,
             failure_status: None,
+            timeout: None,
 
             // internal values
             check_last: t,
@@ -210,6 +212,132 @@ impl CommandCondition {
         return self;
     }
 
+    /// Set a variable in the custom environment that the command base task
+    /// provides to the spawned process.
+    ///
+    /// # Arguments
+    ///
+    /// * `var` - the variable name
+    /// * `value` - the value assigned to the named variable
+    pub fn set_variable(&mut self, var: &str, value: &str) -> Option<String> {
+        self.environment_vars.insert(String::from(var), String::from(value))
+    }
+
+    /// Unset a variable in the custom environment that the command base task
+    /// provides to the spawned process.
+    ///
+    /// # Arguments
+    ///
+    /// * `var` - the name of the variable to be unset
+    pub fn unset_variable(&mut self, var: &str) -> Option<String> {
+        self.environment_vars.remove(var)
+    }
+
+
+    /// Constructor modifier to include or exclude existing environment: if
+    /// the parameter is set to `false`, the original environment is not passed
+    /// to the spawned process. Default behaviour is to pass the environment.
+    pub fn includes_env(mut self, yes: bool) -> Self {
+        self.include_env = yes;
+        return self;
+    }
+
+    /// Constructor modifier to specify that the values to match against the
+    /// output of the spawned process have to be considered as regular
+    /// expressions when the argument is set to `true`. The default behaviour
+    /// is to consider them as simple strings.
+    pub fn matches_regexp(mut self, yes: bool) -> Self {
+        self.match_regexp = yes;
+        return self;
+    }
+
+    /// Constructor modifier to specify that the entire output of the spawned
+    /// process must match against the provided value, when the argument is set
+    /// to `true`. The default behaviour is to _partially_ match the output.
+    pub fn matches_exact(mut self, yes: bool) -> Self {
+        self.match_exact = yes;
+        return self;
+    }
+
+    /// Constructor modifier to specify that the matching against the output of
+    /// the spawned command is to be performed case-sensitively when set to
+    /// `true`. The default behaviour is to match ignoring case.
+    pub fn matches_case(mut self, yes: bool) -> Self {
+        self.case_sensitive = yes;
+        return self;
+    }
+
+    /// Constructor modifier to specify that the task should not set the
+    /// environment variables that specify the task name and the condition that
+    /// triggered the task, when set to `false`. The default behaviour is to
+    /// export those variables.
+    pub fn sets_envvars(mut self, yes: bool) -> Self {
+        self.set_envvars = yes;
+        return self;
+    }
+
+    /// Constructor modifier to possibly set the values that have to match
+    /// the spawned process' standard output in order for the execution to be
+    /// considered successful: this can be a simple string or a regular
+    /// expression pattern, according to the value provided with the
+    /// `matches_regexp` constructor modifier.
+    pub fn expects_stdout(mut self, s: &str) -> Self {
+        self.success_stdout = Some(s.to_string());
+        return self;
+    }
+
+    /// Constructor modifier to possibly set the values that have to match
+    /// the spawned process' standard error in order for the execution to be
+    /// considered successful: this can be a simple string or a regular
+    /// expression pattern, according to the value provided with the
+    /// `matches_regexp` constructor modifier.
+    pub fn expects_stderr(mut self, s: &str) -> Self {
+        self.success_stderr = Some(s.to_string());
+        return self;
+    }
+
+    /// Constructor modifier to possibly set the values that have to match
+    /// the spawned process' standard output in order for the execution to be
+    /// considered failed: this can be a simple string or a regular expression
+    /// pattern, according to the value provided with the `matches_regexp`
+    /// constructor modifier.
+    pub fn rejects_stdout(mut self, s: &str) -> Self {
+        self.failure_stdout = Some(s.to_string());
+        return self;
+    }
+
+    /// Constructor modifier to possibly set the values that have to match
+    /// the spawned process' standard error in order for the execution to be
+    /// considered failed: this can be a simple string or a regular expression
+    /// pattern, according to the value provided with the `matches_regexp`
+    /// constructor modifier.
+    pub fn rejects_stderr(mut self, s: &str) -> Self {
+        self.failure_stderr = Some(s.to_string());
+        return self;
+    }
+
+    /// Constructor modifier to possibly set the value that have to match
+    /// the spawned process' exit code in order for the execution to be
+    /// considered successful.
+    pub fn expects_exitcode(mut self, c: u32) -> Self {
+        self.success_status = Some(c);
+        return self;
+    }
+
+    /// Constructor modifier to possibly set the value that have to match
+    /// the spawned process' exit code in order for the execution to be
+    /// considered failed.
+    pub fn rejects_exitcode(mut self, c: u32) -> Self {
+        self.failure_status = Some(c);
+        return self;
+    }
+
+    /// If set, command execution times out after specified duration
+    pub fn times_out_after(mut self, delta: Duration) -> Self {
+        self.timeout = Some(delta);
+        return self;
+    }
+
     /// Load a `CommandCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
     /// The `CommandCondition` is initialized according to the values provided
@@ -249,6 +377,7 @@ impl CommandCondition {
     /// failure_stdout = "unexpected"
     /// failure_stderr = "unexpected_error"
     /// failure_status = 2
+    /// timeout_seconds = 30
     ///
     /// case_sensitive = false
     /// include_environment = true
@@ -292,6 +421,7 @@ impl CommandCondition {
             "failure_stdout",
             "failure_stderr",
             "failure_status",
+            "timeout_seconds",
         );
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
@@ -700,6 +830,24 @@ impl CommandCondition {
             new_condition.failure_status = Some(i as u32);
         }
 
+        let cur_key = "timeout_seconds";
+        if let Some(item) = cfgmap.get(&cur_key) {
+            if !item.is_int() {
+                return _invalid_cfg(
+                    &cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER);
+            }
+            let i = *item.as_int().unwrap();
+            if i < 0 || i as u64 > std::u32::MAX.into() {
+                return _invalid_cfg(
+                    &cur_key,
+                    &item.as_str().unwrap(),
+                    ERR_INVALID_PARAMETER);
+            }
+            new_condition.timeout = Some(Duration::from_secs(i as u64));
+        }
+
         // start the condition if the configuration did not suspend it
         if !new_condition.suspended {
             new_condition.start()?;
@@ -899,7 +1047,27 @@ impl Condition for CommandCondition {
         let startup_time = SystemTime::now();
         let open_process = Popen::create(&process_argv, process_config);
         if let Ok(mut process) = open_process {
-            let proc_exit = process.wait();
+            let proc_exit;
+            if let Some(timeout) = self.timeout {
+                let e = process.wait_timeout(timeout);
+                proc_exit = if e.is_err() {
+                    Err(e.unwrap_err())
+                } else {
+                    if let Some(v) = e.unwrap() {
+                        Ok(v)
+                    } else {
+                        self.log(LogType::Warn, &format!(
+                            "[PROC/FAIL] timeout reached running command `{}`",
+                            self.command_line()));
+                        Err(PopenError::from(std::io::Error::new(
+                            ErrorKind::TimedOut,
+                            "timeout reached",
+                        )))
+                    }
+                }
+            } else {
+                proc_exit = process.wait();
+            }
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {
                 Ok(exit_status) => {
@@ -1364,45 +1532,40 @@ impl Condition for CommandCondition {
                                 }
                             }
                         }
-                        _ => { /* no need to test for other failures */ }
+                        _ => {
+                            // need not to check for other failure types, but
+                            // flush process stdio pipes to avoid that it hangs
+                            self._process_failed = true;
+                            let _ = process.communicate(None);
+                        }                        
                     }
                 }
 
                 // the command could not be executed thus an error is reported
                 Err(e) => {
+                    // flush process stdio pipes to avoid that it hangs
+                    let _ = process.communicate(None);
                     self._process_failed = true;
-                    self.log(LogType::Error, &format!(
+                    self.log(LogType::Warn, &format!(
                         "[END/FAIL] could not execute command: `{}` (reason: {e})",
                         self.command_line()));
-                    return Err(Error::new(
-                        ErrorKind::Unsupported,
-                        format!(
-                        "condition {}/[{}] could not execute command",
-                        self.cond_name,
-                        self.cond_id,
-                    )));
+                    failure_reason = FailureReason::Other;
                 }
             }
         } else {
             // something happened before the command could be run
             if let Err(e) = open_process {
                 self._process_failed = true;
-                self.log(LogType::Error, &format!(
-                    "[END/FAIL] could not execute command: `{}` (reason: {e})",
+                self.log(LogType::Warn, &format!(
+                    "[END/FAIL] could not start command: `{}` (reason: {e})",
                     self.command_line()));
             } else {
                 self._process_failed = true;
-                self.log(LogType::Error, &format!(
-                    "[END/FAIL] could not execute command: `{}` (reason: unknown)",
+                self.log(LogType::Warn, &format!(
+                    "[END/FAIL] could not start command: `{}` (reason: unknown)",
                     self.command_line()));
             }
-            return Err(Error::new(
-                ErrorKind::Unsupported,
-                format!(
-                "condition {}/[{}] could not execute command",
-                self.cond_name,
-                self.cond_id,
-            )));
+            failure_reason = FailureReason::Other;
         }
 
         // now the time of the last check can be set to the actual time in

@@ -25,12 +25,12 @@
 
 use std::collections::HashMap;
 use std::env;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 use std::time::{SystemTime, Duration};
 use std::path::PathBuf;
 use std::ffi::OsString;
 
-use subprocess::{Popen, PopenConfig, Redirection, ExitStatus};
+use subprocess::{Popen, PopenConfig, Redirection, ExitStatus, PopenError};
 
 use cfgmap::CfgMap;
 
@@ -68,6 +68,7 @@ pub struct CommandTask {
     failure_stdout: Option<String>,
     failure_stderr: Option<String>,
     failure_status: Option<u32>,
+    timeout: Option<Duration>,
     startup_dir: PathBuf,
     _process_stdout: String,
     _process_stderr: String,
@@ -145,7 +146,7 @@ impl CommandTask {
             failure_stdout: None,
             failure_stderr: None,
             failure_status: None,
-
+            timeout: None,
 
             // internal values
             _process_stdout: String::new(),
@@ -291,6 +292,12 @@ impl CommandTask {
         return self;
     }
 
+    /// If set, command execution times out after specified duration
+    pub fn times_out_after(mut self, delta: Duration) -> Self {
+        self.timeout = Some(delta);
+        return self;
+    }
+
     /// Load a `CommandTask` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
     /// The `CommandTask` is initialized according to the values provided in
@@ -321,6 +328,7 @@ impl CommandTask {
     /// failure_stdout = "unexpected"
     /// failure_stderr = "unexpected_error"
     /// failure_status = 2
+    /// timeout_seconds = 30
     ///
     /// case_sensitive = false
     /// include_environment = false
@@ -357,6 +365,7 @@ impl CommandTask {
             "failure_stdout",
             "failure_stderr",
             "failure_status",
+            "timeout_seconds",
         );
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
@@ -661,6 +670,24 @@ impl CommandTask {
             new_task.failure_status = Some(i as u32);
         }
 
+        let cur_key = "timeout_seconds";
+        if let Some(item) = cfgmap.get(&cur_key) {
+            if !item.is_int() {
+                return _invalid_cfg(
+                    &cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER);
+            }
+            let i = *item.as_int().unwrap();
+            if i < 0 || i as u64 > std::u32::MAX.into() {
+                return _invalid_cfg(
+                    &cur_key,
+                    &item.as_str().unwrap(),
+                    ERR_INVALID_PARAMETER);
+            }
+            new_task.timeout = Some(Duration::from_secs(i as u64));
+        }
+
         Ok(new_task)
     }
 
@@ -757,7 +784,27 @@ impl Task for CommandTask {
         let startup_time = SystemTime::now();
         let open_process = Popen::create(&process_argv, process_config);
         if let Ok(mut process) = open_process {
-            let proc_exit = process.wait();
+            let proc_exit;
+            if let Some(timeout) = self.timeout {
+                let e = process.wait_timeout(timeout);
+                proc_exit = if e.is_err() {
+                    Err(e.unwrap_err())
+                } else {
+                    if let Some(v) = e.unwrap() {
+                        Ok(v)
+                    } else {
+                        self.log(LogType::Trace, &format!(
+                            "[PROC/FAIL] (trigger: {trigger_name}) timeout reached running command `{}`",
+                            self.command_line()));
+                        Err(PopenError::from(std::io::Error::new(
+                            ErrorKind::TimedOut,
+                            "timeout reached",
+                        )))
+                    }
+                }
+            } else {
+                proc_exit = process.wait();
+            }
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {
                 Ok(exit_status) => {
@@ -1222,49 +1269,43 @@ impl Task for CommandTask {
                                 }
                             }
                         }
-                        _ => { /* no need to test for other failures */ }
+                        _ => {
+                            // need not to check for other failure types, but
+                            // flush process stdio pipes to avoid that it hangs
+                            self._process_failed = true;
+                            let _ = process.communicate(None);
+                        }
                     }
                 }
 
                 // the command could not be executed thus an error is reported
                 Err(e) => {
+                    // flush process stdio pipes to avoid that it hangs
+                    let _ = process.communicate(None);
                     self._process_failed = true;
-                    self.log(LogType::Error, &format!(
+                    self.log(LogType::Warn, &format!(
                         "[END/FAIL] (trigger: {trigger_name}) could not execute command: `{}` (reason: {})",
                         self.command_line(), e.to_string()));
-                    // ...
-                    return Err(Error::new(
-                        ErrorKind::Unsupported,
-                        format!(
-                        "(trigger: {trigger_name}) task {}/[{}] could not execute command",
-                        self.task_name,
-                        self.task_id,
-                    )));
+                    failure_reason = FailureReason::Other;
                 }
             }
         } else {
             // something happened before the command could be run
             if let Err(e) = open_process {
                 self._process_failed = true;
-                self.log(LogType::Error, &format!(
-                    "[END/FAIL] (trigger: {trigger_name}) could not execute command: `{}` (reason: {e})",
+                self.log(LogType::Warn, &format!(
+                    "[END/FAIL] (trigger: {trigger_name}) could not start command: `{}` (reason: {e})",
                     self.command_line()));
             } else {
                 self._process_failed = true;
-                self.log(LogType::Error, &format!(
-                    "[END/FAIL] (trigger: {trigger_name}) could not execute command: `{}` (reason: unknown)",
+                self.log(LogType::Warn, &format!(
+                    "[END/FAIL] (trigger: {trigger_name}) could not start command: `{}` (reason: unknown)",
                     self.command_line()));
             }
-            return Err(Error::new(
-                ErrorKind::Unsupported,
-                format!(
-                "(trigger: {trigger_name}) task {}/[{}] could not execute command",
-                self.task_name,
-                self.task_id,
-            )));
+            failure_reason = FailureReason::Other;
         }
 
-        // reset running flag and return true on success of false otherwise
+        // return true on success of false otherwise
         match failure_reason {
             FailureReason::NoFailure => {
                 self.log(LogType::Debug, &String::from(
