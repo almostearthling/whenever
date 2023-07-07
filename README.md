@@ -63,9 +63,9 @@ The supported types of [**_condition_**](#conditions) are the following:
 * [_Interval_ based](#interval): the _periodic_ conditions are verified after a certain time interval has passed since **Whenever** has started, and may be verified again after the same amount of time if the condition is set to be _recurrent_
 * [_Time_ based](#time): one or more instants in time can be specified when the condition is verified
 * [_Idle_ user session](#command): this type of condition is verified after the session has been idle for the specified amount of time
-* [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected/undesired outcome is found, the condition is considered verified
+* [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
 * [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
-* [_DBus_ inspection](#dbus-method): a _DBus_ method is executed and the result is checked against some criteria that have to be provided
+* [_DBus_ inspection](#dbus-method): a _DBus_ method is executed and the result is checked against some criteria provided in the configuration file
 * [_Event_ based](#event-based-conditions): are verified when a certain event occurs that fires the condition.
 
 The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
@@ -77,7 +77,7 @@ Note that _DBus_ events and conditions are also (theoretically) supported on Win
 
 All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
-Every type of check is performed periodically, even the ones involving _event_ based conditions[^4]: the times at which the conditions are checked is usually referred here as _tick_ and the tick interval can be specified in the configuration file -- defaulting at 5 seconds. Note that, since performing all checks in the same instant at every tick could cause usage peaks in terms of computational resources, there is the option to attempt to randomly distribute checks within the tick interval, by explicitly specifying this behaviour in the configuration file.
+Every type of check is performed periodically, even the ones involving _event_ based conditions[^4]: the times at which the conditions are checked is usually referred here as _tick_ and the tick interval can be specified in the configuration file -- defaulting at 5 seconds. Note that, since performing all checks in the same instant at every tick could cause usage peaks in terms of computational resources, there is the option to attempt to randomly distribute some of the checks within the tick interval, by explicitly specifying this behaviour in the configuration file.
 
 
 ## CLI
@@ -120,7 +120,7 @@ An important thing to notice is that configuration errors will cause **Whenever*
 
 ## Configuration
 
-The configuration file is strictly based on the current TOML specification: therefore it cen easily implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
+The configuration file is strictly based on the current TOML specification: therefore it can easily implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
 
 
 ### Globals
@@ -199,9 +199,9 @@ and the following table provides a detailed description of the entries:
 | `set_environment_variables` | _false_ | if _true_, **Whenever** sets environment variables reporting the names of the task and the condition            |
 | `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                 |
 
-The priority used by **Whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`. If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for process exit: after this amount of seconds the process is terminated and fails.
+The priority used by **Whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`. If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for the process to exit: after this amount of time the process is terminated and fails.
 
-if `set_environment_variables` is _true_, **Whenever** sets the following environment variables:
+If `set_environment_variables` is _true_, **Whenever** sets the following environment variables:
 
 * `WHENEVER_TASK` to the unique name of the task
 * `WHENEVER_CONDITION` to the unique name of the condition that triggered the task
@@ -210,7 +210,7 @@ for scripts or other executables that might be aware of **Whenever**.
 
 #### Lua script tasks
 
-Tasks based on _Lua_ scripts might be useful when an action has to be performed that requires a non-trivial sequence of operations but for which it would be excessive to write a specific script to be run as a command. The script to be run is embedded directly in the configuration file -- TOML helps in this sense, by allowing multiline strings to be used in its specification.
+Tasks based on [_Lua_](https://www.lua.org/) scripts might be useful when an action has to be performed that requires a non-trivial sequence of operations but for which it would be excessive to write a specific script to be run as a command. The script to be run is embedded directly in the configuration file -- TOML helps in this sense, by allowing multiline strings to be used in its specification.
 
 _Lua_ based tasks can be considered more lightweight than _command_ tasks, as the interpreter is embedded in **Whenever**. Also, the embedded _Lua_ interpreter is enriched with library functions that allow to write to the **Whenever** log, at all logging levels (_error_, _warn_, _info_, _debug_, _trace_). The library functions are the following:
 
@@ -338,7 +338,7 @@ Not all the entries must be specified: for instance, specifying the day of week 
 * a missing hour specification will be considered verified at every hour
 * a missing minute or second specification will be considered verified respectively at the first minute of the hour and first second of the minute.
 
-Of course, all the time specifications in the provided list will be checked at each tick: this allows complex configurations for actions that must be takens at specific times.
+Of course, all the time specifications in the provided list will be checked at each tick: this allows complex configurations for actions that must be performed at specific times.
 
 A sample configuration section follows:
 
@@ -394,7 +394,7 @@ tasks = [
     ]
 ```
 
-for a condition that will be verified each time that an hour has passed since the user has been away from the mouse or the keyboard. For tasks that usually occur only once per session on idle tasks (such as backups, for instance), `recurring` can be set to _false_. The table below describes the specific configuration entries:
+for a condition that will be verified each time that an hour has passed since the user has been away from the mouse and the keyboard. For tasks that usually occur only once per session when the workstation is idle (such as backups, for instance), `recurring` can be set to _false_. The table below describes the specific configuration entries:
 
 | Entry          | Default | Description                                                                                         |
 |----------------|:-------:|-----------------------------------------------------------------------------------------------------|
@@ -412,7 +412,7 @@ This type of condition gives the possibility to execute an OS _command_ and deci
 
 Of course only a success causes the corresponding tasks to be executed: as for command based tasks, it is not mandatory to follow the usual conventions -- this means, for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a success. A non-success has the same effect as a failure on task execution.
 
-If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for process exit: after this amount of seconds the process is terminated and fails.
+If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for the process to exit: after this amount of time the process is terminated and fails.
 
 An example of command based condition follows:
 
@@ -478,9 +478,9 @@ The following table illustrates the parameters specific to _command_ based condi
 | `set_environment_variables` | _false_ | if _true_, **Whenever** sets environment variables reporting the names of the task and the condition                         |
 | `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                              |
 
-if `set_environment_variables` is _true_, **Whenever** sets the following environment variable:
+If `set_environment_variables` is _true_, **Whenever** sets the following environment variable:
 
-* `WHENEVER_CONDITION` to the unique name of the condition that triggered the task
+* `WHENEVER_CONDITION` to the unique name of the condition that is currently being tested
 
 for scripts or other executables used in checks that might be aware of **Whenever**.
 
@@ -488,7 +488,7 @@ For this type of condition the actual test can be performed at a random time wit
 
 #### Lua script
 
-A _Lua_ script can be used to determine the verification of a condition: after the execution of the script, one or more variables can be checked against expected values and thus decide whether or not the associated tasks have to be run. Given the power of _Lua_ and its standard library, this type of condition can constitute a lightweight alternative to complex scripts to call to implement a _command_ based condition. The definition of a _Lua_ condition is actually much simpler:
+A [_Lua_](https://www.lua.org/) script can be used to determine the verification of a condition: after the execution of the script, one or more variables can be checked against expected values and thus decide whether or not the associated tasks have to be run. Given the power of _Lua_ and its standard library, this type of condition can constitute a lightweight alternative to complex scripts to call to implement a _command_ based condition. The definition of a _Lua_ condition is actually much simpler:
 
 ```toml
 [[condition]]
@@ -534,7 +534,7 @@ The same rules and possibilities seen for _Lua_ based tasks also apply to condit
 
 and take a single string as their argument. Also, from the embedded _Lua_ interpreter there is a value that can be accessed:
 
-* `whenever_condition` is the name of the condition that triggered the task.
+* `whenever_condition` is the name of the condition being checked.
 
 External scripts can be executed via `dofile("/path/to/script.lua")` or by using the `require` function. While a successful execution is always determined by matching the provided criteria, an error in the script is always considered a failure.
 

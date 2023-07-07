@@ -787,6 +787,7 @@ impl Task for CommandTask {
             let proc_exit;
             if let Some(timeout) = self.timeout {
                 let e = process.wait_timeout(timeout);
+                let _ = process.terminate();
                 proc_exit = if e.is_err() {
                     Err(e.unwrap_err())
                 } else {
@@ -805,6 +806,12 @@ impl Task for CommandTask {
             } else {
                 proc_exit = process.wait();
             }
+
+            // read stdout and stderr if available to possibly check outcome
+            let (out, err) = process.communicate(None)?;
+            if let Some(o) = out { self._process_stdout = o; }
+            if let Some(e) = err { self._process_stderr = e; }
+
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {
                 Ok(exit_status) => {
@@ -927,10 +934,6 @@ impl Task for CommandTask {
                             // further test is performed; on the other side,
                             // failure in any of the tests causes skipping
                             // of all the following ones
-
-                            let (out, err) = process.communicate(None)?;
-                            if let Some(o) = out { self._process_stdout = o; }
-                            if let Some(e) = err { self._process_stderr = e; }
 
                             // NOTE: in the following blocks, all the checks
                             // for failure_reason not to be NoFailure are
@@ -1270,22 +1273,18 @@ impl Task for CommandTask {
                             }
                         }
                         _ => {
-                            // need not to check for other failure types, but
-                            // flush process stdio pipes to avoid that it hangs
+                            // need not to check for other failure types
                             self._process_failed = true;
-                            let _ = process.communicate(None);
                         }
                     }
                 }
 
                 // the command could not be executed thus an error is reported
                 Err(e) => {
-                    // flush process stdio pipes to avoid that it hangs
-                    let _ = process.communicate(None);
-                    self._process_failed = true;
                     self.log(LogType::Warn, &format!(
                         "[END/FAIL] (trigger: {trigger_name}) could not execute command: `{}` (reason: {})",
                         self.command_line(), e.to_string()));
+                    self._process_failed = true;
                     failure_reason = FailureReason::Other;
                 }
             }
