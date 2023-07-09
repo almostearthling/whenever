@@ -26,6 +26,7 @@
       - [DBus signals](#dbus-signals)
   - [Logging](#logging)
   - [Conclusion](#conclusion)
+  - [License](#license)
 
 <!-- /code_chunk_output -->
 
@@ -120,7 +121,7 @@ An important thing to notice is that configuration errors will cause **Whenever*
 
 ## Configuration
 
-The configuration file is strictly based on the current TOML specification: therefore it can easily implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
+The configuration file is strictly based on the current TOML specification: therefore it can be easily implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
 
 
 ### Globals
@@ -145,7 +146,7 @@ Task names are mandatory, and must be provided as alphanumeric strings (may incl
 
 #### Command tasks
 
-_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output tking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
+_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output taking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
 A sample configuration for a command based task is the following:
 
@@ -632,9 +633,9 @@ The specific parameters are described in the following table:
 | `object_path`         | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                         |
 | `interface`           | N/A     | the _interface_ to invoke or query (mandatory)                                                                               |
 | `method`              | N/A     | the name of the _method_ to be invoked (mandatory)                                                                           |
-| `parameter_call`      | _empty_ | a structure, expressed as inline JSON, containing exactly the parameters that have ot be passed to the method                |
+| `parameter_call`      | _empty_ | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                  |
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient   |
-| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be verified                                      |
+| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                |
 
 More often than not, the value corresponding to the `service` entry is referred to as _bus name_ in various doocuments: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
@@ -763,7 +764,7 @@ and the details of the configuration entries are described in the table below:
 | `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                             |
 | `bus`                 | N/A     | thebus on which the method is invoked: must be either `:system` or `:session`, including the starting colon (mandatory)    |
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient |
-| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be verified                                    |
+| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be be performed on return parameters           |
 
 The consideration about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
 
@@ -772,16 +773,16 @@ If no parameter checks are provided, the event arises simply when the signal is 
 
 ## Logging
 
-Log messages are not dissimilar to the ones provided by servers and other applications running in the background: a date/time specification is reported, as long as the name of the application (_whenever_), the logging level to which the message line is pertinent, and then a message (the so-called _payload_). The message itself is structured: it consists of a short _context_ specification, followed by a string enclosed in square brackets describing the nature of the message (for instance if the message is referred to the start or to the end of a process, and whether the message indicates a normal condition or something that went wrong). The context can be either the _MAIN_ control program (or one of its threads), a _TASK_, a _CONDITION_, an _EVENT_ or a _REGISTRY_ -- there are many registries in **Whenever**, used by the main control program to reach the _item_ collections.
+Log messages are not dissimilar to the ones provided by servers and other applications running in the background: a date/time specification is reported, as well as the name of the application (_whenever_), the logging level to which the message line is pertinent, and then a message (the so-called _payload_). The message itself is structured: it consists of a short _context_ specification, followed by a string enclosed in square brackets describing the nature of the message (for instance if the message is referred to the start or to the end of a process, and whether the message indicates a normal condition or something that went wrong). The context can be either the _MAIN_ control program (or one of its threads), a _TASK_, a _CONDITION_, an _EVENT_ or a _REGISTRY_ -- there are many registries in **Whenever**, used by the main control program to reach the _item_ collections.
 
 Logging is quite verbose in **Whenever** at the _trace_ log level, and can be very brief when enabling logging just for warnings and errors.
 
 A short description of the log levels follows:
 
-1. **trace:** every single step is logged, some message can be redundant because if an acknowledgement or an issue takes place in more than one context of the program, each of the involved parts may decide to log about what happened. Sometimes, for example, the same error may be reported by a condition that is checked and by the registry that has been used to reach this condition. Also, _history_ messages are issued only at the trace level: _wrappers_ will want to use the _trace_ level in order to catch these messages and calculate, for instance, the execution time for a particular task.
+1. **trace:** every single step is logged, some messages can be redundant because if an acknowledgement or an issue takes place in more than one context of the program, each of the involved parts may decide to log about what happened. Sometimes, for example, the same error may be reported by a condition that is checked and by the registry that has been used to reach this condition. Also, _history_ messages are issued only at the trace level: _wrappers_ will want to use the _trace_ level in order to catch these messages and calculate, for instance, the execution time for a particular task.
 2. **debug:** there is plenty of informational messages at each execution step, however redundant messages are not emitted. In particular, _history_ messages are not present at this level.
-3. **info:** a reduced amount of informational messages is emitted, mostly related to the outcome of condition and execution of related tasks; information about what is being checked is less verbose. Very reduced logging is performed at this level by the main control program, thus most of the logging is left to items.
-4. **warn:** only **warnings** are logged, erratic situations that can be handled by **Whenever** without having to stop or abort -- except for termination requests, which are logged as **warnings** instead of **errors**, even though causing the process to exit.
+3. **info:** a reduced amount of informational messages is emitted, mostly related to the outcome of conditions and execution of related tasks; information about what is being checked is less verbose. Very reduced logging is performed at this level by the main control program, thus most of the logging is left to items.
+4. **warn:** only **warnings** are logged, erratic situations that can be handled by **Whenever** without having to stop or abort -- except for termination requests, which are logged as **warnings** instead of **errors**, even though they could be considered normal causes for the scheduler to stop and exit.
 5. **error:** only **errors** are reported, which are erratic situations that may prevent **Whenever** to perform the requested operations or, in some cases, to keep running correctly.
 
 Note that, since _Lua_ scripts are allowed to log at each of the above described levels, lines emitted by _Lua_ script might not always correspond to what is illustrated above.
@@ -796,11 +797,11 @@ As mentioned above, just after the _context_, in the message _payload_, a string
   * `HIST` when the message is intended for some receiver (generally a wrapper) that keeps track of the history
 
 * _OUTCOME_ is one of the following:
-  * `OK` for successful operations
-  * `FAIL` for unsuccessful operations
-  * `IND` when the outcome is undetermined
+  * `OK` for expected behaviours
+  * `FAIL` for unexpected behaviours
+  * `IND` when the outcome of an operation is undetermined
   * `MSG` when the message is merely informational
-  * `ERR` (possibly followed by `-nnn` where nnn is a code that should be notified), when the outcome fails with a known error
+  * `ERR` (possibly followed by `-nnn` where nnn is a code that should be notified), when an operation fails with a known error
 
 This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
 
@@ -808,7 +809,7 @@ This string appears _before_ a human-readable message, so that it can be used by
 [2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/[6]: [PROC/OK] failure: condition checked with negative outcome
 ```
 
-while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected more often than not, this is the reason why the message documenting a failed check is reported as a positive (`[PROC/OK]`) log entry.
+while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected quite often, this is the reason why the message documenting a failed check is reported as a positive (`[PROC/OK]`) log entry.
 
 There is an option that can be specified on the [command line](#cli), that forces the log lines to be emitted in the JSON format: this allows to separate the parts more easily in
 
@@ -822,9 +823,14 @@ in order to better handle the logs and to provide feedback to the user.
 
 ## Conclusion
 
-The configuration of **Whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **Whenever** does not provide a GUI, the features of the Python based **When** are not completely matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **Whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to some versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage.
+The configuration of **Whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **Whenever** does not provide a GUI, the features of the Python based **When** are not completely matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **Whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to a restricted number of versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage.
 
 I am considering **Whenever** as the evolution of the **When** operational engine, and future versions of **When** itself (which will bump its version number to something more near to the awaited _2.0.0_) will only implement the GUIs that might (or might not) be used to configure **Whenever** and to control it from the system tray in a more sophisticated way than the one allowed by the minimal C++ based utility.
+
+
+## License
+
+This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future): see the provided LICENSE file for details.
 
 
 [^1]: Although DBus support is available on Windows too, it is mostly useful on Linux desktops.
