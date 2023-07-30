@@ -25,6 +25,8 @@
       - [Filesystem changes](#filesystem-changes)
       - [DBus signals](#dbus-signals)
   - [Logging](#logging)
+  - [Input commands](#input-commands)
+  - [Build issues](#build-issues)
   - [Conclusion](#conclusion)
   - [License](#license)
 
@@ -47,7 +49,7 @@ Just like its predecessor, **whenever** overlaps to some extent with the standar
 
 Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it implements a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format[^2].
 
-A very lightweight cross-platform wrapper will soon be available (it is actually ready, under test on Windows, to be checked on Linux and possibly other operating systems), written in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper will soon be available (it is being tested on both Linux and Windows at the time of writing), developed in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
 
 
 ## Features
@@ -146,7 +148,7 @@ Task names are mandatory, and must be provided as alphanumeric strings (may incl
 
 #### Command tasks
 
-_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on their output taking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
+_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on its output taking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
 A sample configuration for a command based task is the following:
 
@@ -616,7 +618,7 @@ As shown below, `parameter_check` is the list of criteria against which the _ret
 
 1. the first element (thus with 0 as index) of the returned array is expected to be a boolean and to be _false_
 2. the second element is considered to be an array, whose sixth element (with index 5) must not be the string _"forbidden"_
-3. the third element is highly nested, containing a map whose element with key _"mapidx"_ is an array, containing a string at its sixth position, which should be an alphanumeric beginning with a letter that also can contain underscores (that is, matches the _regular expression_ `^[A-Z][a-zA-Z0-9_]*$`).
+3. the third element is highly nested, containing a map whose element with key _"mapidx"_ is an array, containing a string at its sixth position, which should be alphanumeric and begin with a capital letter, and may contain underscores (that is, matches the _regular expression_ `^[A-Z][a-zA-Z0-9_]*$`).
 
 Note that the first check shows a `0` index not embedded in a list: if a returned parameter is not an array or a dictionary and its value is required directly, the square brackets around this single index can be omitted and **whenever** does not complain. Since this is probably the most frequent use case, this is a way to make configuration for such cases more readable and concise.
 
@@ -757,14 +759,14 @@ parameter_check = """[
 
 and the details of the configuration entries are described in the table below:
 
-| Entry                 | Default | Description                                                                                                                  |
-|-----------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
-| `name`                | N/A     | the unique name of the event (mandatory)                                                                                     |
-| `type`                | N/A     | must be set to `"dbus"` (mandatory)                                                                                          |
-| `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                               |
-| `bus`                 | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
-| `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient   |
-| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be be performed on return parameters             |
+| Entry                 | Default | Description                                                                                                                 |
+|-----------------------|:-------:|-----------------------------------------------------------------------------------------------------------------------------|
+| `name`                | N/A     | the unique name of the event (mandatory)                                                                                    |
+| `type`                | N/A     | must be set to `"dbus"` (mandatory)                                                                                         |
+| `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                              |
+| `bus`                 | N/A     | the bus on which to listen for events: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
+| `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
+| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be be performed on return parameters            |
 
 The consideration about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
 
@@ -820,6 +822,44 @@ There is an option that can be specified on the [command line](#cli), that force
 * message (payload)
 
 in order to better handle the logs and to provide feedback to the user.
+
+
+## Input commands
+
+As said above, **whenever** accepts some command on its standard input: no prompt is shown, and the console log will keep showing up continuously even when an user types any interactive command: in fact the _stdin_ based interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these commands to control the scheduler.
+
+The available commands are:
+
+| Command    | Action                                                            |
+|------------|-------------------------------------------------------------------|
+| `pause`    | the scheduler keeps running, but all checks are suspended         |
+| `resume`   | resume from a paused state: enabled conditions are checked again  |
+| `exit`     | shut down **whenever**                                            |
+
+All commands are expetted to be followed by a _carriage return_ (`'\n'` must be used when sending the command from a wrapper). The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Typing `exit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_.
+
+
+## Build issues
+
+**whenever** is being thoroughly tested on Windows and Linux. It should work on Mac too, although I have no possibility to test it personally. On Windows, the build process is seamless as long as _Rust_ and all its dependencies are installed.
+
+On Linux, the build process might complain that some packages are missing: it mainly occurs because the "essential build tools" and the _development_ versions of some packages are not installed by default. Taking Debian as an example, the following packages mus be installed:
+
+* _pkg-config_
+* _libx11-dev_
+* _libdbus-1-dev_
+* _libxss-dev_
+* _xscreensaver_ (not always necessary).
+
+With these packages installed, the scheduler compiles without errors. However, since not all Linux distributions come with _Xscreensaver_ support (which is used to determine idle time), the related condition might not be checked and never fire. There is a _DBus_ based workaround, that allows to use [Idle session](#idle-session) conditions on Linux: the idle time, in this case, is counted as the amount of second after the screen has been locked. To enable this workaround, just edit the _Cargo.toml_ file by uncommenting the second of the following lines:
+
+```toml
+# user-idle has a problem on wayland-based sessions: work around by using
+user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }  # <-- this line must be uncommented
+# user-idle = "0.5.3"                                                             # <-- this line must be commented
+```
+
+and commenting the line below.
 
 
 ## Conclusion
