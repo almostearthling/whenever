@@ -332,7 +332,7 @@ _Time_ based conditions occur just after one of the provided time specifications
 * `second`: the second, as an integer between 0 and 59
 * `year`: an integer expressing the (full) year
 * `month`: an integer expressing the month, between 1 (January) and 12 (December)
-* `day`: an integer expressing the day of themonth, between 1 and 31
+* `day`: an integer expressing the day of the month, between 1 and 31
 * `weekday`: the name of the weekday in English, either whole or abbreviated to three letters.
 
 Not all the entries must be specified: for instance, specifying the day of week and a full date (as year, month, date) may cause the event to never occur if that particular date does not occur on that specific week day. Normally a day of the month will be specified, and then a time of the day, or a weekday and a time of the day. However full freedom is given in specifying or omitting part of the date:
@@ -836,7 +836,7 @@ The available commands are:
 | `resume`   | resume from a paused state: enabled conditions are checked again  |
 | `exit`     | shut down **whenever**                                            |
 
-All commands are expetted to be followed by a _carriage return_ (`'\n'` must be used when sending the command from a wrapper). The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Typing `exit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_.
+All commands are expected to be followed by a _carriage return_ (`'\n'` must be used when sending the command from a wrapper). The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Typing `exit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_.
 
 
 ## Build issues
