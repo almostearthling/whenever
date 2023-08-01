@@ -120,6 +120,8 @@ When debugging a configuration file, it might be useful to set the log level at 
 
 An important thing to notice is that configuration errors will cause **whenever** to abort, by issuing a very brief message on the console.
 
+To exit from **whenever** (when running as a CLI program from an interactive shell) che usual _Ctrl+C_ key combination can be used. This will however wait for all currently running activities, be it condition checks or tasks, to finish. In order to force **whenever** to exit abruptly, either a [command](#input-commands) must be used or it must be explicitly killed.
+
 
 ## Configuration
 
@@ -830,11 +832,12 @@ As said above, **whenever** accepts some command on its standard input: no promp
 
 The available commands are:
 
-| Command    | Action                                                            |
-|------------|-------------------------------------------------------------------|
-| `pause`    | the scheduler keeps running, but all checks are suspended         |
-| `resume`   | resume from a paused state: enabled conditions are checked again  |
-| `exit`     | shut down **whenever**                                            |
+| Command    | Action                                                                 |
+|------------|------------------------------------------------------------------------|
+| `pause`    | the scheduler keeps running, but all checks are suspended              |
+| `resume`   | resume from a paused state: enabled conditions are checked again       |
+| `exit`     | shut down **whenever**, waiting for running activity to finish         |
+| `kill`     | shut down **whenever** immediately, terminating all current activity   |
 
 All commands are expected to be followed by a _carriage return_ (`'\n'` must be used when sending the command from a wrapper). The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Typing `exit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_.
 

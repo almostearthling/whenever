@@ -67,6 +67,9 @@ lazy_static! {
     static ref APPLICATION_MUST_EXIT: Mutex<bool> = Mutex::new(false);
 
     // set this if the application must exit
+    static ref APPLICATION_FORCE_EXIT: Mutex<bool> = Mutex::new(false);
+
+    // set this if the application must exit
     static ref APPLICATION_IS_PAUSED: Mutex<bool> = Mutex::new(false);
 
     // types of conditions whose tick cannot be delayed
@@ -556,6 +559,15 @@ fn interpret_commands() -> std::io::Result<bool> {
                 );
                 *APPLICATION_MUST_EXIT.lock().unwrap() = true;
             }
+            "kill" => {
+                log(
+                    LogType::Warn,
+                    "MAIN command",
+                    &format!("[PROC/MSG] kill request received: terminating application immediately")
+                );
+                *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
+            }
             "pause" => {
                 if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
@@ -780,14 +792,38 @@ fn main() {
         sched.run_pending();
         thread::sleep(free_pending);
         if *APPLICATION_MUST_EXIT.lock().unwrap() {
-            break;
+            if *APPLICATION_FORCE_EXIT.lock().unwrap() {
+                log(
+                    LogType::Warn,
+                    "MAIN exit",
+                    &format!("[END/OK] application exiting: all activity will be forced to stop"),
+                );
+                break;
+            } else {
+                log(
+                    LogType::Info,
+                    "MAIN exit",
+                    &format!("[END/OK] application exiting: waiting for activity to finish"),
+                );
+                // wait for all currently running conditions to finish their
+                // tick: during this time no `sched.run_pending();` is run, to
+                // ensure that no new tests or tasks are initiated again
+                while let Some(c) = CONDITION_REGISTRY.conditions_busy().unwrap() {
+                    if c > 0 {
+                        thread::sleep(free_pending);
+                    } else {
+                        break;
+                    }
+                }
+                break;
+            }
         }
     }
 
     log(
-        LogType::Debug,
+        LogType::Info,
         "MAIN exit",
-        &format!("[END/OK] application exiting: terminating all threads"),
+        &format!("[END/OK] application exit: main process terminating successfully"),
     );
     std::process::exit(0);
 

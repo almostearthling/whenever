@@ -63,7 +63,7 @@ pub const APP_NAME: &str = "whenever";
 /// * the logging levels: _trace_ < _debug_ < _info_ < _warn_ < _error_,
 ///   provided as the `LogType` enumeration
 pub mod logging {
-    use std::path::{PathBuf};
+    use std::path::PathBuf;
     use log::{debug, error, info, warn, trace};
     use flexi_logger::{Logger, FileSpec, DeferredNow, style};
     use nu_ansi_term::Style;

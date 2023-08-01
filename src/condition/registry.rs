@@ -45,6 +45,7 @@ pub struct ConditionRegistry {
     // the entire list is enclosed in `Arc<Mutex<...>>` in order to avoid
     // concurrent access to the list itself
     condition_list: Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>>,
+    conditions_busy: Arc<Mutex<u64>>,
 }
 
 
@@ -55,6 +56,7 @@ impl ConditionRegistry {
     pub fn new() -> Self {
         ConditionRegistry {
             condition_list: Arc::new(Mutex::new(HashMap::new())),
+            conditions_busy: Arc::new(Mutex::new(0 as u64)),
         }
     }
 
@@ -283,6 +285,24 @@ impl ConditionRegistry {
     }
 
 
+    /// Report the number of busy conditions
+    /// 
+    /// Report an unsigned integer corresponding to how many conditions are
+    /// busy at the time of invocation: when the result is `Ok(Some(0))` there
+    /// are no active condition tests and no active tasks.
+    /// 
+    /// # Panics
+    ///
+    /// May panic if the busy condition count could not be locked.
+    pub fn conditions_busy(&self) -> Result<Option<u64>, std::io::Error> {
+        let res: u64 = *self.conditions_busy
+            .clone()
+            .lock()
+            .expect("cannot lock condition busy counter");
+        Ok(Some(res))
+    }
+
+
     /// Perform a condition test and run associated tasks if successful
     ///
     /// This function is called directly by the scheduler in order to actually
@@ -328,15 +348,21 @@ impl ConditionRegistry {
                 "CONDITION_REGISTRY tick",
                 &format!("[START/MSG] test and run for condition {name}")
             );
+            // increment number of busy conditions by one: this can be done
+            // without *self being mut because conditions_busy is an Arc
+            *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") += 1;
+            let res;
             if let Some(outcome) = cond.test()? {
                 if outcome {
-                    cond.run_tasks()
+                    res = cond.run_tasks();
                 } else {
-                    Ok(None)
+                    res = Ok(None)
                 }
             } else {
-                Ok(None)
+                res = Ok(None)
             }
+            *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") -= 1;
+            res
         } else {
             log(
                 LogType::Warn,
