@@ -721,6 +721,111 @@ impl Task for CommandTask {
         &mut self,
         trigger_name: &str,
     ) -> Result<Option<bool>, std::io::Error> {
+
+        // helper to start a process (in the same thread), read stdout/stderr
+        // continuously (thus freeing its buffers), optionally terminate it
+        // after a certain timeout has been reached: it returns a tuple
+        // consisting of the exit status and, optionally, strings containing
+        // stdout and stderr contents; no way is given of providing input to
+        // the subprocess
+        fn spawn_process(
+            mut proc: Popen,
+            poll_interval: Duration,
+            timeout: Option<Duration>,
+        ) -> Result<(ExitStatus, Option<String>, Option<String>), std::io::Error> {
+            let mut stdout = String::new();
+            let mut stderr = String::new();
+            let mut out;
+            let mut err;
+            let mut exit_status;
+            let mut comm = proc.communicate_start(None).limit_time(poll_interval);
+            let startup = SystemTime::now();
+
+            loop {
+                // we intercept timeout error here because we just could be
+                // waiting for more output to be available
+                let cres = comm.read_string();
+                if cres.is_err() {
+                    if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
+                        let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
+                        if co.is_some() {
+                            out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
+                        } else {
+                            out = None;
+                        }
+                        if ce.is_some() {
+                            err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
+                        } else {
+                            err = None;
+                        }
+                    } else {
+                        return Err(std::io::Error::new(
+                            cres.as_ref().unwrap_err().kind(),
+                            cres.as_ref().unwrap_err().to_string(),
+                        ));
+                    }
+                } else {
+                    (out, err) = cres.unwrap();
+                }
+
+                if let Some(ref o) = out { stdout.push_str(o.as_str()); }
+                if let Some(ref e) = err { stderr.push_str(e.as_str()); }
+                exit_status = proc.poll();
+                if exit_status.is_none() {
+                    if let Some(t) = timeout {
+                        if SystemTime::now() > startup + t {
+                            let res = proc.terminate();
+                            if !res.is_ok() {
+                                let _ = proc.kill();
+                            }
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::TimedOut, "timeout reached"))
+                        }
+                    }
+                } else {
+                    break;
+                }
+                std::thread::sleep(poll_interval);
+            }
+
+            // same as above
+            let cres = comm.read_string();
+            if cres.is_err() {
+                if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
+                    let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
+                    if co.is_some() {
+                        out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
+                    } else {
+                        out = None;
+                    }
+                    if ce.is_some() {
+                        err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
+                    } else {
+                        err = None;
+                    }
+                } else {
+                    return Err(std::io::Error::new(
+                        cres.as_ref().unwrap_err().kind(),
+                        cres.as_ref().unwrap_err().to_string(),
+                    ));
+                }
+            } else {
+                (out, err) = cres.unwrap();
+            }
+            if let Some(ref o) = out { stdout.push_str(&o); }
+            if let Some(ref e) = err { stderr.push_str(&e); }
+            if let Some(exit_status) = exit_status {
+                Ok((
+                    exit_status,
+                    { if !stdout.is_empty() { Some(stdout) } else { None } },
+                    { if !stderr.is_empty() { Some(stderr) } else { None } },
+                ))
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Unsupported, "unknown exit status"))
+            }
+        }
+
         // build the environment: least priority settings come first; it is
         // created as a hashmap in order to avoid duplicates, but it is
         // converted to Vec<&OsString, &OsString> in order to be passed to
@@ -783,34 +888,90 @@ impl Task for CommandTask {
         self._process_stdout = String::new();
         let startup_time = SystemTime::now();
         let open_process = Popen::create(&process_argv, process_config);
-        if let Ok(mut process) = open_process {
+        if let Ok(process) = open_process {
             let proc_exit;
-            if let Some(timeout) = self.timeout {
-                let e = process.wait_timeout(timeout);
-                let _ = process.terminate();
-                proc_exit = if e.is_err() {
-                    Err(e.unwrap_err())
-                } else {
-                    if let Some(v) = e.unwrap() {
-                        Ok(v)
-                    } else {
-                        self.log(LogType::Trace, &format!(
-                            "[PROC/FAIL] (trigger: {trigger_name}) timeout reached running command `{}`",
-                            self.command_line()));
-                        Err(PopenError::from(std::io::Error::new(
-                            ErrorKind::TimedOut,
-                            "timeout reached",
-                        )))
+
+            // if let Some(timeout) = self.timeout {
+            //     let e = process.wait_timeout(timeout);
+            //     let _ = process.terminate();
+            //     proc_exit = if e.is_err() {
+            //         Err(e.unwrap_err())
+            //     } else {
+            //         if let Some(v) = e.unwrap() {
+            //             Ok(v)
+            //         } else {
+            //             self.log(LogType::Trace, &format!(
+            //                 "[PROC/FAIL] (trigger: {trigger_name}) timeout reached running command `{}`",
+            //                 self.command_line()));
+            //             Err(PopenError::from(std::io::Error::new(
+            //                 ErrorKind::TimedOut,
+            //                 "timeout reached",
+            //             )))
+            //         }
+            //     }
+            // } else {
+            //     proc_exit = process.wait();
+            // }
+
+            // consume stdout and stderr if available to possibly check outcome
+            // let mut out;
+            // let mut err;
+            // let mut breaks = true;
+            // (out, err) = process.communicate(None)?;
+            // if let Some(o) = out {
+            //     self._process_stdout.push_str(o.as_str());
+            //     breaks = false;
+            // }
+            // if let Some(e) = err {
+            //     self._process_stderr.push_str(e.as_str());
+            //     breaks = false;
+            // }
+            // while !breaks {
+            //     breaks = true;
+            //     (out, err) = process.communicate(None)?;
+            //     if let Some(o) = out {
+            //         self._process_stdout.push_str(o.as_str());
+            //         breaks = false;
+            //     }
+            //     if let Some(e) = err {
+            //         self._process_stderr.push_str(e.as_str());
+            //         breaks = false;
+            //     }
+            // }
+
+            match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
+                Ok((exit_status, out, err)) => {
+                    if let Some(o) = out { self._process_stdout = o; }
+                    if let Some(e) = err { self._process_stderr = e; }
+                    proc_exit = Ok(exit_status);
+                }
+                Err(e) => {
+                    match e.kind() {
+                        std::io::ErrorKind::TimedOut => {
+                            self.log(LogType::Warn, &format!(
+                                "[PROC/FAIL] timeout reached running command `{}`",
+                                self.command_line()));
+                            proc_exit = Err(PopenError::from(std::io::Error::new(
+                                ErrorKind::TimedOut,
+                                "timeout reached",
+                            )));
+                        }
+                        k => {
+                            self.log(LogType::Warn, &format!(
+                                "[PROC/FAIL] error running command `{}`",
+                                self.command_line()));
+                            proc_exit = Err(PopenError::from(
+                                std::io::Error::new(k, e.to_string())));
+                        }
                     }
                 }
-            } else {
-                proc_exit = process.wait();
             }
 
             // read stdout and stderr if available to possibly check outcome
-            let (out, err) = process.communicate(None)?;
-            if let Some(o) = out { self._process_stdout = o; }
-            if let Some(e) = err { self._process_stderr = e; }
+            // let (out, err) = process.communicate(None)?;
+            // if let Some(o) = out { self._process_stdout = o; }
+            // if let Some(e) = err { self._process_stderr = e; }
+            // let _ = process.terminate();
 
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {
@@ -820,7 +981,7 @@ impl Task for CommandTask {
                         // exit code is 0, and this usually indicates success
                         // however if it was not the expected exit code the
                         // failure reason has to be set to Status (for now);
-                        // note thet also the case of exit code 0 considered
+                        // note that also the case of exit code 0 considered
                         // as a failure status is taken into account here
                         statusmsg = String::from("OK/0");
                         self.log(LogType::Debug, &format!(

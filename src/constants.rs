@@ -9,6 +9,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use crate::common::APP_NAME;
+use std::time::Duration;
 
 
 
@@ -88,6 +89,9 @@ lazy_static! {
     pub static ref RE_DBUS_INTERFACE_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
     pub static ref RE_DBUS_MEMBER_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_DBUS_ERROR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
+
+    // interval for polling spawned commands for stdout/stderr contents
+    pub static ref DUR_SPAWNED_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 }
 
