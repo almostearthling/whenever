@@ -729,7 +729,7 @@ The configuration entries are:
 
 #### DBus signals
 
-DBus provides signals that can be subscribed by applications, to receive information about various aspects of the system status in an asynchronous way. **whenever** offers the possibility to subscribe to these signals, so that when the associated parameters match any provided constraints the event subscribing to the signal occurs, and the associated condition is fired.
+DBus provides signals that can be subscribed by applications, to receive information about various aspects of the system status in an asynchronous way. **whenever** offers the possibility to subscribe to these signals, so that when the _return parameters_ match the provided constraints, then the event occurs and the associated condition is fired.
 
 Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility, therefore JSON is not used for this purpose. JSON is used instead to specify the criteria that the _signal parameters_ must meet in order for the event to arise, using the same format that is used for _return message parameter_ checks in _DBus method_ based conditions.
 
@@ -848,7 +848,7 @@ All commands are expected to be followed by a _carriage return_ (`'\n'` must be 
 
 **whenever** is being thoroughly tested on Windows and Linux. It should work on Mac too, although I have no possibility to test it personally. On Windows, the build process is seamless as long as _Rust_ and all its dependencies are installed.
 
-On Linux, the build process might complain that some packages are missing: it mainly occurs because the "essential build tools" and the _development_ versions of some packages are not installed by default. Taking Debian as an example, the following packages mus be installed:
+On Linux, the build process might complain that some packages are missing: it mainly occurs because the "essential build tools" and the _development_ versions of some packages are not installed by default. Taking Debian as an example, the following packages must be installed:
 
 * _pkg-config_
 * _libx11-dev_
