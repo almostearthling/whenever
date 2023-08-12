@@ -990,11 +990,15 @@ impl Condition for CommandCondition {
 
             loop {
                 // we intercept timeout error here because we just could be
-                // waiting for more output to be available
+                // waiting for more output to be available; the timed_out
+                // flag is used to avoid waiting extra time when reading
+                // from stdout/stderr has already had a cost in this terms
+                let mut timed_out = false;
                 let cres = comm.read_string();
                 if cres.is_err() {
                     if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
                         let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
+                        timed_out = true;
                         if co.is_some() {
                             out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
                         } else {
@@ -1032,7 +1036,9 @@ impl Condition for CommandCondition {
                 } else {
                     break;
                 }
-                std::thread::sleep(poll_interval);
+                if !timed_out {
+                    std::thread::sleep(poll_interval);
+                }
             }
 
             // same as above
@@ -1154,54 +1160,6 @@ impl Condition for CommandCondition {
         if let Ok(process) = open_process {
             let proc_exit;
 
-            // if let Some(timeout) = self.timeout {
-            //     let e = process.wait_timeout(timeout);
-            //     let _ = process.terminate();
-            //     proc_exit = if e.is_err() {
-            //         Err(e.unwrap_err())
-            //     } else {
-            //         if let Some(v) = e.unwrap() {
-            //             Ok(v)
-            //         } else {
-            //             self.log(LogType::Warn, &format!(
-            //                 "[PROC/FAIL] timeout reached running command `{}`",
-            //                 self.command_line()));
-            //             Err(PopenError::from(std::io::Error::new(
-            //                 ErrorKind::TimedOut,
-            //                 "timeout reached",
-            //             )))
-            //         }
-            //     }
-            // } else {
-            //     proc_exit = process.wait();
-            // }
-
-            // consume stdout and stderr if available to possibly check outcome
-            // let mut out;
-            // let mut err;
-            // let mut breaks = true;
-            // (out, err) = process.communicate(None)?;
-            // if let Some(o) = out {
-            //     self._process_stdout.push_str(o.as_str());
-            //     breaks = false;
-            // }
-            // if let Some(e) = err {
-            //     self._process_stderr.push_str(e.as_str());
-            //     breaks = false;
-            // }
-            // while !breaks {
-            //     breaks = true;
-            //     (out, err) = process.communicate(None)?;
-            //     if let Some(o) = out {
-            //         self._process_stdout.push_str(o.as_str());
-            //         breaks = false;
-            //     }
-            //     if let Some(e) = err {
-            //         self._process_stderr.push_str(e.as_str());
-            //         breaks = false;
-            //     }
-            // }
-
             match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
                 Ok((exit_status, out, err)) => {
                     if let Some(o) = out { self._process_stdout = o; }
@@ -1229,12 +1187,6 @@ impl Condition for CommandCondition {
                     }
                 }
             }
-
-            // read stdout and stderr if available to possibly check outcome
-            // let (out, err) = process.communicate(None)?;
-            // if let Some(o) = out { self._process_stdout = o; }
-            // if let Some(e) = err { self._process_stderr = e; }
-            // let _ = process.terminate();
 
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {

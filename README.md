@@ -32,7 +32,7 @@
 
 <!-- /code_chunk_output -->
 
-**whenever** is a simple task scheduler capable of executing _tasks_ (OS commands and _Lua_ scripts) according to specific _conditions_. Conditions are of various types: depending on time (both intervals or specific more-or-less defined instants), execution of OS commands or _Lua_ scripts, changes in specific files and directories, session inactivity, DBus signals or property checks[^1]. The scheduler intends to be as lightweight as possible in terms of used computational resources, and to run at a low priority level.
+**whenever** is a simple task scheduler capable of executing _tasks_ (OS commands and _Lua_ scripts) according to specific _conditions_. Conditions are of various types: depending on time (both intervals or specific more-or-less defined instants), execution of OS commands or _Lua_ scripts, changes in specific files and directories, session inactivity, DBus signals or property checks.[^1] The scheduler intends to be as lightweight as possible in terms of used computational resources, and to run at a low priority level.
 
 Configuration is provided to the scheduler via a [TOML](https://toml.io/) file, which must contain all definitions for conditions and associated tasks, as well as events that the scheduler should listen to.
 
@@ -45,11 +45,11 @@ Although a command line application, it is designed for desktops -- therefore it
 
 The purpose of **whenever** is to provide the user, possibly without administrative credentials, with the ability to define conditions that do not only depend on time, but also on particular states of the session, result of commands run in a shell, execution of _Lua_ scripts, or other events that may occur while the system is being used. This scheduler is a terminal (or console, on Windows) application, however it is meant to run in the background without interaction with the user. The application is able to produce detailed logs, so that the user can review what the application is doing or has done.
 
-Just like its predecessor, **whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible -- although less precise than _cron_ -- and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at providing an easy solution to those who need to automate some actions depending on other situations or events that may occur.
+Just like its predecessor, **whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible -- although less precise than _cron_ -- and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at representing an easy solution for those who need to automate some actions depending on other situations or events that may occur.
 
-Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it implements a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format[^2].
+Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format.[^2]
 
-A very lightweight cross-platform wrapper will soon be available (it is being tested on both Linux and Windows at the time of writing), developed in C++ and using the [wxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper is under active testing on both Linux and Windows at the time of writing. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
 
 
 ## Features
@@ -59,7 +59,7 @@ A very lightweight cross-platform wrapper will soon be available (it is being te
 * [_Execution of groups of OS executables_](#command-tasks), either sequentially or concurrently, checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
 * [_Execution of_ Lua _scripts_](#lua-script-tasks), using an embedded interpreter, with the possibility of checking the contents of _Lua_ variables for expected outcomes
 
-as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based **When** scheduler: how tasks and conditions work is almost identical in both tools -- in fact, a tool will be made available to convert from **When** _export files_ to **whenever** configuration files.
+as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based _When_ scheduler: how tasks and conditions work is almost identical in both tools -- in fact, development of a tool to convert from _When_ _export files_ to **whenever** configuration files is underway.
 
 The supported types of [**_condition_**](#conditions) are the following:
 
@@ -85,9 +85,9 @@ Every type of check is performed periodically, even the ones involving _event_ b
 
 ## CLI
 
-The command can be directly invoked as a foreground process from the command line. This is particularly useful (especially with full logging enabled) to debug the configuration. **whenever** either logs to the console or on a specified file. When logging to the console, different colors are used by default to visually accentuate messages related to different logging levels.
+The command can be directly invoked as a foreground process from the command line. This is particularly useful (especially with full logging enabled) to debug the configuration. **whenever** either logs to the console or to a specified file. When logging to the console, different colors are used by default to visually accentuate messages related to different logging levels.
 
-By invoking **whenever** specifying `--help` as argument, the output is the following:
+By invoking **whenever** and specifying `--help` as argument, the output is the following:
 
 ```shell
 ~$ whenever --help
@@ -113,7 +113,7 @@ Options:
 As the available options are minimal, and mostly impact on [logging](#logging), the only elements that should be highlighted are the following:
 
 * **whenever** requires a log file to run in _quiet_ mode (which also suppresses errors)
-* it is possible to suppress colors on console logging, by specifying `--log-plain` to the command
+* it is possible to suppress colors when logging to console, by specifying `--log-plain` as an argument
 * when run within a wrapper, **whenever** can emit log messages in the JSON format, to make it easier for the wrapper to interpret and classify them.
 
 When debugging a configuration file, it might be useful to set the log level at least to _debug_, if not to _trace_ which also emits some redundant messages.
@@ -125,7 +125,7 @@ To exit from **whenever** (when running as a CLI program from an interactive she
 
 ## Configuration
 
-The configuration file is strictly based on the current TOML specification: therefore it can be easily implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
+The configuration file is strictly based on the current TOML specification: therefore it can be implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
 
 
 ### Globals
@@ -278,13 +278,15 @@ _Conditions_ are at the heart of **whenever**, by triggering the execution of ta
 | `suspended`        | _false_ | if _true_, the condition will not be checked nor the associated tasks executed                                 |
 | `tasks`            | `[]`    | a list of task names that will be executed upon condition verification                                         |
 
-When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_[^5].
+When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_.[^5]
 
 The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `"lua"`, `"event"`, and `"dbus"`. Any other value is considered a configuration error.
 
 For conditions that should be periodically checked and whose associated task list has to be run _whenever_ they occur (and not just after the first occurrence), the `recurring` entry can be set to _true_. The `suspended` entry can assume a _true_ value for conditions for which the user does not want to remove the configuration but should be (at least temporarily) prevented.
 
 Another entry is common to several condition types, that is `check_after`: it can be set to the number of seconds that **whenever** has to wait after startup (and after the last check for _recurring_ conditions) for a subsequent check: this is useful for conditions that can run on a more relaxed schedule, or whose check process has a significant cost in terms of resources, or whose associated task sequence might take a long time to finish. Simpler conditions and conditions based on time do not accept this entry.
+
+While a condition check or the execution of an associated task sequence is underway, the condition is marked as _busy_, and while a condition is in this state no further checks are performed. The condition is released from its _busy_ state only after all checks and tasks have been performed. This is important when long-running checks and tasks are requested, as this flag ensures that checks and tasks for a single long-running and recurring activity cannot overlap.
 
 Note that all listed tasks must be defined, otherwise an error is raised and **whenever** will not start.
 
@@ -314,7 +316,7 @@ tasks = [
     ]
 ```
 
-describing a condition that is verified one hour after **whenever** has started, and not anymore after the first occurrence (because `recurring` is _false_ here). Were it _true_, the condition would be verified _every_ hour.
+describing a condition that is verified one hour after **whenever** has started, and not anymore after the first occurrence -- because `recurring` is _false_ here. Were it _true_, the condition would be verified _every_ hour.
 
 The specific parameters for this type of condition are:
 
@@ -379,7 +381,7 @@ The check for this type of condition is never randomized.
 
 #### Idle session
 
-Conditions of the _idle_ type are verified after the session has been idle (that is, without user interaction), for the specified number of seconds[^6]. This does normally not interfere with other idle time based actions provided by the environment such as screensavers, and automatic session lock. The following is a sample configuration for this type of condition:
+Conditions of the _idle_ type are verified after the session has been idle (that is, without user interaction), for the specified number of seconds.[^6] This does normally not interfere with other idle time based actions provided by the environment such as screensavers, and automatic session lock. The following is a sample configuration for this type of condition:
 
 ```toml
 [[condition]]
@@ -547,7 +549,7 @@ For this type of condition the actual test can be performed at a random time wit
 
 #### DBus method
 
-The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result[^7]. One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
+The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^7] One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
 
 So, as a rule of thumb:
 
@@ -561,7 +563,7 @@ So, as a rule of thumb:
     * `"ge"` meaning _greater or equal to_
     * `"lt"` meaning _less than_
     * `"le"` meaning _less or equal to_
-    * `"match"` specified that the second operand has to be intended as a _regular expression_ to be matched
+    * `"match"` to indicate that the second operand has to be intended as a _regular expression_ to be matched
   * `"value"`: the second operand for the specified operator.
 
 Note that not all types of operand are supported for all operator: comparisons (_greater_ and _greater or equal_, _less_ and _less or equal_) are only supported for numbers, and matching is only supported for strings.
@@ -867,9 +869,9 @@ and commenting the line below.
 
 ## Conclusion
 
-The configuration of **whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **whenever** does not provide a GUI, the features of the Python based **When** are not completely matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to a restricted number of versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage.
+The configuration of **whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **whenever** does not provide a GUI, the features of the Python based _When_ are not completely matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to a restricted number of versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage.
 
-I am considering **whenever** as the evolution of the **When** operational engine, and future versions of **When** itself (which will bump its version number to something more near to the awaited _2.0.0_) will only implement the GUIs that might (or might not) be used to configure **whenever** and to control it from the system tray in a more sophisticated way than the one allowed by the minimal C++ based utility.
+I am considering **whenever** as the evolution of the _When_ operational engine, and future versions of _When_ itself (which will bump its version number to something more near to the awaited _2.0.0_) will only implement the GUIs that might (or might not) be used to configure **whenever** and to control it from the system tray in a more sophisticated way than the one allowed by the minimal C++ based utility.
 
 
 ## License
@@ -883,6 +885,6 @@ This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future):
 [^4]: The occurrence of an _event_, in fact, raises a flag that specifies that the associated condition will be considered as verified at the following tick: the condition is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the scheduler that executes the related tasks. Therefore _event_ based conditions are also referred to as _bucket_ conditions.
 [^5]: In this case the execution will continue as long as the outcome is _undefined_ until the first success or failure happens.
 [^6]: Except on _Wayland_ based Linux systems (e.g. Ubuntu), on which the idle time starts _after the session has been locked_.
-[^7]: In fact, in the original **When** the DBus based conditions and events were considered an advanced feature: even the dialog box that allowed the configuration of user-defined DBus events was only available through a specific invocation using the command line.
+[^7]: In fact, in the original _When_ the DBus based conditions and events were considered an advanced feature: even the dialog box that allowed the configuration of user-defined DBus events was only available through a specific invocation using the command line.
 [^8]: See the [DBus Specification](https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types) for the complete list of supported types, and the ASCII character that identifies each of them.
 [^9]: in DBus, strings and object paths are considered different types.
