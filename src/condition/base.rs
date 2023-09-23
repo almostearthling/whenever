@@ -112,6 +112,11 @@ pub trait Condition: Send {
     /// Get a list of task names as owned strings.
     fn task_names(&self) -> Result<Vec<String>, std::io::Error>;
 
+    /// Check whether or not there are associated tasks.
+    fn has_tasks(&self) -> Result<bool, std::io::Error> {
+        Ok(self.task_names()?.len() > 0)
+    }
+
     /// Verify last outcome after checking the `Condition`.
     ///
     /// Reports whether or not the result of last check was a success, in
@@ -200,9 +205,15 @@ pub trait Condition: Send {
             panic!("condition {} not registered", self.get_name());
         }
 
-        // bail out if the condition is suspended, or if it has been successful
-        // once and is not set to be recurrent, and check otherwise
-        if self.suspended() {
+        // bail out if the condition has no associated tasks, if it
+        // is suspended, or if it has been successful once and is not
+        // set to be recurrent, and check otherwise
+        if !self.has_tasks().unwrap_or(false) {
+            self.log(LogType::Debug, &format!(
+                "[PROC/MSG] skipping check: condition has no associated tasks"));
+            Ok(None)
+        }
+        else if self.suspended() {
             self.log(LogType::Debug, &format!(
                 "[PROC/MSG] skipping check: condition is suspended"));
             Ok(None)
