@@ -130,7 +130,7 @@ impl DbusMessageEvent {
             bus: None,
             match_rule: None,
             param_checks: None,
-            param_checks_all: true,
+            param_checks_all: false,
 
             // internal values
         }

@@ -49,7 +49,7 @@ Just like its predecessor, **whenever** overlaps to some extent with the standar
 
 Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format.[^2]
 
-A very lightweight cross-platform wrapper is under active testing on both Linux and Windows at the time of writing. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The lightweight wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper, [**whenever_tray**](https://github.com/almostearthling/whenever_tray) is available and under active testing on both Linux and Windows. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The minimalistic wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
 
 
 ## Features
@@ -200,8 +200,8 @@ and the following table provides a detailed description of the entries:
 | `success_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task successful                          |
 | `failure_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task failed                              |
 | `failure_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task failed                              |
-| `include_environment`       | _false_ | if _true_, the command is executed in the same environment in which **whenever** was started                    |
-| `set_environment_variables` | _false_ | if _true_, **whenever** sets environment variables reporting the names of the task and the condition            |
+| `include_environment`       | _true_  | if _true_, the command is executed in the same environment in which **whenever** was started                    |
+| `set_environment_variables` | _true_  | if _true_, **whenever** sets environment variables reporting the names of the task and the condition            |
 | `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                 |
 
 The priority used by **whenever** to determine success or failure in the task is the one in which the related parameters appear in the above table: first exit codes are checked, then both _stdout_ and _stderr_ are checked for substrings ore regular expressions that identify success, and finally the same check is performed on values that indicate a failure. Most of the times just one or maybe two of the expected parameters will have to be set. Note that the command execution is not considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both assumptions have to be explicitly configured by setting either `success_status` or `failure_status`. If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for the process to exit: after this amount of time the process is terminated and fails.
@@ -467,7 +467,7 @@ The following table illustrates the parameters specific to _command_ based condi
 | Entry                       | Default | Description                                                                                                                  |
 |-----------------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
 | `type`                      | N/A     | has to be set to `"interval"` (mandatory)                                                                                    |
-| `check_after`               | _empty_ | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
+| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
 | `startup_path`              | N/A     | the directory in which the command is started (mandatory)                                                                    |
 | `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)              |
 | `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
@@ -475,14 +475,14 @@ The following table illustrates the parameters specific to _command_ based condi
 | `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                                        |
 | `case_sensitive`            | _false_ | if _true_, substring search or match and regular expressions match is performed case-sensitively                             |
 | `timeout_seconds`           | (empty) | if set, the number of seconds to wait before the command is terminated (with unsuccessful outcome)                           |
-| `success_status`            | _empty_ | if set, when the execution ends with the provided exit code the condition is considered verified                             |
-| `failure_status`            | N/A     | if set, when the execution ends with the provided exit code the condition is considered failed                               |
+| `success_status`            | (empty) | if set, when the execution ends with the provided exit code the condition is considered verified                             |
+| `failure_status`            | (empty) | if set, when the execution ends with the provided exit code the condition is considered failed                               |
 | `success_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task successful                                       |
 | `success_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task successful                                       |
 | `failure_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task failed                                           |
 | `failure_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task failed                                           |
-| `include_environment`       | _false_ | if _true_, the command is executed in the same environment in which **whenever** was started                                 |
-| `set_environment_variables` | _false_ | if _true_, **whenever** sets environment variables reporting the names of the task and the condition                         |
+| `include_environment`       | _true_  | if _true_, the command is executed in the same environment in which **whenever** was started                                 |
+| `set_environment_variables` | _true_  | if _true_, **whenever** sets environment variables reporting the names of the task and the condition                         |
 | `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                              |
 
 If `set_environment_variables` is _true_, **whenever** sets the following environment variable:
@@ -526,7 +526,7 @@ The specific parameters are described in the following table:
 | Entry              | Default | Description                                                                                                                  |
 |--------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
 | `type`             | N/A     | has to be set to `"lua"` (mandatory)                                                                                         |
-| `check_after`      | _empty_ | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
+| `check_after`      | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
 | `script`           | N/A     | the _Lua_ code that has to be executed by the internal interpreter (mandatory)                                               |
 | `expect_all`       | _false_ | if _true_, all the expected results have to be matched to consider the task successful, otherwise at least one               |
 | `expected_results` | `{}`    | a dictionary of variable names and their expected values to be checked after execution                                       |
@@ -633,15 +633,15 @@ The specific parameters are described in the following table:
 | Entry                 | Default | Description                                                                                                                  |
 |-----------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
 | `type`                | N/A     | has to be set to `"dbus"` (mandatory)                                                                                        |
-| `check_after`         | _empty_ | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
+| `check_after`         | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
 | `bus`                 | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
 | `service`             | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke query (mandatory)                 |
 | `object_path`         | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                         |
 | `interface`           | N/A     | the _interface_ to invoke or query (mandatory)                                                                               |
 | `method`              | N/A     | the name of the _method_ to be invoked (mandatory)                                                                           |
-| `parameter_call`      | _empty_ | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                  |
+| `parameter_call`      | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                  |
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient   |
-| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                |
+| `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                |
 
 The value corresponding to the `service` entry is often referred to as _bus name_ in various documents: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
@@ -770,7 +770,7 @@ and the details of the configuration entries are described in the table below:
 | `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                              |
 | `bus`                 | N/A     | the bus on which to listen for events: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
-| `parameter_check`     | _empty_ | a list of maps consisting of three fields each, each of which is a check to be be performed on return parameters            |
+| `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be be performed on return parameters            |
 
 The consideration about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
 

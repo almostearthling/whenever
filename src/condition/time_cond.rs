@@ -19,7 +19,7 @@
 //! provided, are considered to be always verified.
 
 
-use std::time::{Instant};
+use std::time::Instant;
 
 use chrono::prelude::*;
 use cfgmap::CfgMap;
