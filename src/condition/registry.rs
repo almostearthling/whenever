@@ -201,6 +201,55 @@ impl ConditionRegistry {
     }
 
 
+    /// Reset the named condition if found in the registry
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the name of the condition that must be reset
+    /// * `wait` - if false an attempt to reset while busy returns an error
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(true)` - operation succeeded, otherwise an error
+    ///
+    /// # Panics
+    ///
+    /// This function panics when called upon a name that does not exist in
+    /// the registry
+    pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
+        if !self.has_condition(&name) {
+            panic!("condition {name} not found in registry");
+        }
+
+        if !wait && self.condition_busy(name) {
+            Err(Error::new(
+                ErrorKind::WouldBlock,
+                format!("attempt to reset condition {name} while busy"),
+            ))
+        } else {
+            // both the registry and the conditions are synchronized: to ensure
+            // that the condition registry is not locked while the tests are
+            // executed and while the tasks are running, we only hold a lock on
+            // the condition that we are resetting here, while freeing the rest of
+            // the registry immediately; the single condition remains locked while
+            // performing the reset, which is the actual reason why we wanted it
+            // to be synchronized
+            let cond;
+            {
+                let clist = self.condition_list.clone();
+                let mut guard = clist.lock().expect("cannot lock condition registry");
+                cond = guard.get_mut(name)
+                    .expect(&format!("cannot retrieve condition {name} for reset"))
+                    .clone();
+            }
+
+            // when we acquire the lock, we can safely reset the condition right
+            // here and return the operation result from the condition itself
+            cond.clone().lock().expect(&format!("condition {name} cannot be locked")).reset()
+        }
+    }
+
+
     /// Return the list of condition names as owned strings.
     ///
     /// Return a vector containing the names of all the conditions that have
@@ -252,10 +301,10 @@ impl ConditionRegistry {
         // both the registry and the conditions are synchronized: to ensure
         // that the condition registry is not locked while the tests are
         // executed and while the tasks are running, we only hold a lock on
-        // the condition that we are ticking here, while freeing the rest of
+        // the condition that we are checking here, while freeing the rest of
         // the registry immediately; the single condition remains locked while
-        // performing the tick, which is the actual reason why we wanted it to
-        // be synchronized
+        // performing the check, which is the actual reason why we wanted it
+        // to be synchronized
         let cond;
         {
             let clist = self.condition_list.clone();
@@ -286,11 +335,11 @@ impl ConditionRegistry {
 
 
     /// Report the number of busy conditions
-    /// 
+    ///
     /// Report an unsigned integer corresponding to how many conditions are
     /// busy at the time of invocation: when the result is `Ok(Some(0))` there
     /// are no active condition tests and no active tasks.
-    /// 
+    ///
     /// # Panics
     ///
     /// May panic if the busy condition count could not be locked.

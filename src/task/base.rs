@@ -48,7 +48,7 @@ pub trait Task: Send {
     /// * `severity` - one of `LogType::{Trace, Debug, Info, Warn, Error}`
     /// * `message` - the message to be logged as a borrowed string
     fn log(&self, severity: LogType, message: &str) {
-        let name = self.get_name().clone();
+        let name = self.get_name();
         let id = self.get_id();
         log(severity, &format!("TASK {name}/[{id}]"), message);
     }

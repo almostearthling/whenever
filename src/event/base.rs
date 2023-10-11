@@ -106,7 +106,7 @@ pub trait Event: Send + Sync {
                     LogType::Info,
                     &format!("[PROC/OK] condition {cond_name} firing"),
                 );
-                Ok(bucket.clone().insert_condition(&cond_name))
+                Ok(bucket.insert_condition(&cond_name))
             } else {
                 panic!("execution bucket not set for condition {cond_name}")
             }
@@ -128,7 +128,7 @@ pub trait Event: Send + Sync {
     /// * `severity` - one of `LogType::{Trace, Debug, Info, Warn, Error}`
     /// * `message` - the message to be logged as a borrowed string
     fn log(&self, severity: LogType, message: &str) {
-        let name = self.get_name().clone();
+        let name = self.get_name();
         let id = self.get_id();
         log(severity, &format!("EVENT {name}/[{id}]"), message);
     }

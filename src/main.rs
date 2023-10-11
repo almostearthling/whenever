@@ -541,6 +541,61 @@ fn configure_events(
 }
 
 
+// reset the conditions whose names are provided in a vector of &str
+fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
+
+    // WARNING: this overly simplistic version, which is temporary, will
+    // wait for each provided condition to exit its possible busy state;
+    // this means that if a busy condition is met in the list, all the
+    // following conditions will have to wait for it to be freed in order
+    // to receive their reset instruction, and thiis can make the process
+    // of resetting many conditions very long, while also blocking the
+    // command interpreter thread
+
+    for name in names {
+        if !CONDITION_REGISTRY.has_condition(name) {
+            log(
+                LogType::Warn,
+                "MAIN reset_conditions",
+                &format!("[START/ERR] ignoring non existent condition: {name}"),
+            );
+        } else {
+            log(
+                LogType::Debug,
+                "MAIN reset_conditions",
+                &format!("[START/OK] resetting condition {name}"),
+            );
+            match CONDITION_REGISTRY.reset_condition(name, true) {
+                Ok(res) => {
+                    if res {
+                        log(
+                            LogType::Info,
+                            "MAIN reset_conditions",
+                            &format!("[END/OK] condition {name} has been reset"),
+                        );
+                    } else {
+                        log(
+                            LogType::Warn,
+                            "MAIN reset_conditions",
+                            &format!("[END/FAIL] condition {name} could not be reset"),
+                        );
+                    }
+                }
+                Err(e) => {
+                    log(
+                        LogType::Warn,
+                        "MAIN reset_conditions",
+                        &format!("[END/FAIL] error while resetting condition {name}: {e}"),
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(true)
+}
+
+
 
 // the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
@@ -550,69 +605,144 @@ fn interpret_commands() -> std::io::Result<bool> {
     let rest_time = Duration::from_millis(DEFAULT_SCHEDULER_TICK_SECONDS as u64 * 100);
 
     while let Ok(_n) = stdin().read_line(&mut buffer) {
-        match buffer.trim() {
+        let v: Vec<&str> = buffer.trim().split(char::is_whitespace).collect();
+        let cmd = v[0];
+        let args = &v[1..];  // should not panic, but there might be a cleaner way
+        match cmd {
             "exit" | "quit" => {
-                log(
-                    LogType::Warn,
-                    "MAIN command",
-                    &format!("[PROC/MSG] exit request received: terminating application")
-                );
-                *APPLICATION_MUST_EXIT.lock().unwrap() = true;
-            }
-            "kill" => {
-                log(
-                    LogType::Warn,
-                    "MAIN command",
-                    &format!("[PROC/MSG] kill request received: terminating application immediately")
-                );
-                *APPLICATION_MUST_EXIT.lock().unwrap() = true;
-                *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
-            }
-            "pause" => {
-                if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                if args.len() > 0 {
                     log(
-                        LogType::Warn,
+                        LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/FAIL] ignoring pause request: scheduler already paused")
+                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
                     );
                 } else {
                     log(
-                        LogType::Debug,
+                        LogType::Warn,
                         "MAIN command",
-                        &format!("[PROC/MSG] pausing scheduler ticks: conditions not checked until resume")
+                        &format!("[PROC/MSG] exit request received: terminating application"),
                     );
-                    *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+                    *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                }
+            }
+            "kill" => {
+                if args.len() > 0 {
+                    log(
+                        LogType::Error,
+                        "MAIN command",
+                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                    );
+                } else {
+                    log(
+                        LogType::Warn,
+                        "MAIN command",
+                        &format!("[PROC/MSG] kill request received: terminating application immediately"),
+                    );
+                    *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                    *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
+                }
+            }
+            "pause" => {
+                if args.len() > 0 {
+                    log(
+                        LogType::Error,
+                        "MAIN command",
+                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                    );
+                } else {
+                    if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                        log(
+                            LogType::Warn,
+                            "MAIN command",
+                            &format!("[PROC/FAIL] ignoring pause request: scheduler already paused"),
+                        );
+                    } else {
+                        log(
+                            LogType::Debug,
+                            "MAIN command",
+                            &format!("[PROC/MSG] pausing scheduler ticks: conditions not checked until resume"),
+                        );
+                        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+                    }
                 }
             }
             "resume" => {
-                if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                if args.len() > 0 {
+                    log(
+                        LogType::Error,
+                        "MAIN command",
+                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                    );
+                } else {
+                    if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                        log(
+                            LogType::Debug,
+                            "MAIN command",
+                            &format!("[PROC/MSG] resuming scheduler ticks and condition checks"),
+                        );
+                        // clear execution bucket because events may still have
+                        // occurred and maybe the user wanted to also pause event
+                        // based conditions (NOTE: this is questionable, since
+                        // multiple insertions are debounced it is probably more
+                        // correct to just obey instructions and verify conditions
+                        // associated to these events: commented out for now)
+                        // EXECUTION_BUCKET.clear();
+                        *APPLICATION_IS_PAUSED.lock().unwrap() = false;
+                    } else {
+                        log(
+                            LogType::Warn,
+                            "MAIN command",
+                            &format!("[PROC/FAIL] ignoring resume request: scheduler is not paused"),
+                        );
+                    }
+                }
+            }
+            "reset_conditions" => {
+                if args.len() == 0 {
+                    log(
+                        LogType::Trace,
+                        "MAIN command",
+                        &format!("[PROC/MSG] no names provided: attempt to reset all conditions"),
+                    );
+                    if let Some(v) = CONDITION_REGISTRY.condition_names() {
+                        if v.len() > 0 {
+                            let _ = reset_conditions(v.as_slice());
+                        } else {
+                            // this branch is never executed: when there are
+                            // no conditions in the registry, the result is
+                            // always `None`
+                            log(
+                                LogType::Debug,
+                                "MAIN command",
+                                &format!("[PROC/MSG] there are no conditions to reset"),
+                            );
+                        }
+                    } else {
+                        log(
+                            LogType::Debug,
+                            "MAIN command",
+                            &format!("[PROC/MSG] no conditions found in registry for reset"),
+                        );
+                    }
+                } else {
+                    let mut v: Vec<String> = Vec::new();
+                    for a in args {
+                        v.push(String::from(*a));
+                    }
                     log(
                         LogType::Debug,
                         "MAIN command",
-                        &format!("[PROC/MSG] resuming scheduler ticks and condition checks")
+                        &format!("[PROC/MSG] attempting to reset conditions: {}", v.join(", ")),
                     );
-                    // clear execution bucket because events may still have
-                    // occurred and maybe the user wanted to also pause event
-                    // based conditions (NOTE: this is questionable, since
-                    // multiple insertions are debounced it is probably more
-                    // correct to just obey instructions and verify conditions
-                    // associated to these events: commented out for now)
-                    // EXECUTION_BUCKET.clear();
-                    *APPLICATION_IS_PAUSED.lock().unwrap() = false;
-                } else {
-                    log(
-                        LogType::Warn,
-                        "MAIN command",
-                        &format!("[PROC/FAIL] ignoring resume request: scheduler is not paused")
-                    );
+                    let _ = reset_conditions(v.as_slice());
                 }
             }
             "" => { /* do nothing here */ }
             t => {
                 log(
-                    LogType::Debug,
+                    LogType::Error,
                     "MAIN command",
-                    &format!("[PROC/ERR] unrecognized command: `{t}`")
+                    &format!("[PROC/ERR] unrecognized command: `{t}`"),
                 );
             }
         }

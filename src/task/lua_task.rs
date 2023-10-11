@@ -421,14 +421,14 @@ impl Task for LuaTask {
             let logftab = lctx.create_table().unwrap();
 
             let id = self.get_id();
-            let name = self.get_name().clone();
+            let name = self.get_name();
             let trigger = String::from(trigger_name);
             let _ = logftab.set("debug", lctx.create_function(move
                 |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Debug, &s)))
                 .unwrap());
 
             let id = self.get_id();
-            let name = self.get_name().clone();
+            let name = self.get_name();
             let trigger = String::from(trigger_name);
             let _ = logftab.set("trace", lctx.create_function(move
                 |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Trace, &s)))

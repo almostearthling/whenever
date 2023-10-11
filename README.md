@@ -20,7 +20,7 @@
       - [Command](#command)
       - [Lua script](#lua-script)
       - [DBus method](#dbus-method)
-      - [Event based conditions](#event-based-conditions)
+      - [Event based](#event-based)
     - [Events](#events)
       - [Filesystem changes](#filesystem-changes)
       - [DBus signals](#dbus-signals)
@@ -47,7 +47,7 @@ The purpose of **whenever** is to provide the user, possibly without administrat
 
 Just like its predecessor, **whenever** overlaps to some extent with the standard _cron_ scheduler on Unix, and with the _Task Scheduler_ on Windows. However this scheduler tries to be more flexible -- although less precise than _cron_ -- and to function as an alternative to more complex solutions that could be implemented using the system-provided schedulers. The **whenever** approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means that the tasks might not be performed _exactly_ in the instant that marks the condition verification, but _after_ such verification instead. Thus this scheduler is not intended as a replacement for the utilities provided by the operating system: it aims at representing an easy solution for those who need to automate some actions depending on other situations or events that may occur.
 
-Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a simple _stdin_-based interface that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format.[^2]
+Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a [simple _stdin_-based interface](#input-commands) that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to perform are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format.[^2]
 
 A very lightweight cross-platform wrapper, namely [**whenever_tray**](https://github.com/almostearthling/whenever_tray), is available and under active testing on both Linux and Windows. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The minimalistic wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
 
@@ -69,7 +69,7 @@ The supported types of [**_condition_**](#conditions) are the following:
 * [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
 * [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
 * [_DBus_ inspection](#dbus-method): a _DBus_ method is executed and the result is checked against some criteria provided in the configuration file
-* [_Event_ based](#event-based-conditions): are verified when a certain event occurs that fires the condition.
+* [_Event_ based](#event-based): are verified when a certain event occurs that fires the condition.
 
 The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
 
@@ -89,7 +89,7 @@ The command can be directly invoked as a foreground process from the command lin
 
 By invoking **whenever** and specifying `--help` as argument, the output is the following:
 
-```shell
+```text
 ~$ whenever --help
 A simple background job launcher and scheduler
 
@@ -653,7 +653,7 @@ Note that DBus based conditions are supported on Windows, however DBus should be
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
 
-#### Event based conditions
+#### Event based
 
 Conditions that are fired by _events_ are referred to here both as _event_ conditions and as _bucket_ conditions. The reason for the second name is that every time that **whenever** catches an event that has been required to be monitored, it tosses the associated condition in a sort of _execution bucket_, that is checked by the scheduler at every tick: the scheduler withdraws every condition found in the bucket and runs the associated tasks. In facts, these conditions only exist as a connection between the events, that occur asynchronously, and the scheduler. Their configuration is therefore very simple, as seen in this example:
 
@@ -830,18 +830,23 @@ in order to better handle the logs and to provide feedback to the user.
 
 ## Input commands
 
-As said above, **whenever** accepts some command on its standard input: no prompt is shown, and the console log will keep showing up continuously even when an user types any interactive command: in fact the _stdin_ based interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these commands to control the scheduler.
+As said above, **whenever** accepts commands (in the form of _command lines_) through the standard input. Actually, no prompt is shown, and the console log will keep showing up continuously even when an user types any interactive command: in fact the _stdin_ based interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these commands to control the scheduler.
+
+A _command line_ is intended as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects.
 
 The available commands are:
 
-| Command    | Action                                                                 |
-|------------|------------------------------------------------------------------------|
-| `pause`    | the scheduler keeps running, but all checks are suspended              |
-| `resume`   | resume from a paused state: enabled conditions are checked again       |
-| `exit`     | shut down **whenever**, waiting for running activity to finish         |
-| `kill`     | shut down **whenever** immediately, terminating all current activity   |
+| Command            | Arguments            | Action                                                                                                                 |
+|--------------------|:--------------------:|------------------------------------------------------------------------------------------------------------------------|
+| `pause`            | _none_               | the scheduler keeps running, but all checks are suspended                                                              |
+| `resume`           | _none_               | resume from a paused state: enabled conditions are checked again                                                       |
+| `exit` (or `quit`) | _none_               | shut down **whenever**, waiting for running activity to finish                                                         |
+| `kill`             | _none_               | shut down **whenever** immediately, terminating all current activity                                                   |
+| `reset_conditions` | cond1 [cond2 [...]]  | reset the state of specified conditions: the _optional_ arguments are names of conditions to be reset (all by default) |
 
-All commands are expected to be followed by a _carriage return_ (`'\n'` must be used when sending the command from a wrapper). The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Typing `exit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_.
+The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Typing `exit` or `quit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_. The only command accepting arguments (at the moment) is `reset_conditions`, that resets the internal state of all configured conditions when no arguments are provided.
+
+> **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions and conditions that are _not recurring_. In the first case, the condition operates as if the interval counter has started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before.
 
 
 ## Build issues

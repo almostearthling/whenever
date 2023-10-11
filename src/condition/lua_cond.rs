@@ -656,13 +656,13 @@ impl Condition for LuaCondition {
             let logftab = lctx.create_table().unwrap();
 
             let id = self.get_id();
-            let name = self.get_name().clone();
+            let name = self.get_name();
             let _ = logftab.set("debug", lctx.create_function(move
                 |_, s: String| Ok(inner_log(id, &name, LogType::Debug, &s)))
                 .unwrap());
 
             let id = self.get_id();
-            let name = self.get_name().clone();
+            let name = self.get_name();
             let _ = logftab.set("trace", lctx.create_function(move
                 |_, s: String| Ok(inner_log(id, &name, LogType::Trace, &s)))
                 .unwrap());

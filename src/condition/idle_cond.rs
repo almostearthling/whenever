@@ -60,7 +60,7 @@ impl IdleCondition {
         interval: &Duration,
     ) -> Self {
         log(LogType::Debug, "INTERVAL_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new interval based condition"));
+            &format!("[INIT/MSG] CONDITION {name}: creating a new idle time based condition"));
         IdleCondition {
             // common members initialization
             // reset ID
