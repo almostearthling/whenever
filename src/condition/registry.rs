@@ -249,6 +249,115 @@ impl ConditionRegistry {
         }
     }
 
+    /// Suspend the named condition if found in the registry
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the name of the condition that must be suspended
+    /// * `wait` - if false an attempt to suspend while busy returns an error
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(true)` - operation succeeded
+    /// * `Ok(false)` - no state change
+    ///
+    /// otherwise returns an error.
+    ///
+    /// # Panics
+    ///
+    /// This function panics when called upon a name that does not exist in
+    /// the registry
+    pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
+        if !self.has_condition(&name) {
+            panic!("condition {name} not found in registry");
+        }
+
+        if !wait && self.condition_busy(name) {
+            Err(Error::new(
+                ErrorKind::WouldBlock,
+                format!("attempt to suspend condition {name} while busy"),
+            ))
+        } else {
+            // both the registry and the conditions are synchronized: to ensure
+            // that the condition registry is not locked while the tests are
+            // executed and while the tasks are running, we only hold a lock on
+            // the condition that we are suspending here, while freeing the rest of
+            // the registry immediately; the single condition remains locked while
+            // performing the suspend, which is the actual reason why we wanted it
+            // to be synchronized
+            let cond;
+            {
+                let clist = self.condition_list.clone();
+                let mut guard = clist.lock().expect("cannot lock condition registry");
+                cond = guard.get_mut(name)
+                    .expect(&format!("cannot retrieve condition {name} for reset"))
+                    .clone();
+            }
+
+            // when we acquire the lock, we can safely reset the condition right
+            // here and return the operation result from the condition itself
+            cond.clone().lock().expect(&format!("condition {name} cannot be locked")).suspend()
+        }
+    }
+
+    /// Resume the named condition if found in the registry
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the name of the condition that must be resumed
+    /// * `wait` - if false an attempt to resume while busy returns an error
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(true)` - operation succeeded
+    /// * `Ok(false)` - no state change
+    ///
+    /// otherwise returns an error.
+    ///
+    /// # Panics
+    ///
+    /// This function panics when called upon a name that does not exist in
+    /// the registry
+    pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
+        if !self.has_condition(&name) {
+            panic!("condition {name} not found in registry");
+        }
+
+        // actually, a suspended condition **cannot** be busy, so the _wait_
+        // parameter should not even be implemented here; however, since the
+        // caller might try to invoke the operation on a condition that is
+        // not suspended, before attempting to modify its state it is still
+        // safer to return this error on busy conditions: a better way to
+        // handle this situation is to return _Ok(false)_ here, because a
+        // busy condition is certainly not suspended
+        if !wait && self.condition_busy(name) {
+            Err(Error::new(
+                ErrorKind::WouldBlock,
+                format!("attempt to suspend condition {name} while busy"),
+            ))
+        } else {
+            // both the registry and the conditions are synchronized: to ensure
+            // that the condition registry is not locked while the tests are
+            // executed and while the tasks are running, we only hold a lock on
+            // the condition that we are suspending here, while freeing the rest of
+            // the registry immediately; the single condition remains locked while
+            // performing the suspend, which is the actual reason why we wanted it
+            // to be synchronized
+            let cond;
+            {
+                let clist = self.condition_list.clone();
+                let mut guard = clist.lock().expect("cannot lock condition registry");
+                cond = guard.get_mut(name)
+                    .expect(&format!("cannot retrieve condition {name} for reset"))
+                    .clone();
+            }
+
+            // when we acquire the lock, we can safely reset the condition right
+            // here and return the operation result from the condition itself
+            cond.clone().lock().expect(&format!("condition {name} cannot be locked")).resume()
+        }
+    }
+
 
     /// Return the list of condition names as owned strings.
     ///

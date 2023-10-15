@@ -1135,13 +1135,21 @@ impl Condition for DbusMethodCondition {
     }
 
     fn suspend(&mut self) -> Result<bool, std::io::Error> {
-        self.suspended = true;
-        Ok(true)
+        if self.suspended {
+            Ok(false)
+        } else {
+            self.suspended = true;
+            Ok(true)
+        }
     }
 
     fn resume(&mut self) -> Result<bool, std::io::Error> {
-        self.suspended = false;
-        Ok(true)
+        if self.suspended {
+            self.suspended = false;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
 

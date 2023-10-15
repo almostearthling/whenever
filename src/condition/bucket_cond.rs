@@ -26,7 +26,7 @@ use crate::constants::*;
 
 
 /// Execution Bucket
-/// 
+///
 /// Contains the names of the conditions that have to be executed at the next
 /// tick. A name can be present only once, so multiple insertions are
 /// automatically rejected (or _debounced_).
@@ -456,13 +456,21 @@ impl Condition for BucketCondition {
     }
 
     fn suspend(&mut self) -> Result<bool, std::io::Error> {
-        self.suspended = true;
-        Ok(true)
+        if self.suspended {
+            Ok(false)
+        } else {
+            self.suspended = true;
+            Ok(true)
+        }
     }
 
     fn resume(&mut self) -> Result<bool, std::io::Error> {
-        self.suspended = false;
-        Ok(true)
+        if self.suspended {
+            self.suspended = false;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
 

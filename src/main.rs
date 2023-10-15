@@ -596,6 +596,91 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
 }
 
 
+// set the suspended state for a condition identified by its name
+fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool> {
+
+    if !CONDITION_REGISTRY.has_condition(name) {
+        log(
+            LogType::Warn,
+            "MAIN condition_state",
+            &format!("[START/ERR] ignoring non existent condition: {name}"),
+        );
+    } else {
+        log(
+            LogType::Debug,
+            "MAIN condition_state",
+            &format!("[START/OK] changing state of condition {name} to {}", {
+                if suspended { "suspended" } else { "active" }
+            }),
+        );
+        if suspended {
+            match CONDITION_REGISTRY.suspend_condition(name, true) {
+                Ok(res) => {
+                    if res {
+                        log(
+                            LogType::Info,
+                            "MAIN suspend_condition",
+                            &format!("[END/OK] condition {name} has been suspended"),
+                        );
+                    } else {
+                        log(
+                            LogType::Warn,
+                            "MAIN suspend_condition",
+                            &format!("[END/FAIL] condition {name} already suspended"),
+                        );
+                    }
+                }
+                Err(e) => {
+                    log(
+                        LogType::Warn,
+                        "MAIN suspend_condition",
+                        &format!("[END/FAIL] error while suspending condition {name}: {e}"),
+                    );
+                }
+            }
+        } else {
+            match CONDITION_REGISTRY.resume_condition(name, true) {
+                Ok(res) => {
+                    if res {
+                        // we also want to reset the condition after it has
+                        // been resumed, otherwise conditions based upon time
+                        // intervals might fire immediately; reset will always
+                        // succeed, so this construct to build the right log
+                        // message is only here for consistency
+                        let info;
+                        if let Ok(res_rst) = CONDITION_REGISTRY.reset_condition(name, true) {
+                            info = if res_rst { "resumed and reset" } else { "resumed" };
+                        } else {
+                            info = "resumed";
+                        }
+                        log(
+                            LogType::Info,
+                            "MAIN resume_condition",
+                            &format!("[END/OK] condition {name} has been {info}"),
+                        );
+                    } else {
+                        log(
+                            LogType::Warn,
+                            "MAIN resume_condition",
+                            &format!("[END/FAIL] condition {name} was not suspended"),
+                        );
+                    }
+                }
+                Err(e) => {
+                    log(
+                        LogType::Warn,
+                        "MAIN resume_condition",
+                        &format!("[END/FAIL] error while resuming condition {name}: {e}"),
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(true)
+}
+
+
 
 // the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
@@ -605,7 +690,7 @@ fn interpret_commands() -> std::io::Result<bool> {
     let rest_time = Duration::from_millis(DEFAULT_SCHEDULER_TICK_SECONDS as u64 * 100);
 
     while let Ok(_n) = stdin().read_line(&mut buffer) {
-        let v: Vec<&str> = buffer.trim().split(char::is_whitespace).collect();
+        let v: Vec<&str> = buffer.trim().split_whitespace().collect();
         let cmd = v[0];
         let args = &v[1..];  // should not panic, but there might be a cleaner way
         match cmd {
@@ -725,6 +810,10 @@ fn interpret_commands() -> std::io::Result<bool> {
                         );
                     }
                 } else {
+                    // NOTE: here `v` is shadowing the outer one, could use
+                    // another name; however creating `v` here allows for
+                    // moving it into the new thread without having problems
+                    // concerning its lifetime
                     let mut v: Vec<String> = Vec::new();
                     for a in args {
                         v.push(String::from(*a));
@@ -734,9 +823,58 @@ fn interpret_commands() -> std::io::Result<bool> {
                         "MAIN command",
                         &format!("[PROC/MSG] attempting to reset conditions: {}", v.join(", ")),
                     );
-                    let _ = reset_conditions(v.as_slice());
+                    // the new thread is to avoid the command line to be
+                    // unavailable while possibly waiting for busy conditions
+                    // to be free before actually performing the requested
+                    // action: the same holds for the other commands below
+                    // that might be blocking when their arguments refer to
+                    // busy items; the choice should be safe because the
+                    // input commands thread has the same lifetime as the
+                    // main thread, so it never ends unless the main thread
+                    // is forcibly terminated - in which case all the spawned
+                    // threads are terminated abruptly as well
+                    thread::spawn(move || { let _ = reset_conditions(v.as_slice()); });
                 }
             }
+            "suspend_condition" => {
+                if args.len() != 1 {
+                    log(
+                        LogType::Error,
+                        "MAIN command",
+                        &format!("[PROC/FAIL] invalid number of arguments for command `suspend_condition`"),
+                    );
+                } else {
+                    log(
+                        LogType::Debug,
+                        "MAIN command",
+                        &format!("[PROC/MSG] attempting to suspend condition {}", args[0]),
+                    );
+                    // same considerations as above
+                    let arg = args[0].to_string();
+                    thread::spawn(move || { let _ = set_suspended_condition(&arg, true); });
+                }
+            }
+            "resume_condition" => {
+                if args.len() != 1 {
+                    log(
+                        LogType::Error,
+                        "MAIN command",
+                        &format!("[PROC/FAIL] invalid number of arguments for command `resume_condition`"),
+                    );
+                } else {
+                    log(
+                        LogType::Debug,
+                        "MAIN command",
+                        &format!("[PROC/MSG] attempting to resume condition {}", args[0]),
+                    );
+                    // same considerations as above
+                    // condition is freed and the command can be executed
+                    let arg = args[0].to_string();
+                    thread::spawn(move || { let _ = set_suspended_condition(&arg, false); });
+                }
+            }
+            // ...
+
             "" => { /* do nothing here */ }
             t => {
                 log(
