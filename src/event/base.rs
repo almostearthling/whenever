@@ -22,7 +22,7 @@
 use crate::common::logging::{log, LogType};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
-
+use crate::constants::*;
 
 
 pub trait Event: Send + Sync {
@@ -73,8 +73,8 @@ pub trait Event: Send + Sync {
                 } else {
                     Err(std::io::Error::new(
                         std::io::ErrorKind::Unsupported,
-                        format!("cannot assign condition {cond_name} (type `{s}`) to an event",
-                    )))
+                        ERR_EVENT_INVALID_COND_TYPE,
+                    ))
                 }
             } else {
                 panic!("could not retrieve type of condition {cond_name}");

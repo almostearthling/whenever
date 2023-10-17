@@ -46,7 +46,6 @@
 //! organize communication to the user in a friendlier way.
 
 
-
 /// The application name
 pub const APP_NAME: &str = "whenever";
 
@@ -69,7 +68,7 @@ pub mod logging {
     use nu_ansi_term::Style;
     use log::Record;
     use serde_json::json;
-    use super::APP_NAME;
+    use crate::constants::{APP_NAME, ERR_LOGGER_NOT_INITIALIZED};
 
     // time stamp format that is used by the provided format functions.
     const NOW_FMT: &str = "%Y-%m-%dT%H:%M:%S%.3f";
@@ -236,14 +235,14 @@ pub mod logging {
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Unsupported,
-                    "could not initialize logger",
+                    ERR_LOGGER_NOT_INITIALIZED,
                 ));
             }
         }
         if let Err(_e) = logger.unwrap().start() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Unsupported,
-                "could not initialize logger",
+                ERR_LOGGER_NOT_INITIALIZED,
             ));
         }
 

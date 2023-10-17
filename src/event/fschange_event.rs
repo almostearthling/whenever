@@ -159,7 +159,7 @@ impl FilesystemChangeEvent {
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<FilesystemChangeEvent> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid event configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_EVENT_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 

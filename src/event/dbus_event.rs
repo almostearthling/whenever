@@ -227,7 +227,7 @@ impl DbusMessageEvent {
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<DbusMessageEvent> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid event configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_EVENT_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 
@@ -685,11 +685,7 @@ impl Event for DbusMessageEvent {
         if let Err(e) = rule {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!(
-                    "invalid match rule for event {}: {}",
-                    self.event_name,
-                    e.to_string(),
-                ),
+                format!("{ERR_EVENT_INVALID_MATCH_RULE}: {}", e.to_string()),
             ));
         }
         let rule = rule.unwrap();

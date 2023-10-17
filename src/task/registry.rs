@@ -25,6 +25,7 @@ use unique_id::sequence::SequenceGenerator;
 
 use super::base::Task;
 use crate::common::logging::{log, LogType};
+use crate::constants::*;
 
 
 // module-wide values
@@ -157,7 +158,7 @@ impl TaskRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(Errorkind::Unsupported, _)` - the task could not be removed
+    /// * `Error(ErrorKind::Unsupported, _)` - the task could not be removed
     /// * `Ok(None)` - task not found in registry
     /// * `Ok(Task)` - the removed (_pulled out_) `Task` on success
     ///
@@ -181,7 +182,8 @@ impl TaskRegistry {
             } else {
                 Err(Error::new(
                     ErrorKind::Unsupported,
-                    format!("cannot pull task {name} back from registry")))
+                    ERR_TASKREG_CANNOT_PULL_TASK,
+                ))
             }
         } else {
             Ok(None)

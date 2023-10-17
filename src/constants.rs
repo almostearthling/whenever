@@ -8,9 +8,11 @@
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use crate::common::APP_NAME;
 use std::time::Duration;
 
+
+/// The application name
+pub const APP_NAME: &str = "whenever";
 
 
 #[allow(dead_code)]
@@ -21,9 +23,28 @@ pub const ERR_INVALID_TASK_CONFIG: &str = "invalid task configuration";
 pub const ERR_INVALID_COND_CONFIG: &str = "invalid condition configuration";
 pub const ERR_INVALID_EVENT_CONFIG: &str = "invalid event configuration";
 pub const ERR_TASKREG_TASK_NOT_ADDED: &str = "could not add task to the registry";
+pub const ERR_TASKREG_CANNOT_PULL_TASK: &str = "could not pull task out from the registry";
 pub const ERR_CONDREG_COND_NOT_ADDED: &str = "could not add condition to the registry";
+pub const ERR_CONDREG_CANNOT_PULL_COND: &str = "could not pull condition out from the registry";
+pub const ERR_CONDREG_COND_RESET_BUSY: &str = "attempt to reset condition while busy";
+pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition while busy";
+pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition while busy";
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
+pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
 
+pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
+pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";
+pub const ERR_COND_CANNOT_SET_CHECKED: &str = "condition could not set checked status";
+pub const ERR_COND_TASK_NOT_ADDED: &str = "condition could not add task";
+pub const ERR_COND_CANNOT_CONNECT_TO: &str = "could not estabilish connection to";
+
+pub const ERR_EVENT_INVALID_MATCH_RULE: &str = "invalid event match rule";
+pub const ERR_EVENT_INVALID_COND_TYPE: &str = "invalid condition type for assignment to event";
+
+pub const ERR_TIMEOUT_REACHED: &str = "timeout reached";
+pub const ERR_UNKNOWN_EXITSTATUS: &str = "unknown exit status";
+pub const ERR_ALREADY_RUNNING: &str = "another instance of the scheduler is already running";
+pub const ERR_LOGGER_NOT_INITIALIZED: &str = "could not initialize logger";
 
 pub const ERR_INVALID_CFG_ENTRY: &str = "invalid configuration entry";
 pub const ERR_MISSING_PARAMETER: &str = "missing parameter";
@@ -53,6 +74,7 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 pub const ERR_INVALID_EVENT_NAME: &str = "invalid value for event name";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
+
 
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";

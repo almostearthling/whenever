@@ -500,7 +500,7 @@ impl DbusMethodCondition {
         fn _invalid_cfg(key: & str, value: &str, message: &str) -> std::io::Result<DbusMethodCondition> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid condition configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 
@@ -1278,7 +1278,7 @@ impl Condition for DbusMethodCondition {
         if conn.is_err() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::NotConnected,
-                format!("could not estabilish connection to {bus}")
+                format!("{ERR_COND_CANNOT_CONNECT_TO} {bus}"),
             ));
         }
         let conn = conn.unwrap();

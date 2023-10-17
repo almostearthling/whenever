@@ -333,7 +333,7 @@ impl TimeCondition {
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<TimeCondition> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid condition configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 
@@ -767,7 +767,8 @@ impl Condition for TimeCondition {
             return Err(
                 std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    "tick size invalid or not set"));
+                    ERR_INVALID_TICK_SECONDS,
+                ));
         }
 
         let dt = Local::now();

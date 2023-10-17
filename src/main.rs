@@ -1,11 +1,10 @@
 //! # whenever
 //!
-//! A simple multiplatform background job launcher relying on time schedule and
-//! event catching: a 100% Rust successor to the Python based
-//! [When](https://github.com/almostearthling/when-command) utility.
-
-// references:
-//  - time based scheduler crate: https://docs.rs/clokwerk/latest/clokwerk/
+//! A simple multiplatform background job launcher based upon verification of
+//! various types of conditions.
+//!
+//! It is intended as a 100% Rust successor to the core part of the Python
+//! based [When](https://github.com/almostearthling/when-command) utility.
 
 
 use std::fs;
@@ -93,7 +92,7 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
     if !instance.is_single() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::AlreadyExists,
-            format!("an instance of {APP_NAME} is already running"),
+            ERR_ALREADY_RUNNING,
         ));
     }
 
@@ -203,7 +202,7 @@ fn configure(config_file: &str) -> std::io::Result<CfgMap> {
     // helper to create a specific error
     fn _c_error_invalid_config(key: &str) -> std::io::Error {
         std::io::Error::new(std::io::ErrorKind::InvalidInput,
-            String::from(format!("{}:{key}", ERR_INVALID_CONFIG_FILE))
+            String::from(format!("{ERR_INVALID_CONFIG_FILE}:{key}"))
             .as_str())
     }
 

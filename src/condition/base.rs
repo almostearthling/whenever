@@ -26,6 +26,7 @@ use std::time::Instant;
 use std::io::{Error, ErrorKind};
 use crate::common::logging::{log, LogType};
 
+use crate::constants::*;
 use crate::task::registry::TaskRegistry;
 
 
@@ -227,11 +228,7 @@ pub trait Condition: Send {
                     "[PROC/FAIL] aborting: condition could not reset success status"));
                 return Err(Error::new(
                     ErrorKind::Unsupported,
-                    format!(
-                        "condition {}/[{}] could not reset success status",
-                        self.get_name(),
-                        self.get_id(),
-                    )
+                    ERR_COND_CANNOT_RESET,
                 ));
             }
             self.log(LogType::Debug, &format!("[PROC/OK] checking condition"));
@@ -248,11 +245,7 @@ pub trait Condition: Send {
                                 "[PROC/FAIL] aborting: condition could not be set to succeeded"));
                             return Err(Error::new(
                                 ErrorKind::Unsupported,
-                                format!(
-                                    "condition {}/[{}] could not be set to succeeded",
-                                    self.get_name(),
-                                    self.get_id(),
-                                )
+                                ERR_COND_CANNOT_SET_SUCCESS,
                             ));
                         }
                     } else {
@@ -270,11 +263,7 @@ pub trait Condition: Send {
                     "[PROC/FAIL] aborting: condition could not be set to checked"));
                 return Err(Error::new(
                     ErrorKind::Unsupported,
-                    format!(
-                        "condition {}/[{}] could not be set to checked",
-                        self.get_name(),
-                        self.get_id(),
-                    )
+                    ERR_COND_CANNOT_SET_CHECKED,
                 ));
             }
         }
@@ -302,24 +291,16 @@ pub trait Condition: Send {
                         "[INIT/FAIL] could not add task {name}: not found in registry"));
                     return Err(Error::new(
                         ErrorKind::Unsupported,
-                        format!(
-                            "condition {}/[{}] task {name} not added: not found in registry",
-                            self.get_name(),
-                            self.get_id(),
-                        )
+                        ERR_COND_TASK_NOT_ADDED,
                     ));
                 }
             }
             None => {
                 self.log(LogType::Error, &format!(
-                    "[INIT/FAIL] could not add task {name}: registry not sssigned"));
+                    "[INIT/FAIL] could not add task {name}: registry not assigned"));
                 return Err(Error::new(
                     ErrorKind::Unsupported,
-                    format!(
-                        "condition {}/[{}] task {name} not added: registry not assigned",
-                        self.get_name(),
-                        self.get_id(),
-                    )
+                    ERR_COND_TASK_NOT_ADDED,
                 ));
             }
         }

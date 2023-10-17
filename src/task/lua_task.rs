@@ -195,7 +195,7 @@ impl LuaTask {
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<LuaTask> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid task configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_TASK_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 

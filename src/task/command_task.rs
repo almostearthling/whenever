@@ -343,7 +343,7 @@ impl CommandTask {
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<CommandTask> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid task configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_TASK_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 
@@ -783,7 +783,9 @@ impl Task for CommandTask {
                                 let _ = proc.kill();
                             }
                             return Err(std::io::Error::new(
-                                std::io::ErrorKind::TimedOut, "timeout reached"))
+                                std::io::ErrorKind::TimedOut,
+                                ERR_TIMEOUT_REACHED,
+                            ))
                         }
                     }
                 } else {
@@ -828,7 +830,9 @@ impl Task for CommandTask {
                 ))
             } else {
                 Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported, "unknown exit status"))
+                    std::io::ErrorKind::Unsupported,
+                    ERR_UNKNOWN_EXITSTATUS,
+                ))
             }
         }
 
@@ -911,7 +915,7 @@ impl Task for CommandTask {
                                 self.command_line()));
                             proc_exit = Err(PopenError::from(std::io::Error::new(
                                 ErrorKind::TimedOut,
-                                "timeout reached",
+                                ERR_TIMEOUT_REACHED,
                             )));
                         }
                         k => {

@@ -19,6 +19,7 @@ use unique_id::sequence::SequenceGenerator;
 
 use super::base::Condition;
 use crate::common::logging::{log, LogType};
+use crate::constants::*;
 
 
 // module-wide values
@@ -167,7 +168,7 @@ impl ConditionRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(Errorkind::Unsupported, _)` - the condition could not be removed
+    /// * `Error(ErrorKind::Unsupported, _)` - the condition could not be removed
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Condition)` - the removed (_pulled out_) `Condition` on success
     ///
@@ -193,7 +194,8 @@ impl ConditionRegistry {
             } else {
                 Err(Error::new(
                     ErrorKind::Unsupported,
-                    format!("cannot pull condition {name} back from registry")))
+                    ERR_CONDREG_CANNOT_PULL_COND,
+                ))
             }
         } else {
             Ok(None)
@@ -224,7 +226,7 @@ impl ConditionRegistry {
         if !wait && self.condition_busy(name) {
             Err(Error::new(
                 ErrorKind::WouldBlock,
-                format!("attempt to reset condition {name} while busy"),
+                ERR_CONDREG_COND_RESET_BUSY,
             ))
         } else {
             // both the registry and the conditions are synchronized: to ensure
@@ -275,7 +277,7 @@ impl ConditionRegistry {
         if !wait && self.condition_busy(name) {
             Err(Error::new(
                 ErrorKind::WouldBlock,
-                format!("attempt to suspend condition {name} while busy"),
+                ERR_CONDREG_COND_SUSPEND_BUSY,
             ))
         } else {
             // both the registry and the conditions are synchronized: to ensure
@@ -333,7 +335,7 @@ impl ConditionRegistry {
         if !wait && self.condition_busy(name) {
             Err(Error::new(
                 ErrorKind::WouldBlock,
-                format!("attempt to suspend condition {name} while busy"),
+                ERR_CONDREG_COND_RESUME_BUSY,
             ))
         } else {
             // both the registry and the conditions are synchronized: to ensure

@@ -148,7 +148,7 @@ impl IdleCondition {
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<IdleCondition> {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid condition configuration: ({key}={value}) {message}"),
+                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
             ))
         }
 
