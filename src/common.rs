@@ -84,7 +84,7 @@ pub mod logging {
             w,
             "[{}] ({APP_NAME}) {} {}",
             now.format(NOW_FMT),
-            format!("{:5}", record.level()).to_string(),
+            format!("{:5}", record.level()),
             &record.args(),
         )
     }
@@ -102,7 +102,7 @@ pub mod logging {
                 "time": now.format(NOW_FMT_FULL).to_string(),
                 "level": record.level().to_string(),
                 "message": &record.args().to_string(),
-            }).to_string()
+            })
         )
     }
 
@@ -182,7 +182,7 @@ pub mod logging {
                     };
                     let mut pb = PathBuf::from(&fname);
                     if pb.parent().is_none()
-                    || pb.parent().unwrap().to_str().unwrap_or("").len() == 0 {
+                    || pb.parent().unwrap().to_str().unwrap_or("").is_empty() {
                         pb = {
                             let mut dir = PathBuf::from(".");
                             dir.push(pb);

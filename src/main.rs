@@ -19,10 +19,7 @@ use lazy_static::lazy_static;
 
 use clokwerk::{Scheduler, TimeUnits};
 use cfgmap::{CfgValue, CfgMap};
-use toml;
 use rand::{thread_rng, RngCore};
-
-use ctrlc;
 use single_instance::SingleInstance;
 
 // the modules defined and used in this application
@@ -112,7 +109,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
         log(
             LogType::Trace,
             "MAIN scheduler_tick",
-            &format!("[PROC/MSG] application is paused: tick skipped"),
+            "[PROC/MSG] application is paused: tick skipped",
         );
         return Ok(false);
     }
@@ -201,14 +198,15 @@ fn configure(config_file: &str) -> std::io::Result<CfgMap> {
 
     // helper to create a specific error
     fn _c_error_invalid_config(key: &str) -> std::io::Error {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput,
-            String::from(format!("{ERR_INVALID_CONFIG_FILE}:{key}"))
-            .as_str())
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("{ERR_INVALID_CONFIG_FILE}:{key}"),
+        )
     }
 
     let mut config_map: CfgMap;     // to be initialized below
 
-    match toml::from_str(&fs::read_to_string(config_file)?.as_str()) {
+    match toml::from_str(fs::read_to_string(config_file)?.as_str()) {
         Ok(toml_text) => {
             config_map = CfgMap::from_toml(toml_text);
         }
@@ -222,13 +220,13 @@ fn configure(config_file: &str) -> std::io::Result<CfgMap> {
 
     let cur_key = "scheduler_tick_seconds";
     let mut scheduler_tick_seconds = DEFAULT_SCHEDULER_TICK_SECONDS;
-    if let Some(item) = config_map.get(&cur_key) {
+    if let Some(item) = config_map.get(cur_key) {
         if !item.is_int() {
-            return Err(_c_error_invalid_config(&cur_key));
+            return Err(_c_error_invalid_config(cur_key));
         }
         scheduler_tick_seconds = *item.as_int().unwrap();
         if scheduler_tick_seconds < 1 {
-            return Err(_c_error_invalid_config(&cur_key));
+            return Err(_c_error_invalid_config(cur_key));
         }
     }
 
@@ -260,45 +258,43 @@ fn configure_tasks(
                         std::io::ErrorKind::InvalidData,
                         ERR_INVALID_TASK_CONFIG,
                     ));
-                } else {
-                    if let Some(task_type) = entry.as_map().unwrap().get("type") {
-                        let task_type = task_type.as_str().unwrap();
-                        match task_type.as_str() {
-                            "command" => {
-                                let task = task::command_task::CommandTask::load_cfgmap(
-                                    entry.as_map().unwrap())?;
-                                if !task_registry.add_task(Box::new(task))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_TASKREG_TASK_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "lua" => {
-                                let task = task::lua_task::LuaTask::load_cfgmap(
-                                    entry.as_map().unwrap())?;
-                                if !task_registry.add_task(Box::new(task))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_TASKREG_TASK_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            // ...
-
-                            _ => {
+                } else if let Some(task_type) = entry.as_map().unwrap().get("type") {
+                    let task_type = task_type.as_str().unwrap();
+                    match task_type.as_str() {
+                        "command" => {
+                            let task = task::command_task::CommandTask::load_cfgmap(
+                                entry.as_map().unwrap())?;
+                            if !task_registry.add_task(Box::new(task))? {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    ERR_INVALID_TASK_TYPE,
+                                    ERR_TASKREG_TASK_NOT_ADDED,
                                 ));
                             }
                         }
-                    } else {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            ERR_INVALID_TASK_CONFIG,
-                        ));
+                        "lua" => {
+                            let task = task::lua_task::LuaTask::load_cfgmap(
+                                entry.as_map().unwrap())?;
+                            if !task_registry.add_task(Box::new(task))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_TASKREG_TASK_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        // ...
+
+                        _ => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                ERR_INVALID_TASK_TYPE,
+                            ));
+                        }
                     }
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
                 }
             }
         }
@@ -325,99 +321,97 @@ fn configure_conditions(
                         std::io::ErrorKind::InvalidData,
                         ERR_INVALID_COND_CONFIG,
                     ));
-                } else {
-                    if let Some(condition_type) = entry.as_map().unwrap().get("type") {
-                        let condition_type = condition_type.as_str().unwrap();
-                        match condition_type.as_str() {
-                            "interval" => {
-                                let condition = condition::interval_cond::IntervalCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "idle" => {
-                                let condition = condition::idle_cond::IdleCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "time" => {
-                                // this is peculiar because it requires extra initialization after loading from map
-                                let mut condition = condition::time_cond::TimeCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                let _ = condition.set_tick_duration(tick_secs)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "command" => {
-                                let condition = condition::command_cond::CommandCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "lua" => {
-                                let condition = condition::lua_cond::LuaCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "dbus" => {
-                                let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            "bucket" | "event" => {
-                                // this is peculiar because it requires extra initialization after loading from map
-                                let mut condition = condition::bucket_cond::BucketCondition::load_cfgmap(
-                                    entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                                let _ = condition.set_execution_bucket(&EXECUTION_BUCKET)?;
-                                if !cond_registry.add_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_CONDREG_COND_NOT_ADDED,
-                                    ));
-                                }
-                            }
-                            // ...
-
-                            _ => {
+                } else if let Some(condition_type) = entry.as_map().unwrap().get("type") {
+                    let condition_type = condition_type.as_str().unwrap();
+                    match condition_type.as_str() {
+                        "interval" => {
+                            let condition = condition::interval_cond::IntervalCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    ERR_INVALID_COND_TYPE,
+                                    ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
                         }
-                    } else {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            ERR_INVALID_COND_CONFIG,
-                        ));
+                        "idle" => {
+                            let condition = condition::idle_cond::IdleCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_CONDREG_COND_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        "time" => {
+                            // this is peculiar because it requires extra initialization after loading from map
+                            let mut condition = condition::time_cond::TimeCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            let _ = condition.set_tick_duration(tick_secs)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_CONDREG_COND_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        "command" => {
+                            let condition = condition::command_cond::CommandCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_CONDREG_COND_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        "lua" => {
+                            let condition = condition::lua_cond::LuaCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_CONDREG_COND_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        "dbus" => {
+                            let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_CONDREG_COND_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        "bucket" | "event" => {
+                            // this is peculiar because it requires extra initialization after loading from map
+                            let mut condition = condition::bucket_cond::BucketCondition::load_cfgmap(
+                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
+                            let _ = condition.set_execution_bucket(&EXECUTION_BUCKET)?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_CONDREG_COND_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        // ...
+
+                        _ => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                ERR_INVALID_COND_TYPE,
+                            ));
+                        }
                     }
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_COND_CONFIG,
+                    ));
                 }
             }
         }
@@ -447,95 +441,90 @@ fn configure_events(
                         std::io::ErrorKind::InvalidData,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
-                } else {
-                    if let Some(event_type) = entry.as_map().unwrap().get("type") {
-                        let event_type = event_type.as_str().unwrap();
-                        match event_type.as_str() {
-                            "fschange" => {
-                                let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
-                                    entry.as_map().unwrap(), &cond_registry, &bucket)?;
-                                let event_name = event.get_name();
-                                if !event_registry.add_event(Box::new(event))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_EVENTREG_EVENT_NOT_ADDED,
-                                    ));
-                                } else {
-                                    if let Ok(r) = event_registry.install_service(&event_name) {
-                                        if let Some(h) = r {
-                                            res.push(h);
-                                            log(
-                                                LogType::Trace,
-                                                "MAIN listener",
-                                                &format!("[INIT/MSG] service installed for event {event_name} (dedicated thread)"),
-                                            )
-                                        } else {
-                                            log(
-                                                LogType::Trace,
-                                                "MAIN listener",
-                                                &format!("[INIT/MSG] service installed for event {event_name}"),
-                                            )
-                                        }
-                                    } else {
-                                        return Err(std::io::Error::new(
-                                            std::io::ErrorKind::InvalidData,
-                                            ERR_EVENTREG_EVENT_NOT_ADDED,
-                                        ));
-                                    }
-                                }
-                            }
-                            "dbus" => {
-                                let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
-                                    entry.as_map().unwrap(), &cond_registry, &bucket)?;
-                                let event_name = event.get_name();
-                                if !event_registry.add_event(Box::new(event))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
-                                        ERR_EVENTREG_EVENT_NOT_ADDED,
-                                    ));
-                                } else {
-                                    if let Ok(r) = event_registry.install_service(&event_name) {
-                                        if let Some(h) = r {
-                                            res.push(h);
-                                            log(
-                                                LogType::Trace,
-                                                "MAIN listener",
-                                                &format!("[INIT/MSG] service installed for event {event_name} (dedicated thread)"),
-                                            )
-                                        } else {
-                                            log(
-                                                LogType::Trace,
-                                                "MAIN listener",
-                                                &format!("[INIT/MSG] service installed for event {event_name}"),
-                                            )
-                                        }
-                                    } else {
-                                        return Err(std::io::Error::new(
-                                            std::io::ErrorKind::InvalidData,
-                                            ERR_EVENTREG_EVENT_NOT_ADDED,
-                                        ));
-                                    }
-                                }
-                            }
-                            // ...
-
-                            _ => {
+                } else if let Some(event_type) = entry.as_map().unwrap().get("type") {
+                    let event_type = event_type.as_str().unwrap();
+                    match event_type.as_str() {
+                        "fschange" => {
+                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
+                                entry.as_map().unwrap(), cond_registry, bucket)?;
+                            let event_name = event.get_name();
+                            if !event_registry.add_event(Box::new(event))? {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    ERR_INVALID_EVENT_TYPE,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
+                            } else if let Ok(r) = event_registry.install_service(&event_name) {
+                                if let Some(h) = r {
+                                    res.push(h);
+                                    log(
+                                        LogType::Trace,
+                                        "MAIN listener",
+                                        &format!("[INIT/MSG] service installed for event {event_name} (dedicated thread)"),
+                                    )
+                                } else {
+                                    log(
+                                        LogType::Trace,
+                                        "MAIN listener",
+                                        &format!("[INIT/MSG] service installed for event {event_name}"),
+                                    )
+                                }
+                            } else {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             }
                         }
-                    } else {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            ERR_INVALID_EVENT_CONFIG,
-                        ));
+                        "dbus" => {
+                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                                entry.as_map().unwrap(), cond_registry, bucket)?;
+                            let event_name = event.get_name();
+                            if !event_registry.add_event(Box::new(event))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
+                            } else if let Ok(r) = event_registry.install_service(&event_name) {
+                                if let Some(h) = r {
+                                    res.push(h);
+                                    log(
+                                        LogType::Trace,
+                                        "MAIN listener",
+                                        &format!("[INIT/MSG] service installed for event {event_name} (dedicated thread)"),
+                                    )
+                                } else {
+                                    log(
+                                        LogType::Trace,
+                                        "MAIN listener",
+                                        &format!("[INIT/MSG] service installed for event {event_name}"),
+                                    )
+                                }
+                            } else {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        // ...
+
+                        _ => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                ERR_INVALID_EVENT_TYPE,
+                            ));
+                        }
                     }
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_EVENT_CONFIG,
+                    ));
                 }
             }
         }
     }
+
     Ok(res)
 }
 
@@ -689,28 +678,28 @@ fn interpret_commands() -> std::io::Result<bool> {
     let rest_time = Duration::from_millis(DEFAULT_SCHEDULER_TICK_SECONDS as u64 * 100);
 
     while let Ok(_n) = stdin().read_line(&mut buffer) {
-        let v: Vec<&str> = buffer.trim().split_whitespace().collect();
+        let v: Vec<&str> = buffer.split_whitespace().collect();
         let cmd = v[0];
         let args = &v[1..];  // should not panic, but there might be a cleaner way
         match cmd {
             "exit" | "quit" => {
-                if args.len() > 0 {
+                if !args.is_empty() {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                        "[PROC/ERR] command `{cmd}` does not support arguments",
                     );
                 } else {
                     log(
                         LogType::Warn,
                         "MAIN command",
-                        &format!("[PROC/MSG] exit request received: terminating application"),
+                        "[PROC/MSG] exit request received: terminating application",
                     );
                     *APPLICATION_MUST_EXIT.lock().unwrap() = true;
                 }
             }
             "kill" => {
-                if args.len() > 0 {
+                if !args.is_empty() {
                     log(
                         LogType::Error,
                         "MAIN command",
@@ -720,76 +709,72 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Warn,
                         "MAIN command",
-                        &format!("[PROC/MSG] kill request received: terminating application immediately"),
+                        "[PROC/MSG] kill request received: terminating application immediately",
                     );
                     *APPLICATION_MUST_EXIT.lock().unwrap() = true;
                     *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
                 }
             }
             "pause" => {
-                if args.len() > 0 {
+                if !args.is_empty() {
                     log(
                         LogType::Error,
                         "MAIN command",
                         &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
                     );
+                } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    log(
+                        LogType::Warn,
+                        "MAIN command",
+                        "[PROC/FAIL] ignoring pause request: scheduler already paused",
+                    );
                 } else {
-                    if *APPLICATION_IS_PAUSED.lock().unwrap() {
-                        log(
-                            LogType::Warn,
-                            "MAIN command",
-                            &format!("[PROC/FAIL] ignoring pause request: scheduler already paused"),
-                        );
-                    } else {
-                        log(
-                            LogType::Debug,
-                            "MAIN command",
-                            &format!("[PROC/MSG] pausing scheduler ticks: conditions not checked until resume"),
-                        );
-                        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
-                    }
+                    log(
+                        LogType::Debug,
+                        "MAIN command",
+                        "[PROC/MSG] pausing scheduler ticks: conditions not checked until resume",
+                    );
+                    *APPLICATION_IS_PAUSED.lock().unwrap() = true;
                 }
             }
             "resume" => {
-                if args.len() > 0 {
+                if !args.is_empty() {
                     log(
                         LogType::Error,
                         "MAIN command",
                         &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
                     );
+                } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    log(
+                        LogType::Debug,
+                        "MAIN command",
+                        "[PROC/MSG] resuming scheduler ticks and condition checks",
+                    );
+                    // clear execution bucket because events may still have
+                    // occurred and maybe the user wanted to also pause event
+                    // based conditions (NOTE: this is questionable, since
+                    // multiple insertions are debounced it is probably more
+                    // correct to just obey instructions and verify conditions
+                    // associated to these events: commented out for now)
+                    // EXECUTION_BUCKET.clear();
+                    *APPLICATION_IS_PAUSED.lock().unwrap() = false;
                 } else {
-                    if *APPLICATION_IS_PAUSED.lock().unwrap() {
-                        log(
-                            LogType::Debug,
-                            "MAIN command",
-                            &format!("[PROC/MSG] resuming scheduler ticks and condition checks"),
-                        );
-                        // clear execution bucket because events may still have
-                        // occurred and maybe the user wanted to also pause event
-                        // based conditions (NOTE: this is questionable, since
-                        // multiple insertions are debounced it is probably more
-                        // correct to just obey instructions and verify conditions
-                        // associated to these events: commented out for now)
-                        // EXECUTION_BUCKET.clear();
-                        *APPLICATION_IS_PAUSED.lock().unwrap() = false;
-                    } else {
-                        log(
-                            LogType::Warn,
-                            "MAIN command",
-                            &format!("[PROC/FAIL] ignoring resume request: scheduler is not paused"),
-                        );
-                    }
+                    log(
+                        LogType::Warn,
+                        "MAIN command",
+                        "[PROC/FAIL] ignoring resume request: scheduler is not paused",
+                    );
                 }
             }
             "reset_conditions" => {
-                if args.len() == 0 {
+                if args.is_empty() {
                     log(
                         LogType::Trace,
                         "MAIN command",
-                        &format!("[PROC/MSG] no names provided: attempt to reset all conditions"),
+                        "[PROC/MSG] no names provided: attempt to reset all conditions",
                     );
                     if let Some(v) = CONDITION_REGISTRY.condition_names() {
-                        if v.len() > 0 {
+                        if !v.is_empty() {
                             let _ = reset_conditions(v.as_slice());
                         } else {
                             // this branch is never executed: when there are
@@ -798,14 +783,14 @@ fn interpret_commands() -> std::io::Result<bool> {
                             log(
                                 LogType::Debug,
                                 "MAIN command",
-                                &format!("[PROC/MSG] there are no conditions to reset"),
+                                "[PROC/MSG] there are no conditions to reset",
                             );
                         }
                     } else {
                         log(
                             LogType::Debug,
                             "MAIN command",
-                            &format!("[PROC/MSG] no conditions found in registry for reset"),
+                            "[PROC/MSG] no conditions found in registry for reset",
                         );
                     }
                 } else {
@@ -840,7 +825,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/FAIL] invalid number of arguments for command `suspend_condition`"),
+                        "[PROC/FAIL] invalid number of arguments for command `suspend_condition`",
                     );
                 } else {
                     log(
@@ -858,7 +843,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/FAIL] invalid number of arguments for command `resume_condition`"),
+                        "[PROC/FAIL] invalid number of arguments for command `resume_condition`",
                     );
                 } else {
                     log(
@@ -986,7 +971,7 @@ fn main() {
         log(
             LogType::Warn,
             "MAIN exit",
-            &format!("[END/MSG] caught interruption request: terminating application"),
+            "[END/MSG] caught interruption request: terminating application",
         );
         *APPLICATION_MUST_EXIT.lock().unwrap() = true;
     }));
@@ -1030,8 +1015,8 @@ fn main() {
         &EXECUTION_BUCKET,
     ));
 
-    // add a thread for stdin interpreter
-    _handles.push(thread::spawn(|| interpret_commands()));
+    // add a thread for stdin interpreter (no args function thus no closure)
+    _handles.push(thread::spawn(interpret_commands));
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
@@ -1063,14 +1048,14 @@ fn main() {
                 log(
                     LogType::Warn,
                     "MAIN exit",
-                    &format!("[END/OK] application exiting: all activity will be forced to stop"),
+                    "[END/OK] application exiting: all activity will be forced to stop",
                 );
                 break;
             } else {
                 log(
                     LogType::Info,
                     "MAIN exit",
-                    &format!("[END/OK] application exiting: waiting for activity to finish"),
+                    "[END/OK] application exiting: waiting for activity to finish",
                 );
                 // wait for all currently running conditions to finish their
                 // tick: during this time no `sched.run_pending();` is run, to
@@ -1090,7 +1075,7 @@ fn main() {
     log(
         LogType::Info,
         "MAIN exit",
-        &format!("[END/OK] application exit: main process terminating successfully"),
+        "[END/OK] application exit: main process terminating successfully",
     );
     std::process::exit(0);
 

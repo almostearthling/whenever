@@ -107,19 +107,19 @@ impl LuaTask {
     /// Add a variable to check for a string value
     pub fn add_check_string(mut self, varname: &str, value: &str) -> Self {
         self.expected.insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
-        return self;
+        self
     }
 
     /// Add a variable to check for a number (f64) value
     pub fn add_check_number(mut self, varname: &str, value: f64) -> Self {
         self.expected.insert(varname.to_string(), LuaValue::LuaNumber(value));
-        return self;
+        self
     }
 
     /// Add a variable to check for a boolean value
     pub fn add_check_bool(mut self, varname: &str, value: bool) -> Self {
         self.expected.insert(varname.to_string(), LuaValue::LuaBoolean(value));
-        return self;
+        self
     }
 
     /// Constructor modifier that states that all variable values has to be
@@ -127,7 +127,7 @@ impl LuaTask {
     /// checks succeed then the result is successful.
     pub fn checks_all(mut self, yes: bool) -> Self {
         self.expect_all = yes;
-        return self;
+        self
     }
 
 
@@ -199,13 +199,13 @@ impl LuaTask {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "script",
             "expect_all",
             "expected_results",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -216,21 +216,21 @@ impl LuaTask {
         // check type
         let cur_key = "type";
         let task_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_TYPE);
             }
             task_type = item.as_str().unwrap().to_owned();
             if task_type != "lua" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &task_type,
                     ERR_INVALID_TASK_TYPE);
             }
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -238,21 +238,21 @@ impl LuaTask {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_TASK_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_TASK_NAME);
             }
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -260,16 +260,16 @@ impl LuaTask {
         // common mandatory parameter retrieval
         let cur_key = "script";
         let script;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             script = item.as_str().unwrap().to_owned();
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -289,7 +289,7 @@ impl LuaTask {
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_bool() {
                     return _invalid_cfg(
-                        &cur_key,
+                        cur_key,
                         STR_UNKNOWN_VALUE,
                         ERR_INVALID_PARAMETER);
                 } else {
@@ -303,8 +303,8 @@ impl LuaTask {
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_map() {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_PARAMETER);
                 } else {
                     let map = item.as_map().unwrap();
@@ -312,32 +312,30 @@ impl LuaTask {
                     for name in map.keys() {
                         if !RE_VAR_NAME.is_match(name) {
                             return _invalid_cfg(
-                                &cur_key,
-                                &item.as_str().unwrap(),
+                                cur_key,
+                                item.as_str().unwrap(),
                                 ERR_INVALID_VAR_NAME);
-                        } else {
-                            if let Some(value) = map.get(name) {
-                                if value.is_int() || value.is_float() {
-                                    let v = value.as_float().unwrap();
-                                    vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
-                                } else if value.is_bool() {
-                                    let v = value.as_bool().unwrap();
-                                    vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
-                                } else if value.is_str() {
-                                    let v = value.as_str().unwrap();
-                                    vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
-                                } else {
-                                    return _invalid_cfg(
-                                        &cur_key,
-                                        STR_UNKNOWN_VALUE,
-                                        ERR_INVALID_VAR_VALUE);
-                                }
+                        } else if let Some(value) = map.get(name) {
+                            if value.is_int() || value.is_float() {
+                                let v = value.as_float().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                            } else if value.is_bool() {
+                                let v = value.as_bool().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                            } else if value.is_str() {
+                                let v = value.as_str().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
                             } else {
                                 return _invalid_cfg(
-                                    &cur_key,
-                                    &item.as_str().unwrap(),
-                                    ERR_INVALID_VAR_NAME);
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_VAR_VALUE);
                             }
+                        } else {
+                            return _invalid_cfg(
+                                cur_key,
+                                item.as_str().unwrap(),
+                                ERR_INVALID_VAR_NAME);
                         }
                     }
                     new_task.expected = vars;
@@ -551,7 +549,7 @@ impl Task for LuaTask {
 
                 // in case of error report a brief error message to the log
                 Err(res) => {
-                    if let Some(err_msg) = res.to_string().split("\n").next() {
+                    if let Some(err_msg) = res.to_string().split('\n').next() {
                         self.log(
                             LogType::Warn,
                             &format!("[END/FAIL] error in Lua script: {}", err_msg),
@@ -559,7 +557,7 @@ impl Task for LuaTask {
                     } else {
                         self.log(
                             LogType::Warn,
-                            &format!("[END/FAIL] error in Lua script (unknown)"),
+                            "[END/FAIL] error in Lua script (unknown)",
                         );
                     }
                     failure_reason = FailureReason::ScriptError;
@@ -572,27 +570,27 @@ impl Task for LuaTask {
         let duration = SystemTime::now().duration_since(startup_time).unwrap();
         match failure_reason {
             FailureReason::NoFailure => {
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited successfully in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited successfully in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(Some(true))
             }
             FailureReason::NoCheck => {
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited with no outcome in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited with no outcome in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(None)
             }
             FailureReason::VariableMatch => {
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (unmatched values) in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (unmatched values) in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::ScriptError => {
-                self.log(LogType::Warn, &String::from(
-                    format!("[END/FAIL] (trigger: {trigger_name}) task exited unsuccessfully (script error) in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Warn,
+                    &format!("[END/FAIL] (trigger: {trigger_name}) task exited unsuccessfully (script error) in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(Some(false))
             }
         }

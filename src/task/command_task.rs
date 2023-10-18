@@ -162,7 +162,7 @@ impl CommandTask {
     fn command_line(&self) -> String {
         let mut s = String::from(self.command.to_string_lossy());
         for v in self.args.clone().into_iter() {
-            if v.contains(" ") || v.contains("\t") || v.contains("\n") || v.contains("\r") {
+            if v.contains(' ') || v.contains('\t') || v.contains('\n') || v.contains('\r') {
                 s = format!("{s} \"{v}\"");
             } else {
                 s = format!("{s} {v}");
@@ -199,7 +199,7 @@ impl CommandTask {
     /// to the spawned process. Default behaviour is to pass the environment.
     pub fn includes_env(mut self, yes: bool) -> Self {
         self.include_env = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the values to match against the
@@ -208,7 +208,7 @@ impl CommandTask {
     /// is to consider them as simple strings.
     pub fn matches_regexp(mut self, yes: bool) -> Self {
         self.match_regexp = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the entire output of the spawned
@@ -216,7 +216,7 @@ impl CommandTask {
     /// to `true`. The default behaviour is to _partially_ match the output.
     pub fn matches_exact(mut self, yes: bool) -> Self {
         self.match_exact = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the matching against the output of
@@ -224,7 +224,7 @@ impl CommandTask {
     /// `true`. The default behaviour is to match ignoring case.
     pub fn matches_case(mut self, yes: bool) -> Self {
         self.case_sensitive = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the task should not set the
@@ -233,7 +233,7 @@ impl CommandTask {
     /// export those variables.
     pub fn sets_envvars(mut self, yes: bool) -> Self {
         self.set_envvars = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -243,7 +243,7 @@ impl CommandTask {
     /// `matches_regexp` constructor modifier.
     pub fn expects_stdout(mut self, s: &str) -> Self {
         self.success_stdout = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -253,7 +253,7 @@ impl CommandTask {
     /// `matches_regexp` constructor modifier.
     pub fn expects_stderr(mut self, s: &str) -> Self {
         self.success_stderr = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -263,7 +263,7 @@ impl CommandTask {
     /// constructor modifier.
     pub fn rejects_stdout(mut self, s: &str) -> Self {
         self.failure_stdout = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -273,7 +273,7 @@ impl CommandTask {
     /// constructor modifier.
     pub fn rejects_stderr(mut self, s: &str) -> Self {
         self.failure_stderr = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the value that have to match
@@ -281,7 +281,7 @@ impl CommandTask {
     /// considered successful.
     pub fn expects_exitcode(mut self, c: u32) -> Self {
         self.success_status = Some(c);
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the value that have to match
@@ -289,13 +289,13 @@ impl CommandTask {
     /// considered failed.
     pub fn rejects_exitcode(mut self, c: u32) -> Self {
         self.failure_status = Some(c);
-        return self;
+        self
     }
 
     /// If set, command execution times out after specified duration
     pub fn times_out_after(mut self, delta: Duration) -> Self {
         self.timeout = Some(delta);
-        return self;
+        self
     }
 
     /// Load a `CommandTask` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
@@ -347,7 +347,7 @@ impl CommandTask {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "command",
@@ -366,7 +366,7 @@ impl CommandTask {
             "failure_stderr",
             "failure_status",
             "timeout_seconds",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -377,21 +377,21 @@ impl CommandTask {
         // check type
         let cur_key = "type";
         let task_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_TYPE);
             }
             task_type = item.as_str().unwrap().to_owned();
             if task_type != "command" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &task_type,
                     ERR_INVALID_TASK_TYPE);
             }
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -399,21 +399,21 @@ impl CommandTask {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_TASK_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_TASK_NAME);
             }
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -421,26 +421,26 @@ impl CommandTask {
         // specific mandatory parameter retrieval
         let cur_key = "command";
         let command;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COMMAND_PATH);
             }
             command = PathBuf::from(item.as_str().unwrap().to_owned());
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "command_arguments";
         let mut args = Vec::new();
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COMMAND_ARGUMENTS);
             }
@@ -448,17 +448,17 @@ impl CommandTask {
                 args.push(a.as_str().unwrap().clone());
             }
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "startup_path";
         let startup_path;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_STARTUP_PATH);
             }
@@ -468,13 +468,13 @@ impl CommandTask {
             startup_path = PathBuf::from(&sp);
             if !startup_path.is_dir() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     &sp,
                     ERR_INVALID_STARTUP_PATH);
             };
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -495,7 +495,7 @@ impl CommandTask {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -507,7 +507,7 @@ impl CommandTask {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -519,7 +519,7 @@ impl CommandTask {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -531,7 +531,7 @@ impl CommandTask {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -543,7 +543,7 @@ impl CommandTask {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -555,7 +555,7 @@ impl CommandTask {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_map() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -564,25 +564,23 @@ impl CommandTask {
                 for name in map.keys() {
                     if !RE_VAR_NAME.is_match(name) {
                         return _invalid_cfg(
-                            &cur_key,
-                            &item.as_str().unwrap(),
+                            cur_key,
+                            item.as_str().unwrap(),
                             ERR_INVALID_ENVVAR_NAME);
-                    } else {
-                        if let Some(value) = map.get(name) {
-                            if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
-                                vars.insert(name.to_string(), value.as_str().unwrap().to_string());
-                            } else {
-                                return _invalid_cfg(
-                                    &cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_ENVVAR_VALUE);
-                            }
+                    } else if let Some(value) = map.get(name) {
+                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                            vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
                             return _invalid_cfg(
-                                &cur_key,
+                                cur_key,
                                 STR_UNKNOWN_VALUE,
-                                ERR_INVALID_ENVVAR_NAME);
+                                ERR_INVALID_ENVVAR_VALUE);
                         }
+                    } else {
+                        return _invalid_cfg(
+                            cur_key,
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_ENVVAR_NAME);
                     }
                 }
                 new_task.environment_vars = vars;
@@ -591,10 +589,10 @@ impl CommandTask {
 
 
         let cur_key = "success_stdout";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -602,10 +600,10 @@ impl CommandTask {
         }
 
         let cur_key = "success_stderr";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -613,28 +611,28 @@ impl CommandTask {
         }
 
         let cur_key = "success_status";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             let i = *item.as_int().unwrap();
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
-                    &cur_key,
-                    &item.as_str().unwrap(),
+                    cur_key,
+                    item.as_str().unwrap(),
                     ERR_INVALID_PARAMETER);
             }
             new_task.success_status = Some(i as u32);
         }
 
         let cur_key = "failure_stdout";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -642,10 +640,10 @@ impl CommandTask {
         }
 
         let cur_key = "failure_stderr";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -653,36 +651,36 @@ impl CommandTask {
         }
 
         let cur_key = "failure_status";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             let i = *item.as_int().unwrap();
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
-                    &cur_key,
-                    &item.as_str().unwrap(),
+                    cur_key,
+                    item.as_str().unwrap(),
                     ERR_INVALID_PARAMETER);
             }
             new_task.failure_status = Some(i as u32);
         }
 
         let cur_key = "timeout_seconds";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             let i = *item.as_int().unwrap();
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
-                    &cur_key,
-                    &item.as_str().unwrap(),
+                    cur_key,
+                    item.as_str().unwrap(),
                     ERR_INVALID_PARAMETER);
             }
             new_task.timeout = Some(Duration::from_secs(i as u64));
@@ -779,7 +777,7 @@ impl Task for CommandTask {
                     if let Some(t) = timeout {
                         if SystemTime::now() > startup + t {
                             let res = proc.terminate();
-                            if !res.is_ok() {
+                            if res.is_err() {
                                 let _ = proc.kill();
                             }
                             return Err(std::io::Error::new(
@@ -820,8 +818,8 @@ impl Task for CommandTask {
             } else {
                 (out, err) = cres.unwrap();
             }
-            if let Some(ref o) = out { stdout.push_str(&o); }
-            if let Some(ref e) = err { stderr.push_str(&e); }
+            if let Some(ref o) = out { stdout.push_str(o); }
+            if let Some(ref e) = err { stderr.push_str(e); }
             if let Some(exit_status) = exit_status {
                 Ok((
                     exit_status,
@@ -966,7 +964,7 @@ impl Task for CommandTask {
                             // 1. match resulting status for expected failure
                             // 2. match resulting status for unsuccessfulness
                             ExitStatus::Exited(v) => {
-                                statusmsg = String::from(format!("ERROR/{v}"));
+                                statusmsg = format!("ERROR/{v}");
                                 self.log(LogType::Debug, &format!(
                                     "[PROC/OK] (trigger: {trigger_name}) command: `{}` exited with status {statusmsg}",
                                     self.command_line()));
@@ -989,16 +987,14 @@ impl Task for CommandTask {
                                             "[PROC/OK] (trigger: {trigger_name}) task expected failure exit code {expectedf} matched"));
                                         failure_reason = FailureReason::Status;
                                     }
-                                } else {
-                                    if let Some(expected) = self.success_status {
-                                        if v == expected {
-                                            self.log(LogType::Debug, &format!(
-                                                "[PROC/OK] (trigger: {trigger_name}) task expected success exit code {expected} matched"));
-                                        } else {
-                                            self.log(LogType::Debug, &format!(
-                                                "[PROC/OK] (trigger: {trigger_name}) task expected success exit code {expected} NOT matched: {v}"));
-                                            failure_reason = FailureReason::Status;
-                                        }
+                                } else if let Some(expected) = self.success_status {
+                                    if v == expected {
+                                        self.log(LogType::Debug, &format!(
+                                            "[PROC/OK] (trigger: {trigger_name}) task expected success exit code {expected} matched"));
+                                    } else {
+                                        self.log(LogType::Debug, &format!(
+                                            "[PROC/OK] (trigger: {trigger_name}) task expected success exit code {expected} NOT matched: {v}"));
+                                        failure_reason = FailureReason::Status;
                                     }
                                 }
                                 // if we are here, neither the success exit
@@ -1010,21 +1006,21 @@ impl Task for CommandTask {
                             // to be considered as unsuccessful anyway: set the
                             // failure reason appropriately
                             ExitStatus::Signaled(v) => {
-                                statusmsg = String::from(format!("SIGNAL/{v}"));
+                                statusmsg = format!("SIGNAL/{v}");
                                 self.log(LogType::Warn, &format!(
                                     "[PROC/FAIL] (trigger: {trigger_name}) command: `{}` ended for reason {statusmsg}",
                                     self.command_line()));
                                 failure_reason = FailureReason::Other;
                             }
                             ExitStatus::Other(v) => {
-                                statusmsg = String::from(format!("UNKNOWN/{v}"));
+                                statusmsg = format!("UNKNOWN/{v}");
                                 self.log(LogType::Warn, &format!(
                                     "[PROC/FAIL] (trigger: {trigger_name}) command: `{}` ended for reason {statusmsg}",
                                     self.command_line()));
                                 failure_reason = FailureReason::Other;
                             }
                             ExitStatus::Undetermined => {
-                                statusmsg = String::from(format!("UNDETERMINED"));
+                                statusmsg = format!("UNDETERMINED");
                                 self.log(LogType::Warn, &format!(
                                     "[PROC/FAIL] (trigger: {trigger_name}) command: `{}` ended for reason {statusmsg}",
                                     self.command_line()));
@@ -1074,25 +1070,23 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stdout) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 }
+                                            } else if re.find(&self._process_stdout).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {p:?} found"));
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stdout) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stdout (regex) {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdOut;
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID stdout regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID stdout regex {p:?} NOT found/matched"));
                                             failure_reason = FailureReason::StdOut;
                                         }}
                                     }
@@ -1105,25 +1099,23 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stderr) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 }
+                                            } else if re.find(&self._process_stderr).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} found"));
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stderr) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdErr;
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID stderr regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID stderr regex {p:?} NOT found/matched"));
                                             failure_reason = FailureReason::StdErr;
                                         }}
                                     }
@@ -1136,25 +1128,23 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stdout) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {p:?} matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {p:?} NOT matched"));
                                                 }
+                                            } else if re.find(&self._process_stdout).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {p:?} found"));
+                                                failure_reason = FailureReason::StdOut;
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stdout) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {:?} found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stdout (regex) {p:?} NOT found"));
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID failure stdout regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID failure stdout regex {p:?} NOT found/matched"));
                                         }}
                                     }
                                 }
@@ -1166,25 +1156,23 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stderr) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} NOT matched"));
                                                 }
+                                            } else if re.find(&self._process_stderr).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} found"));
+                                                failure_reason = FailureReason::StdErr;
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stderr) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr (regex) {p:?} NOT found"));
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID stderr regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] (trigger: {trigger_name}) provided INVALID stderr regex {p:?} NOT found/matched"));
                                         }}
                                     }
                                 }
@@ -1199,21 +1187,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stdout == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 }
+                                            } else if self._process_stdout.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} found"));
                                             } else {
-                                                if self._process_stdout.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdOut;
                                             }
                                         }}
                                     }
@@ -1223,21 +1209,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stderr == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 }
+                                            } else if self._process_stderr.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} found"));
                                             } else {
-                                                if self._process_stderr.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdErr;
                                             }
                                         }}
                                     }
@@ -1247,21 +1231,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stdout == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stdout.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} found"));
+                                                failure_reason = FailureReason::StdOut;
                                             } else {
-                                                if self._process_stdout.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1271,21 +1253,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stderr == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stderr.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} found"));
+                                                failure_reason = FailureReason::StdErr;
                                             } else {
-                                                if self._process_stderr.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1296,21 +1276,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stdout.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 }
+                                            } else if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} found"));
                                             } else {
-                                                if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stdout {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stdout {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdOut;
                                             }
                                         }}
                                     }
@@ -1320,21 +1298,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stderr.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 }
+                                            } else if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} found"));
                                             } else {
-                                                if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task success stderr {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task success stderr {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdErr;
                                             }
                                         }}
                                     }
@@ -1344,21 +1320,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stdout.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} found"));
+                                                failure_reason = FailureReason::StdOut;
                                             } else {
-                                                if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stdout {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stdout {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1368,21 +1342,19 @@ impl Task for CommandTask {
                                             if self.match_exact {
                                                 if self._process_stderr.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} found"));
+                                                failure_reason = FailureReason::StdErr;
                                             } else {
-                                                if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] (trigger: {trigger_name}) task failure stderr {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] (trigger: {trigger_name}) task failure stderr {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1400,7 +1372,7 @@ impl Task for CommandTask {
                 Err(e) => {
                     self.log(LogType::Warn, &format!(
                         "[END/FAIL] (trigger: {trigger_name}) could not execute command: `{}` (reason: {})",
-                        self.command_line(), e.to_string()));
+                        self.command_line(), e));
                     self._process_failed = true;
                     failure_reason = FailureReason::Other;
                 }
@@ -1424,37 +1396,37 @@ impl Task for CommandTask {
         // return true on success of false otherwise
         match failure_reason {
             FailureReason::NoFailure => {
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited successfully in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited successfully in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(true))
             }
             FailureReason::StdOut => {
                 self._process_failed = true;
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (stdout check) in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (stdout check) in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::StdErr => {
                 self._process_failed = true;
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (stderr check) in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (stderr check) in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::Status => {
                 self._process_failed = true;
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (status check) in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (status check) in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::Other => {
                 self._process_failed = true;
-                self.log(LogType::Warn, &String::from(
-                    format!("[END/FAIL] (trigger: {trigger_name}) task ended unexpectedly in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Warn,
+                    &format!("[END/FAIL] (trigger: {trigger_name}) task ended unexpectedly in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
         }

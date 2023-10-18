@@ -124,43 +124,43 @@ impl LuaCondition {
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
         self.exec_sequence = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first success
     pub fn breaks_on_success(mut self, yes: bool) -> Self {
         self.break_on_success = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first failure
     pub fn breaks_on_failure(mut self, yes: bool) -> Self {
         self.break_on_failure = yes;
-        return self;
+        self
     }
 
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
-        return self;
+        self
     }
 
     /// Add a variable to check for a string value
     pub fn add_check_string(mut self, varname: &str, value: &str) -> Self {
         self.expected.insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
-        return self;
+        self
     }
 
     /// Add a variable to check for a number (f64) value
     pub fn add_check_number(mut self, varname: &str, value: f64) -> Self {
         self.expected.insert(varname.to_string(), LuaValue::LuaNumber(value));
-        return self;
+        self
     }
 
     /// Add a variable to check for a boolean value
     pub fn add_check_bool(mut self, varname: &str, value: bool) -> Self {
         self.expected.insert(varname.to_string(), LuaValue::LuaBoolean(value));
-        return self;
+        self
     }
 
     /// Constructor modifier that states that all variable values has to be
@@ -168,7 +168,7 @@ impl LuaCondition {
     /// checks succeed then the result is successful.
     pub fn checks_all(mut self, yes: bool) -> Self {
         self.expect_all = yes;
-        return self;
+        self
     }
 
 
@@ -189,7 +189,7 @@ impl LuaCondition {
     /// at every tick.
     pub fn checks_after(mut self, delta: Duration) -> Self {
         self.check_after = Some(delta);
-        return self;
+        self
     }
 
 
@@ -253,7 +253,7 @@ impl LuaCondition {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "script",
@@ -266,7 +266,7 @@ impl LuaCondition {
             "expect_all",
             "expected_results",
             "check_after",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -277,22 +277,22 @@ impl LuaCondition {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "lua" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_COND_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -300,22 +300,22 @@ impl LuaCondition {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -323,16 +323,16 @@ impl LuaCondition {
         // common mandatory parameter retrieval
         let cur_key = "script";
         let script;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             script = item.as_str().unwrap().to_owned();
         } else {
-            return _invalid_cfg(&cur_key,
+            return _invalid_cfg(cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -342,7 +342,7 @@ impl LuaCondition {
             &name,
             &script,
         );
-        new_condition.task_registry = Some(&task_registry);
+        new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
         // the configuration changes this state the condition will not start
@@ -350,10 +350,10 @@ impl LuaCondition {
 
         // common optional parameter initialization
         let cur_key = "tasks";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_LIST);
             }
@@ -361,8 +361,8 @@ impl LuaCondition {
                 let s = String::from(a.as_str().unwrap_or(&String::new()));
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_TASK);
                 }
             }
@@ -372,7 +372,7 @@ impl LuaCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -384,7 +384,7 @@ impl LuaCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -396,7 +396,7 @@ impl LuaCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -408,7 +408,7 @@ impl LuaCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -420,7 +420,7 @@ impl LuaCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -434,7 +434,7 @@ impl LuaCondition {
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_bool() {
                     return _invalid_cfg(
-                        &cur_key,
+                        cur_key,
                         STR_UNKNOWN_VALUE,
                         ERR_INVALID_PARAMETER);
                 } else {
@@ -448,8 +448,8 @@ impl LuaCondition {
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_map() {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_PARAMETER);
                 } else {
                     let map = item.as_map().unwrap();
@@ -457,32 +457,30 @@ impl LuaCondition {
                     for name in map.keys() {
                         if !RE_VAR_NAME.is_match(name) {
                             return _invalid_cfg(
-                                &cur_key,
-                                &item.as_str().unwrap(),
+                                cur_key,
+                                item.as_str().unwrap(),
                                 ERR_INVALID_VAR_NAME);
-                        } else {
-                            if let Some(value) = map.get(name) {
-                                if value.is_int() || value.is_float() {
-                                    let v = value.as_float().unwrap();
-                                    vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
-                                } else if value.is_bool() {
-                                    let v = value.as_bool().unwrap();
-                                    vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
-                                } else if value.is_str() {
-                                    let v = value.as_str().unwrap();
-                                    vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
-                                } else {
-                                    return _invalid_cfg(
-                                        &cur_key,
-                                        STR_UNKNOWN_VALUE,
-                                        ERR_INVALID_VAR_VALUE);
-                                }
+                        } else if let Some(value) = map.get(name) {
+                            if value.is_int() || value.is_float() {
+                                let v = value.as_float().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                            } else if value.is_bool() {
+                                let v = value.as_bool().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                            } else if value.is_str() {
+                                let v = value.as_str().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
                             } else {
                                 return _invalid_cfg(
-                                    &cur_key,
-                                    &item.as_str().unwrap(),
-                                    ERR_INVALID_VAR_NAME);
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_VAR_VALUE);
                             }
+                        } else {
+                            return _invalid_cfg(
+                                cur_key,
+                                item.as_str().unwrap(),
+                                ERR_INVALID_VAR_NAME);
                         }
                     }
                     new_condition.expected = vars;
@@ -621,7 +619,7 @@ impl Condition for LuaCondition {
     fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
         self.log(
             LogType::Debug,
-            &format!("[START/MSG] checking Lua script based condition")
+            "[START/MSG] checking Lua script based condition",
         );
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
@@ -630,7 +628,7 @@ impl Condition for LuaCondition {
             if e > t - self.check_last {
                 self.log(
                     LogType::Debug,
-                    &format!("[START/MSG] check explicitly delayed by configuration")
+                    "[START/MSG] check explicitly delayed by configuration",
                 );
                 return Ok(Some(false));
             }
@@ -644,7 +642,7 @@ impl Condition for LuaCondition {
 
         self.log(
             LogType::Debug,
-            &format!("executing Lua script for condition check"),
+            "executing Lua script for condition check",
         );
 
         // start execution
@@ -789,7 +787,7 @@ impl Condition for LuaCondition {
 
                 // in case of error report a brief error message to the log
                 Err(res) => {
-                    if let Some(err_msg) = res.to_string().split("\n").next() {
+                    if let Some(err_msg) = res.to_string().split('\n').next() {
                         self.log(
                             LogType::Warn,
                             &format!("error in Lua script: {}", err_msg),
@@ -797,7 +795,7 @@ impl Condition for LuaCondition {
                     } else {
                         self.log(
                             LogType::Warn,
-                            &format!("error in Lua script (unknown)"),
+                            "error in Lua script (unknown)",
                         );
                     }
                     failure_reason = FailureReason::ScriptError;
@@ -810,27 +808,27 @@ impl Condition for LuaCondition {
         let duration = SystemTime::now().duration_since(startup_time).unwrap();
         match failure_reason {
             FailureReason::NoFailure => {
-                self.log(LogType::Info, &String::from(
-                    format!("condition checked successfully in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("condition checked successfully in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(Some(true))
             }
             FailureReason::NoCheck => {
-                self.log(LogType::Info, &String::from(
-                    format!("condition checked with no outcome in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("condition checked with no outcome in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(None)
             }
             FailureReason::VariableMatch => {
-                self.log(LogType::Info, &String::from(
-                    format!("condition checked unsuccessfully (unmatched values) in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("condition checked unsuccessfully (unmatched values) in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::ScriptError => {
-                self.log(LogType::Info, &String::from(
-                    format!("condition checked unsuccessfully (script error) in {:.2}s",
-                    duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("condition checked unsuccessfully (script error) in {:.2}s",
+                    duration.as_secs_f64()));
                 Ok(Some(false))
             }
         }

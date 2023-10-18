@@ -83,8 +83,8 @@ pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
 // crate-wide values
 lazy_static! {
     // environment variables set by the command based task
-    pub static ref ENVVAR_NAME_TASK: String = String::from(format!("{}_TASK", APP_NAME.to_ascii_uppercase()));
-    pub static ref ENVVAR_NAME_COND: String = String::from(format!("{}_CONDITION", APP_NAME.to_ascii_uppercase()));
+    pub static ref ENVVAR_NAME_TASK: String = format!("{}_TASK", APP_NAME.to_ascii_uppercase());
+    pub static ref ENVVAR_NAME_COND: String = format!("{}_CONDITION", APP_NAME.to_ascii_uppercase());
 
     pub static ref RE_TASK_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_COND_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
@@ -92,8 +92,8 @@ lazy_static! {
     pub static ref RE_VAR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_ENVVAR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
 
-    pub static ref LUAVAR_NAME_TASK: String = String::from(format!("{}_task", APP_NAME.to_ascii_lowercase()));
-    pub static ref LUAVAR_NAME_COND: String = String::from(format!("{}_condition", APP_NAME.to_ascii_lowercase()));
+    pub static ref LUAVAR_NAME_TASK: String = format!("{}_task", APP_NAME.to_ascii_lowercase());
+    pub static ref LUAVAR_NAME_COND: String = format!("{}_condition", APP_NAME.to_ascii_lowercase());
 
     // DBus names regular expressions (see https://dbus.freedesktop.org/doc/dbus-specification.html)
     // Note that bus names adhere to specification as in (quoting): "only

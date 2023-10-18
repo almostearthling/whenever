@@ -101,7 +101,7 @@ impl TaskRegistry {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     /// Add an already-boxed `Task` if its name is not present in the registry.
@@ -201,8 +201,7 @@ impl TaskRegistry {
         for name in self.task_list
             .lock()
             .expect("cannot lock task registry")
-            .keys()
-            .into_iter() {
+            .keys() {
             res.push(name.clone())
         }
         if res.is_empty() {
@@ -255,7 +254,7 @@ impl TaskRegistry {
     ) -> HashMap<String, Result<Option<bool>, std::io::Error>> {
         let mut res: HashMap<String, Result<Option<bool>, std::io::Error>> = HashMap::new();
 
-        if !self.has_all_tasks(&names) {
+        if !self.has_all_tasks(names) {
             panic!("(trigger: {trigger_name}) run_tasks_seq task(s) not found in registry")
         }
 
@@ -263,7 +262,7 @@ impl TaskRegistry {
         // task registry in the same way as if the tasks were concurrent: in
         // fact there might be other branches accessing the registry right at
         // the same moment when this sequence is running
-        for name in names.into_iter() {
+        for name in names.iter() {
             let mut breaks = false;
             let task;
             let mut guard = self.task_list
@@ -357,7 +356,7 @@ impl TaskRegistry {
         trigger_name: &str,
         names: &Vec<&str>,
     ) -> HashMap<String, Result<Option<bool>, std::io::Error>> {
-        if !self.has_all_tasks(&names) {
+        if !self.has_all_tasks(names) {
             panic!("(trigger: {trigger_name}) run_tasks_par task(s) not found in registry")
         }
 
@@ -376,7 +375,7 @@ impl TaskRegistry {
         let aself  = Arc::new(self);
         let atrname = Arc::new(trigger_name);
 
-        for name in names.into_iter() {
+        for name in names.iter() {
             let aname = Arc::new(String::from(*name));
 
             let aself  = aself.clone();

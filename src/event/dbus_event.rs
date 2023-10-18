@@ -235,7 +235,7 @@ impl DbusMessageEvent {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
                 // as per specification, DBus supports at most 64 parameters
-                if i < 0 || i > DBUS_MAX_NUMBER_OF_ARGUMENTS {
+                if !(0..=DBUS_MAX_NUMBER_OF_ARGUMENTS).contains(&i) {
                     return None;
                 } else {
                     return Some(ParameterIndex::Integer(i as u64));
@@ -247,7 +247,7 @@ impl DbusMessageEvent {
             None
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "condition",
@@ -255,7 +255,7 @@ impl DbusMessageEvent {
             "rule",
             "parameter_check",
             "parameter_check_all",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -266,22 +266,22 @@ impl DbusMessageEvent {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_EVENT_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "dbus" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_EVENT_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -289,22 +289,22 @@ impl DbusMessageEvent {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_EVENT_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_EVENT_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_EVENT_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -312,39 +312,39 @@ impl DbusMessageEvent {
         // specific mandatory parameter initialization
         let cur_key = "bus";
         let bus;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_EVENT_NAME);
             }
             bus = item.as_str().unwrap().to_owned();
             if !RE_DBUS_MSGBUS_NAME.is_match(&bus) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &bus,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "rule";
         let rule;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             rule = item.as_str().unwrap().to_owned();
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -358,36 +358,36 @@ impl DbusMessageEvent {
         let mut new_event = DbusMessageEvent::new(
             &name,
         );
-        new_event.condition_registry = Some(&cond_registry);
-        new_event.condition_bucket = Some(&bucket);
+        new_event.condition_registry = Some(cond_registry);
+        new_event.condition_bucket = Some(bucket);
         new_event.bus = Some(bus);
         new_event.match_rule = Some(rule);
 
         // common optional parameter initialization
         let cur_key = "condition";
         let condition;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_NAME);
             }
             condition = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&condition) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &condition,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
         if !new_event.condition_registry.unwrap().has_condition(&condition) {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 &condition,
                 ERR_INVALID_EVENT_CONDITION);
         }
@@ -404,19 +404,19 @@ impl DbusMessageEvent {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
-        let check = vec!(
+        let check = [
             "index",
             "operator",
             "value",
-        );
+        ];
 
         let cur_key = "parameter_check";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
             // here we expect a JSON string, reason explained above
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -427,7 +427,7 @@ impl DbusMessageEvent {
             );
             if json.is_err() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -436,15 +436,15 @@ impl DbusMessageEvent {
             let item = item.get("0").unwrap();
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             let item = item.as_list().unwrap();
-            for spec in item.into_iter() {
+            for spec in item.iter() {
                 if !spec.is_map() {
                     return _invalid_cfg(
-                        &cur_key,
+                        cur_key,
                         STR_UNKNOWN_VALUE,
                         ERR_INVALID_VALUE_FOR_ENTRY);
                 }
@@ -570,13 +570,13 @@ impl DbusMessageEvent {
 
             // `parameter_check_all` only makes sense if the paramenter check
             // list was built: for this reason it is set only in this case
-            // the enclosing `if` is that `Some(item) = cfgmap.get(&cur_key)`
+            // the enclosing `if` is that `Some(item) = cfgmap.get(cur_key)`
             // where `cur_key` is `"parameter_check"`
             let cur_key = "parameter_check_all";
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_bool() {
                     return _invalid_cfg(
-                        &cur_key,
+                        cur_key,
                         STR_UNKNOWN_VALUE,
                         ERR_INVALID_PARAMETER);
                 } else {
@@ -685,7 +685,7 @@ impl Event for DbusMessageEvent {
         if let Err(e) = rule {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("{ERR_EVENT_INVALID_MATCH_RULE}: {}", e.to_string()),
+                format!("{ERR_EVENT_INVALID_MATCH_RULE}: {e}"),
             ));
         }
         let rule = rule.unwrap();
@@ -766,7 +766,7 @@ impl Event for DbusMessageEvent {
                                 // when all condition had to be true and at least one is false
                                 // or when one true condition is sufficient and we find it)
                                 // or when an error occurs, which implies evaluation to false
-                                'params: for ck in checks.into_iter() {
+                                'params: for ck in checks.iter() {
                                     let argnum = ck.index.get(0);
                                     if let Some(argnum) = argnum {
                                         match argnum {
@@ -898,7 +898,7 @@ impl Event for DbusMessageEvent {
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                &format!("[PROC/FAIL] invalid operator for boolean"),
+                                                                "[PROC/FAIL] invalid operator for boolean",
                                                             );
                                                             verified = false;
                                                             break;
@@ -1111,7 +1111,7 @@ impl Event for DbusMessageEvent {
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                &format!("[PROC/FAIL] invalid operator for string"),
+                                                                "[PROC/FAIL] invalid operator for string",
                                                             );
                                                             verified = false;
                                                             break 'params;
@@ -1158,7 +1158,7 @@ impl Event for DbusMessageEvent {
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                &format!("[PROC/FAIL] invalid operator for regular expression"),
+                                                                "[PROC/FAIL] invalid operator for regular expression",
                                                             );
                                                             verified = false;
                                                             break 'params;
@@ -1169,7 +1169,7 @@ impl Event for DbusMessageEvent {
                                             _ => {
                                                 self.log(
                                                     LogType::Warn,
-                                                    &format!("[PROC/FAIL] could not retrieve parameter index: no integer found"),
+                                                    "[PROC/FAIL] could not retrieve parameter index: no integer found",
                                                 );
                                                 verified = false;
                                                 break;
@@ -1179,7 +1179,7 @@ impl Event for DbusMessageEvent {
                                     } else {
                                         self.log(
                                             LogType::Warn,
-                                            &format!("[PROC/FAIL] could not retrieve parameter: missing argument number"),
+                                            "[PROC/FAIL] could not retrieve parameter: missing argument number",
                                         );
                                         verified = false;
                                         break;
@@ -1189,7 +1189,7 @@ impl Event for DbusMessageEvent {
                             } else {
                                 self.log(
                                     LogType::Warn,
-                                    &format!("[PROC/FAIL] could not retrieve message body"),
+                                    "[PROC/FAIL] could not retrieve message body",
                                 );
                             }
 
@@ -1205,27 +1205,26 @@ impl Event for DbusMessageEvent {
                                     if res {
                                         self.log(
                                             LogType::Debug,
-                                            &format!("[PROC/OK] condition fired successfully"),
+                                            "[PROC/OK] condition fired successfully",
                                         );
                                     } else {
                                         self.log(
                                             LogType::Debug,
-                                            &format!("[PROC/MSG] condition already fired: further schedule skipped"),
+                                            "[PROC/MSG] condition already fired: further schedule skipped",
                                         );
                                     }
                                 }
                                 Err(e) => {
                                     self.log(
                                         LogType::Warn,
-                                        &format!("[PROC/FAIL] error firing condition: {}",
-                                            e.to_string()),
+                                        &format!("[PROC/FAIL] error firing condition: {e}"),
                                     );
                                 }
                             }
                         } else {
                             self.log(
                                 LogType::Debug,
-                                &format!("[PROC/MSG] parameter check failed: condition NOT fired"),
+                                "[PROC/MSG] parameter check failed: condition NOT fired",
                             );
                         }
                     } else {
@@ -1244,8 +1243,7 @@ impl Event for DbusMessageEvent {
                 Err(e) => {
                     self.log(
                         LogType::Warn,
-                        &format!("[PROC/FAIL] error while retrieving message on bus `{bus}`: {}",
-                            e.to_string()),
+                        &format!("[PROC/FAIL] error while retrieving message on bus `{bus}`: {e}"),
                     );
                 }
             }

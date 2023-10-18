@@ -100,7 +100,7 @@ impl ToVariant for f64 {
 impl ToVariant for str {
     fn to_variant(&self) -> Option<zvariant::Value> {
         let s = &self.to_string();
-        if s.starts_with("\\") {
+        if s.starts_with('\\') {
             let rest = s.clone().split_off(2);
             if s.starts_with("\\b") {
                 let rest = rest.to_lowercase();
@@ -347,25 +347,25 @@ impl DbusMethodCondition {
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
         self.exec_sequence = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first success
     pub fn breaks_on_success(mut self, yes: bool) -> Self {
         self.break_on_success = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first failure
     pub fn breaks_on_failure(mut self, yes: bool) -> Self {
         self.break_on_failure = yes;
-        return self;
+        self
     }
 
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
-        return self;
+        self
     }
 
     /// Set the bus name to the provided value (checks for validity)
@@ -508,7 +508,7 @@ impl DbusMethodCondition {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
                 // as per specification, DBus supports at most 64 parameters
-                if i < 0 || i > DBUS_MAX_NUMBER_OF_ARGUMENTS {
+                if !(0..=DBUS_MAX_NUMBER_OF_ARGUMENTS).contains(&i) {
                     return None;
                 } else {
                     return Some(ParameterIndex::Integer(i as u64));
@@ -520,7 +520,7 @@ impl DbusMethodCondition {
             None
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "interval_seconds",
@@ -539,7 +539,7 @@ impl DbusMethodCondition {
             "parameter_call",
             "parameter_check_all",
             "parameter_check",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -550,22 +550,22 @@ impl DbusMethodCondition {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "dbus" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_COND_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -573,132 +573,132 @@ impl DbusMethodCondition {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "bus";
         let bus;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             bus = item.as_str().unwrap().to_owned();
             if !RE_DBUS_MSGBUS_NAME.is_match(&bus) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &bus,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "service";
         let service;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             service = item.as_str().unwrap().to_owned();
             if !RE_DBUS_SERVICE_NAME.is_match(&service) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &bus,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "object_path";
         let object_path;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             object_path = item.as_str().unwrap().to_owned();
             if !RE_DBUS_OBJECT_PATH.is_match(&object_path) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &object_path,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "interface";
         let interface;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             interface = item.as_str().unwrap().to_owned();
             if !RE_DBUS_INTERFACE_NAME.is_match(&interface) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &interface,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "method";
         let method;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             method = item.as_str().unwrap().to_owned();
             if !RE_DBUS_MEMBER_NAME.is_match(&method) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &method,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -707,7 +707,7 @@ impl DbusMethodCondition {
         let mut new_condition = DbusMethodCondition::new(
             &name,
         );
-        new_condition.task_registry = Some(&task_registry);
+        new_condition.task_registry = Some(task_registry);
         new_condition.bus = Some(bus);
         new_condition.service = Some(service);
         new_condition.object_path = Some(object_path);
@@ -723,7 +723,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_LIST);
             }
@@ -731,8 +731,8 @@ impl DbusMethodCondition {
                 let s = String::from(a.as_str().unwrap_or(&String::new()));
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_TASK);
                 }
             }
@@ -742,7 +742,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -754,7 +754,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -766,7 +766,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -778,7 +778,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -790,7 +790,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -803,15 +803,15 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
                 let i = *item.as_int().unwrap();
                 if i < 1 {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_PARAMETER);
                 }
                 new_condition.check_after = Some(Duration::from_secs(i as u64));
@@ -827,18 +827,18 @@ impl DbusMethodCondition {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
-        let check = vec!(
+        let check = [
             "index",
             "operator",
             "value",
-        );
+        ];
         let cur_key = "parameter_check";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
             // here we expect a JSON string, reason explained above
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -849,7 +849,7 @@ impl DbusMethodCondition {
             );
             if json.is_err() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -858,15 +858,15 @@ impl DbusMethodCondition {
             let item = item.get("0").unwrap();
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
             let item = item.as_list().unwrap();
-            for spec in item.into_iter() {
+            for spec in item.iter() {
                 if !spec.is_map() {
                     return _invalid_cfg(
-                        &cur_key,
+                        cur_key,
                         STR_UNKNOWN_VALUE,
                         ERR_INVALID_VALUE_FOR_ENTRY);
                 }
@@ -956,7 +956,7 @@ impl DbusMethodCondition {
                     } else if v.is_str() {
                         let s = v.as_str().unwrap();
                         if operator == ParamCheckOperator::Match {
-                            let re = Regex::new(&s);
+                            let re = Regex::new(s);
                             if let Ok(re) = re {
                                 value = ParameterCheckValue::Regex(re);
                             } else {
@@ -992,13 +992,13 @@ impl DbusMethodCondition {
 
             // `parameter_check_all` only makes sense if the paramenter check
             // list was built: for this reason it is set only in this case
-            // the enclosing `if` is that `Some(item) = cfgmap.get(&cur_key)`
+            // the enclosing `if` is that `Some(item) = cfgmap.get(cur_key)`
             // where `cur_key` is `"parameter_check"`
             let cur_key = "parameter_check_all";
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_bool() {
                     return _invalid_cfg(
-                        &cur_key,
+                        cur_key,
                         STR_UNKNOWN_VALUE,
                         ERR_INVALID_PARAMETER);
                 } else {
@@ -1014,13 +1014,13 @@ impl DbusMethodCondition {
         // the condition evaluation will (always) fail and a warning will be
         // logged
         let cur_key = "parameter_call";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             let mut param_call: Vec<zvariant::OwnedValue> = Vec::new();
             // the process here is the same as the one for parameter checks:
             // here we expect a JSON string, reason explained above
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -1031,7 +1031,7 @@ impl DbusMethodCondition {
             );
             if json.is_err() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -1040,7 +1040,7 @@ impl DbusMethodCondition {
             let item = item.get("0").unwrap();
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY);
             }
@@ -1048,7 +1048,7 @@ impl DbusMethodCondition {
             // the `ToVariant` trait should do the tedious recursive job for
             // us: should there be any unsupported value in the array the
             // result will be None and the configuration is rejectesd
-            for i in item.into_iter() {
+            for i in item.iter() {
                 let v = i.to_variant();
                 if let Some(v) = v {
                     param_call.push(v.into());
@@ -1227,7 +1227,7 @@ impl Condition for DbusMethodCondition {
 
         self.log(
             LogType::Debug,
-            &format!("[START/MSG] checking DBus method based condition")
+            "[START/MSG] checking DBus method based condition",
         );
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
@@ -1236,7 +1236,7 @@ impl Condition for DbusMethodCondition {
             if e > t - self.check_last {
                 self.log(
                     LogType::Debug,
-                    &format!("[START/MSG] check explicitly delayed by configuration")
+                    "[START/MSG] check explicitly delayed by configuration",
                 );
                 return Ok(Some(false));
             }
@@ -1290,7 +1290,7 @@ impl Condition for DbusMethodCondition {
                 arg.push_value(v);
             }
         }
-        let a = zvariant::Structure::from(arg.build());
+        let a = arg.build();
         let message = task::block_on(async {
             conn.call_method(
                 Some(service.as_str()),
@@ -1305,9 +1305,7 @@ impl Condition for DbusMethodCondition {
             self.log(
                 LogType::Warn,
                 &format!(
-                    "[START/FAIL] could not retrieve message invoking method {method} on bus `{bus}`: {}",
-                    e.to_string(),
-                ),
+                    "[START/FAIL] could not retrieve message invoking method {method} on bus `{bus}`: {e}"),
             );
             return Ok(Some(false));
         }
@@ -1322,7 +1320,7 @@ impl Condition for DbusMethodCondition {
                 // when all condition had to be true and at least one is false
                 // or when one true condition is sufficient and we find it)
                 // or when an error occurs, which implies evaluation to false
-                'params: for ck in checks.into_iter() {
+                'params: for ck in checks.iter() {
                     let argnum = ck.index.get(0);
                     if let Some(argnum) = argnum {
                         match argnum {
@@ -1454,7 +1452,7 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                &format!("[PROC/FAIL] invalid operator for boolean"),
+                                                "[PROC/FAIL] invalid operator for boolean",
                                             );
                                             verified = false;
                                             break;
@@ -1667,7 +1665,7 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                &format!("[PROC/FAIL] invalid operator for string"),
+                                                "[PROC/FAIL] invalid operator for string",
                                             );
                                             verified = false;
                                             break 'params;
@@ -1714,7 +1712,7 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                &format!("[PROC/FAIL] invalid operator for regular expression"),
+                                                "[PROC/FAIL] invalid operator for regular expression",
                                             );
                                             verified = false;
                                             break 'params;
@@ -1725,7 +1723,7 @@ impl Condition for DbusMethodCondition {
                             _ => {
                                 self.log(
                                     LogType::Warn,
-                                    &format!("[PROC/FAIL] could not retrieve parameter index: no integer found"),
+                                    "[PROC/FAIL] could not retrieve parameter index: no integer found",
                                 );
                                 verified = false;
                                 break;
@@ -1735,7 +1733,7 @@ impl Condition for DbusMethodCondition {
                     } else {
                         self.log(
                             LogType::Warn,
-                            &format!("[PROC/FAIL] could not retrieve parameter: missing argument number"),
+                            "[PROC/FAIL] could not retrieve parameter: missing argument number",
                         );
                         verified = false;
                         break;
@@ -1744,7 +1742,7 @@ impl Condition for DbusMethodCondition {
             } else {
                 self.log(
                     LogType::Warn,
-                    &format!("[PROC/FAIL] could not retrieve message body"),
+                    "[PROC/FAIL] could not retrieve message body",
                 );
             }
 

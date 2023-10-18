@@ -167,7 +167,7 @@ impl CommandCondition {
     fn command_line(&self) -> String {
         let mut s = String::from(self.command.to_string_lossy());
         for v in self.args.clone().into_iter() {
-            if v.contains(" ") || v.contains("\t") || v.contains("\n") || v.contains("\r") {
+            if v.contains(' ') || v.contains('\t') || v.contains('\n') || v.contains('\r') {
                 s = format!("{s} \"{v}\"");
             } else {
                 s = format!("{s} {v}");
@@ -181,25 +181,25 @@ impl CommandCondition {
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
         self.exec_sequence = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first success
     pub fn breaks_on_success(mut self, yes: bool) -> Self {
         self.break_on_success = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first failure
     pub fn breaks_on_failure(mut self, yes: bool) -> Self {
         self.break_on_failure = yes;
-        return self;
+        self
     }
 
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
-        return self;
+        self
     }
 
     /// State that the first check and possible following tests are to be
@@ -209,7 +209,7 @@ impl CommandCondition {
     /// at every tick.
     pub fn checks_after(mut self, delta: Duration) -> Self {
         self.check_after = Some(delta);
-        return self;
+        self
     }
 
     /// Set a variable in the custom environment that the command base task
@@ -239,7 +239,7 @@ impl CommandCondition {
     /// to the spawned process. Default behaviour is to pass the environment.
     pub fn includes_env(mut self, yes: bool) -> Self {
         self.include_env = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the values to match against the
@@ -248,7 +248,7 @@ impl CommandCondition {
     /// is to consider them as simple strings.
     pub fn matches_regexp(mut self, yes: bool) -> Self {
         self.match_regexp = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the entire output of the spawned
@@ -256,7 +256,7 @@ impl CommandCondition {
     /// to `true`. The default behaviour is to _partially_ match the output.
     pub fn matches_exact(mut self, yes: bool) -> Self {
         self.match_exact = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the matching against the output of
@@ -264,7 +264,7 @@ impl CommandCondition {
     /// `true`. The default behaviour is to match ignoring case.
     pub fn matches_case(mut self, yes: bool) -> Self {
         self.case_sensitive = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to specify that the task should not set the
@@ -273,7 +273,7 @@ impl CommandCondition {
     /// export those variables.
     pub fn sets_envvars(mut self, yes: bool) -> Self {
         self.set_envvars = yes;
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -283,7 +283,7 @@ impl CommandCondition {
     /// `matches_regexp` constructor modifier.
     pub fn expects_stdout(mut self, s: &str) -> Self {
         self.success_stdout = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -293,7 +293,7 @@ impl CommandCondition {
     /// `matches_regexp` constructor modifier.
     pub fn expects_stderr(mut self, s: &str) -> Self {
         self.success_stderr = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -303,7 +303,7 @@ impl CommandCondition {
     /// constructor modifier.
     pub fn rejects_stdout(mut self, s: &str) -> Self {
         self.failure_stdout = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the values that have to match
@@ -313,7 +313,7 @@ impl CommandCondition {
     /// constructor modifier.
     pub fn rejects_stderr(mut self, s: &str) -> Self {
         self.failure_stderr = Some(s.to_string());
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the value that have to match
@@ -321,7 +321,7 @@ impl CommandCondition {
     /// considered successful.
     pub fn expects_exitcode(mut self, c: u32) -> Self {
         self.success_status = Some(c);
-        return self;
+        self
     }
 
     /// Constructor modifier to possibly set the value that have to match
@@ -329,13 +329,13 @@ impl CommandCondition {
     /// considered failed.
     pub fn rejects_exitcode(mut self, c: u32) -> Self {
         self.failure_status = Some(c);
-        return self;
+        self
     }
 
     /// If set, command execution times out after specified duration
     pub fn times_out_after(mut self, delta: Duration) -> Self {
         self.timeout = Some(delta);
-        return self;
+        self
     }
 
     /// Load a `CommandCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
@@ -396,7 +396,7 @@ impl CommandCondition {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "command",
@@ -422,7 +422,7 @@ impl CommandCondition {
             "failure_stderr",
             "failure_status",
             "timeout_seconds",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -433,22 +433,22 @@ impl CommandCondition {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "command" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_COND_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -456,22 +456,22 @@ impl CommandCondition {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -479,27 +479,27 @@ impl CommandCondition {
         // specific mandatory parameter retrieval
         let cur_key = "command";
         let command;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COMMAND_PATH);
             }
             command = PathBuf::from(item.as_str().unwrap().to_owned());
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "command_arguments";
         let mut args = Vec::new();
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COMMAND_ARGUMENTS);
             }
@@ -508,17 +508,17 @@ impl CommandCondition {
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
 
         let cur_key = "startup_path";
         let startup_path;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_STARTUP_PATH);
             }
@@ -528,13 +528,13 @@ impl CommandCondition {
             startup_path = PathBuf::from(&sp);
             if !startup_path.is_dir() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     &sp,
                     ERR_INVALID_STARTUP_PATH);
             };
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -546,7 +546,7 @@ impl CommandCondition {
             &args,
             &startup_path,
         );
-        new_condition.task_registry = Some(&task_registry);
+        new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
         // the configuration changes this state the condition will not start
@@ -554,10 +554,10 @@ impl CommandCondition {
 
         // common optional parameter initialization
         let cur_key = "tasks";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_LIST);
             }
@@ -565,8 +565,8 @@ impl CommandCondition {
                 let s = String::from(a.as_str().unwrap_or(&String::new()));
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_TASK);
                 }
             }
@@ -576,7 +576,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -588,7 +588,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -600,7 +600,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -612,7 +612,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -624,7 +624,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -637,7 +637,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -649,7 +649,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -661,7 +661,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -673,7 +673,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -685,7 +685,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -697,7 +697,7 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_map() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -706,25 +706,23 @@ impl CommandCondition {
                 for name in map.keys() {
                     if !RE_ENVVAR_NAME.is_match(name) {
                         return _invalid_cfg(
-                            &cur_key,
-                            &item.as_str().unwrap(),
+                            cur_key,
+                            item.as_str().unwrap(),
                             ERR_INVALID_ENVVAR_NAME);
-                    } else {
-                        if let Some(value) = map.get(name) {
-                            if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
-                                vars.insert(name.to_string(), value.as_str().unwrap().to_string());
-                            } else {
-                                return _invalid_cfg(
-                                    &cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_ENVVAR_VALUE);
-                            }
+                    } else if let Some(value) = map.get(name) {
+                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                            vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
                             return _invalid_cfg(
-                                &cur_key,
+                                cur_key,
                                 STR_UNKNOWN_VALUE,
-                                ERR_INVALID_ENVVAR_NAME);
+                                ERR_INVALID_ENVVAR_VALUE);
                         }
+                    } else {
+                        return _invalid_cfg(
+                            cur_key,
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_ENVVAR_NAME);
                     }
                 }
                 new_condition.environment_vars = vars;
@@ -735,15 +733,15 @@ impl CommandCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
                 let i = *item.as_int().unwrap();
                 if i < 1 {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_PARAMETER);
                 }
                 new_condition.check_after = Some(Duration::from_secs(i as u64));
@@ -751,10 +749,10 @@ impl CommandCondition {
         }
 
         let cur_key = "success_stdout";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -762,10 +760,10 @@ impl CommandCondition {
         }
 
         let cur_key = "success_stderr";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -773,28 +771,28 @@ impl CommandCondition {
         }
 
         let cur_key = "success_status";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             let i = *item.as_int().unwrap();
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
-                    &cur_key,
-                    &item.as_str().unwrap(),
+                    cur_key,
+                    item.as_str().unwrap(),
                     ERR_INVALID_PARAMETER);
             }
             new_condition.success_status = Some(i as u32);
         }
 
         let cur_key = "failure_stdout";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -802,10 +800,10 @@ impl CommandCondition {
         }
 
         let cur_key = "failure_stderr";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -813,36 +811,36 @@ impl CommandCondition {
         }
 
         let cur_key = "failure_status";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             let i = *item.as_int().unwrap();
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
-                    &cur_key,
-                    &item.as_str().unwrap(),
+                    cur_key,
+                    item.as_str().unwrap(),
                     ERR_INVALID_PARAMETER);
             }
             new_condition.failure_status = Some(i as u32);
         }
 
         let cur_key = "timeout_seconds";
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
             let i = *item.as_int().unwrap();
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
-                    &cur_key,
-                    &item.as_str().unwrap(),
+                    cur_key,
+                    item.as_str().unwrap(),
                     ERR_INVALID_PARAMETER);
             }
             new_condition.timeout = Some(Duration::from_secs(i as u64));
@@ -1034,7 +1032,7 @@ impl Condition for CommandCondition {
                     if let Some(t) = timeout {
                         if SystemTime::now() > startup + t {
                             let res = proc.terminate();
-                            if !res.is_ok() {
+                            if res.is_err() {
                                 let _ = proc.kill();
                             }
                             return Err(std::io::Error::new(
@@ -1075,8 +1073,8 @@ impl Condition for CommandCondition {
             } else {
                 (out, err) = cres.unwrap();
             }
-            if let Some(ref o) = out { stdout.push_str(&o); }
-            if let Some(ref e) = err { stderr.push_str(&e); }
+            if let Some(ref o) = out { stdout.push_str(o); }
+            if let Some(ref e) = err { stderr.push_str(e); }
             if let Some(exit_status) = exit_status {
                 Ok((
                     exit_status,
@@ -1093,7 +1091,7 @@ impl Condition for CommandCondition {
 
         self.log(
             LogType::Debug,
-            &format!("[START/MSG] checking command based condition")
+            "[START/MSG] checking command based condition",
         );
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
@@ -1102,7 +1100,7 @@ impl Condition for CommandCondition {
             if e > t - self.check_last {
                 self.log(
                     LogType::Debug,
-                    &format!("[START/MSG] check explicitly delayed by configuration")
+                    "[START/MSG] check explicitly delayed by configuration",
                 );
                 return Ok(Some(false));
             }
@@ -1237,7 +1235,7 @@ impl Condition for CommandCondition {
                             // 1. match resulting status for expected failure
                             // 2. match resulting status for unsuccessfulness
                             ExitStatus::Exited(v) => {
-                                statusmsg = String::from(format!("ERROR/{v}"));
+                                statusmsg = format!("ERROR/{v}");
                                 self.log(LogType::Debug, &format!(
                                     "[PROC/OK] command: `{}` exited with FAILURE status {statusmsg}",
                                     self.command_line()));
@@ -1260,16 +1258,14 @@ impl Condition for CommandCondition {
                                             "[PROC/OK] condition expected failure exit code {expectedf} matched"));
                                         failure_reason = FailureReason::Status;
                                     }
-                                } else {
-                                    if let Some(expected) = self.success_status {
-                                        if v == expected {
-                                            self.log(LogType::Debug, &format!(
-                                                "[PROC/OK] condition expected success exit code {expected} matched"));
-                                        } else {
-                                            self.log(LogType::Debug, &format!(
-                                                "[PROC/OK] condition expected success exit code {expected} NOT matched: {v}"));
-                                            failure_reason = FailureReason::Status;
-                                        }
+                                } else if let Some(expected) = self.success_status {
+                                    if v == expected {
+                                        self.log(LogType::Debug, &format!(
+                                            "[PROC/OK] condition expected success exit code {expected} matched"));
+                                    } else {
+                                        self.log(LogType::Debug, &format!(
+                                            "[PROC/OK] condition expected success exit code {expected} NOT matched: {v}"));
+                                        failure_reason = FailureReason::Status;
                                     }
                                 }
                                 // if we are here, neither the success exit
@@ -1281,21 +1277,21 @@ impl Condition for CommandCondition {
                             // to be considered as unsuccessful anyway: set the
                             // failure reason appropriately
                             ExitStatus::Signaled(v) => {
-                                statusmsg = String::from(format!("SIGNAL/{v}"));
+                                statusmsg = format!("SIGNAL/{v}");
                                 self.log(LogType::Warn, &format!(
                                     "[PROC/FAIL] command: `{}` ended for reason {statusmsg}",
                                     self.command_line()));
                                 failure_reason = FailureReason::Other;
                             }
                             ExitStatus::Other(v) => {
-                                statusmsg = String::from(format!("UNKNOWN/{v}"));
+                                statusmsg = format!("UNKNOWN/{v}");
                                 self.log(LogType::Warn, &format!(
                                     "[PROC/FAIL] command: `{}` ended for reason {statusmsg}",
                                     self.command_line()));
                                 failure_reason = FailureReason::Other;
                             }
                             ExitStatus::Undetermined => {
-                                statusmsg = String::from(format!("UNDETERMINED"));
+                                statusmsg = format!("UNDETERMINED");
                                 self.log(LogType::Warn, &format!(
                                     "[PROC/FAIL] command: `{}` ended for reason {statusmsg}",
                                     self.command_line()));
@@ -1345,25 +1341,23 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stdout) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout (regex) {:?} matched", p));
+                                                        "[PROC/OK] condition success stdout (regex) {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stdout (regex) {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 }
+                                            } else if re.find(&self._process_stdout).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stdout (regex) {p:?} found"));
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stdout) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout (regex) {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout (regex) {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stdout (regex) {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdOut;
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] provided INVALID stdout regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] provided INVALID stdout regex {p:?} NOT found/matched"));
                                             failure_reason = FailureReason::StdOut;
                                         }}
                                     }
@@ -1376,25 +1370,23 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stderr) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} matched", p));
+                                                        "[PROC/OK] condition success stderr (regex) {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stderr (regex) {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 }
+                                            } else if re.find(&self._process_stderr).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr (regex) {p:?} found"));
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stderr) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr (regex) {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdErr;
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] provided INVALID stderr regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] provided INVALID stderr regex {p:?} NOT found/matched"));
                                             failure_reason = FailureReason::StdErr;
                                         }}
                                     }
@@ -1407,25 +1399,23 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stdout) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout (regex) {:?} matched", p));
+                                                        "[PROC/OK] condition failure stdout (regex) {p:?} matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] condition failure stdout (regex) {p:?} NOT matched"));
                                                 }
+                                            } else if re.find(&self._process_stdout).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stdout (regex) {p:?} found"));
+                                                failure_reason = FailureReason::StdOut;
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stdout) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout (regex) {:?} found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout (regex) {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stdout (regex) {p:?} NOT found"));
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] provided INVALID failure stdout regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] provided INVALID failure stdout regex {p:?} NOT found/matched"));
                                         }}
                                     }
                                 }
@@ -1437,25 +1427,23 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if re.is_match(&self._process_stderr) {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} matched", p));
+                                                        "[PROC/OK] condition success stderr (regex) {p:?} matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stderr (regex) {p:?} NOT matched"));
                                                 }
+                                            } else if re.find(&self._process_stderr).is_some() {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr (regex) {p:?} found"));
+                                                failure_reason = FailureReason::StdErr;
                                             } else {
-                                                if let Some(_) = re.find(&self._process_stderr) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr (regex) {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr (regex) {p:?} NOT found"));
                                             }
                                         } else {
                                             self.log(LogType::Error, &format!(
-                                                "[PROC/FAIL] provided INVALID stderr regex {:?} NOT found/matched", p));
+                                                "[PROC/FAIL] provided INVALID stderr regex {p:?} NOT found/matched"));
                                         }}
                                     }
                                 }
@@ -1470,21 +1458,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stdout == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} matched", p));
+                                                        "[PROC/OK] condition success stdout {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stdout {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 }
+                                            } else if self._process_stdout.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stdout {p:?} found"));
                                             } else {
-                                                if self._process_stdout.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stdout {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdOut;
                                             }
                                         }}
                                     }
@@ -1494,21 +1480,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stderr == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} matched", p));
+                                                        "[PROC/OK] condition success stderr {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stderr {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 }
+                                            } else if self._process_stderr.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr {p:?} found"));
                                             } else {
-                                                if self._process_stderr.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdErr;
                                             }
                                         }}
                                     }
@@ -1518,21 +1502,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stdout == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} matched", p));
+                                                        "[PROC/OK] condition failure stdout {p:?} matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] condition failure stdout {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stdout.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stdout {p:?} found"));
+                                                failure_reason = FailureReason::StdOut;
                                             } else {
-                                                if self._process_stdout.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stdout {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1542,21 +1524,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stderr == *p {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} matched", p));
+                                                        "[PROC/OK] condition failure stderr {p:?} matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] condition failure stderr {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stderr.contains(p) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stderr {p:?} found"));
+                                                failure_reason = FailureReason::StdErr;
                                             } else {
-                                                if self._process_stderr.contains(p) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stderr {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1567,21 +1547,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stdout.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} matched", p));
+                                                        "[PROC/OK] condition success stdout {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stdout {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 }
+                                            } else if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stdout {p:?} found"));
                                             } else {
-                                                if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stdout {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stdout {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdOut;
                                             }
                                         }}
                                     }
@@ -1591,21 +1569,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stderr.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} matched", p));
+                                                        "[PROC/OK] condition success stderr {p:?} matched"));
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] condition success stderr {p:?} NOT matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 }
+                                            } else if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr {p:?} found"));
                                             } else {
-                                                if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} found", p));
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition success stderr {:?} NOT found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition success stderr {p:?} NOT found"));
+                                                failure_reason = FailureReason::StdErr;
                                             }
                                         }}
                                     }
@@ -1615,21 +1591,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stdout.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} matched", p));
+                                                        "[PROC/OK] condition failure stdout {p:?} matched"));
                                                     failure_reason = FailureReason::StdOut;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} NOT matched", p));
+                                                        "[PROC/OK] condition failure stdout {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stdout {p:?} found"));
+                                                failure_reason = FailureReason::StdOut;
                                             } else {
-                                                if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} found", p));
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stdout {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stdout {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1639,21 +1613,19 @@ impl Condition for CommandCondition {
                                             if self.match_exact {
                                                 if self._process_stderr.to_uppercase() == p.to_uppercase() {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} matched", p));
+                                                        "[PROC/OK] condition failure stderr {p:?} matched"));
                                                     failure_reason = FailureReason::StdErr;
                                                 } else {
                                                     self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} NOT matched", p));
+                                                        "[PROC/OK] condition failure stderr {p:?} NOT matched"));
                                                 }
+                                            } else if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stderr {p:?} found"));
+                                                failure_reason = FailureReason::StdErr;
                                             } else {
-                                                if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} found", p));
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(LogType::Debug, &format!(
-                                                        "[PROC/OK] condition failure stderr {:?} NOT found", p));
-                                                }
+                                                self.log(LogType::Debug, &format!(
+                                                    "[PROC/OK] condition failure stderr {p:?} NOT found"));
                                             }
                                         }}
                                     }
@@ -1700,37 +1672,37 @@ impl Condition for CommandCondition {
         // return true on success and false otherwise
         match failure_reason {
             FailureReason::NoFailure => {
-                self.log(LogType::Debug, &String::from(
-                    format!("[END/OK] condition checked successfully in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Debug,
+                    &format!("[END/OK] condition checked successfully in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(true))
             }
             FailureReason::StdOut => {
                 self._process_failed = true;
-                self.log(LogType::Info, &String::from(
-                    format!("[END/FAIL] condition checked unsuccessfully (stdout check) in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("[END/FAIL] condition checked unsuccessfully (stdout check) in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::StdErr => {
                 self._process_failed = true;
-                self.log(LogType::Info, &String::from(
-                    format!("[END/FAIL] condition checked unsuccessfully (stderr check) in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("[END/FAIL] condition checked unsuccessfully (stderr check) in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::Status => {
                 self._process_failed = true;
-                self.log(LogType::Info, &String::from(
-                    format!("[END/FAIL] condition checked unsuccessfully (status check) in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("[END/FAIL] condition checked unsuccessfully (status check) in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::Other => {
                 self._process_failed = true;
-                self.log(LogType::Info, &String::from(
-                    format!("[END/FAIL] task ended unexpectedly in {:.2}s",
-                    self._process_duration.as_secs_f64())));
+                self.log(LogType::Info,
+                    &format!("[END/FAIL] task ended unexpectedly in {:.2}s",
+                    self._process_duration.as_secs_f64()));
                 Ok(Some(false))
             }
         }

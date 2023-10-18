@@ -163,13 +163,13 @@ impl FilesystemChangeEvent {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "condition",
             "watch",
             "recursive",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -180,22 +180,22 @@ impl FilesystemChangeEvent {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_EVENT_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "fschange" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_EVENT_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -203,22 +203,22 @@ impl FilesystemChangeEvent {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_EVENT_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_EVENT_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_EVENT_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -232,34 +232,34 @@ impl FilesystemChangeEvent {
         let mut new_event = FilesystemChangeEvent::new(
             &name,
         );
-        new_event.condition_registry = Some(&cond_registry);
-        new_event.condition_bucket = Some(&bucket);
+        new_event.condition_registry = Some(cond_registry);
+        new_event.condition_bucket = Some(bucket);
 
         // common optional parameter initialization
         let cur_key = "condition";
         let condition;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_EVENT_NAME);
             }
             condition = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&condition) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &condition,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
         if !new_event.condition_registry.unwrap().has_condition(&condition) {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 &condition,
                 ERR_INVALID_EVENT_CONDITION);
         }
@@ -270,7 +270,7 @@ impl FilesystemChangeEvent {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             }
@@ -279,7 +279,7 @@ impl FilesystemChangeEvent {
                 // let's just log the errors and avoid refusing invalid entries
                 // if !new_event.watch_location(&s)? {
                 //     return _invalid_cfg(
-                //         &cur_key,
+                //         cur_key,
                 //         &s,
                 //         ERR_INVALID_VALUE_FOR_ENTRY);
                 // }
@@ -291,7 +291,7 @@ impl FilesystemChangeEvent {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -303,7 +303,7 @@ impl FilesystemChangeEvent {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -354,9 +354,7 @@ impl Event for FilesystemChangeEvent {
         if self.watched_locations.is_none() {
             self.log(
                 LogType::Error,
-                &format!(
-                    "[START/FAIL] watch locations not specified",
-                ),
+                "[START/FAIL] watch locations not specified",
             );
             return Ok(false);
         }
@@ -397,9 +395,8 @@ impl Event for FilesystemChangeEvent {
                         self.log(
                             LogType::Warn,
                             &format!(
-                                "[START/FAIL] could not add `{}` to watched paths: {}",
+                                "[START/FAIL] could not add `{}` to watched paths: {e}",
                                 p.as_os_str().to_string_lossy(),
-                                e.to_string(),
                             ),
                         );
                     }
@@ -408,7 +405,7 @@ impl Event for FilesystemChangeEvent {
         } else {
             self.log(
                 LogType::Error,
-                &format!("[START/FAIL] no paths to watch have been specified"),
+                "[START/FAIL] no paths to watch have been specified",
             );
             return Ok(false);
         }
@@ -417,11 +414,12 @@ impl Event for FilesystemChangeEvent {
             match r_evt {
                 Ok(evt) => {
                     let evt_s = {
-                        if evt.kind.is_access() { "ACCESS" } else
-                        if evt.kind.is_create() { "CREATE" } else
-                        if evt.kind.is_modify() { "MODIFY" } else
-                        if evt.kind.is_remove() { "REMOVE" } else
-                        if evt.kind.is_other() { "OTHER" } else { "UNKNOWN" }
+                        if evt.kind.is_access() { "ACCESS" }
+                        else if evt.kind.is_create() { "CREATE" }
+                        else if evt.kind.is_modify() { "MODIFY" }
+                        else if evt.kind.is_remove() { "REMOVE" }
+                        else if evt.kind.is_other() { "OTHER" }
+                        else { "UNKNOWN" }
                     };
                     // ignore access events
                     if !evt.kind.is_access() {
@@ -433,14 +431,13 @@ impl Event for FilesystemChangeEvent {
                             Ok(_) => {
                                 self.log(
                                     LogType::Debug,
-                                    &format!("[PROC/OK] condition fired successfully"),
+                                    "[PROC/OK] condition fired successfully",
                                 );
                             }
                             Err(e) => {
                                 self.log(
                                     LogType::Warn,
-                                    &format!("[PROC/FAIL] error firing condition: {}",
-                                        e.to_string()),
+                                    &format!("[PROC/FAIL] error firing condition: {e}"),
                                 );
                             }
                         }
@@ -454,10 +451,7 @@ impl Event for FilesystemChangeEvent {
                 Err(e) => {
                     self.log(
                         LogType::Warn,
-                        &format!(
-                            "[PROC/FAIL] error in event notification: {}",
-                            e.to_string(),
-                        ),
+                        &format!("[PROC/FAIL] error in event notification: {e}"),
                     );
                 }
             };

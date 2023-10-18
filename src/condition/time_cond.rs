@@ -193,25 +193,25 @@ impl TimeCondition {
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
         self.exec_sequence = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first success
     pub fn breaks_on_success(mut self, yes: bool) -> Self {
         self.break_on_success = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first failure
     pub fn breaks_on_failure(mut self, yes: bool) -> Self {
         self.break_on_failure = yes;
-        return self;
+        self
     }
 
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
-        return self;
+        self
     }
 
     /// Set tick duration after creation
@@ -246,7 +246,7 @@ impl TimeCondition {
             }
         }
         if let Some(n) = month {
-            if n < 1 || n > 12 {
+            if !(1..=12).contains(&n) {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
                     format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "month"))
@@ -254,7 +254,7 @@ impl TimeCondition {
             }
         }
         if let Some(n) = day {
-            if n < 1 || n > 31 {
+            if !(1..=31).contains(&n) {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
                     format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "day"))
@@ -286,7 +286,7 @@ impl TimeCondition {
             }
         }
         if let Some(n) = dow {
-            if n < 1 && n > 7 {
+            if !(1..=7).contains(&n) {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
                     format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "weekday"))
@@ -337,7 +337,7 @@ impl TimeCondition {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "time_specifications",
@@ -347,7 +347,7 @@ impl TimeCondition {
             "break_on_failure",
             "break_on_success",
             "suspended",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -358,22 +358,22 @@ impl TimeCondition {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "time" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_COND_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -381,22 +381,22 @@ impl TimeCondition {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -408,7 +408,7 @@ impl TimeCondition {
         let mut new_condition = TimeCondition::new(
             &name,
         );
-        new_condition.task_registry = Some(&task_registry);
+        new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
         // the configuration changes this state the condition will not start
@@ -419,7 +419,7 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_LIST);
             }
@@ -427,8 +427,8 @@ impl TimeCondition {
                 let s = String::from(a.as_str().unwrap_or(&String::new()));
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_TASK);
                 }
             }
@@ -438,7 +438,7 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -450,7 +450,7 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -462,7 +462,7 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -474,7 +474,7 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -486,7 +486,7 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -499,14 +499,14 @@ impl TimeCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
                 for map in item.as_list().unwrap() {
                     if !map.is_map() {
                         return _invalid_cfg(
-                            &cur_key,
+                            cur_key,
                             STR_UNKNOWN_VALUE,
                             ERR_INVALID_TIMESPEC);
                     } else {
@@ -521,7 +521,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("year") {
                             if !v.is_int() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -533,7 +533,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("month") {
                             if !v.is_int() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -545,7 +545,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("day") {
                             if !v.is_int() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -557,7 +557,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("hour") {
                             if !v.is_int() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -569,7 +569,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("minute") {
                             if !v.is_int() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -581,7 +581,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("second") {
                             if !v.is_int() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -593,7 +593,7 @@ impl TimeCondition {
                         if let Some(v) = map.get("weekday") {
                             if !v.is_str() {
                                 return _invalid_cfg(
-                                    &cur_key,
+                                    cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC);
                             } else {
@@ -615,7 +615,7 @@ impl TimeCondition {
                                     "saturday" => 7,
                                     _ => {
                                         return _invalid_cfg(
-                                            &cur_key,
+                                            cur_key,
                                             STR_UNKNOWN_VALUE,
                                             ERR_INVALID_TIMESPEC);
                                     },
@@ -631,7 +631,7 @@ impl TimeCondition {
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }

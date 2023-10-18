@@ -95,25 +95,25 @@ impl IntervalCondition {
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
         self.exec_sequence = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first success
     pub fn breaks_on_success(mut self, yes: bool) -> Self {
         self.break_on_success = yes;
-        return self;
+        self
     }
 
     /// If true, *sequential* task execution will break on first failure
     pub fn breaks_on_failure(mut self, yes: bool) -> Self {
         self.break_on_failure = yes;
-        return self;
+        self
     }
 
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
-        return self;
+        self
     }
 
     /// Load an `IntervalCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
@@ -152,7 +152,7 @@ impl IntervalCondition {
             ))
         }
 
-        let check = vec!(
+        let check = [
             "type",
             "name",
             "interval_seconds",
@@ -162,7 +162,7 @@ impl IntervalCondition {
             "break_on_failure",
             "break_on_success",
             "suspended",
-        );
+        ];
         for key in cfgmap.keys() {
             if !check.contains(&key.as_str()) {
                 return _invalid_cfg(key, STR_UNKNOWN_VALUE,
@@ -173,22 +173,22 @@ impl IntervalCondition {
         // check type
         let cur_key = "type";
         let cond_type;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_TYPE);
             }
             cond_type = item.as_str().unwrap().to_owned();
             if cond_type != "interval" {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &cond_type,
                     ERR_INVALID_COND_TYPE);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -196,22 +196,22 @@ impl IntervalCondition {
         // common mandatory parameter retrieval
         let cur_key = "name";
         let name;
-        if let Some(item) = cfgmap.get(&cur_key) {
+        if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_str() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_COND_NAME);
             }
             name = item.as_str().unwrap().to_owned();
             if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(&cur_key,
+                return _invalid_cfg(cur_key,
                     &name,
                     ERR_INVALID_COND_NAME);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -222,22 +222,22 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_int() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
                 let i = *item.as_int().unwrap();
                 if i < 0 {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_PARAMETER);
                 }
                 interval = Duration::from_secs(i as u64);
             }
         } else {
             return _invalid_cfg(
-                &cur_key,
+                cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER);
         }
@@ -247,7 +247,7 @@ impl IntervalCondition {
             &name,
             &interval,
         );
-        new_condition.task_registry = Some(&task_registry);
+        new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
         // the configuration changes this state the condition will not start
@@ -258,7 +258,7 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_TASK_LIST);
             }
@@ -266,8 +266,8 @@ impl IntervalCondition {
                 let s = String::from(a.as_str().unwrap_or(&String::new()));
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
-                        &cur_key,
-                        &item.as_str().unwrap(),
+                        cur_key,
+                        item.as_str().unwrap(),
                         ERR_INVALID_TASK);
                 }
             }
@@ -277,7 +277,7 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -289,7 +289,7 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -301,7 +301,7 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -313,7 +313,7 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -325,7 +325,7 @@ impl IntervalCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_bool() {
                 return _invalid_cfg(
-                    &cur_key,
+                    cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER);
             } else {
@@ -466,15 +466,15 @@ impl Condition for IntervalCondition {
     fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
         self.log(
             LogType::Debug,
-            &format!("[PROC/MSG] checking interval based condition")
+            "[PROC/MSG] checking interval based condition",
         );
         // last_tested has already been set by trait to Instant::now()
         let t = self.last_tested.unwrap();
         if self.interval <= t - self.checked {
             self.checked = t;
-            return Ok(Some(true));
+            Ok(Some(true))
         } else {
-            return Ok(Some(false))
+            Ok(Some(false))
         }
     }
 

@@ -57,7 +57,7 @@ impl ConditionRegistry {
     pub fn new() -> Self {
         ConditionRegistry {
             condition_list: Arc::new(Mutex::new(HashMap::new())),
-            conditions_busy: Arc::new(Mutex::new(0 as u64)),
+            conditions_busy: Arc::new(Mutex::new(0_u64)),
         }
     }
 
@@ -97,7 +97,7 @@ impl ConditionRegistry {
                 Some(r
                     .clone()
                     .lock()
-                    .expect(&format!("cannot lock condition {name} to retrieve tyope"))
+                    .expect(&format!("cannot lock condition {name} to retrieve type"))
                     .get_type()
                     .to_string()
                 )
@@ -219,7 +219,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(&name) {
+        if !self.has_condition(name) {
             panic!("condition {name} not found in registry");
         }
 
@@ -270,7 +270,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(&name) {
+        if !self.has_condition(name) {
             panic!("condition {name} not found in registry");
         }
 
@@ -321,7 +321,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(&name) {
+        if !self.has_condition(name) {
             panic!("condition {name} not found in registry");
         }
 
@@ -371,8 +371,7 @@ impl ConditionRegistry {
         for name in self.condition_list
             .lock()
             .expect("cannot lock condition registry")
-            .keys()
-            .into_iter() {
+            .keys() {
             res.push(name.clone())
         }
         if res.is_empty() {
@@ -399,7 +398,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn condition_busy(&self, name: &str) -> bool {
-        if !self.has_condition(&name) {
+        if !self.has_condition(name) {
             panic!("condition {name} not found in registry");
         }
 
@@ -427,7 +426,7 @@ impl ConditionRegistry {
 
         // since we return after trying to lock the condition, the possibly
         // acquired lock is immediately released
-        if let Ok(_) = cond.clone().try_lock() {
+        if cond.clone().try_lock().is_ok() {
             log(
                 LogType::Trace,
                 "CONDITION_REGISTRY condition_busy",
@@ -481,7 +480,7 @@ impl ConditionRegistry {
     /// and if the provided name is not found in the registry: in no way the
     /// `tick` function should be invoked with unknown conditions.
     pub fn tick(&self, name: &str) -> Result<Option<bool>, std::io::Error> {
-        if !self.has_condition(&name) {
+        if !self.has_condition(name) {
             panic!("condition {name} not found in registry");
         }
 

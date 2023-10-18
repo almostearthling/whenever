@@ -183,8 +183,7 @@ impl EventRegistry {
         for name in self.event_list
             .lock()
             .expect("cannot lock event registry")
-            .keys()
-            .into_iter() {
+            .keys() {
             res.push(name.clone())
         }
         if res.is_empty() {
@@ -253,10 +252,7 @@ impl EventRegistry {
                         log(
                             LogType::Error,
                             "EVENT_REGISTRY install",
-                            &format!(
-                                "[START/FAIL] listening service for event {ename} NOT installed: {}",
-                                e.to_string(),
-                            ),
+                            &format!("[START/FAIL] listening service for event {ename} NOT installed: {e}"),
                         );
                         Err(e)
                     }

@@ -115,7 +115,7 @@ pub trait Condition: Send {
 
     /// Check whether or not there are associated tasks.
     fn has_tasks(&self) -> Result<bool, std::io::Error> {
-        Ok(self.task_names()?.len() > 0)
+        Ok(!self.task_names()?.is_empty())
     }
 
     /// Verify last outcome after checking the `Condition`.
@@ -210,57 +210,57 @@ pub trait Condition: Send {
         // is suspended, or if it has been successful once and is not
         // set to be recurrent, and check otherwise
         if !self.has_tasks().unwrap_or(false) {
-            self.log(LogType::Debug, &format!(
-                "[PROC/MSG] skipping check: condition has no associated tasks"));
+            self.log(LogType::Debug,
+                "[PROC/MSG] skipping check: condition has no associated tasks");
             Ok(None)
         }
         else if self.suspended() {
-            self.log(LogType::Debug, &format!(
-                "[PROC/MSG] skipping check: condition is suspended"));
+            self.log(LogType::Debug,
+                "[PROC/MSG] skipping check: condition is suspended");
             Ok(None)
         } else if self.has_succeeded() && !self.recurring() {
-            self.log(LogType::Debug, &format!(
-                "[PROC/MSG] skipping check: condition is not repeating"));
+            self.log(LogType::Debug,
+                "[PROC/MSG] skipping check: condition is not repeating");
             Ok(None)
         } else {
             if !self.reset_succeeded()? {
-                self.log(LogType::Error, &format!(
-                    "[PROC/FAIL] aborting: condition could not reset success status"));
+                self.log(LogType::Error,
+                    "[PROC/FAIL] aborting: condition could not reset success status");
                 return Err(Error::new(
                     ErrorKind::Unsupported,
                     ERR_COND_CANNOT_RESET,
                 ));
             }
-            self.log(LogType::Debug, &format!("[PROC/OK] checking condition"));
+            self.log(LogType::Debug, "[PROC/OK] checking condition");
 
             // call the inner mandatory checker
             if self.set_checked()? {
                 if let Some(outcome) = self._check_condition()? {
                     if outcome {
                         if self.set_succeeded()? {
-                            self.log(LogType::Info, &format!(
-                                "[PROC/OK] success: condition checked with positive outcome"));
+                            self.log(LogType::Info,
+                                "[PROC/OK] success: condition checked with positive outcome");
                         } else {
-                            self.log(LogType::Error, &format!(
-                                "[PROC/FAIL] aborting: condition could not be set to succeeded"));
+                            self.log(LogType::Error,
+                                "[PROC/FAIL] aborting: condition could not be set to succeeded");
                             return Err(Error::new(
                                 ErrorKind::Unsupported,
                                 ERR_COND_CANNOT_SET_SUCCESS,
                             ));
                         }
                     } else {
-                        self.log(LogType::Info, &format!(
-                            "[PROC/OK] failure: condition checked with negative outcome"));
+                        self.log(LogType::Info,
+                            "[PROC/OK] failure: condition checked with negative outcome");
                     }
                     Ok(Some(outcome))
                 } else {
-                    self.log(LogType::Warn, &format!(
-                        "[PROC/FAIL] exiting: condition provided NO outcome"));
+                    self.log(LogType::Warn,
+                        "[PROC/FAIL] exiting: condition provided NO outcome");
                     Ok(None)
                 }
             } else {
-                self.log(LogType::Error, &format!(
-                    "[PROC/FAIL] aborting: condition could not be set to checked"));
+                self.log(LogType::Error,
+                    "[PROC/FAIL] aborting: condition could not be set to checked");
                 return Err(Error::new(
                     ErrorKind::Unsupported,
                     ERR_COND_CANNOT_SET_CHECKED,
@@ -364,38 +364,37 @@ pub trait Condition: Send {
         let mut s_task_names = String::new();
         let names = self.task_names()?;
 
-        if names.len() > 0 {
+        if !names.is_empty() {
             for name in names.clone().iter() {
-                if s_task_names.len() > 0 {
+                if !s_task_names.is_empty() {
                     s_task_names = format!("{s_task_names} {name}");
                 } else {
                     s_task_names = format!("{name}");
                 }
             }
         } else {
-            self.log(LogType::Warn, &format!(
-                "[PROC/FAIL] no tasks found associated to condition"));
+            self.log(LogType::Warn,
+                "[PROC/FAIL] no tasks found associated to condition");
             return Ok(None);
         }
 
-        let res;
-        if self.exec_sequence() {
+        let res = if self.exec_sequence() {
             self.log(LogType::Info, &format!(
                 "[PROC/OK] running tasks sequentially: {s_task_names}"));
-            res = registry.run_tasks_seq(
+            registry.run_tasks_seq(
                 &self.get_name(),
                 &names.iter().map(|s| s.as_str()).collect(),
                 self.break_on_failure(),
                 self.break_on_success(),
-            );
+            )
         } else {
             self.log(LogType::Info, &format!(
                 "[PROC/OK] running tasks simultaneously: {s_task_names}"));
-            res = registry.run_tasks_par(
+            registry.run_tasks_par(
                 &self.get_name(),
                 &names.iter().map(|s| s.as_str()).collect(),
-            );
-        }
+            )
+        };
 
         for name in res.keys() {
             match res.get(name).unwrap() {
@@ -413,7 +412,7 @@ pub trait Condition: Send {
                 }
                 Err(err) => {
                     self.log(LogType::Warn, &format!(
-                        "[PROC/OK] task {name} exited with error: {}", err.to_string()
+                        "[PROC/OK] task {name} exited with error: {err}"
                     ));
                 }
             }
