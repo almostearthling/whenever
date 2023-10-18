@@ -38,7 +38,6 @@ use event::registry::EventRegistry;
 
 use condition::bucket_cond::ExecutionBucket;
 
-use common::APP_NAME;
 use common::logging::{log, init as log_init, LogType};
 use constants::*;
 

@@ -46,12 +46,6 @@
 //! organize communication to the user in a friendlier way.
 
 
-/// The application name
-pub const APP_NAME: &str = "whenever";
-
-
-// an enum to produce different log messages used by the trait-defined logger
-
 #[allow(dead_code)]
 /// Module for logging
 ///
