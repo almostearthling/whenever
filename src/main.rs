@@ -301,6 +301,7 @@ fn configure_tasks(
     Ok(())
 }
 
+
 // configure the conditions according to the provided configuration map
 fn configure_conditions(
     cfgmap: &CfgMap,
@@ -417,6 +418,7 @@ fn configure_conditions(
     }
     Ok(())
 }
+
 
 // configure the event according to the provided configuration map
 fn configure_events(
@@ -892,7 +894,7 @@ struct Args {
     #[arg(short, long, value_name = "LOGFILE")]
     log: Option<String>,
 
-    /// Specify the log level (default: warn)
+    /// Specify the log level
     #[arg(
         short = 'L',
         long,
@@ -907,11 +909,11 @@ struct Args {
     #[arg(short = 'a', long, requires = "log")]
     log_append: bool,
 
-    /// No colors when logging (default for log files)
+    /// No colors when logging (default when logging to file)
     #[arg(short = 'P', long, group = "logformat")]
     log_plain: bool,
 
-    /// Use colors when logging to console (default, ignored with log files)
+    /// Use colors when logging (default, ignored when logging to file)
     #[arg(short = 'C', long, group = "logformat")]
     log_color: bool,
 
@@ -1077,7 +1079,6 @@ fn main() {
         "[END/OK] application exit: main process terminating successfully",
     );
     std::process::exit(0);
-
 }
 
 
