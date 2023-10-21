@@ -231,7 +231,7 @@ pub trait Condition: Send {
                     ERR_COND_CANNOT_RESET,
                 ));
             }
-            self.log(LogType::Debug, "[PROC/OK] checking condition");
+            self.log(LogType::Trace, "[PROC/OK] checking condition");
 
             // call the inner mandatory checker
             if self.set_checked()? {
