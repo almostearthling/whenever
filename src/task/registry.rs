@@ -433,7 +433,7 @@ impl TaskRegistry {
                 LogType::Warn,
                 "TASK_REGISTRY run_par",
                 LOG_WHEN_END,
-                LOG_STATUS_MSG,
+                LOG_STATUS_ERR,
                 &format!("not all outcomes received ({outcomes_received}/{outcomes_total})"),
             );
         } else {

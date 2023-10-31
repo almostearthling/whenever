@@ -202,7 +202,7 @@ where T: ToVariant {
         let mut d: HashMap<String, zvariant::Value> = HashMap::new();
         for (key, item) in self.iter() {
             if let Some(v) = item.to_variant() {
-                d.insert(String::from(key), v);
+                d.insert(key.clone(), v);
             } else {
                 return None;
             }
@@ -237,7 +237,7 @@ impl ToVariant for CfgValue {
             for key in map.keys() {
                 if let Some(value) = map.get(key) {
                     if let Some(v) = value.to_variant() {
-                        h.insert(key.to_string(), v);
+                        h.insert(key.clone(), v);
                     } else {
                         return None
                     }
