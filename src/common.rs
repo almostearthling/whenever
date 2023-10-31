@@ -246,13 +246,13 @@ pub mod logging {
 
     /// Common log function: `context` specifies which part of the application
     /// originated the message, and `message` is the actual information
-    pub fn log(severity: LogType, context: &str, message: &str) {
+    pub fn log(severity: LogType, context: &str, when: &str, status: &str, message: &str) {
         match severity {
-            LogType::Trace => { trace!("{context}: {message}") }
-            LogType::Debug => { debug!("{context}: {message}") }
-            LogType::Info => { info!("{context}: {message}") }
-            LogType::Warn => { warn!("{context}: {message}") }
-            LogType::Error => { error!("{context}: {message}") }
+            LogType::Trace => { trace!("{context}: [{when}/{status}] {message}") }
+            LogType::Debug => { debug!("{context}: [{when}/{status}] {message}") }
+            LogType::Info => { info!("{context}: [{when}/{status}] {message}") }
+            LogType::Warn => { warn!("{context}: [{when}/{status}] {message}") }
+            LogType::Error => { error!("{context}: [{when}/{status}] {message}") }
         }
     }
 

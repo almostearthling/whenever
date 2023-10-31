@@ -224,7 +224,9 @@ impl EventRegistry {
             log(
                 LogType::Debug,
                 "EVENT_REGISTRY install",
-                &format!("[START/OK] installing listening service for event {name} (dedicated thread)"),
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("installing listening service for event {name} (dedicated thread)"),
             );
             let event = event.clone();
             let event_name = event_name.clone();
@@ -237,13 +239,17 @@ impl EventRegistry {
                             log(
                                 LogType::Debug,
                                 "EVENT_REGISTRY install",
-                                &format!("[START/OK] listening service installed for event {ename}"),
+                                LOG_WHEN_START,
+                                LOG_STATUS_OK,
+                                &format!("listening service installed for event {ename}"),
                             );
                         } else {
                             log(
                                 LogType::Error,
                                 "EVENT_REGISTRY install",
-                                &format!("[START/FAIL] listening service for event {ename} NOT installed"),
+                                LOG_WHEN_START,
+                                LOG_STATUS_FAIL,
+                                &format!("listening service for event {ename} NOT installed"),
                             );
                         }
                         Ok(ssres)
@@ -252,7 +258,9 @@ impl EventRegistry {
                         log(
                             LogType::Error,
                             "EVENT_REGISTRY install",
-                            &format!("[START/FAIL] listening service for event {ename} NOT installed: {e}"),
+                            LOG_WHEN_START,
+                            LOG_STATUS_FAIL,
+                            &format!("listening service for event {ename} NOT installed: {e}"),
                         );
                         Err(e)
                     }
@@ -264,14 +272,18 @@ impl EventRegistry {
                 log(
                     LogType::Debug,
                     "EVENT_REGISTRY install",
-                    &format!("[START/OK] installing listening service for event {name}"),
+                    LOG_WHEN_START,
+                    LOG_STATUS_OK,
+                    &format!("installing listening service for event {name}"),
                 );
             } else {
                 // FIXME: this might have to return Err(...) instead!?
                 log(
                     LogType::Error,
                     "EVENT_REGISTRY install",
-                    &format!("[START/FAIL] listening service for event {name} NOT installed"),
+                    LOG_WHEN_START,
+                    LOG_STATUS_FAIL,
+                    &format!("listening service for event {name} NOT installed"),
                 );
             }
             Ok(None)
@@ -310,20 +322,26 @@ impl EventRegistry {
                 log(
                     LogType::Trace,
                     "EVENT_REGISTRY fire",
-                    &format!("[PROC/OK] condition for event {name} fired"),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("condition for event {name} fired"),
                 );
             } else {
                 log(
                     LogType::Trace,
                     "EVENT_REGISTRY fire",
-                    &format!("[PROC/FAIL] condition for event {name} could not fire"),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
+                    &format!("condition for event {name} could not fire"),
                 );
             }
         } else {
             log(
                 LogType::Debug,
                 "EVENT_REGISTRY fire",
-                &format!("[PROC/FAIL] condition for event {name} failed to fire"),
+                LOG_WHEN_PROC,
+                LOG_STATUS_FAIL,
+                &format!("condition for event {name} failed to fire"),
             );
         }
     }

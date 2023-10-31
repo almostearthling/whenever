@@ -280,8 +280,10 @@ impl TaskRegistry {
             cur_res = guard.run(trigger_name);
             log(
                 LogType::Trace,
-                "TASK_REGISTRY run (sequential)",
-                &format!("[END/MSG] task {name} finished running")
+                "TASK_REGISTRY run_seq",
+                LOG_WHEN_END,
+                LOG_STATUS_MSG,
+                &format!("task {name} finished running"),
             );
             drop(guard);
 
@@ -300,11 +302,10 @@ impl TaskRegistry {
             if breaks {
                 log(
                     LogType::Debug,
-                    "TASK_REGISTRY run (sequential)",
-                    &format!(
-                        "[END/MSG] breaking on {}",
-                        { if task_success { "success" } else { "failure" } }
-                    )
+                    "TASK_REGISTRY run_seq",
+                    LOG_WHEN_END,
+                    LOG_STATUS_MSG,
+                    &format!("breaking on {}", { if task_success { "success" } else { "failure" } }),
                 );
                 break;
             }
@@ -312,12 +313,10 @@ impl TaskRegistry {
 
         log(
             LogType::Trace,
-            "TASK_REGISTRY run (sequential)",
-            &format!(
-                "[END/MSG] finished running {}/{} tasks",
-                res.len(),
-                names.len(),
-            )
+            "TASK_REGISTRY run_seq",
+            LOG_WHEN_END,
+            LOG_STATUS_MSG,
+            &format!("finished running {}/{} tasks", res.len(), names.len()),
         );
         res
     }
@@ -432,14 +431,18 @@ impl TaskRegistry {
         if outcomes_received < outcomes_total {
             log(
                 LogType::Warn,
-                "TASK_REGISTRY run (parallel)",
-                &format!("[END/MSG] not all outcomes received ({outcomes_received}/{outcomes_total})")
+                "TASK_REGISTRY run_par",
+                LOG_WHEN_END,
+                LOG_STATUS_MSG,
+                &format!("not all outcomes received ({outcomes_received}/{outcomes_total})"),
             );
         } else {
             log(
                 LogType::Debug,
-                "TASK_REGISTRY run (parallel)",
-                &format!("[END/MSG] all outcomes received ({outcomes_received}/{outcomes_total})")
+                "TASK_REGISTRY run_par",
+                LOG_WHEN_END,
+                LOG_STATUS_MSG,
+                &format!("all outcomes received ({outcomes_received}/{outcomes_total})"),
             );
         }
         res

@@ -108,7 +108,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
         log(
             LogType::Trace,
             "MAIN scheduler_tick",
-            "[PROC/MSG] application is paused: tick skipped",
+            LOG_WHEN_PROC,
+            LOG_STATUS_MSG,
+            "application is paused: tick skipped",
         );
         return Ok(false);
     }
@@ -119,7 +121,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
             log(
                 LogType::Debug,
                 "MAIN scheduler_tick",
-                &format!("[PROC/MSG] condition {name} is busy: tick skipped"),
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                &format!("condition {name} is busy: tick skipped"),
             );
             continue
         }
@@ -144,13 +148,17 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
                             log(
                                 LogType::Trace,
                                 "MAIN scheduler_tick",
-                                &format!("[PROC/MSG] condition {name} tested (tasks executed)"),
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                &format!("condition {name} tested (tasks executed)"),
                             );
                         } else {
                             log(
                                 LogType::Trace,
                                 "MAIN scheduler_tick",
-                                &format!("[PROC/MSG] condition {name} tested (tasks executed unsuccessfully)"),
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                &format!("condition {name} tested (tasks executed unsuccessfully)"),
                             );
                         }
                     }
@@ -158,7 +166,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
                         log(
                             LogType::Trace,
                             "MAIN scheduler_tick",
-                            &format!("[PROC/MSG] condition {name} tested with no outcome (tasks not executed)"),
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("condition {name} tested with no outcome (tasks not executed)"),
                         );
                     }
                 }
@@ -460,13 +470,17 @@ fn configure_events(
                                     log(
                                         LogType::Trace,
                                         "MAIN listener",
-                                        &format!("[INIT/MSG] service installed for event {event_name} (dedicated thread)"),
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!("service installed for event {event_name} (dedicated thread)"),
                                     )
                                 } else {
                                     log(
                                         LogType::Trace,
                                         "MAIN listener",
-                                        &format!("[INIT/MSG] service installed for event {event_name}"),
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!("service installed for event {event_name}"),
                                     )
                                 }
                             } else {
@@ -491,13 +505,17 @@ fn configure_events(
                                     log(
                                         LogType::Trace,
                                         "MAIN listener",
-                                        &format!("[INIT/MSG] service installed for event {event_name} (dedicated thread)"),
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!("service installed for event {event_name} (dedicated thread)"),
                                     )
                                 } else {
                                     log(
                                         LogType::Trace,
                                         "MAIN listener",
-                                        &format!("[INIT/MSG] service installed for event {event_name}"),
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!("service installed for event {event_name}"),
                                     )
                                 }
                             } else {
@@ -546,13 +564,17 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
             log(
                 LogType::Warn,
                 "MAIN reset_conditions",
-                &format!("[START/ERR] ignoring non existent condition: {name}"),
+                LOG_WHEN_START,
+                LOG_STATUS_ERR,
+                &format!("ignoring non existent condition: {name}"),
             );
         } else {
             log(
                 LogType::Debug,
                 "MAIN reset_conditions",
-                &format!("[START/OK] resetting condition {name}"),
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("resetting condition {name}"),
             );
             match CONDITION_REGISTRY.reset_condition(name, true) {
                 Ok(res) => {
@@ -560,13 +582,17 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                         log(
                             LogType::Info,
                             "MAIN reset_conditions",
-                            &format!("[END/OK] condition {name} has been reset"),
+                            LOG_WHEN_END,
+                            LOG_STATUS_OK,
+                            &format!("condition {name} has been reset"),
                         );
                     } else {
                         log(
                             LogType::Warn,
                             "MAIN reset_conditions",
-                            &format!("[END/FAIL] condition {name} could not be reset"),
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            &format!("condition {name} could not be reset"),
                         );
                     }
                 }
@@ -574,7 +600,9 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                     log(
                         LogType::Warn,
                         "MAIN reset_conditions",
-                        &format!("[END/FAIL] error while resetting condition {name}: {e}"),
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("error while resetting condition {name}: {e}"),
                     );
                 }
             }
@@ -592,13 +620,17 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
         log(
             LogType::Warn,
             "MAIN condition_state",
-            &format!("[START/ERR] ignoring non existent condition: {name}"),
+            LOG_WHEN_START,
+            LOG_STATUS_ERR,
+            &format!("ignoring non existent condition: {name}"),
         );
     } else {
         log(
             LogType::Debug,
             "MAIN condition_state",
-            &format!("[START/OK] changing state of condition {name} to {}", {
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("changing state of condition {name} to {}", {
                 if suspended { "suspended" } else { "active" }
             }),
         );
@@ -609,13 +641,17 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                         log(
                             LogType::Info,
                             "MAIN suspend_condition",
-                            &format!("[END/OK] condition {name} has been suspended"),
+                            LOG_WHEN_END,
+                            LOG_STATUS_OK,
+                            &format!("condition {name} has been suspended"),
                         );
                     } else {
                         log(
                             LogType::Warn,
                             "MAIN suspend_condition",
-                            &format!("[END/FAIL] condition {name} already suspended"),
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            &format!("condition {name} already suspended"),
                         );
                     }
                 }
@@ -623,7 +659,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                     log(
                         LogType::Warn,
                         "MAIN suspend_condition",
-                        &format!("[END/FAIL] error while suspending condition {name}: {e}"),
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("error while suspending condition {name}: {e}"),
                     );
                 }
             }
@@ -645,13 +683,17 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                         log(
                             LogType::Info,
                             "MAIN resume_condition",
-                            &format!("[END/OK] condition {name} has been {info}"),
+                            LOG_WHEN_END,
+                            LOG_STATUS_OK,
+                            &format!("condition {name} has been {info}"),
                         );
                     } else {
                         log(
                             LogType::Warn,
                             "MAIN resume_condition",
-                            &format!("[END/FAIL] condition {name} was not suspended"),
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            &format!("condition {name} was not suspended"),
                         );
                     }
                 }
@@ -659,7 +701,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                     log(
                         LogType::Warn,
                         "MAIN resume_condition",
-                        &format!("[END/FAIL] error while resuming condition {name}: {e}"),
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("error while resuming condition {name}: {e}"),
                     );
                 }
             }
@@ -688,13 +732,17 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        "[PROC/ERR] command `{cmd}` does not support arguments",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_ERR,
+                        &format!("command `{cmd}` does not support arguments"),
                     );
                 } else {
                     log(
                         LogType::Warn,
                         "MAIN command",
-                        "[PROC/MSG] exit request received: terminating application",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        "exit request received: terminating application",
                     );
                     *APPLICATION_MUST_EXIT.lock().unwrap() = true;
                 }
@@ -704,13 +752,17 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_ERR,
+                        &format!("command `{cmd}` does not support arguments"),
                     );
                 } else {
                     log(
                         LogType::Warn,
                         "MAIN command",
-                        "[PROC/MSG] kill request received: terminating application immediately",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        "kill request received: terminating application immediately",
                     );
                     *APPLICATION_MUST_EXIT.lock().unwrap() = true;
                     *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
@@ -721,19 +773,25 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_ERR,
+                        &format!("command `{cmd}` does not support arguments"),
                     );
                 } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
                         LogType::Warn,
                         "MAIN command",
-                        "[PROC/FAIL] ignoring pause request: scheduler already paused",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        "ignoring pause request: scheduler already paused",
                     );
                 } else {
                     log(
                         LogType::Debug,
                         "MAIN command",
-                        "[PROC/MSG] pausing scheduler ticks: conditions not checked until resume",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        "pausing scheduler ticks: conditions not checked until resume",
                     );
                     *APPLICATION_IS_PAUSED.lock().unwrap() = true;
                 }
@@ -743,13 +801,17 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        &format!("[PROC/ERR] command `{cmd}` does not support arguments"),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_ERR,
+                        &format!("command `{cmd}` does not support arguments"),
                     );
                 } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
                         LogType::Debug,
                         "MAIN command",
-                        "[PROC/MSG] resuming scheduler ticks and condition checks",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        "resuming scheduler ticks and condition checks",
                     );
                     // clear execution bucket because events may still have
                     // occurred and maybe the user wanted to also pause event
@@ -763,7 +825,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Warn,
                         "MAIN command",
-                        "[PROC/FAIL] ignoring resume request: scheduler is not paused",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        "ignoring resume request: scheduler is not paused",
                     );
                 }
             }
@@ -772,7 +836,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Trace,
                         "MAIN command",
-                        "[PROC/MSG] no names provided: attempt to reset all conditions",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        "no names provided: attempt to reset all conditions",
                     );
                     if let Some(v) = CONDITION_REGISTRY.condition_names() {
                         if !v.is_empty() {
@@ -784,14 +850,18 @@ fn interpret_commands() -> std::io::Result<bool> {
                             log(
                                 LogType::Debug,
                                 "MAIN command",
-                                "[PROC/MSG] there are no conditions to reset",
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                "there are no conditions to reset",
                             );
                         }
                     } else {
                         log(
                             LogType::Debug,
                             "MAIN command",
-                            "[PROC/MSG] no conditions found in registry for reset",
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            "no conditions found in registry for reset",
                         );
                     }
                 } else {
@@ -806,7 +876,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Debug,
                         "MAIN command",
-                        &format!("[PROC/MSG] attempting to reset conditions: {}", v.join(", ")),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        &format!("attempting to reset conditions: {}", v.join(", ")),
                     );
                     // the new thread is to avoid the command line to be
                     // unavailable while possibly waiting for busy conditions
@@ -826,13 +898,17 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        "[PROC/FAIL] invalid number of arguments for command `suspend_condition`",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        "invalid number of arguments for command `suspend_condition`",
                     );
                 } else {
                     log(
                         LogType::Debug,
                         "MAIN command",
-                        &format!("[PROC/MSG] attempting to suspend condition {}", args[0]),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        &format!("attempting to suspend condition {}", args[0]),
                     );
                     // same considerations as above
                     let arg = args[0].to_string();
@@ -844,13 +920,17 @@ fn interpret_commands() -> std::io::Result<bool> {
                     log(
                         LogType::Error,
                         "MAIN command",
-                        "[PROC/FAIL] invalid number of arguments for command `resume_condition`",
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        "invalid number of arguments for command `resume_condition`",
                     );
                 } else {
                     log(
                         LogType::Debug,
                         "MAIN command",
-                        &format!("[PROC/MSG] attempting to resume condition {}", args[0]),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        &format!("attempting to resume condition {}", args[0]),
                     );
                     // same considerations as above
                     // condition is freed and the command can be executed
@@ -865,7 +945,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 log(
                     LogType::Error,
                     "MAIN command",
-                    &format!("[PROC/ERR] unrecognized command: `{t}`"),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_ERR,
+                    &format!("unrecognized command: `{t}`"),
                 );
             }
         }
@@ -930,11 +1012,11 @@ struct Args {
 // this is redundant but necessary for clap (the `type` alias does not work)
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 enum LogLevel {
-        Trace,
-        Debug,
-        Info,
-        Warn,
-        Error,
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
 }
 
 
@@ -972,7 +1054,9 @@ fn main() {
         log(
             LogType::Warn,
             "MAIN exit",
-            "[END/MSG] caught interruption request: terminating application",
+            LOG_WHEN_END,
+            LOG_STATUS_MSG,
+            "caught interruption request: terminating application",
         );
         *APPLICATION_MUST_EXIT.lock().unwrap() = true;
     }));
@@ -1049,14 +1133,18 @@ fn main() {
                 log(
                     LogType::Warn,
                     "MAIN exit",
-                    "[END/OK] application exiting: all activity will be forced to stop",
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    "application exiting: all activity will be forced to stop",
                 );
                 break;
             } else {
                 log(
                     LogType::Info,
                     "MAIN exit",
-                    "[END/OK] application exiting: waiting for activity to finish",
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    "application exiting: waiting for activity to finish",
                 );
                 // wait for all currently running conditions to finish their
                 // tick: during this time no `sched.run_pending();` is run, to
@@ -1076,7 +1164,9 @@ fn main() {
     log(
         LogType::Info,
         "MAIN exit",
-        "[END/OK] application exit: main process terminating successfully",
+        LOG_WHEN_END,
+        LOG_STATUS_OK,
+        "application exit: main process terminating successfully",
     );
     std::process::exit(0);
 }

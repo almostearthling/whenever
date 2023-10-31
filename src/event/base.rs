@@ -104,7 +104,9 @@ pub trait Event: Send + Sync {
             if let Some(bucket) = self.condition_bucket() {
                 self.log(
                     LogType::Info,
-                    &format!("[PROC/OK] condition {cond_name} firing"),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("condition {cond_name} firing"),
                 );
                 Ok(bucket.insert_condition(&cond_name))
             } else {
@@ -127,10 +129,16 @@ pub trait Event: Send + Sync {
     ///
     /// * `severity` - one of `LogType::{Trace, Debug, Info, Warn, Error}`
     /// * `message` - the message to be logged as a borrowed string
-    fn log(&self, severity: LogType, message: &str) {
+    fn log(&self, severity: LogType, when: &str, status: &str, message: &str) {
         let name = self.get_name();
         let id = self.get_id();
-        log(severity, &format!("EVENT {name}/[{id}]"), message);
+        log(
+            severity,
+            &format!("EVENT {name}/[{id}]"),
+            when,
+            status,
+            message,
+        );
     }
 
 

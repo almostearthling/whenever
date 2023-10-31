@@ -58,8 +58,13 @@ impl IntervalCondition {
         name: &str,
         interval: &Duration,
     ) -> Self {
-        log(LogType::Debug, "INTERVAL_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new interval based condition"));
+        log(
+            LogType::Debug,
+            "INTERVAL_CONDITION new",
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("CONDITION {name}: creating a new interval based condition"),
+        );
         let t = Instant::now();
         IntervalCondition {
             // common members initialization
@@ -466,7 +471,9 @@ impl Condition for IntervalCondition {
     fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
         self.log(
             LogType::Debug,
-            "[PROC/MSG] checking interval based condition",
+            LOG_WHEN_PROC,
+            LOG_STATUS_MSG,
+            "checking interval based condition",
         );
         // last_tested has already been set by trait to Instant::now()
         let t = self.last_tested.unwrap();

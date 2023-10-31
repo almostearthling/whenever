@@ -56,8 +56,13 @@ pub struct FilesystemChangeEvent {
 #[allow(dead_code)]
 impl FilesystemChangeEvent {
     pub fn new(name: &str) -> Self {
-        log(LogType::Debug, "EVENT_FSCHANGE new",
-            &format!("[INIT/MSG] EVENT {name}: creating a new filesystem change based event"));
+        log(
+            LogType::Debug,
+            "EVENT_FSCHANGE new",
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("EVENT {name}: creating a new filesystem change based event"),
+        );
         FilesystemChangeEvent {
             // reset ID
             event_id: 0,
@@ -86,10 +91,9 @@ impl FilesystemChangeEvent {
         if p.exists() {
             self.log(
                 LogType::Debug,
-                &format!(
-                    "[INIT/OK] found valid item to watch: `{}`",
-                    p.as_os_str().to_string_lossy(),
-                ),
+                LOG_WHEN_INIT,
+                LOG_STATUS_OK,
+                &format!("found valid item to watch: `{}`", p.as_os_str().to_string_lossy()),
             );
             if self.watched_locations.is_none() {
                 self.watched_locations = Some(Vec::new());
@@ -100,10 +104,9 @@ impl FilesystemChangeEvent {
         } else {
             self.log(
                 LogType::Warn,
-                &format!(
-                    "[INIT/FAIL] refusing non-existent item: `{}`",
-                    p.as_os_str().to_string_lossy(),
-                ),
+                LOG_WHEN_INIT,
+                LOG_STATUS_FAIL,
+                &format!("refusing non-existent item: `{}`", p.as_os_str().to_string_lossy()),
             );
             return Ok(false);
         }
@@ -354,7 +357,9 @@ impl Event for FilesystemChangeEvent {
         if self.watched_locations.is_none() {
             self.log(
                 LogType::Error,
-                "[START/FAIL] watch locations not specified",
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                "watch locations not specified",
             );
             return Ok(false);
         }
@@ -385,19 +390,17 @@ impl Event for FilesystemChangeEvent {
                     Ok(_) => {
                         self.log(
                             LogType::Debug,
-                            &format!(
-                                "[START/OK] successfully added `{}` to watched paths",
-                                p.as_os_str().to_string_lossy(),
-                            ),
+                            LOG_WHEN_START,
+                            LOG_STATUS_OK,
+                            &format!("successfully added `{}` to watched paths", p.as_os_str().to_string_lossy()),
                         );
                     }
                     Err(e) => {
                         self.log(
                             LogType::Warn,
-                            &format!(
-                                "[START/FAIL] could not add `{}` to watched paths: {e}",
-                                p.as_os_str().to_string_lossy(),
-                            ),
+                            LOG_WHEN_START,
+                            LOG_STATUS_FAIL,
+                            &format!("could not add `{}` to watched paths: {e}", p.as_os_str().to_string_lossy()),
                         );
                     }
                 }
@@ -405,7 +408,9 @@ impl Event for FilesystemChangeEvent {
         } else {
             self.log(
                 LogType::Error,
-                "[START/FAIL] no paths to watch have been specified",
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                "no paths to watch have been specified",
             );
             return Ok(false);
         }
@@ -425,33 +430,43 @@ impl Event for FilesystemChangeEvent {
                     if !evt.kind.is_access() {
                         self.log(
                             LogType::Info,
-                            &format!("[PROC/OK] event notification caught: {evt_s}"),
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            &format!("event notification caught: {evt_s}"),
                         );
                         match self.fire_condition() {
                             Ok(_) => {
                                 self.log(
                                     LogType::Debug,
-                                    "[PROC/OK] condition fired successfully",
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    "condition fired successfully",
                                 );
                             }
                             Err(e) => {
                                 self.log(
                                     LogType::Warn,
-                                    &format!("[PROC/FAIL] error firing condition: {e}"),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("error firing condition: {e}"),
                                 );
                             }
                         }
                     } else {
                         self.log(
                             LogType::Debug,
-                            &format!("[PROC/OK] non-change event notification caught: {evt_s}"),
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            &format!("non-change event notification caught: {evt_s}"),
                         );
                     }
                 }
                 Err(e) => {
                     self.log(
                         LogType::Warn,
-                        &format!("[PROC/FAIL] error in event notification: {e}"),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("error in event notification: {e}"),
                     );
                 }
             };

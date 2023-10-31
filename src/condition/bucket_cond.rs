@@ -124,8 +124,12 @@ impl BucketCondition {
     pub fn new(
         name: &str,
     ) -> Self {
-        log(LogType::Debug, "BUCKET_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new bucket based condition"));
+        log(
+            LogType::Debug, "BUCKET_CONDITION new",
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("CONDITION {name}: creating a new bucket based condition"),
+        );
         BucketCondition {
             // common members initialization
             // reset ID
@@ -516,7 +520,9 @@ impl Condition for BucketCondition {
         // last_tested has already been set by trait to Instant::now()
         self.log(
             LogType::Debug,
-            "[START/MSG] checking for presence in execution bucket",
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
+            "checking for presence in execution bucket",
         );
         if let Some(bucket) = self.execution_bucket {
             let name = self.get_name();
@@ -524,7 +530,9 @@ impl Condition for BucketCondition {
                 bucket.remove_condition(&name);
                 self.log(
                     LogType::Debug,
-                    &format!("[END/OK] condition {name} verified and removed from bucket")
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("condition {name} verified and removed from bucket"),
                 );
                 Ok(Some(true))
             } else {

@@ -159,8 +159,13 @@ impl TimeCondition {
     pub fn new(
         name: &str,
     ) -> Self {
-        log(LogType::Debug, "TIME_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new time based condition"));
+        log(
+            LogType::Debug,
+            "TIME_CONDITION new",
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("CONDITION {name}: creating a new time based condition"),
+        );
         TimeCondition {
             // common members initialization
             // reset ID
@@ -774,20 +779,22 @@ impl Condition for TimeCondition {
         let dt = Local::now();
         self.log(
             LogType::Debug,
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
             &format!(
-                "[START/MSG] checking time based condition (at: {})",
-                dt.to_rfc3339(),
-            )
+                "checking time based condition (at: {})",
+                dt.to_rfc3339()),
         );
 
         for tspec in self.time_specifications.iter() {
             let test_tspec = tspec.as_datetime(dt)?;
             self.log(
                 LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
                 &format!(
-                    "[PROC/MSG] checking time specification ({}) against current time",
-                    tspec.as_str(),
-                ),
+                    "checking time specification ({}) against current time",
+                    tspec.as_str()),
             );
             // check that the required time has passed for less time than the
             // tick duration (which must be exactly the same as the scheduler

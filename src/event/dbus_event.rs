@@ -111,8 +111,13 @@ impl DbusMessageEvent {
 
     /// Create a new `DbusMessageEvent` with the provided name
     pub fn new(name: &str) -> Self {
-        log(LogType::Debug, "EVENT_DBUS new",
-            &format!("[INIT/MSG] EVENT {name}: creating a new DBus signal based event"));
+        log(
+            LogType::Debug,
+            "EVENT_DBUS new",
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("EVENT {name}: creating a new DBus signal based event"),
+        );
         DbusMessageEvent {
             // reset ID
             event_id: 0,
@@ -544,7 +549,7 @@ impl DbusMessageEvent {
                                     ERR_INVALID_VALUE_FOR_ENTRY);
                             }
                         } else {
-                            value = ParameterCheckValue::String(s.clone());
+                            value = ParameterCheckValue::String(s.to_string());
                         }
                     } else {
                         return _invalid_cfg(
@@ -694,14 +699,18 @@ impl Event for DbusMessageEvent {
         let conn = task::block_on(async {
             self.log(
                 LogType::Debug,
-                &format!("[START/MSG] opening connection to bus `{bus}`"),
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening connection to bus `{bus}`"),
             );
             _get_connection(&bus).await
         });
         if conn.is_err() {
             self.log(
                 LogType::Warn,
-                &format!("[START/FAIL] could not establish connection on bus `{bus}`"),
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                &format!("could not establish connection on bus `{bus}`"),
             );
             return Ok(false);
         }
@@ -710,14 +719,18 @@ impl Event for DbusMessageEvent {
         let stream = task::block_on(async{
             self.log(
                 LogType::Debug,
-                &format!("[START/MSG] opening message stream on bus `{bus}`"),
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening message stream on bus `{bus}`"),
             );
             _get_stream(rule, conn).await
         });
         if stream.is_err() {
             self.log(
                 LogType::Warn,
-                &format!("[START/FAIL] could not subscribe to message on bus `{bus}`"),
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                &format!("could not subscribe to message on bus `{bus}`"),
             );
             return Ok(false);
         }
@@ -725,7 +738,9 @@ impl Event for DbusMessageEvent {
 
         self.log(
             LogType::Debug,
-            &format!("[START/OK] successfully subscribed to message on bus `{bus}`"),
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("successfully subscribed to message on bus `{bus}`"),
         );
         // FIXME: maybe implement [try_for_each](https://docs.rs/futures/latest/futures/stream/trait.TryStreamExt.html#method.try_for_each)
         // instead of continuously looping over the next item?
@@ -733,7 +748,9 @@ impl Event for DbusMessageEvent {
             let msg = task::block_on(async {
                 self.log(
                     LogType::Debug,
-                    &format!("[PROC/MSG] waiting for subscribed message on bus `{bus}`"),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_MSG,
+                    &format!("waiting for subscribed message on bus `{bus}`"),
                 );
                 stream.try_next().await
             });
@@ -742,7 +759,9 @@ impl Event for DbusMessageEvent {
                     if let Some(message) = msg {
                         self.log(
                             LogType::Info,
-                            &format!("[PROC/OK] subscribed message received on bus `{bus}`"),
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            &format!("subscribed message received on bus `{bus}`"),
                         );
                         // check message parameters against provided criteria
                         // NOTE: any errors (bad indexes, invalid comparisons,
@@ -755,8 +774,10 @@ impl Event for DbusMessageEvent {
                             // performs the required tests on the selected parameters
                             self.log(
                                 LogType::Debug,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
                                 &format!(
-                                    "[PROC/MSG] parameter checks specified: {} checks must be verified",
+                                    "parameter checks specified: {} checks must be verified",
                                     { if self.param_checks_all { "all" } else { "some" } },
                                 ),
                             );
@@ -774,7 +795,9 @@ impl Event for DbusMessageEvent {
                                                 if *x >= mbody.fields().len() as u64 {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] could not retrieve result: index {x} out of range"),
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
+                                                        &format!("could not retrieve result: index {x} out of range"),
                                                     );
                                                     verified = false;
                                                     break 'params;
@@ -789,7 +812,9 @@ impl Event for DbusMessageEvent {
                                                                     if i >= f.len() {
                                                                         self.log(
                                                                             LogType::Warn,
-                                                                            &format!("[PROC/FAIL] could not retrieve result: index {i} out of range"),
+                                                                            LOG_WHEN_PROC,
+                                                                            LOG_STATUS_FAIL,
+                                                                            &format!("could not retrieve result: index {i} out of range"),
                                                                         );
                                                                     }
                                                                     // if something is wrong here, either the test
@@ -801,7 +826,9 @@ impl Event for DbusMessageEvent {
                                                                     if i >= f.len() {
                                                                         self.log(
                                                                             LogType::Warn,
-                                                                            &format!("[PROC/FAIL] could not retrieve result: index {i} out of range"),
+                                                                            LOG_WHEN_PROC,
+                                                                            LOG_STATUS_FAIL,
+                                                                            &format!("could not retrieve result: index {i} out of range"),
                                                                         );
                                                                     }
                                                                     if let Some(v) = f.get(i) {
@@ -809,14 +836,18 @@ impl Event for DbusMessageEvent {
                                                                     } else {
                                                                         self.log(
                                                                             LogType::Warn,
-                                                                            &format!("[PROC/FAIL] could not retrieve result: index {i} provided no value"),
+                                                                            LOG_WHEN_PROC,
+                                                                            LOG_STATUS_FAIL,
+                                                                            &format!("could not retrieve result: index {i} provided no value"),
                                                                         );
                                                                     }
                                                                 }
                                                                 _ => {
                                                                     self.log(
                                                                         LogType::Warn,
-                                                                        &format!("[PROC/FAIL] could not retrieve result using index {i}"),
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("could not retrieve result using index {i}"),
                                                                     );
                                                                     verified = false;
                                                                     break 'params;
@@ -834,7 +865,9 @@ impl Event for DbusMessageEvent {
                                                                             } else {
                                                                                 self.log(
                                                                                     LogType::Warn,
-                                                                                    &format!("[PROC/FAIL] could not retrieve result: index `{s}` invalid"),
+                                                                                    LOG_WHEN_PROC,
+                                                                                    LOG_STATUS_FAIL,
+                                                                                    &format!("could not retrieve result: index `{s}` invalid"),
                                                                                 );
                                                                                 verified = false;
                                                                                 break 'params;
@@ -843,7 +876,9 @@ impl Event for DbusMessageEvent {
                                                                         Err(_) => {
                                                                             self.log(
                                                                                 LogType::Warn,
-                                                                                &format!("[PROC/FAIL] could not retrieve result using index `{s}`"),
+                                                                                LOG_WHEN_PROC,
+                                                                                LOG_STATUS_FAIL,
+                                                                                &format!("could not retrieve result using index `{s}`"),
                                                                             );
                                                                             verified = false;
                                                                             break 'params;
@@ -853,7 +888,9 @@ impl Event for DbusMessageEvent {
                                                                 _ => {
                                                                     self.log(
                                                                         LogType::Warn,
-                                                                        &format!("[PROC/FAIL] could not retrieve parameter using index `{s}`"),
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("could not retrieve parameter using index `{s}`"),
                                                                     );
                                                                     verified = false;
                                                                     break 'params;
@@ -889,7 +926,9 @@ impl Event for DbusMessageEvent {
                                                                 e => {
                                                                     self.log(
                                                                         LogType::Warn,
-                                                                        &format!("[PROC/FAIL] mismatched result type: boolean expected (got `{e:?}`)"),
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("mismatched result type: boolean expected (got `{e:?}`)"),
                                                                     );
                                                                     verified = false;
                                                                     break;
@@ -898,7 +937,9 @@ impl Event for DbusMessageEvent {
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                "[PROC/FAIL] invalid operator for boolean",
+                                                                LOG_WHEN_PROC,
+                                                                LOG_STATUS_FAIL,
+                                                                "invalid operator for boolean",
                                                             );
                                                             verified = false;
                                                             break;
@@ -1001,7 +1042,9 @@ impl Event for DbusMessageEvent {
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
-                                                                    &format!("[PROC/FAIL] mismatched result type: integer expected (got `{e:?}`)"),
+                                                                    LOG_WHEN_PROC,
+                                                                    LOG_STATUS_FAIL,
+                                                                    &format!("mismatched result type: integer expected (got `{e:?}`)"),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1026,7 +1069,9 @@ impl Event for DbusMessageEvent {
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
-                                                                    &format!("[PROC/FAIL] mismatched result type: float expected (got `{e:?}`)"),
+                                                                    LOG_WHEN_PROC,
+                                                                    LOG_STATUS_FAIL,
+                                                                    &format!("mismatched result type: float expected (got `{e:?}`)"),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1065,7 +1110,9 @@ impl Event for DbusMessageEvent {
                                                                 e => {
                                                                     self.log(
                                                                         LogType::Warn,
-                                                                        &format!("[PROC/FAIL] mismatched result type: string expected (got `{e:?}`)"),
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                                     );
                                                                     verified = false;
                                                                     break 'params;
@@ -1102,7 +1149,9 @@ impl Event for DbusMessageEvent {
                                                                 e => {
                                                                     self.log(
                                                                         LogType::Warn,
-                                                                        &format!("[PROC/FAIL] mismatched result type: string expected (got `{e:?}`)"),
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                                     );
                                                                     verified = false;
                                                                     break 'params;
@@ -1111,7 +1160,9 @@ impl Event for DbusMessageEvent {
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                "[PROC/FAIL] invalid operator for string",
+                                                                LOG_WHEN_PROC,
+                                                                LOG_STATUS_FAIL,
+                                                                "invalid operator for string",
                                                             );
                                                             verified = false;
                                                             break 'params;
@@ -1149,7 +1200,9 @@ impl Event for DbusMessageEvent {
                                                                 e => {
                                                                     self.log(
                                                                         LogType::Warn,
-                                                                        &format!("[PROC/FAIL] mismatched result type: string expected (got `{e:?}`)"),
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                                     );
                                                                     verified = false;
                                                                     break 'params;
@@ -1158,7 +1211,9 @@ impl Event for DbusMessageEvent {
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                "[PROC/FAIL] invalid operator for regular expression",
+                                                                LOG_WHEN_PROC,
+                                                                LOG_STATUS_FAIL,
+                                                                "invalid operator for regular expression",
                                                             );
                                                             verified = false;
                                                             break 'params;
@@ -1169,7 +1224,9 @@ impl Event for DbusMessageEvent {
                                             _ => {
                                                 self.log(
                                                     LogType::Warn,
-                                                    "[PROC/FAIL] could not retrieve parameter index: no integer found",
+                                                    LOG_WHEN_PROC,
+                                                    LOG_STATUS_FAIL,
+                                                    "could not retrieve parameter index: no integer found",
                                                 );
                                                 verified = false;
                                                 break;
@@ -1179,7 +1236,9 @@ impl Event for DbusMessageEvent {
                                     } else {
                                         self.log(
                                             LogType::Warn,
-                                            "[PROC/FAIL] could not retrieve parameter: missing argument number",
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_FAIL,
+                                            "could not retrieve parameter: missing argument number",
                                         );
                                         verified = false;
                                         break;
@@ -1189,7 +1248,9 @@ impl Event for DbusMessageEvent {
                             } else {
                                 self.log(
                                     LogType::Warn,
-                                    "[PROC/FAIL] could not retrieve message body",
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    "could not retrieve message body",
                                 );
                             }
 
@@ -1205,33 +1266,43 @@ impl Event for DbusMessageEvent {
                                     if res {
                                         self.log(
                                             LogType::Debug,
-                                            "[PROC/OK] condition fired successfully",
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            "condition fired successfully",
                                         );
                                     } else {
                                         self.log(
                                             LogType::Debug,
-                                            "[PROC/MSG] condition already fired: further schedule skipped",
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_MSG,
+                                            "condition already fired: further schedule skipped",
                                         );
                                     }
                                 }
                                 Err(e) => {
                                     self.log(
                                         LogType::Warn,
-                                        &format!("[PROC/FAIL] error firing condition: {e}"),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!("error firing condition: {e}"),
                                     );
                                 }
                             }
                         } else {
                             self.log(
                                 LogType::Debug,
-                                "[PROC/MSG] parameter check failed: condition NOT fired",
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                "parameter check failed: condition NOT fired",
                             );
                         }
                     } else {
                         // in normal conditions this is `unreachable!()`
                         self.log(
                             LogType::Debug,
-                            &format!("[PROC/MSG] no messages on bus `{bus}`: exiting"),
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("no messages on bus `{bus}`: exiting"),
                         );
                         // close the stream before shutting down
                         let _ = task::block_on(async {
@@ -1243,7 +1314,9 @@ impl Event for DbusMessageEvent {
                 Err(e) => {
                     self.log(
                         LogType::Warn,
-                        &format!("[PROC/FAIL] error while retrieving message on bus `{bus}`: {e}"),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("error while retrieving message on bus `{bus}`: {e}"),
                     );
                 }
             }
@@ -1251,9 +1324,9 @@ impl Event for DbusMessageEvent {
 
         self.log(
             LogType::Debug,
-            &format!(
-                "[END/OK] closing event listening service on bus `{bus}`"
-            ),
+            LOG_WHEN_END,
+            LOG_STATUS_OK,
+            &format!("closing event listening service on bus `{bus}`"),
         );
         Ok(true)
     }

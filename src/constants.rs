@@ -76,6 +76,21 @@ pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
 
+// logging constants
+pub const LOG_WHEN_INIT: &str = "INIT";
+pub const LOG_WHEN_START: &str = "START";
+pub const LOG_WHEN_END: &str = "END";
+pub const LOG_WHEN_PROC: &str = "PROC";
+pub const LOG_WHEN_HISTORY: &str = "HIST";
+
+pub const LOG_STATUS_OK: &str = "OK";
+pub const LOG_STATUS_FAIL: &str = "FAIL";
+pub const LOG_STATUS_MSG: &str = "MSG";
+pub const LOG_STATUS_ERR: &str = "ERR";
+pub const LOG_STATUS_HIST_START: &str = "START";
+pub const LOG_STATUS_HIST_END: &str = "END";
+
+
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
 

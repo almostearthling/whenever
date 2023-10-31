@@ -405,7 +405,9 @@ impl ConditionRegistry {
         // log(
         //     LogType::Trace,
         //     "CONDITION_REGISTRY condition_busy",
-        //     &format!("[START/MSG] checking whether or not condition {name} is busy")
+        //     LOG_WHEN_START,
+        //     LOG_STATUS_MSG,
+        //     &format!("checking whether or not condition {name} is busy"),
         // );
 
         // both the registry and the conditions are synchronized: to ensure
@@ -430,14 +432,18 @@ impl ConditionRegistry {
             log(
                 LogType::Trace,
                 "CONDITION_REGISTRY condition_busy",
-                &format!("[START/OK] condition {name} is not busy")
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("condition {name} is not busy"),
             );
             false
         } else {
             log(
                 LogType::Trace,
                 "CONDITION_REGISTRY condition_busy",
-                &format!("[START/FAIL] condition {name} is busy")
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                &format!("condition {name} is busy"),
             );
             true
         }
@@ -505,7 +511,9 @@ impl ConditionRegistry {
             log(
                 LogType::Debug,
                 "CONDITION_REGISTRY tick",
-                &format!("[START/MSG] test and run for condition {name}")
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("test and run for condition {name}"),
             );
             // increment number of busy conditions by one: this can be done
             // without *self being mut because conditions_busy is an Arc
@@ -526,7 +534,9 @@ impl ConditionRegistry {
             log(
                 LogType::Warn,
                 "CONDITION_REGISTRY tick",
-                &format!("[START/MSG] condition {name} is BUSY: skipping tick")
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("condition {name} is BUSY: skipping tick"),
             );
             Ok(None)
         }
