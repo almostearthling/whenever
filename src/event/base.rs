@@ -134,7 +134,9 @@ pub trait Event: Send + Sync {
         let id = self.get_id();
         log(
             severity,
-            &format!("EVENT {name}/[{id}]"),
+            LOG_EMITTER_EVENT,
+            LOG_ACTION_ACTIVE,
+            Some((&name, id)),
             when,
             status,
             message,

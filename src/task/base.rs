@@ -52,7 +52,9 @@ pub trait Task: Send {
         let id = self.get_id();
         log(
             severity,
-            &format!("TASK {name}/[{id}]"),
+            LOG_EMITTER_TASK,
+            LOG_ACTION_ACTIVE,
+            Some((&name, id)),
             when,
             status,
             message,
@@ -95,8 +97,8 @@ pub trait Task: Send {
         }
 
         self.log(
-            LogType::Trace, 
-            LOG_WHEN_HISTORY, 
+            LogType::Trace,
+            LOG_WHEN_HISTORY,
             LOG_STATUS_HIST_START,
             &format!("OK/trigger:{trigger_name} starting task"),
         );

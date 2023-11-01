@@ -280,7 +280,9 @@ impl TaskRegistry {
             cur_res = guard.run(trigger_name);
             log(
                 LogType::Trace,
-                "TASK_REGISTRY run_seq",
+                LOG_EMITTER_TASK_REGISTRY,
+                "run_seq",
+                None,
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
                 &format!("task {name} finished running"),
@@ -302,7 +304,9 @@ impl TaskRegistry {
             if breaks {
                 log(
                     LogType::Debug,
-                    "TASK_REGISTRY run_seq",
+                    LOG_EMITTER_TASK_REGISTRY,
+                    "run_seq",
+                    None,
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
                     &format!("breaking on {}", { if task_success { "success" } else { "failure" } }),
@@ -313,7 +317,9 @@ impl TaskRegistry {
 
         log(
             LogType::Trace,
-            "TASK_REGISTRY run_seq",
+            LOG_EMITTER_TASK_REGISTRY,
+            "run_seq",
+            None,
             LOG_WHEN_END,
             LOG_STATUS_MSG,
             &format!("finished running {}/{} tasks", res.len(), names.len()),
@@ -431,7 +437,9 @@ impl TaskRegistry {
         if outcomes_received < outcomes_total {
             log(
                 LogType::Warn,
-                "TASK_REGISTRY run_par",
+                LOG_EMITTER_TASK_REGISTRY,
+                "run_par",
+                None,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
                 &format!("not all outcomes received ({outcomes_received}/{outcomes_total})"),
@@ -439,7 +447,9 @@ impl TaskRegistry {
         } else {
             log(
                 LogType::Debug,
-                "TASK_REGISTRY run_par",
+                LOG_EMITTER_TASK_REGISTRY,
+                "run_par",
+                None,
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
                 &format!("all outcomes received ({outcomes_received}/{outcomes_total})"),

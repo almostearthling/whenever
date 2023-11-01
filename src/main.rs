@@ -107,7 +107,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
     if *APPLICATION_IS_PAUSED.lock().unwrap() {
         log(
             LogType::Trace,
-            "MAIN scheduler_tick",
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_SCHEDULER_TICK,
+            None,
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
             "application is paused: tick skipped",
@@ -120,7 +122,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
         if CONDITION_REGISTRY.condition_busy(&name) {
             log(
                 LogType::Debug,
-                "MAIN scheduler_tick",
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_SCHEDULER_TICK,
+                None,
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 &format!("condition {name} is busy: tick skipped"),
@@ -147,7 +151,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
                         if res {
                             log(
                                 LogType::Trace,
-                                "MAIN scheduler_tick",
+                                LOG_EMITTER_MAIN,
+                                LOG_ACTION_SCHEDULER_TICK,
+                                None,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_MSG,
                                 &format!("condition {name} tested (tasks executed)"),
@@ -155,7 +161,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
                         } else {
                             log(
                                 LogType::Trace,
-                                "MAIN scheduler_tick",
+                                LOG_EMITTER_MAIN,
+                                LOG_ACTION_SCHEDULER_TICK,
+                                None,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_MSG,
                                 &format!("condition {name} tested (tasks executed unsuccessfully)"),
@@ -165,7 +173,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
                     None => {
                         log(
                             LogType::Trace,
-                            "MAIN scheduler_tick",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_SCHEDULER_TICK,
+                            None,
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
                             &format!("condition {name} tested with no outcome (tasks not executed)"),
@@ -469,7 +479,9 @@ fn configure_events(
                                     res.push(h);
                                     log(
                                         LogType::Trace,
-                                        "MAIN listener",
+                                        LOG_EMITTER_MAIN,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
                                         LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!("service installed for event {event_name} (dedicated thread)"),
@@ -477,7 +489,9 @@ fn configure_events(
                                 } else {
                                     log(
                                         LogType::Trace,
-                                        "MAIN listener",
+                                        LOG_EMITTER_MAIN,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
                                         LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!("service installed for event {event_name}"),
@@ -504,7 +518,9 @@ fn configure_events(
                                     res.push(h);
                                     log(
                                         LogType::Trace,
-                                        "MAIN listener",
+                                        LOG_EMITTER_MAIN,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
                                         LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!("service installed for event {event_name} (dedicated thread)"),
@@ -512,7 +528,9 @@ fn configure_events(
                                 } else {
                                     log(
                                         LogType::Trace,
-                                        "MAIN listener",
+                                        LOG_EMITTER_MAIN,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
                                         LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!("service installed for event {event_name}"),
@@ -563,7 +581,9 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
         if !CONDITION_REGISTRY.has_condition(name) {
             log(
                 LogType::Warn,
-                "MAIN reset_conditions",
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_RESET_CONDITIONS,
+                None,
                 LOG_WHEN_START,
                 LOG_STATUS_ERR,
                 &format!("ignoring non existent condition: {name}"),
@@ -571,7 +591,9 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
         } else {
             log(
                 LogType::Debug,
-                "MAIN reset_conditions",
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_RESET_CONDITIONS,
+                None,
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
                 &format!("resetting condition {name}"),
@@ -581,7 +603,9 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                     if res {
                         log(
                             LogType::Info,
-                            "MAIN reset_conditions",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RESET_CONDITIONS,
+                            None,
                             LOG_WHEN_END,
                             LOG_STATUS_OK,
                             &format!("condition {name} has been reset"),
@@ -589,7 +613,9 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                     } else {
                         log(
                             LogType::Warn,
-                            "MAIN reset_conditions",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RESET_CONDITIONS,
+                            None,
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
                             &format!("condition {name} could not be reset"),
@@ -599,7 +625,9 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                 Err(e) => {
                     log(
                         LogType::Warn,
-                        "MAIN reset_conditions",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RESET_CONDITIONS,
+                        None,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
                         &format!("error while resetting condition {name}: {e}"),
@@ -619,7 +647,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
     if !CONDITION_REGISTRY.has_condition(name) {
         log(
             LogType::Warn,
-            "MAIN condition_state",
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_CONDITION_STATE,
+            None,
             LOG_WHEN_START,
             LOG_STATUS_ERR,
             &format!("ignoring non existent condition: {name}"),
@@ -627,7 +657,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
     } else {
         log(
             LogType::Debug,
-            "MAIN condition_state",
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_CONDITION_STATE,
+            None,
             LOG_WHEN_START,
             LOG_STATUS_OK,
             &format!("changing state of condition {name} to {}", {
@@ -640,7 +672,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                     if res {
                         log(
                             LogType::Info,
-                            "MAIN suspend_condition",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_SUSPEND_CONDITION,
+                            None,
                             LOG_WHEN_END,
                             LOG_STATUS_OK,
                             &format!("condition {name} has been suspended"),
@@ -648,7 +682,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                     } else {
                         log(
                             LogType::Warn,
-                            "MAIN suspend_condition",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_SUSPEND_CONDITION,
+                            None,
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
                             &format!("condition {name} already suspended"),
@@ -658,7 +694,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                 Err(e) => {
                     log(
                         LogType::Warn,
-                        "MAIN suspend_condition",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_SUSPEND_CONDITION,
+                        None,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
                         &format!("error while suspending condition {name}: {e}"),
@@ -682,7 +720,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                         }
                         log(
                             LogType::Info,
-                            "MAIN resume_condition",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RESUME_CONDITION,
+                            None,
                             LOG_WHEN_END,
                             LOG_STATUS_OK,
                             &format!("condition {name} has been {info}"),
@@ -690,7 +730,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                     } else {
                         log(
                             LogType::Warn,
-                            "MAIN resume_condition",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RESUME_CONDITION,
+                            None,
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
                             &format!("condition {name} was not suspended"),
@@ -700,7 +742,9 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                 Err(e) => {
                     log(
                         LogType::Warn,
-                        "MAIN resume_condition",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RESUME_CONDITION,
+                        None,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
                         &format!("error while resuming condition {name}: {e}"),
@@ -731,7 +775,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if !args.is_empty() {
                     log(
                         LogType::Error,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_ERR,
                         &format!("command `{cmd}` does not support arguments"),
@@ -739,7 +785,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else {
                     log(
                         LogType::Warn,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         "exit request received: terminating application",
@@ -751,7 +799,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if !args.is_empty() {
                     log(
                         LogType::Error,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_ERR,
                         &format!("command `{cmd}` does not support arguments"),
@@ -759,7 +809,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else {
                     log(
                         LogType::Warn,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         "kill request received: terminating application immediately",
@@ -772,7 +824,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if !args.is_empty() {
                     log(
                         LogType::Error,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_ERR,
                         &format!("command `{cmd}` does not support arguments"),
@@ -780,7 +834,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
                         LogType::Warn,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
                         "ignoring pause request: scheduler already paused",
@@ -788,7 +844,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else {
                     log(
                         LogType::Debug,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         "pausing scheduler ticks: conditions not checked until resume",
@@ -800,7 +858,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if !args.is_empty() {
                     log(
                         LogType::Error,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_ERR,
                         &format!("command `{cmd}` does not support arguments"),
@@ -808,7 +868,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
                     log(
                         LogType::Debug,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         "resuming scheduler ticks and condition checks",
@@ -824,7 +886,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else {
                     log(
                         LogType::Warn,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
                         "ignoring resume request: scheduler is not paused",
@@ -835,7 +899,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if args.is_empty() {
                     log(
                         LogType::Trace,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         "no names provided: attempt to reset all conditions",
@@ -849,7 +915,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                             // always `None`
                             log(
                                 LogType::Debug,
-                                "MAIN command",
+                                LOG_EMITTER_MAIN,
+                                LOG_ACTION_RUN_COMMAND,
+                                None,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_MSG,
                                 "there are no conditions to reset",
@@ -858,7 +926,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                     } else {
                         log(
                             LogType::Debug,
-                            "MAIN command",
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
                             "no conditions found in registry for reset",
@@ -875,7 +945,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                     }
                     log(
                         LogType::Debug,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         &format!("attempting to reset conditions: {}", v.join(", ")),
@@ -897,7 +969,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if args.len() != 1 {
                     log(
                         LogType::Error,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
                         "invalid number of arguments for command `suspend_condition`",
@@ -905,7 +979,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else {
                     log(
                         LogType::Debug,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         &format!("attempting to suspend condition {}", args[0]),
@@ -919,7 +995,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 if args.len() != 1 {
                     log(
                         LogType::Error,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
                         "invalid number of arguments for command `resume_condition`",
@@ -927,7 +1005,9 @@ fn interpret_commands() -> std::io::Result<bool> {
                 } else {
                     log(
                         LogType::Debug,
-                        "MAIN command",
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
                         &format!("attempting to resume condition {}", args[0]),
@@ -944,7 +1024,9 @@ fn interpret_commands() -> std::io::Result<bool> {
             t => {
                 log(
                     LogType::Error,
-                    "MAIN command",
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_RUN_COMMAND,
+                    None,
                     LOG_WHEN_PROC,
                     LOG_STATUS_ERR,
                     &format!("unrecognized command: `{t}`"),
@@ -1053,7 +1135,9 @@ fn main() {
     exit_if_fails!(args.quiet, ctrlc::set_handler(move || {
         log(
             LogType::Warn,
-            "MAIN exit",
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_MAIN_EXIT,
+            None,
             LOG_WHEN_END,
             LOG_STATUS_MSG,
             "caught interruption request: terminating application",
@@ -1132,7 +1216,9 @@ fn main() {
             if *APPLICATION_FORCE_EXIT.lock().unwrap() {
                 log(
                     LogType::Warn,
-                    "MAIN exit",
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_MAIN_EXIT,
+                    None,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     "application exiting: all activity will be forced to stop",
@@ -1141,7 +1227,9 @@ fn main() {
             } else {
                 log(
                     LogType::Info,
-                    "MAIN exit",
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_MAIN_EXIT,
+                    None,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     "application exiting: waiting for activity to finish",
@@ -1163,7 +1251,9 @@ fn main() {
 
     log(
         LogType::Info,
-        "MAIN exit",
+        LOG_EMITTER_MAIN,
+        LOG_ACTION_MAIN_EXIT,
+        None,
         LOG_WHEN_END,
         LOG_STATUS_OK,
         "application exit: main process terminating successfully",

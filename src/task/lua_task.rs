@@ -91,7 +91,9 @@ impl LuaTask {
     ) -> Self {
         log(
             LogType::Debug,
-            "LUA_TASK new",
+            LOG_EMITTER_TASK_LUA,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("TASK {name}: creating a new Lua script based task")
@@ -399,7 +401,9 @@ impl Task for LuaTask {
         fn inner_log(trigger_name: &str, id: i64, name: &str, severity: LogType, message: &str) {
             log(
                 severity,
-                &format!("TASK {name}/[{id}]"),
+                "TASK",
+                LOG_ACTION_LUA,
+                Some((name, id)),
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 &format!("(trigger: {trigger_name}) (Lua) {message}"),

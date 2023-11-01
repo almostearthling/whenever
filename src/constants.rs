@@ -90,6 +90,37 @@ pub const LOG_STATUS_ERR: &str = "ERR";
 pub const LOG_STATUS_HIST_START: &str = "START";
 pub const LOG_STATUS_HIST_END: &str = "END";
 
+pub const LOG_EMITTER_TASK: &str = "TASK";
+pub const LOG_EMITTER_TASK_REGISTRY: &str = "TASK_REGISTRY";
+pub const LOG_EMITTER_CONDITION: &str = "CONDITION";
+pub const LOG_EMITTER_CONDITION_REGISTRY: &str = "CONDITION_REGISTRY";
+pub const LOG_EMITTER_EVENT: &str = "EVENT";
+pub const LOG_EMITTER_EVENT_REGISTRY: &str = "EVENT_REGISTRY";
+pub const LOG_EMITTER_MAIN: &str = "MAIN";
+
+pub const LOG_EMITTER_TASK_COMMAND: &str = "COMMAND_TASK";
+pub const LOG_EMITTER_TASK_LUA: &str = "LUA_TASK";
+pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
+pub const LOG_EMITTER_EVENT_FSCHANGE: &str = "FSCHANGE_EVENT";
+pub const LOG_EMITTER_CONDITION_INTERVAL: &str = "INTERVAL_CONDITION";
+pub const LOG_EMITTER_CONDITION_BUCKET: &str = "BUCKET_CONDITION";
+pub const LOG_EMITTER_CONDITION_COMMAND: &str = "COMMAND_CONDITION";
+pub const LOG_EMITTER_CONDITION_DBUS: &str = "DBUS_CONDITION";
+pub const LOG_EMITTER_CONDITION_IDLE: &str = "IDLE_CONDITION";
+pub const LOG_EMITTER_CONDITION_LUA: &str = "LUA_CONDITION";
+
+pub const LOG_ACTION_NEW: &str = "new";
+pub const LOG_ACTION_TICK: &str = "tick";
+pub const LOG_ACTION_ACTIVE: &str = "active";
+pub const LOG_ACTION_LUA: &str = "exec_lua";
+pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
+pub const LOG_ACTION_RESET_CONDITIONS: &str = "reset_conditions";
+pub const LOG_ACTION_SUSPEND_CONDITION: &str = "suspend_condition";
+pub const LOG_ACTION_RESUME_CONDITION: &str = "resume_condition";
+pub const LOG_ACTION_CONDITION_STATE: &str = "condition_state";
+pub const LOG_ACTION_RUN_COMMAND: &str = "command";
+pub const LOG_ACTION_MAIN_LISTENER: &str = "listener";
+pub const LOG_ACTION_MAIN_EXIT: &str = "exit";
 
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";

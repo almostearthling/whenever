@@ -209,12 +209,14 @@ impl EventRegistry {
         }
 
         let event;
+        let id;
         {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
                 .expect(&format!("cannot retrieve event {name} for activation"))
-                .clone()
+                .clone();
+            id = event.lock().unwrap().get_id();
         }
 
         let mxevent = event.lock().expect(&format!("cannot lock event {name} for activation"));
@@ -223,7 +225,9 @@ impl EventRegistry {
         if mxevent.requires_thread() {
             log(
                 LogType::Debug,
-                "EVENT_REGISTRY install",
+                LOG_EMITTER_EVENT_REGISTRY,
+                "install",
+                Some((name.as_ref(), id)),
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
                 &format!("installing listening service for event {name} (dedicated thread)"),
@@ -238,7 +242,9 @@ impl EventRegistry {
                         if ssres {
                             log(
                                 LogType::Debug,
-                                "EVENT_REGISTRY install",
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                "install",
+                                Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_OK,
                                 &format!("listening service installed for event {ename}"),
@@ -246,7 +252,9 @@ impl EventRegistry {
                         } else {
                             log(
                                 LogType::Error,
-                                "EVENT_REGISTRY install",
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                "install",
+                                Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_FAIL,
                                 &format!("listening service for event {ename} NOT installed"),
@@ -257,7 +265,9 @@ impl EventRegistry {
                     Err(e) => {
                         log(
                             LogType::Error,
-                            "EVENT_REGISTRY install",
+                            LOG_EMITTER_EVENT_REGISTRY,
+                            "install",
+                                Some((&ename, id)),
                             LOG_WHEN_START,
                             LOG_STATUS_FAIL,
                             &format!("listening service for event {ename} NOT installed: {e}"),
@@ -271,7 +281,9 @@ impl EventRegistry {
             if mxevent._start_service()? {
                 log(
                     LogType::Debug,
-                    "EVENT_REGISTRY install",
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "install",
+                    Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_OK,
                     &format!("installing listening service for event {name}"),
@@ -280,7 +292,9 @@ impl EventRegistry {
                 // FIXME: this might have to return Err(...) instead!?
                 log(
                     LogType::Error,
-                    "EVENT_REGISTRY install",
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "install",
+                    Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
                     &format!("listening service for event {name} NOT installed"),
@@ -307,12 +321,14 @@ impl EventRegistry {
         }
 
         let event;
+        let id;
         {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
                 .expect(&format!("cannot retrieve event {name} for activation"))
-                .clone()
+                .clone();
+            id = event.lock().unwrap().get_id();
         }
 
         let mxevent = event.lock()
@@ -321,7 +337,9 @@ impl EventRegistry {
             if res {
                 log(
                     LogType::Trace,
-                    "EVENT_REGISTRY fire",
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "fire",
+                    Some((name, id)),
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
                     &format!("condition for event {name} fired"),
@@ -329,7 +347,9 @@ impl EventRegistry {
             } else {
                 log(
                     LogType::Trace,
-                    "EVENT_REGISTRY fire",
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "fire",
+                    Some((name, id)),
                     LOG_WHEN_PROC,
                     LOG_STATUS_FAIL,
                     &format!("condition for event {name} could not fire"),
@@ -338,7 +358,9 @@ impl EventRegistry {
         } else {
             log(
                 LogType::Debug,
-                "EVENT_REGISTRY fire",
+                LOG_EMITTER_EVENT_REGISTRY,
+                "fire",
+                Some((name, id)),
                 LOG_WHEN_PROC,
                 LOG_STATUS_FAIL,
                 &format!("condition for event {name} failed to fire"),

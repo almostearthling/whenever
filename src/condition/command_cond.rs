@@ -110,7 +110,9 @@ impl CommandCondition {
     ) -> Self {
         log(
             LogType::Debug,
-            "COMMAND_CONDITION new",
+            LOG_EMITTER_CONDITION_COMMAND,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("CONDITION {name}: creating a new command based condition"),

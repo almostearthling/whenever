@@ -61,7 +61,9 @@ impl IdleCondition {
     ) -> Self {
         log(
             LogType::Debug,
-            "INTERVAL_CONDITION new",
+            LOG_EMITTER_CONDITION_IDLE,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("CONDITION {name}: creating a new idle time based condition"),

@@ -83,10 +83,12 @@ impl LuaCondition {
         script: &str,
     ) -> Self {
         log(
-            LogType::Debug, 
-            "LUA_CONDITION new",
-            LOG_WHEN_INIT, 
-            LOG_STATUS_MSG, 
+            LogType::Debug,
+            LOG_EMITTER_CONDITION_LUA,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
             &format!("CONDITION {name}: creating a new Lua script based condition"),
         );
         let t = Instant::now();
@@ -648,7 +650,9 @@ impl Condition for LuaCondition {
         fn inner_log(id: i64, name: &str, severity: LogType, message: &str) {
             log(
                 severity,
-                &format!("CONDITION {name}/[{id}] (Lua)"),
+                LOG_EMITTER_CONDITION,
+                LOG_ACTION_LUA,
+                Some((name, id)),
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 message,

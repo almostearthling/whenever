@@ -29,7 +29,7 @@
 //! * _END_ if the event occurs at the end of a service or process
 //! * _HIST_ is a _trace level only_ message emitted to show history on GUI:
 //!          in this case _MSG_ is sent at the beginning of task execution, and
-//!          _OK_, _FAIL_ or _IND_ are sent at the end (resp. on success, 
+//!          _OK_, _FAIL_ or _IND_ are sent at the end (resp. on success,
 //!          failure or _indeterminate_ outcome)
 //!
 //! while the second can be one of:
@@ -246,7 +246,21 @@ pub mod logging {
 
     /// Common log function: `context` specifies which part of the application
     /// originated the message, and `message` is the actual information
-    pub fn log(severity: LogType, context: &str, when: &str, status: &str, message: &str) {
+    pub fn log(
+        severity: LogType,
+        emitter: &str,
+        action: &str,
+        item: Option<(&str, i64)>,
+        when: &str,
+        status: &str,
+        message: &str,
+    ) {
+        let item_repr = if let Some((name, id)) = item {
+            format!(" {name}/{id}")
+        } else {
+            String::new()
+        };
+        let context = format!("{emitter} {action}{item_repr}");
         match severity {
             LogType::Trace => { trace!("{context}: [{when}/{status}] {message}") }
             LogType::Debug => { debug!("{context}: [{when}/{status}] {message}") }

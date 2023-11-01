@@ -304,7 +304,9 @@ impl DbusMethodCondition {
     ) -> Self {
         log(
             LogType::Debug, 
-            "DBUS_CONDITION new",
+            LOG_EMITTER_CONDITION_DBUS,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT, 
             LOG_STATUS_MSG, 
             &format!("CONDITION {name}: creating a new DBus method based condition"),

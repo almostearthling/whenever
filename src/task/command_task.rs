@@ -121,7 +121,9 @@ impl CommandTask {
     ) -> Self {
         log(
             LogType::Debug,
-            "COMMAND_TASK new",
+            LOG_EMITTER_TASK_COMMAND,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("TASK {name}: creating a new command based task"),

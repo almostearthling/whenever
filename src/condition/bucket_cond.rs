@@ -125,7 +125,10 @@ impl BucketCondition {
         name: &str,
     ) -> Self {
         log(
-            LogType::Debug, "BUCKET_CONDITION new",
+            LogType::Debug,
+            LOG_EMITTER_CONDITION_BUCKET,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("CONDITION {name}: creating a new bucket based condition"),

@@ -178,7 +178,9 @@ pub trait Condition: Send {
         let id = self.get_id();
         log(
             severity,
-            &format!("CONDITION {name}/[{id}]"),
+            LOG_EMITTER_CONDITION,
+            LOG_ACTION_ACTIVE,
+            Some((name.as_str(), id)),
             when,
             status,
             message,

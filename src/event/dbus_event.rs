@@ -113,7 +113,9 @@ impl DbusMessageEvent {
     pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
-            "EVENT_DBUS new",
+            LOG_EMITTER_EVENT_DBUS,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("EVENT {name}: creating a new DBus signal based event"),

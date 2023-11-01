@@ -161,7 +161,9 @@ impl TimeCondition {
     ) -> Self {
         log(
             LogType::Debug,
-            "TIME_CONDITION new",
+            "TIME_CONDITION",
+            LOG_ACTION_NEW,
+            Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
             &format!("CONDITION {name}: creating a new time based condition"),
