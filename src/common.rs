@@ -45,6 +45,18 @@
 //! utility the state of the scheduler, and possibily give the opportunity to
 //! organize communication to the user in a friendlier way.
 
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+
+
+// the following global flag is exposed here because it looks like there is
+// no actual way to pass anything but a string as payload to the logger, so
+// the common logging function should know whether the logger is initialized
+// to return JSON message and build the JSON payload itself
+lazy_static! {
+    static ref LOGGER_EMITS_JSON: Mutex<bool> = Mutex::new(false);
+}
+
 
 #[allow(dead_code)]
 /// Module for logging
@@ -63,6 +75,8 @@ pub mod logging {
     use log::Record;
     use serde_json::json;
     use crate::constants::{APP_NAME, ERR_LOGGER_NOT_INITIALIZED};
+
+    use super::LOGGER_EMITS_JSON;
 
     // time stamp format that is used by the provided format functions.
     const NOW_FMT: &str = "%Y-%m-%dT%H:%M:%S%.3f";
@@ -88,16 +102,13 @@ pub mod logging {
         now: &mut DeferredNow,
         record: &Record,
     ) -> Result<(), std::io::Error> {
-        write!(
-            w,
-            "{}",
-            json!({
-                "application": APP_NAME,
-                "time": now.format(NOW_FMT_FULL).to_string(),
-                "level": record.level().to_string(),
-                "message": &record.args().to_string(),
-            })
-        )
+        let header = json!({
+            "application": APP_NAME,
+            "time": now.format(NOW_FMT_FULL).to_string(),
+            "level": record.level().to_string(),
+        }).to_string();
+        let payload = record.args().to_string();
+        write!(w, "{{\"header\":{header},\"contents\":{payload}}}")
     }
 
     fn log_format_colors(
@@ -169,6 +180,7 @@ pub mod logging {
                         } else if logplain {
                             log_format_plain
                         } else if logjson {
+                            *LOGGER_EMITS_JSON.lock().unwrap() = true;
                             log_format_json
                         } else {
                             log_format_plain
@@ -202,6 +214,7 @@ pub mod logging {
                         } else if logplain {
                             log_format_plain
                         } else if logjson {
+                            *LOGGER_EMITS_JSON.lock().unwrap() = true;
                             log_format_json
                         } else {
                             log_format_colors
@@ -255,18 +268,46 @@ pub mod logging {
         status: &str,
         message: &str,
     ) {
-        let item_repr = if let Some((name, id)) = item {
-            format!(" {name}/{id}")
+        let payload;
+        if *LOGGER_EMITS_JSON.lock().unwrap() {
+            let context = if let Some((item, item_id)) = item {
+                json!({
+                    "emitter": emitter,
+                    "action": action,
+                    "item": item,
+                    "item_id": item_id,
+                })
+            } else {
+                json!({
+                    "emitter": emitter,
+                    "action": action,
+                    "item": null,
+                    "item_id": null,
+                })
+            };
+            let message_type = json!({
+                "when": when,
+                "status": status,
+            });
+            payload = json!({
+                "context": context,
+                "message_type": message_type,
+                "message": message,
+            }).to_string();
         } else {
-            String::new()
-        };
-        let context = format!("{emitter} {action}{item_repr}");
+            let item_repr = if let Some((name, id)) = item {
+                format!(" {name}/{id}")
+            } else {
+                String::new()
+            };
+            payload = format!("{emitter} {action}{item_repr}: [{when}/{status}] {message}");
+        }
         match severity {
-            LogType::Trace => { trace!("{context}: [{when}/{status}] {message}") }
-            LogType::Debug => { debug!("{context}: [{when}/{status}] {message}") }
-            LogType::Info => { info!("{context}: [{when}/{status}] {message}") }
-            LogType::Warn => { warn!("{context}: [{when}/{status}] {message}") }
-            LogType::Error => { error!("{context}: [{when}/{status}] {message}") }
+            LogType::Trace => { trace!("{payload}") }
+            LogType::Debug => { debug!("{payload}") }
+            LogType::Info => { info!("{payload}") }
+            LogType::Warn => { warn!("{payload}") }
+            LogType::Error => { error!("{payload}") }
         }
     }
 

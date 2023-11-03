@@ -410,15 +410,17 @@ impl ConditionRegistry {
         // performing the check, which is the actual reason why we wanted it
         // to be synchronized
         let cond;
-        let id;
         {
             let clist = self.condition_list.clone();
             let mut guard = clist.lock().expect("cannot lock condition registry");
             cond = guard.get_mut(name)
                 .expect(&format!("cannot retrieve condition {name} for busy check"))
                 .clone();
-            id = cond.lock().unwrap().get_id();
         }
+        // let id;
+        // {
+        //     id = cond.lock().unwrap().get_id();
+        // }
 
         // since we return after trying to lock the condition, the possibly
         // acquired lock is immediately released
@@ -427,7 +429,8 @@ impl ConditionRegistry {
                 LogType::Trace,
                 LOG_EMITTER_CONDITION_REGISTRY,
                 "condition_busy",
-                Some((name, id)),
+                // Some((name, id)),
+                None,
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
                 &format!("condition {name} is not busy"),
@@ -438,7 +441,8 @@ impl ConditionRegistry {
                 LogType::Trace,
                 LOG_EMITTER_CONDITION_REGISTRY,
                 "condition_busy",
-                Some((name, id)),
+                // Some((name, id)),
+                None,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
                 &format!("condition {name} is busy"),
@@ -496,15 +500,17 @@ impl ConditionRegistry {
         // performing the tick, which is the actual reason why we wanted it to
         // be synchronized
         let cond;
-        let id;
         {
             let clist = self.condition_list.clone();
             let mut guard = clist.lock().expect("cannot lock condition registry");
             cond = guard.get_mut(name)
                 .expect(&format!("cannot retrieve condition {name} for testing"))
                 .clone();
-            id = cond.lock().unwrap().get_id();
         }
+        // let id;
+        // {
+        //     id = cond.lock().unwrap().get_id();
+        // }
 
         let mut lock = cond.try_lock();
         if let Ok(ref mut cond) = lock {
@@ -512,7 +518,8 @@ impl ConditionRegistry {
                 LogType::Debug,
                 LOG_EMITTER_CONDITION_REGISTRY,
                 LOG_ACTION_TICK,
-                Some((name, id)),
+                // Some((name, id)),
+                None,
                 LOG_WHEN_START,
                 LOG_STATUS_MSG,
                 &format!("test and run for condition {name}"),
@@ -537,7 +544,8 @@ impl ConditionRegistry {
                 LogType::Warn,
                 LOG_EMITTER_CONDITION_REGISTRY,
                 LOG_ACTION_TICK,
-                Some((name, id)),
+                // Some((name, id)),
+                None,
                 LOG_WHEN_START,
                 LOG_STATUS_MSG,
                 &format!("condition {name} is BUSY: skipping tick"),
