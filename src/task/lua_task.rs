@@ -89,8 +89,15 @@ impl LuaTask {
         name: &str,
         script: &str,
     ) -> Self {
-        log(LogType::Debug, "LUA_TASK new",
-            &format!("[INIT/MSG] TASK {name}: creating a new Lua script based task"));
+        log(
+            LogType::Debug,
+            LOG_EMITTER_TASK_LUA,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("TASK {name}: creating a new Lua script based task")
+        );
         LuaTask {
             task_id: 0,
             task_name: String::from(name),
@@ -392,13 +399,22 @@ impl Task for LuaTask {
         let mut failure_reason = FailureReason::NoCheck;
 
         fn inner_log(trigger_name: &str, id: i64, name: &str, severity: LogType, message: &str) {
-            log(severity, &format!("TASK {name}/[{id}]"),
-                &format!("[PROC/MSG] (trigger: {trigger_name}) (Lua) {message}"));
+            log(
+                severity,
+                "TASK",
+                LOG_ACTION_LUA,
+                Some((name, id)),
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                &format!("(trigger: {trigger_name}) (Lua) {message}"),
+            );
         }
 
         self.log(
             LogType::Debug,
-            &format!("[START/OK] (trigger: {trigger_name}) executing Lua script as a task"),
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("(trigger: {trigger_name}) executing Lua script as a task"),
         );
 
         // start execution
@@ -468,7 +484,11 @@ impl Task for LuaTask {
                     if !self.expected.is_empty() {
                         self.log(
                             LogType::Debug,
-                            &format!("[PROC/OK] (trigger: {trigger_name}) checking results: {}", &self.repr_checks()),
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!(
+                                "(trigger: {trigger_name}) checking results: {}",
+                                &self.repr_checks()),
                         );
                         if self.expect_all {
                             failure_reason = FailureReason::NoFailure;
@@ -496,7 +516,9 @@ impl Task for LuaTask {
                                     if !res {
                                         self.log(
                                             LogType::Debug,
-                                            &format!("[PROC/OK] (trigger: {trigger_name}) result mismatch on at least one variable ({varname}): failure"),
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!("(trigger: {trigger_name}) result mismatch on at least one variable ({varname}): failure"),
                                         );
                                         failure_reason = FailureReason::VariableMatch;
                                         break;
@@ -504,7 +526,9 @@ impl Task for LuaTask {
                                 } else {
                                     self.log(
                                         LogType::Debug,
-                                        &format!("[PROC/FAIL] (trigger: {trigger_name}) result not found for at least one variable ({varname}): failure"),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!("(trigger: {trigger_name}) result not found for at least one variable ({varname}): failure"),
                                     );
                                     failure_reason = FailureReason::VariableMatch;
                                     break;
@@ -536,7 +560,9 @@ impl Task for LuaTask {
                                     if res {
                                         self.log(
                                             LogType::Debug,
-                                            &format!("[PROC/OK] (trigger: {trigger_name}) result match on at least one variable ({varname}): success"),
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!("(trigger: {trigger_name}) result match on at least one variable ({varname}): success"),
                                         );
                                         failure_reason = FailureReason::NoFailure;
                                         break;
@@ -552,12 +578,16 @@ impl Task for LuaTask {
                     if let Some(err_msg) = res.to_string().split('\n').next() {
                         self.log(
                             LogType::Warn,
-                            &format!("[END/FAIL] error in Lua script: {}", err_msg),
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            &format!("error in Lua script: {err_msg}"),
                         );
                     } else {
                         self.log(
                             LogType::Warn,
-                            "[END/FAIL] error in Lua script (unknown)",
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            "error in Lua script (unknown)",
                         );
                     }
                     failure_reason = FailureReason::ScriptError;
@@ -570,27 +600,42 @@ impl Task for LuaTask {
         let duration = SystemTime::now().duration_since(startup_time).unwrap();
         match failure_reason {
             FailureReason::NoFailure => {
-                self.log(LogType::Debug,
-                    &format!("[END/OK] (trigger: {trigger_name}) task exited successfully in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!(
+                        "(trigger: {trigger_name}) task exited successfully in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(Some(true))
             }
             FailureReason::NoCheck => {
-                self.log(LogType::Debug,
-                    &format!("[END/OK] (trigger: {trigger_name}) task exited with no outcome in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!(
+                        "(trigger: {trigger_name}) task exited with no outcome in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(None)
             }
             FailureReason::VariableMatch => {
-                self.log(LogType::Debug,
-                    &format!("[END/OK] (trigger: {trigger_name}) task exited unsuccessfully (unmatched values) in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!(
+                        "(trigger: {trigger_name}) task exited unsuccessfully (unmatched values) in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::ScriptError => {
-                self.log(LogType::Warn,
-                    &format!("[END/FAIL] (trigger: {trigger_name}) task exited unsuccessfully (script error) in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Warn,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!("(trigger: {trigger_name}) task exited unsuccessfully (script error) in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(Some(false))
             }
         }

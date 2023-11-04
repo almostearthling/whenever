@@ -202,7 +202,7 @@ where T: ToVariant {
         let mut d: HashMap<String, zvariant::Value> = HashMap::new();
         for (key, item) in self.iter() {
             if let Some(v) = item.to_variant() {
-                d.insert(String::from(key), v);
+                d.insert(key.clone(), v);
             } else {
                 return None;
             }
@@ -302,8 +302,15 @@ impl DbusMethodCondition {
     pub fn new(
         name: &str,
     ) -> Self {
-        log(LogType::Debug, "DBUS_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new DBus method based condition"));
+        log(
+            LogType::Debug, 
+            LOG_EMITTER_CONDITION_DBUS,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
+            LOG_WHEN_INIT, 
+            LOG_STATUS_MSG, 
+            &format!("CONDITION {name}: creating a new DBus method based condition"),
+        );
         let t = Instant::now();
         DbusMethodCondition {
             // common members initialization
@@ -966,7 +973,7 @@ impl DbusMethodCondition {
                                     ERR_INVALID_VALUE_FOR_ENTRY);
                             }
                         } else {
-                            value = ParameterCheckValue::String(s.clone());
+                            value = ParameterCheckValue::String(s.to_string());
                         }
                     } else {
                         return _invalid_cfg(
@@ -1227,7 +1234,9 @@ impl Condition for DbusMethodCondition {
 
         self.log(
             LogType::Debug,
-            "[START/MSG] checking DBus method based condition",
+            LOG_WHEN_START, 
+            LOG_STATUS_MSG, 
+            "checking DBus method based condition",
         );
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
@@ -1236,7 +1245,9 @@ impl Condition for DbusMethodCondition {
             if e > t - self.check_last {
                 self.log(
                     LogType::Debug,
-                    "[START/MSG] check explicitly delayed by configuration",
+                    LOG_WHEN_START, 
+                    LOG_STATUS_MSG, 
+                    "check explicitly delayed by configuration",
                 );
                 return Ok(Some(false));
             }
@@ -1270,7 +1281,9 @@ impl Condition for DbusMethodCondition {
         // connect to the DBus service
         self.log(
             LogType::Debug,
-            &format!("[START/MSG] opening connection to bus `{bus}`"),
+            LOG_WHEN_START, 
+            LOG_STATUS_MSG, 
+            &format!("opening connection to bus `{bus}`"),
         );
         let conn = task::block_on(async {
             _get_connection(&bus).await
@@ -1304,8 +1317,9 @@ impl Condition for DbusMethodCondition {
         if let Err(e) = message {
             self.log(
                 LogType::Warn,
-                &format!(
-                    "[START/FAIL] could not retrieve message invoking method {method} on bus `{bus}`: {e}"),
+                LOG_WHEN_START, 
+                LOG_STATUS_FAIL, 
+                &format!("could not retrieve message invoking method {method} on bus `{bus}`: {e}"),
             );
             return Ok(Some(false));
         }
@@ -1328,7 +1342,9 @@ impl Condition for DbusMethodCondition {
                                 if *x >= mbody.fields().len() as u64 {
                                     self.log(
                                         LogType::Warn,
-                                        &format!("[PROC/FAIL] could not retrieve result: index {x} out of range"),
+                                        LOG_WHEN_PROC, 
+                                        LOG_STATUS_FAIL, 
+                                        &format!("could not retrieve result: index {x} out of range"),
                                     );
                                     verified = false;
                                     break 'params;
@@ -1343,7 +1359,9 @@ impl Condition for DbusMethodCondition {
                                                     if i >= f.len() {
                                                         self.log(
                                                             LogType::Warn,
-                                                            &format!("[PROC/FAIL] could not retrieve result: index {i} out of range"),
+                                                            LOG_WHEN_PROC, 
+                                                            LOG_STATUS_FAIL, 
+                                                            &format!("could not retrieve result: index {i} out of range"),
                                                         );
                                                     }
                                                     // if something is wrong here, either the test
@@ -1355,7 +1373,9 @@ impl Condition for DbusMethodCondition {
                                                     if i >= f.len() {
                                                         self.log(
                                                             LogType::Warn,
-                                                            &format!("[PROC/FAIL] could not retrieve result: index {i} out of range"),
+                                                            LOG_WHEN_PROC, 
+                                                            LOG_STATUS_FAIL, 
+                                                            &format!("could not retrieve result: index {i} out of range"),
                                                         );
                                                     }
                                                     if let Some(v) = f.get(i) {
@@ -1363,14 +1383,18 @@ impl Condition for DbusMethodCondition {
                                                     } else {
                                                         self.log(
                                                             LogType::Warn,
-                                                            &format!("[PROC/FAIL] could not retrieve result: index {i} provided no value"),
+                                                            LOG_WHEN_PROC, 
+                                                            LOG_STATUS_FAIL, 
+                                                            &format!("could not retrieve result: index {i} provided no value"),
                                                         );
                                                     }
                                                 }
                                                 _ => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] could not retrieve result using index {i}"),
+                                                        LOG_WHEN_PROC, 
+                                                        LOG_STATUS_FAIL, 
+                                                        &format!("could not retrieve result using index {i}"),
                                                     );
                                                     verified = false;
                                                     break 'params;
@@ -1388,7 +1412,9 @@ impl Condition for DbusMethodCondition {
                                                             } else {
                                                                 self.log(
                                                                     LogType::Warn,
-                                                                    &format!("[PROC/FAIL] could not retrieve result: index `{s}` invalid"),
+                                                                    LOG_WHEN_PROC, 
+                                                                    LOG_STATUS_FAIL, 
+                                                                    &format!("could not retrieve result: index `{s}` invalid"),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1397,7 +1423,9 @@ impl Condition for DbusMethodCondition {
                                                         Err(_) => {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                &format!("[PROC/FAIL] could not retrieve result using index `{s}`"),
+                                                                LOG_WHEN_PROC, 
+                                                                LOG_STATUS_FAIL, 
+                                                                &format!("could not retrieve result using index `{s}`"),
                                                             );
                                                             verified = false;
                                                             break 'params;
@@ -1407,7 +1435,9 @@ impl Condition for DbusMethodCondition {
                                                 _ => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] could not retrieve parameter using index `{s}`"),
+                                                        LOG_WHEN_PROC, 
+                                                        LOG_STATUS_FAIL, 
+                                                        &format!("could not retrieve parameter using index `{s}`"),
                                                     );
                                                     verified = false;
                                                     break 'params;
@@ -1443,7 +1473,9 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] mismatched result type: boolean expected (got `{e:?}`)"),
+                                                        LOG_WHEN_PROC, 
+                                                        LOG_STATUS_FAIL, 
+                                                        &format!("mismatched result type: boolean expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
                                                     break;
@@ -1452,7 +1484,9 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                "[PROC/FAIL] invalid operator for boolean",
+                                                LOG_WHEN_PROC, 
+                                                LOG_STATUS_FAIL, 
+                                                "invalid operator for boolean",
                                             );
                                             verified = false;
                                             break;
@@ -1555,7 +1589,9 @@ impl Condition for DbusMethodCondition {
                                             e => {
                                                 self.log(
                                                     LogType::Warn,
-                                                    &format!("[PROC/FAIL] mismatched result type: integer expected (got `{e:?}`)"),
+                                                    LOG_WHEN_PROC, 
+                                                    LOG_STATUS_FAIL, 
+                                                    &format!("mismatched result type: integer expected (got `{e:?}`)"),
                                                 );
                                                 verified = false;
                                                 break 'params;
@@ -1580,7 +1616,9 @@ impl Condition for DbusMethodCondition {
                                             e => {
                                                 self.log(
                                                     LogType::Warn,
-                                                    &format!("[PROC/FAIL] mismatched result type: float expected (got `{e:?}`)"),
+                                                    LOG_WHEN_PROC, 
+                                                    LOG_STATUS_FAIL, 
+                                                    &format!("mismatched result type: float expected (got `{e:?}`)"),
                                                 );
                                                 verified = false;
                                                 break 'params;
@@ -1619,7 +1657,9 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] mismatched result type: string expected (got `{e:?}`)"),
+                                                        LOG_WHEN_PROC, 
+                                                        LOG_STATUS_FAIL, 
+                                                        &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
                                                     break 'params;
@@ -1656,7 +1696,9 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] mismatched result type: string expected (got `{e:?}`)"),
+                                                        LOG_WHEN_PROC, 
+                                                        LOG_STATUS_FAIL, 
+                                                        &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
                                                     break 'params;
@@ -1665,7 +1707,9 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                "[PROC/FAIL] invalid operator for string",
+                                                LOG_WHEN_PROC, 
+                                                LOG_STATUS_FAIL, 
+                                                "invalid operator for string",
                                             );
                                             verified = false;
                                             break 'params;
@@ -1703,7 +1747,9 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        &format!("[PROC/FAIL] mismatched result type: string expected (got `{e:?}`)"),
+                                                        LOG_WHEN_PROC, 
+                                                        LOG_STATUS_FAIL, 
+                                                        &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
                                                     break 'params;
@@ -1712,7 +1758,9 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                "[PROC/FAIL] invalid operator for regular expression",
+                                                LOG_WHEN_PROC, 
+                                                LOG_STATUS_FAIL, 
+                                                "invalid operator for regular expression",
                                             );
                                             verified = false;
                                             break 'params;
@@ -1723,7 +1771,9 @@ impl Condition for DbusMethodCondition {
                             _ => {
                                 self.log(
                                     LogType::Warn,
-                                    "[PROC/FAIL] could not retrieve parameter index: no integer found",
+                                    LOG_WHEN_PROC, 
+                                    LOG_STATUS_FAIL, 
+                                    "could not retrieve parameter index: no integer found",
                                 );
                                 verified = false;
                                 break;
@@ -1733,7 +1783,9 @@ impl Condition for DbusMethodCondition {
                     } else {
                         self.log(
                             LogType::Warn,
-                            "[PROC/FAIL] could not retrieve parameter: missing argument number",
+                            LOG_WHEN_PROC, 
+                            LOG_STATUS_FAIL, 
+                            "could not retrieve parameter: missing argument number",
                         );
                         verified = false;
                         break;
@@ -1742,7 +1794,9 @@ impl Condition for DbusMethodCondition {
             } else {
                 self.log(
                     LogType::Warn,
-                    "[PROC/FAIL] could not retrieve message body",
+                    LOG_WHEN_PROC, 
+                    LOG_STATUS_FAIL, 
+                    "could not retrieve message body",
                 );
             }
 

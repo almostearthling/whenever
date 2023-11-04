@@ -82,8 +82,15 @@ impl LuaCondition {
         name: &str,
         script: &str,
     ) -> Self {
-        log(LogType::Debug, "LUA_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new Lua script based condition"));
+        log(
+            LogType::Debug,
+            LOG_EMITTER_CONDITION_LUA,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("CONDITION {name}: creating a new Lua script based condition"),
+        );
         let t = Instant::now();
         LuaCondition {
             // common members initialization
@@ -619,7 +626,9 @@ impl Condition for LuaCondition {
     fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
         self.log(
             LogType::Debug,
-            "[START/MSG] checking Lua script based condition",
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
+            "checking Lua script based condition",
         );
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
@@ -628,7 +637,9 @@ impl Condition for LuaCondition {
             if e > t - self.check_last {
                 self.log(
                     LogType::Debug,
-                    "[START/MSG] check explicitly delayed by configuration",
+                    LOG_WHEN_START,
+                    LOG_STATUS_MSG,
+                    "check explicitly delayed by configuration",
                 );
                 return Ok(Some(false));
             }
@@ -637,11 +648,21 @@ impl Condition for LuaCondition {
         let mut failure_reason = FailureReason::NoCheck;
 
         fn inner_log(id: i64, name: &str, severity: LogType, message: &str) {
-            log(severity, &format!("CONDITION {name}/[{id}] (Lua)"), message);
+            log(
+                severity,
+                LOG_EMITTER_CONDITION,
+                LOG_ACTION_LUA,
+                Some((name, id)),
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                message,
+            );
         }
 
         self.log(
             LogType::Debug,
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
             "executing Lua script for condition check",
         );
 
@@ -706,6 +727,8 @@ impl Condition for LuaCondition {
                     if !self.expected.is_empty() {
                         self.log(
                             LogType::Debug,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
                             &format!("checking results: {}", &self.repr_checks()),
                         );
                         if self.expect_all {
@@ -734,6 +757,8 @@ impl Condition for LuaCondition {
                                     if !res {
                                         self.log(
                                             LogType::Debug,
+                                            LOG_WHEN_END,
+                                            LOG_STATUS_MSG,
                                             &format!("result mismatch on at least one variable ({varname}): failure"),
                                         );
                                         failure_reason = FailureReason::VariableMatch;
@@ -742,6 +767,8 @@ impl Condition for LuaCondition {
                                 } else {
                                     self.log(
                                         LogType::Debug,
+                                        LOG_WHEN_END,
+                                        LOG_STATUS_MSG,
                                         &format!("result not found for at least one variable ({varname}): failure"),
                                     );
                                     failure_reason = FailureReason::VariableMatch;
@@ -774,6 +801,8 @@ impl Condition for LuaCondition {
                                     if res {
                                         self.log(
                                             LogType::Debug,
+                                            LOG_WHEN_END,
+                                            LOG_STATUS_MSG,
                                             &format!("result match on at least one variable ({varname}): success"),
                                         );
                                         failure_reason = FailureReason::NoFailure;
@@ -790,11 +819,15 @@ impl Condition for LuaCondition {
                     if let Some(err_msg) = res.to_string().split('\n').next() {
                         self.log(
                             LogType::Warn,
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
                             &format!("error in Lua script: {}", err_msg),
                         );
                     } else {
                         self.log(
                             LogType::Warn,
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
                             "error in Lua script (unknown)",
                         );
                     }
@@ -808,27 +841,43 @@ impl Condition for LuaCondition {
         let duration = SystemTime::now().duration_since(startup_time).unwrap();
         match failure_reason {
             FailureReason::NoFailure => {
-                self.log(LogType::Info,
-                    &format!("condition checked successfully in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Info,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!(
+                        "condition checked successfully in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(Some(true))
             }
             FailureReason::NoCheck => {
-                self.log(LogType::Info,
-                    &format!("condition checked with no outcome in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Info,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!(
+                        "condition checked with no outcome in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(None)
             }
             FailureReason::VariableMatch => {
-                self.log(LogType::Info,
-                    &format!("condition checked unsuccessfully (unmatched values) in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Info,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!(
+                        "condition checked unsuccessfully (unmatched values) in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(Some(false))
             }
             FailureReason::ScriptError => {
-                self.log(LogType::Info,
-                    &format!("condition checked unsuccessfully (script error) in {:.2}s",
-                    duration.as_secs_f64()));
+                self.log(
+                    LogType::Info,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!(
+                        "condition checked unsuccessfully (script error) in {:.2}s",
+                        duration.as_secs_f64()));
                 Ok(Some(false))
             }
         }
