@@ -795,39 +795,74 @@ A short description of the log levels follows:
 
 Note that, since _Lua_ scripts are allowed to log at each of the above described levels, lines emitted by _Lua_ script might not always correspond to what is illustrated above.
 
-As mentioned above, just after the _context_, in the message _payload_, a string of this form `[NATURE/OUTCOME]` appears that can be used to identify the nature of the message, where
+As mentioned above, just after the _context_, in the message _payload_, a string of the form `[WHEN/STATUS]` appears that can be used to better identify of the message, where
 
-* _NATURE_ is one of
+* _WHEN_ represents the _nature_ of the log entry, and can be one of
   * `INIT` when the message is related to an initialization phase (mostly around startup)
   * `START` when the message is issued when _starting_ something, for instance a check or a new process
   * `PROC` when the message is issued in the middle of something, for instance while executing a check
   * `END` when the message is emitted at the end of something, before returning control
   * `HIST` when the message is intended for some receiver (generally a wrapper) that keeps track of the history: in this case the _outcome_ is either `START` or `END`
 
-* _OUTCOME_ is one of the following:
+* _STATUS_ holds the _outcome_ of the current activity, and is one of the following:
   * `OK` for expected behaviours
   * `FAIL` for unexpected behaviours
   * `IND` when the outcome of an operation is undetermined
   * `MSG` when the message is merely informational
-  * `ERR` (possibly followed by `-nnn` where nnn is a code that should be notified), when an operation fails with a known error
+  * `ERR` when an operation fails with an error
   * `START`/`END` are pseudo-outcomes that only occur when the _nature_ is `HIST`, to mark the beginning or the end of an activity
 
 This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
 
 ```text
-[2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/[6]: [PROC/OK] failure: condition checked with negative outcome
+[2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/6: [PROC/OK] failure: condition checked with negative outcome
 ```
 
 while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected quite often, this is the reason why the message documenting a failed check is reported as a positive (`[PROC/OK]`) log entry.
 
-There is an option that can be specified on the [command line](#cli), that forces the log lines to be emitted in the JSON format: this allows to separate the parts more easily in
+There is an option that can be specified on the [command line](#cli), that forces the log lines to be emitted in the JSON format: this allows to separate the parts more easily into a header (`"header"` field) that holds
 
-* timestamp
-* application name
-* log level
-* message (payload)
+* the log timestamp (`"time"`)
+* the application name (`"application"`)
+* log level (`"level"`)
 
-in order to better handle the logs and to provide feedback to the user.
+followed by the actual log contents, consisting of
+
+* context (`"context"`), which contains
+  * the part of the scheduler that emits the message (`"emitter"`)
+  * the action that is being performed, or the indication that an item is active (`"action"`)
+  * the name and unique id of the item, if the message concerns an activated item (`"item"` and `"item_id"`)
+* the message type (`"message_type"`), consisting of
+  * the nature of the message (`"when"`)
+  * the current outcome (`"status"`)
+* a human readable message (`"message"`)
+
+in order to better handle the logs and to provide feedback to the user. A sample JSON record is shown below:
+
+```json
+{
+    "header": {
+        "application": "whenever",
+        "level": "TRACE",
+        "time": "2023-11-04T11:17:25.257970"
+    },
+    "contents": {
+        "context": {
+            "action": "scheduler_tick",
+            "emitter": "MAIN",
+            "item": null,
+            "item_id": null
+        },
+        "message": "condition Cond_TIME tested with no outcome (tasks not executed)",
+        "message_type": {
+            "status": "MSG",
+            "when": "PROC"
+        }
+    }
+}
+```
+
+The actual log record, also in JSON format, is emitted in the form of a single text line.
 
 
 ## Input commands
