@@ -76,6 +76,53 @@ pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
 
+// logging constants
+pub const LOG_WHEN_INIT: &str = "INIT";
+pub const LOG_WHEN_START: &str = "START";
+pub const LOG_WHEN_END: &str = "END";
+pub const LOG_WHEN_PROC: &str = "PROC";
+pub const LOG_WHEN_HISTORY: &str = "HIST";
+
+pub const LOG_STATUS_OK: &str = "OK";
+pub const LOG_STATUS_FAIL: &str = "FAIL";
+pub const LOG_STATUS_MSG: &str = "MSG";
+pub const LOG_STATUS_ERR: &str = "ERR";
+pub const LOG_STATUS_HIST_START: &str = "START";
+pub const LOG_STATUS_HIST_END: &str = "END";
+
+pub const LOG_EMITTER_TASK: &str = "TASK";
+pub const LOG_EMITTER_TASK_REGISTRY: &str = "TASK_REGISTRY";
+pub const LOG_EMITTER_CONDITION: &str = "CONDITION";
+pub const LOG_EMITTER_CONDITION_REGISTRY: &str = "CONDITION_REGISTRY";
+pub const LOG_EMITTER_EVENT: &str = "EVENT";
+pub const LOG_EMITTER_EVENT_REGISTRY: &str = "EVENT_REGISTRY";
+pub const LOG_EMITTER_MAIN: &str = "MAIN";
+
+pub const LOG_EMITTER_TASK_COMMAND: &str = "COMMAND_TASK";
+pub const LOG_EMITTER_TASK_LUA: &str = "LUA_TASK";
+pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
+pub const LOG_EMITTER_EVENT_FSCHANGE: &str = "FSCHANGE_EVENT";
+pub const LOG_EMITTER_CONDITION_INTERVAL: &str = "INTERVAL_CONDITION";
+pub const LOG_EMITTER_CONDITION_BUCKET: &str = "BUCKET_CONDITION";
+pub const LOG_EMITTER_CONDITION_COMMAND: &str = "COMMAND_CONDITION";
+pub const LOG_EMITTER_CONDITION_DBUS: &str = "DBUS_CONDITION";
+pub const LOG_EMITTER_CONDITION_IDLE: &str = "IDLE_CONDITION";
+pub const LOG_EMITTER_CONDITION_LUA: &str = "LUA_CONDITION";
+
+pub const LOG_ACTION_NEW: &str = "new";
+pub const LOG_ACTION_TICK: &str = "tick";
+pub const LOG_ACTION_ACTIVE: &str = "active";
+pub const LOG_ACTION_LUA: &str = "exec_lua";
+pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
+pub const LOG_ACTION_RESET_CONDITIONS: &str = "reset_conditions";
+pub const LOG_ACTION_SUSPEND_CONDITION: &str = "suspend_condition";
+pub const LOG_ACTION_RESUME_CONDITION: &str = "resume_condition";
+pub const LOG_ACTION_CONDITION_BUSY: &str = "condition_busy";
+pub const LOG_ACTION_CONDITION_STATE: &str = "condition_state";
+pub const LOG_ACTION_RUN_COMMAND: &str = "command";
+pub const LOG_ACTION_MAIN_LISTENER: &str = "listener";
+pub const LOG_ACTION_MAIN_EXIT: &str = "exit";
+
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
 

@@ -59,8 +59,15 @@ impl IdleCondition {
         name: &str,
         interval: &Duration,
     ) -> Self {
-        log(LogType::Debug, "INTERVAL_CONDITION new",
-            &format!("[INIT/MSG] CONDITION {name}: creating a new idle time based condition"));
+        log(
+            LogType::Debug,
+            LOG_EMITTER_CONDITION_IDLE,
+            LOG_ACTION_NEW,
+            Some((name, 0)),
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("CONDITION {name}: creating a new idle time based condition"),
+        );
         IdleCondition {
             // common members initialization
             // reset ID
@@ -471,8 +478,10 @@ impl Condition for IdleCondition {
             // last_tested has already been set by trait to Instant::now()
             self.log(
                 LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
                 &format!(
-                    "[PROC/MSG] checking idle time based condition{} (test: {}<{}?)",
+                    "checking idle time based condition{} (test: {}<{}?)",
                     { if self.idle_verified { " [idle]" } else { "" } },
                     idle.as_seconds(),
                     self.idle_seconds.as_secs(),

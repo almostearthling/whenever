@@ -193,6 +193,25 @@ impl EventRegistry {
         }
     }
 
+    /// Return the id of the specified event
+    pub fn event_id(&self, name: &str) -> Option<i64> {
+        let guard;
+        if self.has_event(name) {
+            guard = self.event_list
+                .lock()
+                .expect("cannot lock event registry");
+        } else {
+            return None
+        }
+        let event = guard
+            .get(name)
+            .expect(&format!("cannot retrieve event {name}"))
+            .clone();
+        drop(guard);
+        let id = event.lock().expect(&format!("cannot lock event {name}")).get_id();
+        Some(id)
+    }
+
 
     /// Install the listening service for an event.
     ///
@@ -208,13 +227,14 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
 
+        let id = self.event_id(name).unwrap();
         let event;
         {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
                 .expect(&format!("cannot retrieve event {name} for activation"))
-                .clone()
+                .clone();
         }
 
         let mxevent = event.lock().expect(&format!("cannot lock event {name} for activation"));
@@ -223,8 +243,12 @@ impl EventRegistry {
         if mxevent.requires_thread() {
             log(
                 LogType::Debug,
-                "EVENT_REGISTRY install",
-                &format!("[START/OK] installing listening service for event {name} (dedicated thread)"),
+                LOG_EMITTER_EVENT_REGISTRY,
+                "install",
+                Some((name.as_ref(), id)),
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("installing listening service for event {name} (dedicated thread)"),
             );
             let event = event.clone();
             let event_name = event_name.clone();
@@ -236,14 +260,22 @@ impl EventRegistry {
                         if ssres {
                             log(
                                 LogType::Debug,
-                                "EVENT_REGISTRY install",
-                                &format!("[START/OK] listening service installed for event {ename}"),
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                "install",
+                                Some((&ename, id)),
+                                LOG_WHEN_START,
+                                LOG_STATUS_OK,
+                                &format!("listening service installed for event {ename}"),
                             );
                         } else {
                             log(
                                 LogType::Error,
-                                "EVENT_REGISTRY install",
-                                &format!("[START/FAIL] listening service for event {ename} NOT installed"),
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                "install",
+                                Some((&ename, id)),
+                                LOG_WHEN_START,
+                                LOG_STATUS_FAIL,
+                                &format!("listening service for event {ename} NOT installed"),
                             );
                         }
                         Ok(ssres)
@@ -251,8 +283,12 @@ impl EventRegistry {
                     Err(e) => {
                         log(
                             LogType::Error,
-                            "EVENT_REGISTRY install",
-                            &format!("[START/FAIL] listening service for event {ename} NOT installed: {e}"),
+                            LOG_EMITTER_EVENT_REGISTRY,
+                            "install",
+                                Some((&ename, id)),
+                            LOG_WHEN_START,
+                            LOG_STATUS_FAIL,
+                            &format!("listening service for event {ename} NOT installed: {e}"),
                         );
                         Err(e)
                     }
@@ -263,15 +299,23 @@ impl EventRegistry {
             if mxevent._start_service()? {
                 log(
                     LogType::Debug,
-                    "EVENT_REGISTRY install",
-                    &format!("[START/OK] installing listening service for event {name}"),
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "install",
+                    Some((name, id)),
+                    LOG_WHEN_START,
+                    LOG_STATUS_OK,
+                    &format!("installing listening service for event {name}"),
                 );
             } else {
                 // FIXME: this might have to return Err(...) instead!?
                 log(
                     LogType::Error,
-                    "EVENT_REGISTRY install",
-                    &format!("[START/FAIL] listening service for event {name} NOT installed"),
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "install",
+                    Some((name, id)),
+                    LOG_WHEN_START,
+                    LOG_STATUS_FAIL,
+                    &format!("listening service for event {name} NOT installed"),
                 );
             }
             Ok(None)
@@ -294,13 +338,14 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
 
+        let id = self.event_id(name).unwrap();
         let event;
         {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
                 .expect(&format!("cannot retrieve event {name} for activation"))
-                .clone()
+                .clone();
         }
 
         let mxevent = event.lock()
@@ -309,21 +354,33 @@ impl EventRegistry {
             if res {
                 log(
                     LogType::Trace,
-                    "EVENT_REGISTRY fire",
-                    &format!("[PROC/OK] condition for event {name} fired"),
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "fire",
+                    Some((name, id)),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("condition for event {name} fired"),
                 );
             } else {
                 log(
                     LogType::Trace,
-                    "EVENT_REGISTRY fire",
-                    &format!("[PROC/FAIL] condition for event {name} could not fire"),
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    "fire",
+                    Some((name, id)),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
+                    &format!("condition for event {name} could not fire"),
                 );
             }
         } else {
             log(
                 LogType::Debug,
-                "EVENT_REGISTRY fire",
-                &format!("[PROC/FAIL] condition for event {name} failed to fire"),
+                LOG_EMITTER_EVENT_REGISTRY,
+                "fire",
+                Some((name, id)),
+                LOG_WHEN_PROC,
+                LOG_STATUS_FAIL,
+                &format!("condition for event {name} failed to fire"),
             );
         }
     }

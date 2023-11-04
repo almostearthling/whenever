@@ -11,7 +11,7 @@
 
 
 use crate::common::logging::{log, LogType};
-
+use crate::constants::*;
 
 
 /// Define the interface for `Task` objects.
@@ -47,10 +47,18 @@ pub trait Task: Send {
     ///
     /// * `severity` - one of `LogType::{Trace, Debug, Info, Warn, Error}`
     /// * `message` - the message to be logged as a borrowed string
-    fn log(&self, severity: LogType, message: &str) {
+    fn log(&self, severity: LogType, when: &str, status: &str, message: &str) {
         let name = self.get_name();
         let id = self.get_id();
-        log(severity, &format!("TASK {name}/[{id}]"), message);
+        log(
+            severity,
+            LOG_EMITTER_TASK,
+            LOG_ACTION_ACTIVE,
+            Some((&name, id)),
+            when,
+            status,
+            message,
+        );
     }
 
 
@@ -90,7 +98,9 @@ pub trait Task: Send {
 
         self.log(
             LogType::Trace,
-            &format!("[HIST/START]:OK/trigger:{trigger_name} starting task"),
+            LOG_WHEN_HISTORY,
+            LOG_STATUS_HIST_START,
+            &format!("OK/trigger:{trigger_name} starting task"),
         );
         let res = self._run(trigger_name);
         match &res {
@@ -99,25 +109,33 @@ pub trait Task: Send {
                     if *b {
                         self.log(
                             LogType::Trace,
-                            &format!("[HIST/END]:OK/trigger:{trigger_name} task succeeded"),
+                            LOG_WHEN_HISTORY,
+                            LOG_STATUS_HIST_END,
+                            &format!("OK/trigger:{trigger_name} task succeeded"),
                         );
                     } else {
                         self.log(
                             LogType::Trace,
-                            &format!("[HIST/END]:FAIL/trigger:{trigger_name} task failed"),
+                            LOG_WHEN_HISTORY,
+                            LOG_STATUS_HIST_END,
+                            &format!("FAIL/trigger:{trigger_name} task failed"),
                         );
                     }
                 } else {
                     self.log(
                         LogType::Trace,
-                        &format!("[HIST/END]:IND/trigger:{trigger_name} no outcome"),
+                        LOG_WHEN_HISTORY,
+                        LOG_STATUS_HIST_END,
+                        &format!("IND/trigger:{trigger_name} no outcome"),
                     );
                 }
             }
             Err(e) => {
                 self.log(
                     LogType::Trace,
-                    &format!("[HIST/END]:ERR/trigger:{trigger_name} error: {}", e.to_string()),
+                    LOG_WHEN_HISTORY,
+                    LOG_STATUS_HIST_END,
+                    &format!("ERR/trigger:{trigger_name} error: {}", e.to_string()),
                 );
             }
         }

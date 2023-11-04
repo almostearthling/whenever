@@ -173,10 +173,18 @@ pub trait Condition: Send {
     ///
     /// * `severity` - one of `LogType::{Trace, Debug, Info, Warn, Error}`
     /// * `message` - the message to be logged as a borrowed string
-    fn log(&self, severity: LogType, message: &str) {
+    fn log(&self, severity: LogType, when: &str, status: &str, message: &str) {
         let name = self.get_name();
         let id = self.get_id();
-        log(severity, &format!("CONDITION {name}/[{id}]"), message);
+        log(
+            severity,
+            LOG_EMITTER_CONDITION,
+            LOG_ACTION_ACTIVE,
+            Some((name.as_str(), id)),
+            when,
+            status,
+            message,
+        );
     }
 
 
@@ -210,57 +218,98 @@ pub trait Condition: Send {
         // is suspended, or if it has been successful once and is not
         // set to be recurrent, and check otherwise
         if !self.has_tasks().unwrap_or(false) {
-            self.log(LogType::Debug,
-                "[PROC/MSG] skipping check: condition has no associated tasks");
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                "skipping check: condition has no associated tasks",
+            );
             Ok(None)
         }
         else if self.suspended() {
-            self.log(LogType::Debug,
-                "[PROC/MSG] skipping check: condition is suspended");
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                "skipping check: condition is suspended",
+            );
             Ok(None)
         } else if self.has_succeeded() && !self.recurring() {
-            self.log(LogType::Debug,
-                "[PROC/MSG] skipping check: condition is not repeating");
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                "skipping check: condition is not recurring",
+            );
             Ok(None)
         } else {
             if !self.reset_succeeded()? {
-                self.log(LogType::Error,
-                    "[PROC/FAIL] aborting: condition could not reset success status");
+                self.log(
+                    LogType::Error,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
+                    "aborting: condition could not reset success status",
+                );
                 return Err(Error::new(
                     ErrorKind::Unsupported,
                     ERR_COND_CANNOT_RESET,
                 ));
             }
-            self.log(LogType::Debug, "[PROC/OK] checking condition");
+            self.log(
+                LogType::Trace,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                "checking condition",
+            );
 
             // call the inner mandatory checker
             if self.set_checked()? {
                 if let Some(outcome) = self._check_condition()? {
                     if outcome {
                         if self.set_succeeded()? {
-                            self.log(LogType::Info,
-                                "[PROC/OK] success: condition checked with positive outcome");
+                            self.log(
+                                LogType::Info,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                "success: condition checked with positive outcome",
+                            );
                         } else {
-                            self.log(LogType::Error,
-                                "[PROC/FAIL] aborting: condition could not be set to succeeded");
+                            self.log(
+                                LogType::Error,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_FAIL,
+                                "aborting: condition could not be set to succeeded",
+                            );
                             return Err(Error::new(
                                 ErrorKind::Unsupported,
                                 ERR_COND_CANNOT_SET_SUCCESS,
                             ));
                         }
                     } else {
-                        self.log(LogType::Info,
-                            "[PROC/OK] failure: condition checked with negative outcome");
+                        self.log(
+                            LogType::Info,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            "failure: condition checked with negative outcome",
+                        );
                     }
                     Ok(Some(outcome))
                 } else {
-                    self.log(LogType::Warn,
-                        "[PROC/FAIL] exiting: condition provided NO outcome");
+                    self.log(
+                        LogType::Warn,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        "exiting: condition provided NO outcome",
+                    );
                     Ok(None)
                 }
             } else {
-                self.log(LogType::Error,
-                    "[PROC/FAIL] aborting: condition could not be set to checked");
+                self.log(
+                    LogType::Error,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
+                    "aborting: condition could not be set to checked",
+                );
                 return Err(Error::new(
                     ErrorKind::Unsupported,
                     ERR_COND_CANNOT_SET_CHECKED,
@@ -279,16 +328,23 @@ pub trait Condition: Send {
     /// could be added, any other return value indicates a failure.
     fn add_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
         // check that the task is actually in the regstry
-        self.log(LogType::Trace, &format!(
-            "[INIT/MSG] checking for presence of task {name} in the registry"
-        ));
+        self.log(
+            LogType::Trace,
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
+            &format!("checking for presence of task {name} in the registry"),
+        );
 
         // check for presence in registry and issue an error if not
         match self.task_registry() {
             Some(r) => {
                 if !r.has_task(name) {
-                    self.log(LogType::Error, &format!(
-                        "[INIT/FAIL] could not add task {name}: not found in registry"));
+                    self.log(
+                        LogType::Error,
+                        LOG_WHEN_INIT,
+                        LOG_STATUS_FAIL,
+                        &format!("could not add task {name}: not found in registry"),
+                    );
                     return Err(Error::new(
                         ErrorKind::Unsupported,
                         ERR_COND_TASK_NOT_ADDED,
@@ -296,8 +352,12 @@ pub trait Condition: Send {
                 }
             }
             None => {
-                self.log(LogType::Error, &format!(
-                    "[INIT/FAIL] could not add task {name}: registry not assigned"));
+                self.log(
+                    LogType::Error,
+                    LOG_WHEN_INIT,
+                    LOG_STATUS_FAIL,
+                    &format!("could not add task {name}: registry not assigned"),
+                );
                 return Err(Error::new(
                     ErrorKind::Unsupported,
                     ERR_COND_TASK_NOT_ADDED,
@@ -308,12 +368,20 @@ pub trait Condition: Send {
         // actually try to add the task
         let outcome = self._add_task(name)?;
         if outcome {
-            self.log(LogType::Debug, &format!(
-                "[INIT/OK] task {name} successfully added to condition"));
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_INIT,
+                LOG_STATUS_OK,
+                &format!("task {name} successfully added to condition"),
+            );
 
         } else {
-            self.log(LogType::Error, &format!(
-                "[INIT/FAIL] could not add task {name} to condition"));
+            self.log(
+                LogType::Error,
+                LOG_WHEN_INIT,
+                LOG_STATUS_FAIL,
+                &format!("could not add task {name} to condition"),
+            );
         }
 
         Ok(outcome)
@@ -328,12 +396,20 @@ pub trait Condition: Send {
         // actually try to remove the task
         let outcome = self._remove_task(name)?;
         if outcome {
-            self.log(LogType::Debug, &format!(
-                "[INIT/OK] task {name} successfully removed from condition"));
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_INIT,
+                LOG_STATUS_OK,
+                &format!("task {name} successfully removed from condition"),
+            );
 
         } else {
-            self.log(LogType::Error, &format!(
-                "[INIT/FAIL] could not remove task {name} from condition"));
+            self.log(
+                LogType::Error,
+                LOG_WHEN_INIT,
+                LOG_STATUS_FAIL,
+                &format!("could not remove task {name} from condition"),
+            );
         }
 
         Ok(outcome)
@@ -373,14 +449,22 @@ pub trait Condition: Send {
                 }
             }
         } else {
-            self.log(LogType::Warn,
-                "[PROC/FAIL] no tasks found associated to condition");
+            self.log(
+                LogType::Warn,
+                LOG_WHEN_PROC,
+                LOG_STATUS_FAIL,
+                "no tasks found associated to condition",
+            );
             return Ok(None);
         }
 
         let res = if self.exec_sequence() {
-            self.log(LogType::Info, &format!(
-                "[PROC/OK] running tasks sequentially: {s_task_names}"));
+            self.log(
+                LogType::Info,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("running tasks sequentially: {s_task_names}"),
+            );
             registry.run_tasks_seq(
                 &self.get_name(),
                 &names.iter().map(|s| s.as_str()).collect(),
@@ -388,8 +472,12 @@ pub trait Condition: Send {
                 self.break_on_success(),
             )
         } else {
-            self.log(LogType::Info, &format!(
-                "[PROC/OK] running tasks simultaneously: {s_task_names}"));
+            self.log(
+                LogType::Info,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("running tasks simultaneously: {s_task_names}"),
+            );
             registry.run_tasks_par(
                 &self.get_name(),
                 &names.iter().map(|s| s.as_str()).collect(),
@@ -400,26 +488,41 @@ pub trait Condition: Send {
             match res.get(name).unwrap() {
                 Ok(outcome) => {
                     if let Some(outcome) = outcome {
-                        self.log(LogType::Info, &format!(
-                            "[PROC/OK] task {name} completed: outcome is {}",
-                            { if *outcome {"success"} else {"failure"} }
-                        ));
+                        self.log(
+                            LogType::Info,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            &format!(
+                                "task {name} completed: outcome is {}",
+                                { if *outcome {"success"} else {"failure"} },
+                            )
+                        );
                     } else {
-                        self.log(LogType::Info, &format!(
-                            "[PROC/OK] task {name} completed"
-                        ));
+                        self.log(
+                            LogType::Info,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            &format!("task {name} completed"),
+                        );
                     }
                 }
                 Err(err) => {
-                    self.log(LogType::Warn, &format!(
-                        "[PROC/OK] task {name} exited with error: {err}"
-                    ));
+                    self.log(
+                        LogType::Warn,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("task {name} exited with error: {err}"),
+                    );
                 }
             }
         }
 
-        self.log(LogType::Debug, &format!(
-            "[PROC/OK] finished running tasks: {s_task_names}"));
+        self.log(
+            LogType::Debug,
+            LOG_WHEN_PROC,
+            LOG_STATUS_OK,
+            &format!("finished running tasks: {s_task_names}"),
+        );
 
         Ok(Some(true))
     }

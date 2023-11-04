@@ -381,6 +381,25 @@ impl ConditionRegistry {
         }
     }
 
+    /// Return the id of the specified condition
+    pub fn condition_id(&self, name: &str) -> Option<i64> {
+        let guard;
+        if self.has_condition(name) {
+            guard = self.condition_list
+                .lock()
+                .expect("cannot lock condition registry");
+        } else {
+            return None
+        }
+        let cond = guard
+            .get(name)
+            .expect(&format!("cannot retrieve condition {name}"))
+            .clone();
+        drop(guard);
+        let id = cond.lock().expect(&format!("cannot lock condition {name}")).get_id();
+        Some(id)
+    }
+
 
     /// Check whether a condition is busy
     ///
@@ -401,12 +420,6 @@ impl ConditionRegistry {
         if !self.has_condition(name) {
             panic!("condition {name} not found in registry");
         }
-
-        // log(
-        //     LogType::Trace,
-        //     "CONDITION_REGISTRY condition_busy",
-        //     &format!("[START/MSG] checking whether or not condition {name} is busy")
-        // );
 
         // both the registry and the conditions are synchronized: to ensure
         // that the condition registry is not locked while the tests are
@@ -429,15 +442,23 @@ impl ConditionRegistry {
         if cond.clone().try_lock().is_ok() {
             log(
                 LogType::Trace,
-                "CONDITION_REGISTRY condition_busy",
-                &format!("[START/OK] condition {name} is not busy")
+                LOG_EMITTER_CONDITION_REGISTRY,
+                LOG_ACTION_CONDITION_BUSY,
+                None,
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("condition {name} is not busy"),
             );
             false
         } else {
             log(
                 LogType::Trace,
-                "CONDITION_REGISTRY condition_busy",
-                &format!("[START/FAIL] condition {name} is busy")
+                LOG_EMITTER_CONDITION_REGISTRY,
+                LOG_ACTION_CONDITION_BUSY,
+                None,
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                &format!("condition {name} is busy"),
             );
             true
         }
@@ -491,6 +512,7 @@ impl ConditionRegistry {
         // the registry immediately; the single condition remains locked while
         // performing the tick, which is the actual reason why we wanted it to
         // be synchronized
+        let id = self.condition_id(name).unwrap();
         let cond;
         {
             let clist = self.condition_list.clone();
@@ -504,8 +526,12 @@ impl ConditionRegistry {
         if let Ok(ref mut cond) = lock {
             log(
                 LogType::Debug,
-                "CONDITION_REGISTRY tick",
-                &format!("[START/MSG] test and run for condition {name}")
+                LOG_EMITTER_CONDITION_REGISTRY,
+                LOG_ACTION_TICK,
+                Some((name, id)),
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("test and run for condition {name}"),
             );
             // increment number of busy conditions by one: this can be done
             // without *self being mut because conditions_busy is an Arc
@@ -525,8 +551,12 @@ impl ConditionRegistry {
         } else {
             log(
                 LogType::Warn,
-                "CONDITION_REGISTRY tick",
-                &format!("[START/MSG] condition {name} is BUSY: skipping tick")
+                LOG_EMITTER_CONDITION_REGISTRY,
+                LOG_ACTION_TICK,
+                Some((name, id)),
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("condition {name} is BUSY: skipping tick"),
             );
             Ok(None)
         }
