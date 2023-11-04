@@ -193,6 +193,25 @@ impl EventRegistry {
         }
     }
 
+    /// Return the id of the specified event
+    pub fn event_id(&self, name: &str) -> Option<i64> {
+        let guard;
+        if self.has_event(name) {
+            guard = self.event_list
+                .lock()
+                .expect("cannot lock event registry");
+        } else {
+            return None
+        }
+        let event = guard
+            .get(name)
+            .expect(&format!("cannot retrieve event {name}"))
+            .clone();
+        drop(guard);
+        let id = event.lock().expect(&format!("cannot lock event {name}")).get_id();
+        Some(id)
+    }
+
 
     /// Install the listening service for an event.
     ///
@@ -208,15 +227,14 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
 
+        let id = self.event_id(name).unwrap();
         let event;
-        let id;
         {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
                 .expect(&format!("cannot retrieve event {name} for activation"))
                 .clone();
-            id = event.lock().unwrap().get_id();
         }
 
         let mxevent = event.lock().expect(&format!("cannot lock event {name} for activation"));
@@ -320,15 +338,14 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
 
+        let id = self.event_id(name).unwrap();
         let event;
-        let id;
         {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
                 .expect(&format!("cannot retrieve event {name} for activation"))
                 .clone();
-            id = event.lock().unwrap().get_id();
         }
 
         let mxevent = event.lock()

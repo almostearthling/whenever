@@ -211,6 +211,25 @@ impl TaskRegistry {
         }
     }
 
+    /// Return the id of the specified task
+    pub fn task_id(&self, name: &str) -> Option<i64> {
+        let guard;
+        if self.has_task(name) {
+            guard = self.task_list
+                .lock()
+                .expect("cannot lock task registry");
+        } else {
+            return None
+        }
+        let task = guard
+            .get(name)
+            .expect(&format!("cannot retrieve task {name}"))
+            .clone();
+        drop(guard);
+        let id = task.lock().expect(&format!("cannot lock task {name}")).get_id();
+        Some(id)
+    }
+
 
     /// Run a list of tasks sequentially.
     ///
@@ -263,6 +282,7 @@ impl TaskRegistry {
         // fact there might be other branches accessing the registry right at
         // the same moment when this sequence is running
         for name in names.iter() {
+            let id = self.task_id(name).unwrap();
             let mut breaks = false;
             let task;
             let mut guard = self.task_list
@@ -282,7 +302,7 @@ impl TaskRegistry {
                 LogType::Trace,
                 LOG_EMITTER_TASK_REGISTRY,
                 "run_seq",
-                None,
+                Some((name, id)),
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
                 &format!("task {name} finished running"),
@@ -306,7 +326,7 @@ impl TaskRegistry {
                     LogType::Debug,
                     LOG_EMITTER_TASK_REGISTRY,
                     "run_seq",
-                    None,
+                    Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
                     &format!("breaking on {}", { if task_success { "success" } else { "failure" } }),
@@ -381,6 +401,7 @@ impl TaskRegistry {
         let atrname = Arc::new(trigger_name);
 
         for name in names.iter() {
+            // let id = self.task_id(name).unwrap();
             let aname = Arc::new(String::from(*name));
 
             let aself  = aself.clone();

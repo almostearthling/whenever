@@ -117,6 +117,7 @@ pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
 pub const LOG_ACTION_RESET_CONDITIONS: &str = "reset_conditions";
 pub const LOG_ACTION_SUSPEND_CONDITION: &str = "suspend_condition";
 pub const LOG_ACTION_RESUME_CONDITION: &str = "resume_condition";
+pub const LOG_ACTION_CONDITION_BUSY: &str = "condition_busy";
 pub const LOG_ACTION_CONDITION_STATE: &str = "condition_state";
 pub const LOG_ACTION_RUN_COMMAND: &str = "command";
 pub const LOG_ACTION_MAIN_LISTENER: &str = "listener";
