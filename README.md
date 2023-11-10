@@ -63,7 +63,7 @@ as the consequence of the verification of a **_condition_**. The concepts of tas
 
 The supported types of [**_condition_**](#conditions) are the following:
 
-* [_Interval_ based](#interval): the _periodic_ conditions are verified after a certain time interval has passed since **whenever** has started, and may be verified again after the same amount of time if the condition is set to be _recurrent_
+* [_Interval_ based](#interval): the _periodic_ conditions are verified after a certain time interval has passed since **whenever** has started, and may be verified again after the same amount of time if the condition is set to be _recurring_
 * [_Time_ based](#time): one or more instants in time can be specified when the condition is verified
 * [_Idle_ user session](#command): this type of condition is verified after the session has been idle for the specified amount of time
 * [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
@@ -469,7 +469,7 @@ The following table illustrates the parameters specific to _command_ based condi
 | Entry                       | Default | Description                                                                                                                  |
 |-----------------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
 | `type`                      | N/A     | has to be set to `"interval"` (mandatory)                                                                                    |
-| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
+| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_ |
 | `startup_path`              | N/A     | the directory in which the command is started (mandatory)                                                                    |
 | `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)              |
 | `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
@@ -528,7 +528,7 @@ The specific parameters are described in the following table:
 | Entry              | Default | Description                                                                                                                  |
 |--------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
 | `type`             | N/A     | has to be set to `"lua"` (mandatory)                                                                                         |
-| `check_after`      | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
+| `check_after`      | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_ |
 | `script`           | N/A     | the _Lua_ code that has to be executed by the internal interpreter (mandatory)                                               |
 | `expect_all`       | _false_ | if _true_, all the expected results have to be matched to consider the task successful, otherwise at least one               |
 | `expected_results` | `{}`    | a dictionary of variable names and their expected values to be checked after execution                                       |
@@ -635,9 +635,9 @@ The specific parameters are described in the following table:
 | Entry                 | Default | Description                                                                                                                  |
 |-----------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
 | `type`                | N/A     | has to be set to `"dbus"` (mandatory)                                                                                        |
-| `check_after`         | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurrent` is _true_ |
+| `check_after`         | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_ |
 | `bus`                 | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
-| `service`             | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke query (mandatory)                 |
+| `service`             | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)              |
 | `object_path`         | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                         |
 | `interface`           | N/A     | the _interface_ to invoke or query (mandatory)                                                                               |
 | `method`              | N/A     | the name of the _method_ to be invoked (mandatory)                                                                           |
@@ -772,7 +772,7 @@ and the details of the configuration entries are described in the table below:
 | `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                              |
 | `bus`                 | N/A     | the bus on which to listen for events: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
-| `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be be performed on return parameters            |
+| `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters               |
 
 The consideration about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
 
