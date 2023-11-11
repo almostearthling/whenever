@@ -150,11 +150,11 @@ impl EventRegistry {
                 .expect("cannot lock event registry")
                 .remove(name) {
                 let Ok(mx) = Arc::try_unwrap(r) else {
-                    panic!("attempt to extract referenced event {name}")
+                    panic!("cannot extract referenced event {name}")
                 };
                 let mut event = mx
                     .into_inner()
-                    .expect(&format!("attempt to extract locked event {name}"));    // <- may have to fix this
+                    .expect("cannot extract locked event");
                 event.set_id(0);
                 Ok(Some(event))
             } else {
@@ -205,10 +205,10 @@ impl EventRegistry {
         }
         let event = guard
             .get(name)
-            .expect(&format!("cannot retrieve event {name}"))
+            .expect("cannot retrieve event")
             .clone();
         drop(guard);
-        let id = event.lock().expect(&format!("cannot lock event {name}")).get_id();
+        let id = event.lock().expect("cannot lock event").get_id();
         Some(id)
     }
 
@@ -233,11 +233,11 @@ impl EventRegistry {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
-                .expect(&format!("cannot retrieve event {name} for activation"))
+                .expect("cannot retrieve event for activation")
                 .clone();
         }
 
-        let mxevent = event.lock().expect(&format!("cannot lock event {name} for activation"));
+        let mxevent = event.lock().expect("cannot lock event for activation");
         let name_copy = String::from(name);
         let event_name = Arc::new(Mutex::new(name_copy));
         if mxevent.requires_thread() {
@@ -344,12 +344,12 @@ impl EventRegistry {
             let elist = self.event_list.clone();
             let guard = elist.lock().expect("cannot lock event registry");
             event = guard.get(name)
-                .expect(&format!("cannot retrieve event {name} for activation"))
+                .expect("cannot retrieve event for activation")
                 .clone();
         }
 
         let mxevent = event.lock()
-            .expect(&format!("cannot lock event {name} for activation"));
+            .expect("cannot lock event for activation");
         if let Ok(res) = mxevent.fire_condition() {
             if res {
                 log(

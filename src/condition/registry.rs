@@ -97,7 +97,7 @@ impl ConditionRegistry {
                 Some(r
                     .clone()
                     .lock()
-                    .expect(&format!("cannot lock condition {name} to retrieve type"))
+                    .expect("cannot lock condition to retrieve type")
                     .get_type()
                     .to_string()
                 )
@@ -184,11 +184,11 @@ impl ConditionRegistry {
                 .expect("cannot lock condition registry")
                 .remove(name) {
                 let Ok(mx) = Arc::try_unwrap(r) else {
-                    panic!("attempt to extract referenced condition {name}")
+                    panic!("cannot extract referenced condition {name}")
                 };
                 let mut condition = mx
                     .into_inner()
-                    .expect(&format!("attempt to extract locked condition {name}"));    // <- may have to fix this
+                    .expect("cannot extract locked condition");    // <- may have to fix this
                 condition.set_id(0);
                 Ok(Some(condition))
             } else {
@@ -241,13 +241,13 @@ impl ConditionRegistry {
                 let clist = self.condition_list.clone();
                 let mut guard = clist.lock().expect("cannot lock condition registry");
                 cond = guard.get_mut(name)
-                    .expect(&format!("cannot retrieve condition {name} for reset"))
+                    .expect("cannot retrieve condition for reset")
                     .clone();
             }
 
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
-            cond.clone().lock().expect(&format!("condition {name} cannot be locked")).reset()
+            cond.clone().lock().expect("condition cannot be locked").reset()
         }
     }
 
@@ -292,13 +292,13 @@ impl ConditionRegistry {
                 let clist = self.condition_list.clone();
                 let mut guard = clist.lock().expect("cannot lock condition registry");
                 cond = guard.get_mut(name)
-                    .expect(&format!("cannot retrieve condition {name} for reset"))
+                    .expect("cannot retrieve condition for reset")
                     .clone();
             }
 
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
-            cond.clone().lock().expect(&format!("condition {name} cannot be locked")).suspend()
+            cond.clone().lock().expect("condition cannot be locked").suspend()
         }
     }
 
@@ -350,13 +350,13 @@ impl ConditionRegistry {
                 let clist = self.condition_list.clone();
                 let mut guard = clist.lock().expect("cannot lock condition registry");
                 cond = guard.get_mut(name)
-                    .expect(&format!("cannot retrieve condition {name} for reset"))
+                    .expect("cannot retrieve condition for reset")
                     .clone();
             }
 
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
-            cond.clone().lock().expect(&format!("condition {name} cannot be locked")).resume()
+            cond.clone().lock().expect("condition cannot be locked").resume()
         }
     }
 
@@ -393,10 +393,10 @@ impl ConditionRegistry {
         }
         let cond = guard
             .get(name)
-            .expect(&format!("cannot retrieve condition {name}"))
+            .expect("cannot retrieve condition")
             .clone();
         drop(guard);
-        let id = cond.lock().expect(&format!("cannot lock condition {name}")).get_id();
+        let id = cond.lock().expect("cannot lock condition").get_id();
         Some(id)
     }
 
@@ -433,7 +433,7 @@ impl ConditionRegistry {
             let clist = self.condition_list.clone();
             let mut guard = clist.lock().expect("cannot lock condition registry");
             cond = guard.get_mut(name)
-                .expect(&format!("cannot retrieve condition {name} for busy check"))
+                .expect("cannot retrieve condition for busy check")
                 .clone();
         }
 
@@ -518,7 +518,7 @@ impl ConditionRegistry {
             let clist = self.condition_list.clone();
             let mut guard = clist.lock().expect("cannot lock condition registry");
             cond = guard.get_mut(name)
-                .expect(&format!("cannot retrieve condition {name} for testing"))
+                .expect("cannot retrieve condition for testing")
                 .clone();
         }
 
