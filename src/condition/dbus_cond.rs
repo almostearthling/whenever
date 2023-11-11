@@ -1304,28 +1304,26 @@ impl Condition for DbusMethodCondition {
         // the `call_method` function
         let message;
         if let Some(params) = self.param_call.clone() {
-            let a;
             let mut arg = zvariant::StructureBuilder::new();
             for p in params {
                 let v = zvariant::Value::from(p);
                 arg.push_value(v);
             }
-            a = arg.build();
             message = task::block_on(async {
                 conn.call_method(
-                    Some(service.as_str()),
+                    if service.is_empty() { None } else { Some(service.as_str()) },
                     object_path.as_str(),
-                    Some(interface.as_str()),
+                    if interface.is_empty() { None } else { Some(interface.as_str()) },
                     method.as_str(),
-                    &a,
+                    &arg.build(),
                 ).await
             });
         } else {
             message = task::block_on(async {
                 conn.call_method(
-                    Some(service.as_str()),
+                    if service.is_empty() { None } else { Some(service.as_str()) },
                     object_path.as_str(),
-                    Some(interface.as_str()),
+                    if interface.is_empty() { None } else { Some(interface.as_str()) },
                     method.as_str(),
                     &(),
                 ).await
