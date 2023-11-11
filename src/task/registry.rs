@@ -176,7 +176,7 @@ impl TaskRegistry {
                 };
                 let mut task = mx
                     .into_inner()
-                    .expect(&format!("attempt to extract locked task {name}"));
+                    .expect("cannot extract locked task");
                 task.set_id(0);
                 Ok(Some(task))
             } else {
@@ -223,10 +223,10 @@ impl TaskRegistry {
         }
         let task = guard
             .get(name)
-            .expect(&format!("cannot retrieve task {name}"))
+            .expect("cannot retrieve task")
             .clone();
         drop(guard);
-        let id = task.lock().expect(&format!("cannot lock task {name}")).get_id();
+        let id = task.lock().expect("cannot lock task").get_id();
         Some(id)
     }
 
@@ -274,7 +274,7 @@ impl TaskRegistry {
         let mut res: HashMap<String, Result<Option<bool>, std::io::Error>> = HashMap::new();
 
         if !self.has_all_tasks(names) {
-            panic!("(trigger: {trigger_name}) run_tasks_seq task(s) not found in registry")
+            panic!("(trigger {trigger_name}): run_tasks_seq task(s) not found in registry")
         }
 
         // although this function runs a task sequentially, we must handle the
@@ -290,13 +290,13 @@ impl TaskRegistry {
                 .expect("cannot lock task registry");
             task = guard
                 .get_mut(*name)
-                .expect(&format!("cannot retrieve task {name} for running"))
+                .expect("cannot retrieve task for running")
                 .clone();
             drop(guard);
             let cur_res;
             let mut guard = task
                 .lock()
-                .expect(&format!("cannot lock task {name} while extracting"));
+                .expect("cannot lock task while extracting");
             cur_res = guard.run(trigger_name);
             log(
                 LogType::Trace,
@@ -425,14 +425,14 @@ impl TaskRegistry {
                 .expect("cannot lock task registry");
             task = guard
                 .get_mut(&aname.clone().to_string())
-                .expect(&format!("cannot retrieve task {name} for running"))
+                .expect("cannot retrieve task for running")
                 .clone();
             drop(guard);
 
             let handle = spawn(move || {
                 let outcome = task
                     .lock()
-                    .expect(&format!("cannot lock task {aname} for running"))
+                    .expect("cannot lock task for running")
                     .run(&atrname);
                 atx.lock().unwrap().send((aname.clone(), outcome)).unwrap();
             });
