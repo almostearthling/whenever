@@ -991,10 +991,10 @@ impl DbusMethodCondition {
                 param_checks.push(ParameterCheckTest { index: index_list, operator, value });
             }
             // finally the parameter checks become `Some` and makes its way
-            // into the new event structure: the list is formally correct, but
-            // it may not be compatible with the returned parameters, in which
-            // case the parameter check will evaluate to _non-verified_ and a
-            // warning log message will be issued (see below)
+            // into the new condition structure: the list is formally correct,
+            // but it may not be compatible with the returned parameters, in
+            // which case the parameter check will evaluate to _non-verified_
+            // and a warning log message will be issued (see below)
             new_condition.param_checks = Some(param_checks);
 
             // `parameter_check_all` only makes sense if the paramenter check
@@ -1219,7 +1219,7 @@ impl Condition for DbusMethodCondition {
         }
 
         // panic here if the bus name is incorrect: should have been fixed
-        // when the event was configured and constructed
+        // when the condition was configured and constructed
         async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
             let connection;
             if bus == ":session" {
@@ -1227,7 +1227,7 @@ impl Condition for DbusMethodCondition {
             } else if bus == ":system" {
                 connection = zbus::Connection::system().await;
             } else {
-                panic!("specified bus `{bus}` not supported for event");
+                panic!("specified bus `{bus}` not supported for DBus method based condition");
             }
             connection
         }
@@ -1296,24 +1296,39 @@ impl Condition for DbusMethodCondition {
         }
         let conn = conn.unwrap();
 
-        let mut arg = zvariant::StructureBuilder::new();
+        // the following bifurcation is in my opinion quite ugly, however it
+        // looks like the entire `zbus` crate is built with the purpose of
+        // providing a way to proxy known existing DBus methods at compile
+        // time, and thus I did not found a way to call a method without
+        // arguments if not by passing a pointer to the unit as argument to
+        // the `call_method` function
+        let message;
         if let Some(params) = self.param_call.clone() {
+            let mut arg = zvariant::StructureBuilder::new();
             for p in params {
                 let v = zvariant::Value::from(p);
                 arg.push_value(v);
             }
+            message = task::block_on(async {
+                conn.call_method(
+                    if service.is_empty() { None } else { Some(service.as_str()) },
+                    object_path.as_str(),
+                    if interface.is_empty() { None } else { Some(interface.as_str()) },
+                    method.as_str(),
+                    &arg.build(),
+                ).await
+            });
+        } else {
+            message = task::block_on(async {
+                conn.call_method(
+                    if service.is_empty() { None } else { Some(service.as_str()) },
+                    object_path.as_str(),
+                    if interface.is_empty() { None } else { Some(interface.as_str()) },
+                    method.as_str(),
+                    &(),
+                ).await
+            });
         }
-        let a = arg.build();
-        let message = task::block_on(async {
-            conn.call_method(
-                Some(service.as_str()),
-                object_path.as_str(),
-                Some(interface.as_str()),
-                method.as_str(),
-                &a,
-            ).await
-            // proxy.call_method(method.as_str(), &self.param_call.as_ref().unwrap()).await
-        });
         if let Err(e) = message {
             self.log(
                 LogType::Warn,
