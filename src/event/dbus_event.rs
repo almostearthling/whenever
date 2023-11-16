@@ -13,7 +13,6 @@ use zbus::{self, AsyncDrop};
 use zbus::export::futures_util::TryStreamExt;
 use zbus::zvariant;
 
-use std::convert::TryFrom;
 use std::str::FromStr;
 use serde_json::value::Value;
 
@@ -29,7 +28,7 @@ use crate::constants::*;
 const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 
 
-// an enum to store the operators for checking signal parameters
+/// an enum to store the operators for checking signal parameters
 #[derive(PartialEq)]
 enum ParamCheckOperator {
     Equal,              // "eq"
@@ -41,7 +40,7 @@ enum ParamCheckOperator {
     Match,              // "match"
 }
 
-// an enum containing the value that the parameter should be checked against
+/// an enum containing the value that the parameter should be checked against
 enum ParameterCheckValue {
     Boolean(bool),
     Integer(i64),
@@ -50,22 +49,22 @@ enum ParameterCheckValue {
     Regex(Regex),
 }
 
-// an enum containing the possible types of indexes for parameters
+/// an enum containing the possible types of indexes for parameters
 enum ParameterIndex {
     Integer(u64),
     String(String),
 }
 
-// a struct containing a single test to be performed against a signal payload
-//
-// short explaination, so that I remember how to use it:
-// - `Index`: contains a list of indexes which specify, also for nested
-//            structures. This means that for an array of mappings it might
-//            be of the form `{ 1, 3, "somepos" }` where the first `1` is the
-//            argument index, the `3` is the array index, and `"somepos"` is
-//            the mapping index.
-// - `Operator`: the operator to check the payload against
-// - `Value`: the value to compare the parameter entry to
+/// a struct containing a single test to be performed against a signal payload
+///
+/// short explaination, so that I remember how to use it:
+/// - `Index`: contains a list of indexes which specify, also for nested
+///            structures. This means that for an array of mappings it might
+///            be of the form `{ 1, 3, "somepos" }` where the first `1` is the
+///            argument index, the `3` is the array index, and `"somepos"` is
+///            the mapping index.
+/// - `Operator`: the operator to check the payload against
+/// - `Value`: the value to compare the parameter entry to
 struct ParameterCheckTest {
     index: Vec<ParameterIndex>,
     operator: ParamCheckOperator,
@@ -73,6 +72,91 @@ struct ParameterCheckTest {
 }
 
 
+/// a trait that defines containable types: implementations are provided for
+/// all types found in the `ParameterCheckValue` enum defined above
+trait Containable {
+    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool;
+}
+
+// implementations: dictionary value lookup will be provided as soon as there
+// will be a way, in _zbus_, to at least retrieve the dictionary keys (if not
+// directly the mapped values) in order to compare the contents with the value
+impl Containable for bool {
+    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for i64 {
+    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                // FIXME: the following is not enough, as DBus has different
+                // types for signed/unsigned and integer sizes while here we
+                // only handle signed large integers; at least a new array of
+                // i64 should be created to test for inclusion, and large u64
+                // numbers should be automatically discarded (possibly use a
+                // `Vec<Option<i64>>` where every large u64 is set to None,
+                // and check for presence of `Some(self)`)
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for f64 {
+    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for String {
+    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Str(s) => {
+                s.as_str().contains(self.as_str())
+            }
+            zvariant::Value::ObjectPath(s) => {
+                s.as_str().contains(self.as_str())
+            }
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+// the following is totally arbitrary and should not be actually used: it is
+// provided here only in order to complete the "required" implementations
+impl Containable for Regex {
+    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                for elem in a.to_vec() {
+                    if let zvariant::Value::Str(s) = elem {
+                        if self.is_match(s.as_str()) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            _ => false
+        }
+    }
+}
 
 /// DBus Based Event
 ///
@@ -656,6 +740,15 @@ impl Event for DbusMessageEvent {
             }
         }
 
+        // CONTAINS: define a `_contains` function here taking the containable
+        // value as first parameter and a second argument that can be either a
+        // string or an array (maybe it would be useful to directly pass the
+        // `Value`) in order to simplify code: it could be worth to define a
+        // private `Containable` trait including all numeric, boolean and
+        // string types in order to generalize the firs argument of the
+        // function and reduce code complexity: the trait itself could include
+        // a `contained_in` member function that could be used here
+
         // panic here if the bus name is incorrect: should have been fixed
         // when the event was configured and constructed
         async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
@@ -1041,6 +1134,7 @@ impl Event for DbusMessageEvent {
                                                                     }
                                                                 }
                                                             }
+                                                            // CONTAINS: here we should put the test for `contains` operator on integers
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
@@ -1068,6 +1162,7 @@ impl Event for DbusMessageEvent {
                                                                     }
                                                                 }
                                                             }
+                                                            // CONTAINS: here we should put the test for `contains` operator on floats
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
@@ -1160,6 +1255,8 @@ impl Event for DbusMessageEvent {
                                                                 }
                                                             }
                                                         } else {
+                                                            // CONTAINS: here we should put the test for `contains` operator on strings
+                                                            // and objpaths (via another `else if` clause)
                                                             self.log(
                                                                 LogType::Warn,
                                                                 LOG_WHEN_PROC,
