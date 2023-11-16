@@ -45,7 +45,7 @@
 //! utility the state of the scheduler, and possibily give the opportunity to
 //! organize communication to the user in a friendlier way.
 
-use std::sync::Mutex;
+use std::sync::RwLock;
 use lazy_static::lazy_static;
 
 
@@ -54,7 +54,7 @@ use lazy_static::lazy_static;
 // the common logging function should know whether the logger is initialized
 // to return JSON message and build the JSON payload itself
 lazy_static! {
-    static ref LOGGER_EMITS_JSON: Mutex<bool> = Mutex::new(false);
+    static ref LOGGER_EMITS_JSON: RwLock<bool> = RwLock::new(false);
 }
 
 
@@ -180,7 +180,7 @@ pub mod logging {
                         } else if logplain {
                             log_format_plain
                         } else if logjson {
-                            *LOGGER_EMITS_JSON.lock().unwrap() = true;
+                            *LOGGER_EMITS_JSON.write().unwrap() = true;
                             log_format_json
                         } else {
                             log_format_plain
@@ -214,7 +214,7 @@ pub mod logging {
                         } else if logplain {
                             log_format_plain
                         } else if logjson {
-                            *LOGGER_EMITS_JSON.lock().unwrap() = true;
+                            *LOGGER_EMITS_JSON.write().unwrap() = true;
                             log_format_json
                         } else {
                             log_format_colors
@@ -269,7 +269,7 @@ pub mod logging {
         message: &str,
     ) {
         let payload;
-        if *LOGGER_EMITS_JSON.lock().unwrap() {
+        if *LOGGER_EMITS_JSON.read().unwrap() {
             let context = if let Some((item, item_id)) = item {
                 json!({
                     "emitter": emitter,
