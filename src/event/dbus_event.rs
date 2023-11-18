@@ -38,6 +38,7 @@ enum ParamCheckOperator {
     Less,               // "lt"
     LessEqual,          // "le"
     Match,              // "match"
+    Contains,           // "contains"
 }
 
 /// an enum containing the value that the parameter should be checked against
@@ -103,7 +104,82 @@ impl Containable for i64 {
                 // numbers should be automatically discarded (possibly use a
                 // `Vec<Option<i64>>` where every large u64 is set to None,
                 // and check for presence of `Some(self)`)
-                a.contains(&zvariant::Value::from(self))
+                let testv: Vec<Option<i64>>;
+                match a.element_signature().as_str() {
+                    "y" => {    // BYTE
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U8(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "n" => {    // INT16
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I16(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "q" => {    // UINT16
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I16(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "i" => {    // INT32
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I32(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "u" => {    // UINT32
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U32(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "x" => {    // INT64
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I64(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "t" => {    // UINT64
+                        // this is the tricky one, but since we know that big
+                        // unsigned integer surely do not match the provided
+                        // value, we just convert them to `None` here, which
+                        // will never match
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U64(z) = x {
+                                if *z <= i64::MAX as u64 {
+                                    Some(*z as i64)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    _ => { return false; }
+                }
+                testv.contains(&Some(self))
             }
             _ => false
         }
@@ -157,6 +233,8 @@ impl Containable for Regex {
         }
     }
 }
+
+
 
 /// DBus Based Event
 ///
@@ -594,6 +672,7 @@ impl DbusMessageEvent {
                             "lt" => ParamCheckOperator::Less,
                             "le" => ParamCheckOperator::LessEqual,
                             "match" => ParamCheckOperator::Match,
+                            "contains" => ParamCheckOperator::Contains,
                             _ => {
                                 return _invalid_cfg(
                                     &format!("{cur_key}:operator"),
@@ -727,7 +806,9 @@ impl Event for DbusMessageEvent {
         // `false` here, instead of generating an error: the `Err()` case would
         // clutter the code for numerical comparisons uslessly, as we also know
         // that the test are built only via `load_cfgmap`, and that it only
-        // admits 'match' for regular expressions
+        // admits 'match' for regular expressions; the `Contains` operator also
+        // evaluates to `false` here since this function only compares args
+        // that are `PartialOrd+PartialEq`, and arrays are not
         fn _oper<T: PartialOrd+PartialEq>(op: &ParamCheckOperator, o1: T, o2: T) -> bool {
             match op {
                 ParamCheckOperator::Equal => o1 == o2,
@@ -737,17 +818,14 @@ impl Event for DbusMessageEvent {
                 ParamCheckOperator::Greater => o1 > o2,
                 ParamCheckOperator::GreaterEqual => o1 >= o2,
                 ParamCheckOperator::Match => false,
+                ParamCheckOperator::Contains => false,
             }
         }
 
-        // CONTAINS: define a `_contains` function here taking the containable
-        // value as first parameter and a second argument that can be either a
-        // string or an array (maybe it would be useful to directly pass the
-        // `Value`) in order to simplify code: it could be worth to define a
-        // private `Containable` trait including all numeric, boolean and
-        // string types in order to generalize the firs argument of the
-        // function and reduce code complexity: the trait itself could include
-        // a `contained_in` member function that could be used here
+        // the following function allows for better readability
+        fn _contained_in<T: Containable>(v: T, a: &zbus::zvariant::Value) -> bool {
+            v.is_contained_in(a)
+        }
 
         // panic here if the bus name is incorrect: should have been fixed
         // when the event was configured and constructed
@@ -1029,6 +1107,26 @@ impl Event for DbusMessageEvent {
                                                                     break;
                                                                 }
                                                             }
+                                                        } else if ck.operator == ParamCheckOperator::Contains {
+                                                            match field_value {
+                                                                zvariant::Value::Array(_) => {
+                                                                    if _contained_in(*b, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                _ => {
+                                                                    verified = false;
+                                                                    break;
+                                                                }
+                                                            }
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
@@ -1134,13 +1232,33 @@ impl Event for DbusMessageEvent {
                                                                     }
                                                                 }
                                                             }
-                                                            // CONTAINS: here we should put the test for `contains` operator on integers
+                                                            zvariant::Value::Array(_) => {
+                                                                if ck.operator == ParamCheckOperator::Contains {
+                                                                    if _contained_in(*i, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    verified = false;
+                                                                    break 'params;
+                                                                }
+                                                            }
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
                                                                     LOG_WHEN_PROC,
                                                                     LOG_STATUS_FAIL,
-                                                                    &format!("mismatched result type: integer expected (got `{e:?}`)"),
+                                                                    &format!(
+                                                                        "mismatched result type: {} expected (got `{e:?}`)",
+                                                                        if ck.operator == ParamCheckOperator::Contains { "container" } else { "integer" },
+                                                                    ),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1162,13 +1280,33 @@ impl Event for DbusMessageEvent {
                                                                     }
                                                                 }
                                                             }
-                                                            // CONTAINS: here we should put the test for `contains` operator on floats
+                                                            zvariant::Value::Array(_) => {
+                                                                if ck.operator == ParamCheckOperator::Contains {
+                                                                    if _contained_in(*f, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    verified = false;
+                                                                    break 'params;
+                                                                }
+                                                            }
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
                                                                     LOG_WHEN_PROC,
                                                                     LOG_STATUS_FAIL,
-                                                                    &format!("mismatched result type: float expected (got `{e:?}`)"),
+                                                                    &format!(
+                                                                        "mismatched result type: {} expected (got `{e:?}`)",
+                                                                        if ck.operator == ParamCheckOperator::Contains { "container" } else { "float" },
+                                                                    ),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1254,9 +1392,19 @@ impl Event for DbusMessageEvent {
                                                                     break 'params;
                                                                 }
                                                             }
+                                                        } else if ck.operator == ParamCheckOperator::Contains {
+                                                            if _contained_in(s.clone(), field_value) {
+                                                                verified = true;
+                                                                if !self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            } else {
+                                                                verified = false;
+                                                                if self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            }
                                                         } else {
-                                                            // CONTAINS: here we should put the test for `contains` operator on strings
-                                                            // and objpaths (via another `else if` clause)
                                                             self.log(
                                                                 LogType::Warn,
                                                                 LOG_WHEN_PROC,
