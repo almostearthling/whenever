@@ -886,7 +886,7 @@ The available commands are:
 | `resume_condition`  | Condition              | resume the specified condition from a suspended state: the condition name argument is mandatory                        |
 
 The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Attempts to suspend conditions that are already suspended or to resume already active conditions are also ignored. Typing `exit` or `quit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_. The only command accepting arguments (at the moment) is `reset_conditions`, that resets the internal state of all configured conditions when no arguments are provided.
-S
+
 > **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions and conditions that are _not recurring_. In the first case, the condition operates as if the interval counter has started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
 
 
