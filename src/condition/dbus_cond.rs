@@ -40,6 +40,8 @@ enum ParamCheckOperator {
     Less,               // "lt"
     LessEqual,          // "le"
     Match,              // "match"
+    Contains,           // "contains"
+    NotContains,        // "ncontains"
 }
 
 // an enum containing the value that the parameter should be checked against
@@ -254,6 +256,182 @@ impl ToVariant for CfgValue {
 
 
 
+/// a trait that defines containable types: implementations are provided for
+/// all types found in the `ParameterCheckValue` enum defined above
+trait Containable {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool;
+}
+
+// implementations: dictionary value lookup will be provided as soon as there
+// will be a way, in _zbus_, to at least retrieve the dictionary keys (if not
+// directly the mapped values) in order to compare the contents with the value
+impl Containable for bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for i64 {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                // to handle this we transform the array into a new array of
+                // i64 that is created to test for inclusion, and large u64
+                // numbers are be automatically discarded and set to `None`
+                // which is never matched
+                let testv: Vec<Option<i64>>;
+                match a.element_signature().as_str() {
+                    "y" => {    // BYTE
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U8(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "n" => {    // INT16
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I16(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "q" => {    // UINT16
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I16(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "i" => {    // INT32
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I32(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "u" => {    // UINT32
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U32(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "x" => {    // INT64
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I64(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "t" => {    // UINT64
+                        // this is the tricky one, but since we know that big
+                        // unsigned integer surely do not match the provided
+                        // value, we just convert them to `None` here, which
+                        // will never match
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U64(z) = x {
+                                if *z <= i64::MAX as u64 {
+                                    Some(*z as i64)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    _ => { return false; }
+                }
+                testv.contains(&Some(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for f64 {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+// String is a particular case, because it has to look for presence in arrays
+// (both of `Str` and `ObjectPath`) or, alternatively, to match a substring
+// of the returned `Str` or `ObjectPath`
+impl Containable for String {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Str(s) => {
+                s.as_str().contains(self.as_str())
+            }
+            zvariant::Value::ObjectPath(s) => {
+                s.as_str().contains(self.as_str())
+            }
+            zvariant::Value::Array(a) => {
+                match a.element_signature().as_str() {
+                    "s" => {
+                        a.contains(&zvariant::Value::from(self))
+                    }
+                    "o" => {
+                        let o = zvariant::ObjectPath::try_from(self);
+                        if let Ok(o) = o {
+                            a.contains(&zvariant::Value::from(o))
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false
+                }
+            }
+            _ => false
+        }
+    }
+}
+
+// the following is totally arbitrary and will actually not be used: it is
+// provided here only in order to complete the "required" implementations
+impl Containable for Regex {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                for elem in a.to_vec() {
+                    if let zvariant::Value::Str(s) = elem {
+                        if self.is_match(s.as_str()) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            _ => false
+        }
+    }
+}
+
+
+
 /// DBus Method Based Condition
 ///
 /// This condition is verified whenever a value returned by a DBus method
@@ -303,12 +481,12 @@ impl DbusMethodCondition {
         name: &str,
     ) -> Self {
         log(
-            LogType::Debug, 
+            LogType::Debug,
             LOG_EMITTER_CONDITION_DBUS,
             LOG_ACTION_NEW,
             Some((name, 0)),
-            LOG_WHEN_INIT, 
-            LOG_STATUS_MSG, 
+            LOG_WHEN_INIT,
+            LOG_STATUS_MSG,
             &format!("CONDITION {name}: creating a new DBus method based condition"),
         );
         let t = Instant::now();
@@ -932,6 +1110,8 @@ impl DbusMethodCondition {
                             "lt" => ParamCheckOperator::Less,
                             "le" => ParamCheckOperator::LessEqual,
                             "match" => ParamCheckOperator::Match,
+                            "contains" => ParamCheckOperator::Contains,
+                            "ncontains" => ParamCheckOperator::NotContains,
                             _ => {
                                 return _invalid_cfg(
                                     &format!("{cur_key}:operator"),
@@ -1205,7 +1385,9 @@ impl Condition for DbusMethodCondition {
         // `false` here, instead of generating an error: the `Err()` case would
         // clutter the code for numerical comparisons uslessly, as we also know
         // that the test are built only via `load_cfgmap`, and that it only
-        // admits 'match' for regular expressions
+        // admits 'match' for regular expressions; the `Contains` operator also
+        // evaluates to `false` here since this function only compares args
+        // that are `PartialOrd+PartialEq`, and arrays are not
         fn _oper<T: PartialOrd+PartialEq>(op: &ParamCheckOperator, o1: T, o2: T) -> bool {
             match op {
                 ParamCheckOperator::Equal => o1 == o2,
@@ -1215,7 +1397,14 @@ impl Condition for DbusMethodCondition {
                 ParamCheckOperator::Greater => o1 > o2,
                 ParamCheckOperator::GreaterEqual => o1 >= o2,
                 ParamCheckOperator::Match => false,
+                ParamCheckOperator::Contains => false,
+                ParamCheckOperator::NotContains => false,
             }
+        }
+
+        // the following function allows for better readability
+        fn _contained_in<T: Containable>(v: T, a: &zvariant::Value) -> bool {
+            v.is_contained_in(a)
         }
 
         // panic here if the bus name is incorrect: should have been fixed
@@ -1234,8 +1423,8 @@ impl Condition for DbusMethodCondition {
 
         self.log(
             LogType::Debug,
-            LOG_WHEN_START, 
-            LOG_STATUS_MSG, 
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
             "checking DBus method based condition",
         );
         // if the minimum interval between checks has been set, obey it
@@ -1245,8 +1434,8 @@ impl Condition for DbusMethodCondition {
             if e > t - self.check_last {
                 self.log(
                     LogType::Debug,
-                    LOG_WHEN_START, 
-                    LOG_STATUS_MSG, 
+                    LOG_WHEN_START,
+                    LOG_STATUS_MSG,
                     "check explicitly delayed by configuration",
                 );
                 return Ok(Some(false));
@@ -1281,8 +1470,8 @@ impl Condition for DbusMethodCondition {
         // connect to the DBus service
         self.log(
             LogType::Debug,
-            LOG_WHEN_START, 
-            LOG_STATUS_MSG, 
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
             &format!("opening connection to bus `{bus}`"),
         );
         let conn = task::block_on(async {
@@ -1332,8 +1521,8 @@ impl Condition for DbusMethodCondition {
         if let Err(e) = message {
             self.log(
                 LogType::Warn,
-                LOG_WHEN_START, 
-                LOG_STATUS_FAIL, 
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
                 &format!("could not retrieve message invoking method {method} on bus `{bus}`: {e}"),
             );
             return Ok(Some(false));
@@ -1343,7 +1532,7 @@ impl Condition for DbusMethodCondition {
         // (see `_start_service` in `dbus_event` for details)
         let mut verified = self.param_checks_all;
         if let Some(checks) = &self.param_checks {
-            if let Ok(mbody) = message.unwrap().clone().body::<zbus::zvariant::Structure>() {
+            if let Ok(mbody) = message.unwrap().clone().body::<zvariant::Structure>() {
                 // the label is set to make sure that we can break out from
                 // any nested loop on shortcut evaluation condition (that is
                 // when all condition had to be true and at least one is false
@@ -1357,8 +1546,8 @@ impl Condition for DbusMethodCondition {
                                 if *x >= mbody.fields().len() as u64 {
                                     self.log(
                                         LogType::Warn,
-                                        LOG_WHEN_PROC, 
-                                        LOG_STATUS_FAIL, 
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
                                         &format!("could not retrieve result: index {x} out of range"),
                                     );
                                     verified = false;
@@ -1374,8 +1563,8 @@ impl Condition for DbusMethodCondition {
                                                     if i >= f.len() {
                                                         self.log(
                                                             LogType::Warn,
-                                                            LOG_WHEN_PROC, 
-                                                            LOG_STATUS_FAIL, 
+                                                            LOG_WHEN_PROC,
+                                                            LOG_STATUS_FAIL,
                                                             &format!("could not retrieve result: index {i} out of range"),
                                                         );
                                                     }
@@ -1388,8 +1577,8 @@ impl Condition for DbusMethodCondition {
                                                     if i >= f.len() {
                                                         self.log(
                                                             LogType::Warn,
-                                                            LOG_WHEN_PROC, 
-                                                            LOG_STATUS_FAIL, 
+                                                            LOG_WHEN_PROC,
+                                                            LOG_STATUS_FAIL,
                                                             &format!("could not retrieve result: index {i} out of range"),
                                                         );
                                                     }
@@ -1398,8 +1587,8 @@ impl Condition for DbusMethodCondition {
                                                     } else {
                                                         self.log(
                                                             LogType::Warn,
-                                                            LOG_WHEN_PROC, 
-                                                            LOG_STATUS_FAIL, 
+                                                            LOG_WHEN_PROC,
+                                                            LOG_STATUS_FAIL,
                                                             &format!("could not retrieve result: index {i} provided no value"),
                                                         );
                                                     }
@@ -1407,8 +1596,8 @@ impl Condition for DbusMethodCondition {
                                                 _ => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        LOG_WHEN_PROC, 
-                                                        LOG_STATUS_FAIL, 
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
                                                         &format!("could not retrieve result using index {i}"),
                                                     );
                                                     verified = false;
@@ -1427,8 +1616,8 @@ impl Condition for DbusMethodCondition {
                                                             } else {
                                                                 self.log(
                                                                     LogType::Warn,
-                                                                    LOG_WHEN_PROC, 
-                                                                    LOG_STATUS_FAIL, 
+                                                                    LOG_WHEN_PROC,
+                                                                    LOG_STATUS_FAIL,
                                                                     &format!("could not retrieve result: index `{s}` invalid"),
                                                                 );
                                                                 verified = false;
@@ -1438,8 +1627,8 @@ impl Condition for DbusMethodCondition {
                                                         Err(_) => {
                                                             self.log(
                                                                 LogType::Warn,
-                                                                LOG_WHEN_PROC, 
-                                                                LOG_STATUS_FAIL, 
+                                                                LOG_WHEN_PROC,
+                                                                LOG_STATUS_FAIL,
                                                                 &format!("could not retrieve result using index `{s}`"),
                                                             );
                                                             verified = false;
@@ -1450,8 +1639,8 @@ impl Condition for DbusMethodCondition {
                                                 _ => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        LOG_WHEN_PROC, 
-                                                        LOG_STATUS_FAIL, 
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
                                                         &format!("could not retrieve parameter using index `{s}`"),
                                                     );
                                                     verified = false;
@@ -1488,10 +1677,51 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        LOG_WHEN_PROC, 
-                                                        LOG_STATUS_FAIL, 
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
                                                         &format!("mismatched result type: boolean expected (got `{e:?}`)"),
                                                     );
+                                                    verified = false;
+                                                    break;
+                                                }
+                                            }
+                                        } else if ck.operator == ParamCheckOperator::Contains {
+                                            match field_value {
+                                                zvariant::Value::Array(_) => {
+                                                    if _contained_in(*b, field_value) {
+                                                        verified = true;
+                                                        if !self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    } else {
+                                                        verified = false;
+                                                        if self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    }
+                                                }
+                                                _ => {
+                                                    verified = false;
+                                                    break;
+                                                }
+                                            }
+                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                            match field_value {
+                                                zvariant::Value::Array(_) => {
+                                                    if !_contained_in(*b, field_value) {
+                                                        verified = true;
+                                                        if !self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    } else {
+                                                        verified = false;
+                                                        if self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    }
+                                                }
+                                                // incompatible checks should always yield false
+                                                _ => {
                                                     verified = false;
                                                     break;
                                                 }
@@ -1499,8 +1729,8 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                LOG_WHEN_PROC, 
-                                                LOG_STATUS_FAIL, 
+                                                LOG_WHEN_PROC,
+                                                LOG_STATUS_FAIL,
                                                 "invalid operator for boolean",
                                             );
                                             verified = false;
@@ -1601,12 +1831,47 @@ impl Condition for DbusMethodCondition {
                                                     }
                                                 }
                                             }
+                                            zvariant::Value::Array(_) => {
+                                                if ck.operator == ParamCheckOperator::Contains {
+                                                    if _contained_in(*i, field_value) {
+                                                        verified = true;
+                                                        if !self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    } else {
+                                                        verified = false;
+                                                        if self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    }
+                                                } else if ck.operator == ParamCheckOperator::NotContains {
+                                                    if !_contained_in(*i, field_value) {
+                                                        verified = true;
+                                                        if !self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    } else {
+                                                        verified = false;
+                                                        if self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    break 'params;
+                                                }
+                                            }
                                             e => {
                                                 self.log(
                                                     LogType::Warn,
-                                                    LOG_WHEN_PROC, 
-                                                    LOG_STATUS_FAIL, 
-                                                    &format!("mismatched result type: integer expected (got `{e:?}`)"),
+                                                    LOG_WHEN_PROC,
+                                                    LOG_STATUS_FAIL,
+                                                    &format!(
+                                                        "mismatched result type: {} expected (got `{e:?}`)",
+                                                        if ck.operator == ParamCheckOperator::Contains
+                                                            || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                        else { "integer" },
+                                                    ),
                                                 );
                                                 verified = false;
                                                 break 'params;
@@ -1628,12 +1893,47 @@ impl Condition for DbusMethodCondition {
                                                     }
                                                 }
                                             }
+                                            zvariant::Value::Array(_) => {
+                                                if ck.operator == ParamCheckOperator::Contains {
+                                                    if _contained_in(*f, field_value) {
+                                                        verified = true;
+                                                        if !self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    } else {
+                                                        verified = false;
+                                                        if self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    }
+                                                } else if ck.operator == ParamCheckOperator::NotContains {
+                                                    if !_contained_in(*f, field_value) {
+                                                        verified = true;
+                                                        if !self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    } else {
+                                                        verified = false;
+                                                        if self.param_checks_all {
+                                                            break 'params;
+                                                        }
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    break 'params;
+                                                }
+                                            }
                                             e => {
                                                 self.log(
                                                     LogType::Warn,
-                                                    LOG_WHEN_PROC, 
-                                                    LOG_STATUS_FAIL, 
-                                                    &format!("mismatched result type: float expected (got `{e:?}`)"),
+                                                    LOG_WHEN_PROC,
+                                                    LOG_STATUS_FAIL,
+                                                    &format!(
+                                                        "mismatched result type: {} expected (got `{e:?}`)",
+                                                        if ck.operator == ParamCheckOperator::Contains
+                                                            || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                        else { "float" },
+                                                    ),
                                                 );
                                                 verified = false;
                                                 break 'params;
@@ -1672,8 +1972,8 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        LOG_WHEN_PROC, 
-                                                        LOG_STATUS_FAIL, 
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
                                                         &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
@@ -1711,19 +2011,43 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        LOG_WHEN_PROC, 
-                                                        LOG_STATUS_FAIL, 
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
                                                         &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
                                                     break 'params;
                                                 }
                                             }
+                                        } else if ck.operator == ParamCheckOperator::Contains {
+                                            if _contained_in(s.clone(), field_value) {
+                                                verified = true;
+                                                if !self.param_checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if self.param_checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                            if !_contained_in(s.clone(), field_value) {
+                                                verified = true;
+                                                if !self.param_checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if self.param_checks_all {
+                                                    break 'params;
+                                                }
+                                            }
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                LOG_WHEN_PROC, 
-                                                LOG_STATUS_FAIL, 
+                                                LOG_WHEN_PROC,
+                                                LOG_STATUS_FAIL,
                                                 "invalid operator for string",
                                             );
                                             verified = false;
@@ -1762,8 +2086,8 @@ impl Condition for DbusMethodCondition {
                                                 e => {
                                                     self.log(
                                                         LogType::Warn,
-                                                        LOG_WHEN_PROC, 
-                                                        LOG_STATUS_FAIL, 
+                                                        LOG_WHEN_PROC,
+                                                        LOG_STATUS_FAIL,
                                                         &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                     );
                                                     verified = false;
@@ -1773,8 +2097,8 @@ impl Condition for DbusMethodCondition {
                                         } else {
                                             self.log(
                                                 LogType::Warn,
-                                                LOG_WHEN_PROC, 
-                                                LOG_STATUS_FAIL, 
+                                                LOG_WHEN_PROC,
+                                                LOG_STATUS_FAIL,
                                                 "invalid operator for regular expression",
                                             );
                                             verified = false;
@@ -1786,8 +2110,8 @@ impl Condition for DbusMethodCondition {
                             _ => {
                                 self.log(
                                     LogType::Warn,
-                                    LOG_WHEN_PROC, 
-                                    LOG_STATUS_FAIL, 
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
                                     "could not retrieve parameter index: no integer found",
                                 );
                                 verified = false;
@@ -1798,8 +2122,8 @@ impl Condition for DbusMethodCondition {
                     } else {
                         self.log(
                             LogType::Warn,
-                            LOG_WHEN_PROC, 
-                            LOG_STATUS_FAIL, 
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
                             "could not retrieve parameter: missing argument number",
                         );
                         verified = false;
@@ -1809,8 +2133,8 @@ impl Condition for DbusMethodCondition {
             } else {
                 self.log(
                     LogType::Warn,
-                    LOG_WHEN_PROC, 
-                    LOG_STATUS_FAIL, 
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
                     "could not retrieve message body",
                 );
             }

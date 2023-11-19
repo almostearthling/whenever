@@ -13,7 +13,6 @@ use zbus::{self, AsyncDrop};
 use zbus::export::futures_util::TryStreamExt;
 use zbus::zvariant;
 
-use std::convert::TryFrom;
 use std::str::FromStr;
 use serde_json::value::Value;
 
@@ -29,7 +28,7 @@ use crate::constants::*;
 const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 
 
-// an enum to store the operators for checking signal parameters
+/// an enum to store the operators for checking signal parameters
 #[derive(PartialEq)]
 enum ParamCheckOperator {
     Equal,              // "eq"
@@ -39,9 +38,11 @@ enum ParamCheckOperator {
     Less,               // "lt"
     LessEqual,          // "le"
     Match,              // "match"
+    Contains,           // "contains"
+    NotContains,        // "ncontains"
 }
 
-// an enum containing the value that the parameter should be checked against
+/// an enum containing the value that the parameter should be checked against
 enum ParameterCheckValue {
     Boolean(bool),
     Integer(i64),
@@ -50,26 +51,201 @@ enum ParameterCheckValue {
     Regex(Regex),
 }
 
-// an enum containing the possible types of indexes for parameters
+/// an enum containing the possible types of indexes for parameters
 enum ParameterIndex {
     Integer(u64),
     String(String),
 }
 
-// a struct containing a single test to be performed against a signal payload
-//
-// short explaination, so that I remember how to use it:
-// - `Index`: contains a list of indexes which specify, also for nested
-//            structures. This means that for an array of mappings it might
-//            be of the form `{ 1, 3, "somepos" }` where the first `1` is the
-//            argument index, the `3` is the array index, and `"somepos"` is
-//            the mapping index.
-// - `Operator`: the operator to check the payload against
-// - `Value`: the value to compare the parameter entry to
+/// a struct containing a single test to be performed against a signal payload
+///
+/// short explaination, so that I remember how to use it:
+/// - `Index`: contains a list of indexes which specify, also for nested
+///            structures. This means that for an array of mappings it might
+///            be of the form `{ 1, 3, "somepos" }` where the first `1` is the
+///            argument index, the `3` is the array index, and `"somepos"` is
+///            the mapping index.
+/// - `Operator`: the operator to check the payload against
+/// - `Value`: the value to compare the parameter entry to
 struct ParameterCheckTest {
     index: Vec<ParameterIndex>,
     operator: ParamCheckOperator,
     value: ParameterCheckValue,
+}
+
+
+/// a trait that defines containable types: implementations are provided for
+/// all types found in the `ParameterCheckValue` enum defined above
+trait Containable {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool;
+}
+
+// implementations: dictionary value lookup will be provided as soon as there
+// will be a way, in _zbus_, to at least retrieve the dictionary keys (if not
+// directly the mapped values) in order to compare the contents with the value
+impl Containable for bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for i64 {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                // to handle this we transform the array into a new array of
+                // i64 that is created to test for inclusion, and large u64
+                // numbers are be automatically discarded and set to `None`
+                // which is never matched
+                let testv: Vec<Option<i64>>;
+                match a.element_signature().as_str() {
+                    "y" => {    // BYTE
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U8(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "n" => {    // INT16
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I16(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "q" => {    // UINT16
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I16(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "i" => {    // INT32
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I32(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "u" => {    // UINT32
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U32(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "x" => {    // INT64
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::I64(z) = x {
+                                Some(i64::from(*z))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    "t" => {    // UINT64
+                        // this is the tricky one, but since we know that big
+                        // unsigned integer surely do not match the provided
+                        // value, we just convert them to `None` here, which
+                        // will never match
+                        testv = a.iter().map(|x| {
+                            if let zvariant::Value::U64(z) = x {
+                                if *z <= i64::MAX as u64 {
+                                    Some(*z as i64)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }).collect();
+                    }
+                    _ => { return false; }
+                }
+                testv.contains(&Some(self))
+            }
+            _ => false
+        }
+    }
+}
+
+impl Containable for f64 {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                a.contains(&zvariant::Value::from(self))
+            }
+            _ => false
+        }
+    }
+}
+
+// String is a particular case, because it has to look for presence in arrays
+// (both of `Str` and `ObjectPath`) or, alternatively, to match a substring
+// of the returned `Str` or `ObjectPath`
+impl Containable for String {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Str(s) => {
+                s.as_str().contains(self.as_str())
+            }
+            zvariant::Value::ObjectPath(s) => {
+                s.as_str().contains(self.as_str())
+            }
+            zvariant::Value::Array(a) => {
+                match a.element_signature().as_str() {
+                    "s" => {
+                        a.contains(&zvariant::Value::from(self))
+                    }
+                    "o" => {
+                        let o = zvariant::ObjectPath::try_from(self);
+                        if let Ok(o) = o {
+                            a.contains(&zvariant::Value::from(o))
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false
+                }
+            }
+            _ => false
+        }
+    }
+}
+
+// the following is totally arbitrary and should not be actually used: it is
+// provided here only in order to complete the "required" implementations
+impl Containable for Regex {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+        match v {
+            zvariant::Value::Array(a) => {
+                for elem in a.to_vec() {
+                    if let zvariant::Value::Str(s) = elem {
+                        if self.is_match(s.as_str()) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            _ => false
+        }
+    }
 }
 
 
@@ -510,6 +686,8 @@ impl DbusMessageEvent {
                             "lt" => ParamCheckOperator::Less,
                             "le" => ParamCheckOperator::LessEqual,
                             "match" => ParamCheckOperator::Match,
+                            "contains" => ParamCheckOperator::Contains,
+                            "ncontains" => ParamCheckOperator::NotContains,
                             _ => {
                                 return _invalid_cfg(
                                     &format!("{cur_key}:operator"),
@@ -643,7 +821,9 @@ impl Event for DbusMessageEvent {
         // `false` here, instead of generating an error: the `Err()` case would
         // clutter the code for numerical comparisons uslessly, as we also know
         // that the test are built only via `load_cfgmap`, and that it only
-        // admits 'match' for regular expressions
+        // admits 'match' for regular expressions; the `Contains` operator also
+        // evaluates to `false` here since this function only compares args
+        // that are `PartialOrd+PartialEq`, and arrays are not
         fn _oper<T: PartialOrd+PartialEq>(op: &ParamCheckOperator, o1: T, o2: T) -> bool {
             match op {
                 ParamCheckOperator::Equal => o1 == o2,
@@ -653,7 +833,14 @@ impl Event for DbusMessageEvent {
                 ParamCheckOperator::Greater => o1 > o2,
                 ParamCheckOperator::GreaterEqual => o1 >= o2,
                 ParamCheckOperator::Match => false,
+                ParamCheckOperator::Contains => false,
+                ParamCheckOperator::NotContains => false,
             }
+        }
+
+        // the following function allows for better readability
+        fn _contained_in<T: Containable>(v: T, a: &zvariant::Value) -> bool {
+            v.is_contained_in(a)
         }
 
         // panic here if the bus name is incorrect: should have been fixed
@@ -783,7 +970,7 @@ impl Event for DbusMessageEvent {
                                     { if self.param_checks_all { "all" } else { "some" } },
                                 ),
                             );
-                            if let Ok(mbody) = message.body::<zbus::zvariant::Structure>() {
+                            if let Ok(mbody) = message.body::<zvariant::Structure>() {
                                 // the label is set to make sure that we can break out from
                                 // any nested loop on shortcut evaluation condition (that is
                                 // when all condition had to be true and at least one is false
@@ -936,6 +1123,47 @@ impl Event for DbusMessageEvent {
                                                                     break;
                                                                 }
                                                             }
+                                                        } else if ck.operator == ParamCheckOperator::Contains {
+                                                            match field_value {
+                                                                zvariant::Value::Array(_) => {
+                                                                    if _contained_in(*b, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                _ => {
+                                                                    verified = false;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                                            match field_value {
+                                                                zvariant::Value::Array(_) => {
+                                                                    if !_contained_in(*b, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                // incompatible checks should always yield false
+                                                                _ => {
+                                                                    verified = false;
+                                                                    break;
+                                                                }
+                                                            }
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
@@ -1041,12 +1269,47 @@ impl Event for DbusMessageEvent {
                                                                     }
                                                                 }
                                                             }
+                                                            zvariant::Value::Array(_) => {
+                                                                if ck.operator == ParamCheckOperator::Contains {
+                                                                    if _contained_in(*i, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                } else if ck.operator == ParamCheckOperator::NotContains {
+                                                                    if !_contained_in(*i, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    verified = false;
+                                                                    break 'params;
+                                                                }
+                                                            }
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
                                                                     LOG_WHEN_PROC,
                                                                     LOG_STATUS_FAIL,
-                                                                    &format!("mismatched result type: integer expected (got `{e:?}`)"),
+                                                                    &format!(
+                                                                        "mismatched result type: {} expected (got `{e:?}`)",
+                                                                        if ck.operator == ParamCheckOperator::Contains
+                                                                            || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                                        else { "integer" },
+                                                                    ),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1068,12 +1331,47 @@ impl Event for DbusMessageEvent {
                                                                     }
                                                                 }
                                                             }
+                                                            zvariant::Value::Array(_) => {
+                                                                if ck.operator == ParamCheckOperator::Contains {
+                                                                    if _contained_in(*f, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                } else if ck.operator == ParamCheckOperator::NotContains {
+                                                                    if !_contained_in(*f, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    verified = false;
+                                                                    break 'params;
+                                                                }
+                                                            }
                                                             e => {
                                                                 self.log(
                                                                     LogType::Warn,
                                                                     LOG_WHEN_PROC,
                                                                     LOG_STATUS_FAIL,
-                                                                    &format!("mismatched result type: float expected (got `{e:?}`)"),
+                                                                    &format!(
+                                                                        "mismatched result type: {} expected (got `{e:?}`)",
+                                                                        if ck.operator == ParamCheckOperator::Contains
+                                                                            || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                                        else { "float" },
+                                                                    ),
                                                                 );
                                                                 verified = false;
                                                                 break 'params;
@@ -1156,6 +1454,30 @@ impl Event for DbusMessageEvent {
                                                                         &format!("mismatched result type: string expected (got `{e:?}`)"),
                                                                     );
                                                                     verified = false;
+                                                                    break 'params;
+                                                                }
+                                                            }
+                                                        } else if ck.operator == ParamCheckOperator::Contains {
+                                                            if _contained_in(s.clone(), field_value) {
+                                                                verified = true;
+                                                                if !self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            } else {
+                                                                verified = false;
+                                                                if self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            }
+                                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                                            if !_contained_in(s.clone(), field_value) {
+                                                                verified = true;
+                                                                if !self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            } else {
+                                                                verified = false;
+                                                                if self.param_checks_all {
                                                                     break 'params;
                                                                 }
                                                             }
