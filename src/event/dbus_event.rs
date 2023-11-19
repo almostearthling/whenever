@@ -39,6 +39,7 @@ enum ParamCheckOperator {
     LessEqual,          // "le"
     Match,              // "match"
     Contains,           // "contains"
+    NotContains,        // "ncontains"
 }
 
 /// an enum containing the value that the parameter should be checked against
@@ -686,6 +687,7 @@ impl DbusMessageEvent {
                             "le" => ParamCheckOperator::LessEqual,
                             "match" => ParamCheckOperator::Match,
                             "contains" => ParamCheckOperator::Contains,
+                            "ncontains" => ParamCheckOperator::NotContains,
                             _ => {
                                 return _invalid_cfg(
                                     &format!("{cur_key}:operator"),
@@ -832,6 +834,7 @@ impl Event for DbusMessageEvent {
                 ParamCheckOperator::GreaterEqual => o1 >= o2,
                 ParamCheckOperator::Match => false,
                 ParamCheckOperator::Contains => false,
+                ParamCheckOperator::NotContains => false,
             }
         }
 
@@ -1140,6 +1143,27 @@ impl Event for DbusMessageEvent {
                                                                     break;
                                                                 }
                                                             }
+                                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                                            match field_value {
+                                                                zvariant::Value::Array(_) => {
+                                                                    if !_contained_in(*b, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                // incompatible checks should always yield false
+                                                                _ => {
+                                                                    verified = false;
+                                                                    break;
+                                                                }
+                                                            }
                                                         } else {
                                                             self.log(
                                                                 LogType::Warn,
@@ -1258,6 +1282,18 @@ impl Event for DbusMessageEvent {
                                                                             break 'params;
                                                                         }
                                                                     }
+                                                                } else if ck.operator == ParamCheckOperator::NotContains {
+                                                                    if !_contained_in(*i, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
                                                                 } else {
                                                                     verified = false;
                                                                     break 'params;
@@ -1270,7 +1306,9 @@ impl Event for DbusMessageEvent {
                                                                     LOG_STATUS_FAIL,
                                                                     &format!(
                                                                         "mismatched result type: {} expected (got `{e:?}`)",
-                                                                        if ck.operator == ParamCheckOperator::Contains { "container" } else { "integer" },
+                                                                        if ck.operator == ParamCheckOperator::Contains
+                                                                            || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                                        else { "integer" },
                                                                     ),
                                                                 );
                                                                 verified = false;
@@ -1306,6 +1344,18 @@ impl Event for DbusMessageEvent {
                                                                             break 'params;
                                                                         }
                                                                     }
+                                                                } else if ck.operator == ParamCheckOperator::NotContains {
+                                                                    if !_contained_in(*f, field_value) {
+                                                                        verified = true;
+                                                                        if !self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    } else {
+                                                                        verified = false;
+                                                                        if self.param_checks_all {
+                                                                            break 'params;
+                                                                        }
+                                                                    }
                                                                 } else {
                                                                     verified = false;
                                                                     break 'params;
@@ -1318,7 +1368,9 @@ impl Event for DbusMessageEvent {
                                                                     LOG_STATUS_FAIL,
                                                                     &format!(
                                                                         "mismatched result type: {} expected (got `{e:?}`)",
-                                                                        if ck.operator == ParamCheckOperator::Contains { "container" } else { "float" },
+                                                                        if ck.operator == ParamCheckOperator::Contains
+                                                                            || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                                        else { "float" },
                                                                     ),
                                                                 );
                                                                 verified = false;
@@ -1407,6 +1459,18 @@ impl Event for DbusMessageEvent {
                                                             }
                                                         } else if ck.operator == ParamCheckOperator::Contains {
                                                             if _contained_in(s.clone(), field_value) {
+                                                                verified = true;
+                                                                if !self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            } else {
+                                                                verified = false;
+                                                                if self.param_checks_all {
+                                                                    break 'params;
+                                                                }
+                                                            }
+                                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                                            if !_contained_in(s.clone(), field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
