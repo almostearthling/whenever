@@ -76,14 +76,14 @@ struct ParameterCheckTest {
 /// a trait that defines containable types: implementations are provided for
 /// all types found in the `ParameterCheckValue` enum defined above
 trait Containable {
-    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool;
+    fn is_contained_in(self, v: &zvariant::Value) -> bool;
 }
 
 // implementations: dictionary value lookup will be provided as soon as there
 // will be a way, in _zbus_, to at least retrieve the dictionary keys (if not
 // directly the mapped values) in order to compare the contents with the value
 impl Containable for bool {
-    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
                 a.contains(&zvariant::Value::from(self))
@@ -94,16 +94,13 @@ impl Containable for bool {
 }
 
 impl Containable for i64 {
-    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
-                // FIXME: the following is not enough, as DBus has different
-                // types for signed/unsigned and integer sizes while here we
-                // only handle signed large integers; at least a new array of
-                // i64 should be created to test for inclusion, and large u64
-                // numbers should be automatically discarded (possibly use a
-                // `Vec<Option<i64>>` where every large u64 is set to None,
-                // and check for presence of `Some(self)`)
+                // to handle this we transform the array into a new array of
+                // i64 that is created to test for inclusion, and large u64
+                // numbers are be automatically discarded and set to `None`
+                // which is never matched
                 let testv: Vec<Option<i64>>;
                 match a.element_signature().as_str() {
                     "y" => {    // BYTE
@@ -187,7 +184,7 @@ impl Containable for i64 {
 }
 
 impl Containable for f64 {
-    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
                 a.contains(&zvariant::Value::from(self))
@@ -197,8 +194,11 @@ impl Containable for f64 {
     }
 }
 
+// String is a particular case, because it has to look for presence in arrays
+// (both of `Str` and `ObjectPath`) or, alternatively, to match a substring
+// of the returned `Str` or `ObjectPath`
 impl Containable for String {
-    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Str(s) => {
                 s.as_str().contains(self.as_str())
@@ -207,7 +207,20 @@ impl Containable for String {
                 s.as_str().contains(self.as_str())
             }
             zvariant::Value::Array(a) => {
-                a.contains(&zvariant::Value::from(self))
+                match a.element_signature().as_str() {
+                    "s" => {
+                        a.contains(&zvariant::Value::from(self))
+                    }
+                    "o" => {
+                        let o = zvariant::ObjectPath::try_from(self);
+                        if let Ok(o) = o {
+                            a.contains(&zvariant::Value::from(o))
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false
+                }
             }
             _ => false
         }
@@ -217,7 +230,7 @@ impl Containable for String {
 // the following is totally arbitrary and should not be actually used: it is
 // provided here only in order to complete the "required" implementations
 impl Containable for Regex {
-    fn is_contained_in(self, v: &zbus::zvariant::Value) -> bool {
+    fn is_contained_in(self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
                 for elem in a.to_vec() {
@@ -823,7 +836,7 @@ impl Event for DbusMessageEvent {
         }
 
         // the following function allows for better readability
-        fn _contained_in<T: Containable>(v: T, a: &zbus::zvariant::Value) -> bool {
+        fn _contained_in<T: Containable>(v: T, a: &zvariant::Value) -> bool {
             v.is_contained_in(a)
         }
 
@@ -954,7 +967,7 @@ impl Event for DbusMessageEvent {
                                     { if self.param_checks_all { "all" } else { "some" } },
                                 ),
                             );
-                            if let Ok(mbody) = message.body::<zbus::zvariant::Structure>() {
+                            if let Ok(mbody) = message.body::<zvariant::Structure>() {
                                 // the label is set to make sure that we can break out from
                                 // any nested loop on shortcut evaluation condition (that is
                                 // when all condition had to be true and at least one is false
