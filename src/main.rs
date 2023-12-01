@@ -20,6 +20,7 @@ use lazy_static::lazy_static;
 use clokwerk::{Scheduler, TimeUnits};
 use cfgmap::{CfgValue, CfgMap};
 use rand::{thread_rng, RngCore};
+use whoami::username;
 use single_instance::SingleInstance;
 
 // the modules defined and used in this application
@@ -56,7 +57,7 @@ lazy_static! {
     static ref EXECUTION_BUCKET: ExecutionBucket = ExecutionBucket::new();
 
     // single instance name
-    static ref INSTANCE_GUID: String = format!("{APP_NAME}-663f98a9-a1ef-46ef-a7bc-bb2482f42440");
+    static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-663f98a9-a1ef-46ef-a7bc-bb2482f42440", username());
 
     // set this if the application must exit
     static ref APPLICATION_MUST_EXIT: Mutex<bool> = Mutex::new(false);

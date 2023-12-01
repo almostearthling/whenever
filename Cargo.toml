@@ -1,6 +1,6 @@
 [package]
 name = "whenever"
-version = "0.1.16"
+version = "0.1.17"
 authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 edition = "2021"
 
@@ -28,6 +28,7 @@ single-instance = "0.3.3"
 notify = "6.0.0"
 async-std = "1.12.0"
 zbus = "3.13.1"
+whoami = "1.4.1"
 
 # user-idle has a problem on wayland-based sessions: work around by using
 # user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }
