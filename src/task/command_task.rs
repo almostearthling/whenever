@@ -1030,9 +1030,8 @@ impl Task for CommandTask {
                                             LogType::Debug,
                                             LOG_WHEN_PROC,
                                             LOG_STATUS_OK,
-                                            &format!("(trigger: {trigger_name}) task expected failure exit code {expectedf} matched"),
+                                            &format!("(trigger: {trigger_name}) task expected failure exit code {expectedf} NOT matched"),
                                         );
-                                        failure_reason = FailureReason::Status;
                                     }
                                 } else if let Some(expected) = self.success_status {
                                     if v == expected {

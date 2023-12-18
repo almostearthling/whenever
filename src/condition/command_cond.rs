@@ -1305,9 +1305,8 @@ impl Condition for CommandCondition {
                                             LogType::Debug,
                                             LOG_WHEN_PROC,
                                             LOG_STATUS_OK,
-                                            &format!("condition expected failure exit code {expectedf} matched"),
+                                            &format!("condition expected failure exit code {expectedf} NOT matched"),
                                         );
-                                        failure_reason = FailureReason::Status;
                                     }
                                 } else if let Some(expected) = self.success_status {
                                     if v == expected {
