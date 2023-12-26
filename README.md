@@ -902,7 +902,7 @@ On Linux, the build process might complain that some packages are missing: it ma
 * _libxss-dev_
 * _xscreensaver_ (not always necessary).
 
-With these packages installed, the scheduler compiles without errors. However, since not all Linux distributions come with _Xscreensaver_ support (which is used to determine idle time), the related condition might not be checked and never fire. There is a _DBus_ based workaround, that allows to use [Idle session](#idle-session) conditions on Linux: the idle time, in this case, is counted as the amount of second after the screen has been locked. To enable this workaround, just edit the _Cargo.toml_ file by uncommenting the second of the following lines:
+With these packages installed, the scheduler compiles without errors. However, since not all Linux distributions come with _Xscreensaver_ support (which is used to determine idle time), the related condition might not be checked and never fire. There is a _DBus_ based workaround, that allows to use [Idle session](#idle-session) conditions on Linux: the idle time, in this case, is counted as the amount of seconds after the screen has been locked. To enable this workaround, just edit the _Cargo.toml_ file by uncommenting the second of the following lines:
 
 ```toml
 # user-idle has a problem on wayland-based sessions: work around by using
