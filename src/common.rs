@@ -257,8 +257,26 @@ pub mod logging {
     }
 
 
-    /// Common log function: `context` specifies which part of the application
-    /// originated the message, and `message` is the actual information
+    /// Common log function. The parameters are granular in order to achieve
+    /// two benefits: the first is that for most of them a constant can be
+    /// used, thus reducing the possibility of non-conformant log messages
+    /// (which may arise on typos) and, to some extent, the executable size;
+    /// the second is that JSON log messages can be as fine-grained as
+    /// needed. The constants to be used are defined in _constants.rs_, and
+    /// in particular:
+    /// 
+    /// * `emitter` is one of the `LOG_EMITTER_...` constants
+    /// * `action` is one of the `LOG_ACTION_...` constants
+    /// * `when` is one of the `LOG_WHEN_...` constants
+    /// * `status` is one of the `LOG_STATUS_...` constants
+    /// 
+    /// while non-constant parameters must be defined as follows
+    /// 
+    /// * `item` can to be a tuple consisting of item _name_ and _id_
+    /// * `message` is the only arbitrary string that can be passed
+    /// 
+    /// This allows JSON messages to be easily interpretable by a wrapper
+    /// according to the hints given in the documentation.
     pub fn log(
         severity: LogType,
         emitter: &str,
