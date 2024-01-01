@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::RwLock;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::thread;
@@ -44,9 +45,9 @@ fn generate_event_id() -> i64 {
 /// instance of the process, and should have `'static` lifetime. It may be
 /// passed around as a reference for events.
 pub struct EventRegistry {
-    // the entire list is enclosed in `Arc<Mutex<...>>` in order to avoid
+    // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
-    event_list: Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>>,
+    event_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>,
 }
 
 
@@ -56,7 +57,7 @@ impl EventRegistry {
     /// Create a new, empty `EventRegistry`.
     pub fn new() -> Self {
         EventRegistry {
-            event_list: Arc::new(Mutex::new(HashMap::new())),
+            event_list: RwLock::new(HashMap::new()),
         }
     }
 
@@ -72,8 +73,8 @@ impl EventRegistry {
     /// May panic if the event registry could not be locked for enquiry.
     pub fn has_event(&self, name: &str) -> bool {
         self.event_list
-            .lock()
-            .expect("cannot lock event registry")
+            .read()
+            .expect("cannot read event registry")
             .contains_key(name)
     }
 
@@ -115,8 +116,8 @@ impl EventRegistry {
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
         self.event_list
-            .lock()
-            .expect("cannot lock event registry")
+            .write()
+            .expect("cannot write to event registry")
             .insert(name, Arc::new(Mutex::new(boxed_event)));
         Ok(true)
     }
@@ -146,8 +147,8 @@ impl EventRegistry {
     pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>, std::io::Error> {
         if self.has_event(name) {
             if let Some(r) = self.event_list
-                .lock()
-                .expect("cannot lock event registry")
+                .write()
+                .expect("cannot write to event registry")
                 .remove(name) {
                 let Ok(mx) = Arc::try_unwrap(r) else {
                     panic!("cannot extract referenced event {name}")
@@ -181,8 +182,8 @@ impl EventRegistry {
         let mut res = Vec::new();
 
         for name in self.event_list
-            .lock()
-            .expect("cannot lock event registry")
+            .read()
+            .expect("cannot read event registry")
             .keys() {
             res.push(name.clone())
         }
@@ -198,8 +199,8 @@ impl EventRegistry {
         let guard;
         if self.has_event(name) {
             guard = self.event_list
-                .lock()
-                .expect("cannot lock event registry");
+                .read()
+                .expect("cannot read event registry");
         } else {
             return None
         }
@@ -227,17 +228,18 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
 
+        // what follows just *reads* the registry: the event is retrieved
+        // and the corresponding structure is operated in a way that mutates
+        // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let event;
-        {
-            let elist = self.event_list.clone();
-            let guard = elist.lock().expect("cannot lock event registry");
-            event = guard.get(name)
-                .expect("cannot retrieve event for activation")
-                .clone();
-        }
+        let guard = self.event_list
+            .read()
+            .expect("cannot read event registry");
+        let event = guard.get(name)
+            .expect("cannot retrieve event for service setup")
+            .clone();
 
-        let mxevent = event.lock().expect("cannot lock event for activation");
+        let mxevent = event.lock().expect("cannot lock event for service setup");
         let name_copy = String::from(name);
         let event_name = Arc::new(Mutex::new(name_copy));
         if mxevent.requires_thread() {
@@ -338,15 +340,16 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
 
+        // what follows just *reads* the registry: the event is retrieved
+        // and the corresponding structure is operated in a way that mutates
+        // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let event;
-        {
-            let elist = self.event_list.clone();
-            let guard = elist.lock().expect("cannot lock event registry");
-            event = guard.get(name)
-                .expect("cannot retrieve event for activation")
-                .clone();
-        }
+        let guard = self.event_list
+            .read()
+            .expect("cannot read event registry");
+        let event = guard.get(name)
+            .expect("cannot retrieve event for activation")
+            .clone();
 
         let mxevent = event.lock()
             .expect("cannot lock event for activation");

@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::RwLock;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 
@@ -43,9 +44,10 @@ fn generate_condition_id() -> i64 {
 /// in each instance of the process, and should have `'static` lifetime. It may
 /// be passed around as a reference.
 pub struct ConditionRegistry {
-    // the entire list is enclosed in `Arc<Mutex<...>>` in order to avoid
-    // concurrent access to the list itself
-    condition_list: Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>>,
+    // the entire list is enclosed in `RwLock<...>` in order to avoid
+    // concurrent access to the list itself; on the other hand, the _busy_
+    // flag is kept in a `Mutex` because it changes quite dynamically
+    condition_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>,
     conditions_busy: Arc<Mutex<u64>>,
 }
 
@@ -56,7 +58,7 @@ impl ConditionRegistry {
     /// Create a new, empty `ConditionRegistry`.
     pub fn new() -> Self {
         ConditionRegistry {
-            condition_list: Arc::new(Mutex::new(HashMap::new())),
+            condition_list: RwLock::new(HashMap::new()),
             conditions_busy: Arc::new(Mutex::new(0_u64)),
         }
     }
@@ -73,8 +75,8 @@ impl ConditionRegistry {
     /// May panic if the condition registry could not be locked for enquiry.
     pub fn has_condition(&self, name: &str) -> bool {
         self.condition_list
-            .lock()
-            .expect("cannot lock condition registry")
+            .read()
+            .expect("cannot read condition registry")
             .contains_key(name)
     }
 
@@ -91,8 +93,8 @@ impl ConditionRegistry {
     pub fn condition_type(&self, name: &str) -> Option<String> {
         if self.has_condition(name) {
             if let Some(r) = self.condition_list
-                .lock()
-                .expect("cannot lock condition registry")
+                .read()
+                .expect("cannot read condition registry")
                 .get(name) {
                 Some(r
                     .clone()
@@ -148,8 +150,8 @@ impl ConditionRegistry {
         // released condition would be safe to run even when not registered
         boxed_condition.set_id(generate_condition_id());
         self.condition_list
-            .lock()
-            .expect("cannot lock condition registry")
+            .write()
+            .expect("cannot write to condition registry")
             .insert(name, Arc::new(Mutex::new(boxed_condition)));
         Ok(true)
     }
@@ -180,8 +182,8 @@ impl ConditionRegistry {
     pub fn remove_condition(&self, name: &str) -> Result<Option<Box<dyn Condition>>, std::io::Error> {
         if self.has_condition(name) {
             if let Some(r) = self.condition_list
-                .lock()
-                .expect("cannot lock condition registry")
+                .write()
+                .expect("cannot write to condition registry")
                 .remove(name) {
                 let Ok(mx) = Arc::try_unwrap(r) else {
                     panic!("cannot extract referenced condition {name}")
@@ -229,21 +231,15 @@ impl ConditionRegistry {
                 ERR_CONDREG_COND_RESET_BUSY,
             ))
         } else {
-            // both the registry and the conditions are synchronized: to ensure
-            // that the condition registry is not locked while the tests are
-            // executed and while the tasks are running, we only hold a lock on
-            // the condition that we are resetting here, while freeing the rest of
-            // the registry immediately; the single condition remains locked while
-            // performing the reset, which is the actual reason why we wanted it
-            // to be synchronized
-            let cond;
-            {
-                let clist = self.condition_list.clone();
-                let mut guard = clist.lock().expect("cannot lock condition registry");
-                cond = guard.get_mut(name)
-                    .expect("cannot retrieve condition for reset")
-                    .clone();
-            }
+            // what follows just *reads* the registry: the condition is retrieved
+            // and the corresponding structure is operated in a way that mutates
+            // only its inner state, and not the wrapping pointer
+            let guard = self.condition_list
+                .write()
+                .expect("cannot read condition registry");
+            let cond = guard
+                .get(name)
+                .expect("cannot retrieve condition for reset");
 
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
@@ -280,21 +276,15 @@ impl ConditionRegistry {
                 ERR_CONDREG_COND_SUSPEND_BUSY,
             ))
         } else {
-            // both the registry and the conditions are synchronized: to ensure
-            // that the condition registry is not locked while the tests are
-            // executed and while the tasks are running, we only hold a lock on
-            // the condition that we are suspending here, while freeing the rest of
-            // the registry immediately; the single condition remains locked while
-            // performing the suspend, which is the actual reason why we wanted it
-            // to be synchronized
-            let cond;
-            {
-                let clist = self.condition_list.clone();
-                let mut guard = clist.lock().expect("cannot lock condition registry");
-                cond = guard.get_mut(name)
-                    .expect("cannot retrieve condition for reset")
-                    .clone();
-            }
+            // what follows just *reads* the registry: the condition is retrieved
+            // and the corresponding structure is operated in a way that mutates
+            // only its inner state, and not the wrapping pointer
+            let guard = self.condition_list
+                .read()
+                .expect("cannot read condition registry");
+            let cond = guard
+                .get(name)
+                .expect("cannot retrieve condition for suspend");
 
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
@@ -338,21 +328,15 @@ impl ConditionRegistry {
                 ERR_CONDREG_COND_RESUME_BUSY,
             ))
         } else {
-            // both the registry and the conditions are synchronized: to ensure
-            // that the condition registry is not locked while the tests are
-            // executed and while the tasks are running, we only hold a lock on
-            // the condition that we are suspending here, while freeing the rest of
-            // the registry immediately; the single condition remains locked while
-            // performing the suspend, which is the actual reason why we wanted it
-            // to be synchronized
-            let cond;
-            {
-                let clist = self.condition_list.clone();
-                let mut guard = clist.lock().expect("cannot lock condition registry");
-                cond = guard.get_mut(name)
-                    .expect("cannot retrieve condition for reset")
-                    .clone();
-            }
+            // what follows just *reads* the registry: the condition is retrieved
+            // and the corresponding structure is operated in a way that mutates
+            // only its inner state, and not the wrapping pointer
+            let guard = self.condition_list
+                .read()
+                .expect("cannot read condition registry");
+            let cond = guard
+                .get(name)
+                .expect("cannot retrieve condition for resume");
 
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
@@ -369,8 +353,8 @@ impl ConditionRegistry {
         let mut res = Vec::new();
 
         for name in self.condition_list
-            .lock()
-            .expect("cannot lock condition registry")
+            .read()
+            .expect("cannot read condition registry")
             .keys() {
             res.push(name.clone())
         }
@@ -386,8 +370,8 @@ impl ConditionRegistry {
         let guard;
         if self.has_condition(name) {
             guard = self.condition_list
-                .lock()
-                .expect("cannot lock condition registry");
+                .read()
+                .expect("cannot read condition registry");
         } else {
             return None
         }
@@ -421,21 +405,15 @@ impl ConditionRegistry {
             panic!("condition {name} not found in registry");
         }
 
-        // both the registry and the conditions are synchronized: to ensure
-        // that the condition registry is not locked while the tests are
-        // executed and while the tasks are running, we only hold a lock on
-        // the condition that we are checking here, while freeing the rest of
-        // the registry immediately; the single condition remains locked while
-        // performing the check, which is the actual reason why we wanted it
-        // to be synchronized
-        let cond;
-        {
-            let clist = self.condition_list.clone();
-            let mut guard = clist.lock().expect("cannot lock condition registry");
-            cond = guard.get_mut(name)
-                .expect("cannot retrieve condition for busy check")
-                .clone();
-        }
+        // what follows just *reads* the registry: the condition is retrieved
+        // and the corresponding structure is operated in a way that mutates
+        // only its inner state, and not the wrapping pointer
+        let guard = self.condition_list
+            .read()
+            .expect("cannot read condition registry");
+        let cond = guard
+            .get(name)
+            .expect("cannot retrieve condition for busy check");
 
         // since we return after trying to lock the condition, the possibly
         // acquired lock is immediately released
@@ -505,22 +483,16 @@ impl ConditionRegistry {
             panic!("condition {name} not found in registry");
         }
 
-        // both the registry and the conditions are synchronized: to ensure
-        // that the condition registry is not locked while the tests are
-        // executed and while the tasks are running, we only hold a lock on
-        // the condition that we are ticking here, while freeing the rest of
-        // the registry immediately; the single condition remains locked while
-        // performing the tick, which is the actual reason why we wanted it to
-        // be synchronized
+        // what follows just *reads* the registry: the condition is retrieved
+        // and the corresponding structure is operated in a way that mutates
+        // only its inner state, and not the wrapping pointer
         let id = self.condition_id(name).unwrap();
-        let cond;
-        {
-            let clist = self.condition_list.clone();
-            let mut guard = clist.lock().expect("cannot lock condition registry");
-            cond = guard.get_mut(name)
-                .expect("cannot retrieve condition for testing")
-                .clone();
-        }
+        let guard = self.condition_list
+            .read()
+            .expect("cannot read condition registry");
+        let cond = guard
+            .get(name)
+            .expect("cannot retrieve condition for testing");
 
         let mut lock = cond.try_lock();
         if let Ok(ref mut cond) = lock {

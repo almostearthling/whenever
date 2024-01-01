@@ -13,6 +13,7 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::RwLock;
 use std::sync::mpsc::channel;
 use std::thread::JoinHandle;
 use std::thread::spawn;
@@ -49,9 +50,9 @@ fn generate_task_id() -> i64 {
 /// instance of the process, and should have `'static` lifetime. It may be
 /// passed around as a reference for tasks.
 pub struct TaskRegistry {
-    // the entire list is enclosed in `Arc<Mutex<...>>` in order to avoid
+    // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
-    task_list: Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Task>>>>>>,
+    task_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Task>>>>>,
 }
 
 
@@ -61,7 +62,7 @@ impl TaskRegistry {
     /// Create a new, empty `TaskRegistry`.
     pub fn new() -> Self {
         TaskRegistry {
-            task_list: Arc::new(Mutex::new(HashMap::new())),
+            task_list: RwLock::new(HashMap::new()),
         }
     }
 
@@ -76,8 +77,8 @@ impl TaskRegistry {
     /// May panic if the task registry could not be locked for enquiry.
     pub fn has_task(&self, name: &str) -> bool {
         self.task_list
-            .lock()
-            .expect("cannot lock task registry")
+            .read()
+            .expect("cannot read task registry")
             .contains_key(name)
     }
 
@@ -95,8 +96,8 @@ impl TaskRegistry {
     pub fn has_all_tasks(&self, names: &Vec<&str>) -> bool {
         for name in names {
             if !self.task_list
-                .lock()
-                .expect("cannot lock task registry")
+                .read()
+                .expect("cannot read task registry")
                 .contains_key(*name) {
                 return false;
             }
@@ -139,8 +140,8 @@ impl TaskRegistry {
         // released task would be safe to run even when not registered
         boxed_task.set_id(generate_task_id());
         self.task_list
-            .lock()
-            .expect("cannot lock task registry")
+            .write()
+            .expect("cannot write to task registry")
             .insert(name, Arc::new(Mutex::new(boxed_task)));
         Ok(true)
     }
@@ -168,8 +169,8 @@ impl TaskRegistry {
     pub fn remove_task(&self, name: &str) -> Result<Option<Box<dyn Task>>, std::io::Error> {
         if self.has_task(name) {
             if let Some(r) = self.task_list
-                .lock()
-                .expect("cannot lock task registry")
+                .write()
+                .expect("cannot write to task registry")
                 .remove(name) {
                 let Ok(mx) = Arc::try_unwrap(r) else {
                     panic!("attempt to extract referenced task {name}")
@@ -199,8 +200,8 @@ impl TaskRegistry {
         let mut res = Vec::new();
 
         for name in self.task_list
-            .lock()
-            .expect("cannot lock task registry")
+            .read()
+            .expect("cannot read task registry")
             .keys() {
             res.push(name.clone())
         }
@@ -216,8 +217,8 @@ impl TaskRegistry {
         let guard;
         if self.has_task(name) {
             guard = self.task_list
-                .lock()
-                .expect("cannot lock task registry");
+                .read()
+                .expect("cannot read task registry");
         } else {
             return None
         }
@@ -285,11 +286,11 @@ impl TaskRegistry {
             let id = self.task_id(name).unwrap();
             let mut breaks = false;
             let task;
-            let mut guard = self.task_list
-                .lock()
+            let guard = self.task_list
+                .read()
                 .expect("cannot lock task registry");
             task = guard
-                .get_mut(*name)
+                .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();
             drop(guard);
@@ -397,38 +398,23 @@ impl TaskRegistry {
         // scope exits - that is after all threads have joined; this function
         // in fact waits for all the threads to finish, and has to be called
         // in a separate thread from the main thread
-        let aself  = Arc::new(self);
         let atrname = Arc::new(trigger_name);
 
         for name in names.iter() {
-            // let id = self.task_id(name).unwrap();
-            let aname = Arc::new(String::from(*name));
-
-            let aself  = aself.clone();
-            let atrname = atrname.clone().to_string();
-            let atasklist = aself.clone().task_list.clone();
-            let atx = atx.clone();
-
-            // here we extract the task first, in an inner scope to ensure
-            // that the lock on the task list is dropped before spawning a
-            // new thread: this way the new thread only locks the task object
-            // itself (which is what we want) and leave the list accessible;
-            // the reference to the task is cloned inside the inner scope so
-            // that the inner thread receives a living reference even if the
-            // lock on the registry is released
-            // NOTE: are we sure that the inner scope has to be created? Is
-            //       there another way - such as grabbing the mutex, locking
-            //       it and then explicitly dropping it?
-            let task;
-            let mut guard = atasklist
-                .lock()
+            // the task list is only *read*: this greatly simplifies handling of
+            // strings used as indexes, in this case the task name
+            let guard = self.task_list
+                .read()
                 .expect("cannot lock task registry");
-            task = guard
-                .get_mut(&aname.clone().to_string())
+            let task = guard
+                .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();
             drop(guard);
 
+            let aname = Arc::new(String::from(*name));
+            let atrname = atrname.clone().to_string();
+            let atx = atx.clone();
             let handle = spawn(move || {
                 let outcome = task
                     .lock()
@@ -478,7 +464,6 @@ impl TaskRegistry {
         }
         res
     }
-
 
 }
 
