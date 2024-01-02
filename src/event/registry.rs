@@ -26,14 +26,14 @@ use crate::constants::*;
 
 // module-wide values
 lazy_static! {
-    // the main task ID generator
+    // the main event ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
         let mut _uidgen = SequenceGenerator;
         _uidgen
     };
 }
 
-// the specific task ID generator: used internally to register an event
+// the specific event ID generator: used internally to register an event
 #[allow(dead_code)]
 fn generate_event_id() -> i64 {
     UID_GENERATOR.next_id()

@@ -2,7 +2,7 @@
 //!
 //! `condition::registry` implements the main registry for `Condition` objects.
 //!
-//! Implements the task registry as the main interface to access and check
+//! Implements the condition registry as the main interface to access and check
 //! _active_ conditions: a `Condition` object cannot in fact be considered
 //! active until it is _registered_. A registered condition has an unique
 //! nonzero ID.
@@ -25,7 +25,7 @@ use crate::constants::*;
 
 // module-wide values
 lazy_static! {
-    // the main task ID generator
+    // the main condition ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
         let mut _uidgen = SequenceGenerator;
         _uidgen
