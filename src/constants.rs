@@ -12,7 +12,8 @@ use std::time::Duration;
 
 
 /// The application name
-pub const APP_NAME: &str = "whenever";
+pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 
 #[allow(dead_code)]
@@ -121,6 +122,7 @@ pub const LOG_ACTION_CONDITION_BUSY: &str = "condition_busy";
 pub const LOG_ACTION_CONDITION_STATE: &str = "condition_state";
 pub const LOG_ACTION_RUN_COMMAND: &str = "command";
 pub const LOG_ACTION_MAIN_LISTENER: &str = "listener";
+pub const LOG_ACTION_MAIN_START: &str = "starting";
 pub const LOG_ACTION_MAIN_EXIT: &str = "exit";
 
 // other string pub constants
