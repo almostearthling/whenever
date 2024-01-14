@@ -1146,6 +1146,17 @@ fn main() {
         *APPLICATION_MUST_EXIT.lock().unwrap() = true;
     }));
 
+    // write a banner to the log file, stating app name and version
+    log(
+        LogType::Info,
+        LOG_EMITTER_MAIN,
+        LOG_ACTION_MAIN_START,
+        None,
+        LOG_WHEN_START,
+        LOG_STATUS_MSG,
+        &format!("application {APP_NAME} version {APP_VERSION} starting"),
+    );
+
     // read configuration, then in turn:
     //
     // 1. extract the global variables

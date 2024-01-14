@@ -357,6 +357,7 @@ impl CommandTask {
         let check = [
             "type",
             "name",
+            "tags",
             "command",
             "command_arguments",
             "startup_path",
@@ -495,7 +496,15 @@ impl CommandTask {
         );
 
         // common optional parameter initialization
-        // (none here)
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() {
+                return _invalid_cfg(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER);
+            }
+        }
 
         // specific optional parameter initialization
         let cur_key = "match_exact";

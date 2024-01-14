@@ -433,6 +433,7 @@ impl DbusMessageEvent {
         let check = [
             "type",
             "name",
+            "tags",
             "condition",
             "bus",
             "rule",
@@ -547,6 +548,16 @@ impl DbusMessageEvent {
         new_event.match_rule = Some(rule);
 
         // common optional parameter initialization
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() {
+                return _invalid_cfg(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER);
+            }
+        }
+
         let cur_key = "condition";
         let condition;
         if let Some(item) = cfgmap.get(cur_key) {

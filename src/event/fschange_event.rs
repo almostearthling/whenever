@@ -171,6 +171,7 @@ impl FilesystemChangeEvent {
         let check = [
             "type",
             "name",
+            "tags",
             "condition",
             "watch",
             "recursive",
@@ -241,6 +242,16 @@ impl FilesystemChangeEvent {
         new_event.condition_bucket = Some(bucket);
 
         // common optional parameter initialization
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() {
+                return _invalid_cfg(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER);
+            }
+        }
+
         let cur_key = "condition";
         let condition;
         if let Some(item) = cfgmap.get(cur_key) {
