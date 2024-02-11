@@ -48,6 +48,11 @@ pub trait Event: Send + Sync {
     /// Must return `true` if the service requires a separate thread.
     fn requires_thread(&self) -> bool;
 
+    /// Must return `false` if the event cannot be manually triggered:
+    /// this is the default, and only manually triggerable events should
+    /// override this function.
+    fn triggerable(&self) -> bool { false }
+
     /// Assign the condition bucket to put verified conditions into.
     fn set_condition_bucket(&mut self, bucket: &'static ExecutionBucket);
 
@@ -113,6 +118,13 @@ pub trait Event: Send + Sync {
                 panic!("execution bucket not set for condition {cond_name}")
             }
         } else {
+            // self.log(
+            //     LogType::Debug,
+            //     LOG_WHEN_PROC,
+            //     LOG_STATUS_FAIL,
+            //     &format!("no condition associated to event"),
+            // );
+            // Ok(false)
             panic!("trying to fire with no condition assigned")
         }
     }

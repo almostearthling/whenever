@@ -544,6 +544,27 @@ fn configure_events(
                                 ));
                             }
                         }
+                        "cli" => {
+                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
+                                entry.as_map().unwrap(), cond_registry, bucket)?;
+                            let event_name = event.get_name();
+                            if !event_registry.add_event(Box::new(event))? {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
+                            } else {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_MAIN,
+                                    LOG_ACTION_MAIN_LISTENER,
+                                    None,
+                                    LOG_WHEN_INIT,
+                                    LOG_STATUS_MSG,
+                                    &format!("event {event_name} registered"),
+                                )
+                            }
+                        }
                         // ...
 
                         _ => {
@@ -581,13 +602,13 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
     for name in names {
         if !CONDITION_REGISTRY.has_condition(name) {
             log(
-                LogType::Warn,
+                LogType::Error,
                 LOG_EMITTER_MAIN,
                 LOG_ACTION_RESET_CONDITIONS,
                 None,
                 LOG_WHEN_START,
                 LOG_STATUS_ERR,
-                &format!("ignoring non existent condition: {name}"),
+                &format!("cannot reset non existent condition: {name}"),
             );
         } else {
             log(
@@ -625,7 +646,7 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                 }
                 Err(e) => {
                     log(
-                        LogType::Warn,
+                        LogType::Error,
                         LOG_EMITTER_MAIN,
                         LOG_ACTION_RESET_CONDITIONS,
                         None,
@@ -647,13 +668,13 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
 
     if !CONDITION_REGISTRY.has_condition(name) {
         log(
-            LogType::Warn,
+            LogType::Error,
             LOG_EMITTER_MAIN,
             LOG_ACTION_CONDITION_STATE,
             None,
             LOG_WHEN_START,
             LOG_STATUS_ERR,
-            &format!("ignoring non existent condition: {name}"),
+            &format!("cannot set state for non existent condition: {name}"),
         );
     } else {
         log(
@@ -694,7 +715,7 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                 }
                 Err(e) => {
                     log(
-                        LogType::Warn,
+                        LogType::Error,
                         LOG_EMITTER_MAIN,
                         LOG_ACTION_SUSPEND_CONDITION,
                         None,
@@ -742,7 +763,7 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                 }
                 Err(e) => {
                     log(
-                        LogType::Warn,
+                        LogType::Error,
                         LOG_EMITTER_MAIN,
                         LOG_ACTION_RESUME_CONDITION,
                         None,
@@ -759,6 +780,85 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
 }
 
 
+// attempt to trigger an event
+fn trigger_event(name: &str) -> std::io::Result<bool> {
+    if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
+        if triggerable {
+            log(
+                LogType::Debug,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_EVENT_TRIGGER,
+                None,
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("triggering event {name}"),
+            );
+            match EVENT_REGISTRY.trigger_event(name) {
+                Ok(res) => {
+                    if res {
+                        log(
+                            LogType::Info,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_EVENT_TRIGGER,
+                            None,
+                            LOG_WHEN_END,
+                            LOG_STATUS_OK,
+                            &format!("event {name} successfully triggered"),
+                        );
+                        Ok(true)
+                    } else {
+                        log(
+                            LogType::Warn,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_EVENT_TRIGGER,
+                            None,
+                            LOG_WHEN_END,
+                            LOG_STATUS_ERR,
+                            &format!("event {name} could not be triggered or condition cannot fire"),
+                        );
+                        Ok(false)
+                    }
+                }
+                Err(e) => {
+                    log(
+                        LogType::Error,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_EVENT_TRIGGER,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_ERR,
+                        &format!("error triggering event {name}: {e}"),
+                    );
+                    Ok(false)
+                }
+            }
+        } else {
+            log(
+                LogType::Error,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_EVENT_TRIGGER,
+                None,
+                LOG_WHEN_END,
+                LOG_STATUS_ERR,
+                &format!("event {name} cannot be triggered"),
+            );
+            Ok(false)
+        }
+    } else {
+        log(
+            LogType::Error,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_EVENT_TRIGGER,
+            None,
+            LOG_WHEN_START,
+            LOG_STATUS_ERR,
+            &format!("cannot trigger non existent event: {name}"),
+        );
+        Ok(false)
+    }
+
+}
+
 
 // the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
@@ -769,161 +869,80 @@ fn interpret_commands() -> std::io::Result<bool> {
 
     while let Ok(_n) = stdin().read_line(&mut buffer) {
         let v: Vec<&str> = buffer.split_whitespace().collect();
-        let cmd = v[0];
-        let args = &v[1..];  // should not panic, but there might be a cleaner way
-        match cmd {
-            "exit" | "quit" => {
-                if !args.is_empty() {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_ERR,
-                        &format!("command `{cmd}` does not support arguments"),
-                    );
-                } else {
-                    log(
-                        LogType::Warn,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        "exit request received: terminating application",
-                    );
-                    *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+        if v.len() > 0 {
+            let cmd = v[0];
+            let args = &v[1..];  // should not panic, but there might be a cleaner way
+            match cmd {
+                "exit" | "quit" => {
+                    if !args.is_empty() {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_ERR,
+                            &format!("command `{cmd}` does not support arguments"),
+                        );
+                    } else {
+                        log(
+                            LogType::Warn,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            "exit request received: terminating application",
+                        );
+                        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                    }
                 }
-            }
-            "kill" => {
-                if !args.is_empty() {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_ERR,
-                        &format!("command `{cmd}` does not support arguments"),
-                    );
-                } else {
-                    log(
-                        LogType::Warn,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        "kill request received: terminating application immediately",
-                    );
-                    *APPLICATION_MUST_EXIT.lock().unwrap() = true;
-                    *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
+                "kill" => {
+                    if !args.is_empty() {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_ERR,
+                            &format!("command `{cmd}` does not support arguments"),
+                        );
+                    } else {
+                        log(
+                            LogType::Warn,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            "kill request received: terminating application immediately",
+                        );
+                        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                        *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
+                    }
                 }
-            }
-            "pause" => {
-                if !args.is_empty() {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_ERR,
-                        &format!("command `{cmd}` does not support arguments"),
-                    );
-                } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
-                    log(
-                        LogType::Warn,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        "ignoring pause request: scheduler already paused",
-                    );
-                } else {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        "pausing scheduler ticks: conditions not checked until resume",
-                    );
-                    *APPLICATION_IS_PAUSED.lock().unwrap() = true;
-                }
-            }
-            "resume" => {
-                if !args.is_empty() {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_ERR,
-                        &format!("command `{cmd}` does not support arguments"),
-                    );
-                } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        "resuming scheduler ticks and condition checks",
-                    );
-                    // clear execution bucket because events may still have
-                    // occurred and maybe the user wanted to also pause event
-                    // based conditions (NOTE: this is questionable, since
-                    // multiple insertions are debounced it is probably more
-                    // correct to just obey instructions and verify conditions
-                    // associated to these events: commented out for now)
-                    // EXECUTION_BUCKET.clear();
-                    *APPLICATION_IS_PAUSED.lock().unwrap() = false;
-                } else {
-                    log(
-                        LogType::Warn,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        "ignoring resume request: scheduler is not paused",
-                    );
-                }
-            }
-            "reset_conditions" => {
-                if args.is_empty() {
-                    log(
-                        LogType::Trace,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        "no names provided: attempt to reset all conditions",
-                    );
-                    if let Some(v) = CONDITION_REGISTRY.condition_names() {
-                        if !v.is_empty() {
-                            let _ = reset_conditions(v.as_slice());
-                        } else {
-                            // this branch is never executed: when there are
-                            // no conditions in the registry, the result is
-                            // always `None`
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_MAIN,
-                                LOG_ACTION_RUN_COMMAND,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_MSG,
-                                "there are no conditions to reset",
-                            );
-                        }
+                "pause" => {
+                    if !args.is_empty() {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_ERR,
+                            &format!("command `{cmd}` does not support arguments"),
+                        );
+                    } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                        log(
+                            LogType::Warn,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            "ignoring pause request: scheduler already paused",
+                        );
                     } else {
                         log(
                             LogType::Debug,
@@ -932,109 +951,218 @@ fn interpret_commands() -> std::io::Result<bool> {
                             None,
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
-                            "no conditions found in registry for reset",
+                            "pausing scheduler ticks: conditions not checked until resume",
+                        );
+                        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+                    }
+                }
+                "resume" => {
+                    if !args.is_empty() {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_ERR,
+                            &format!("command `{cmd}` does not support arguments"),
+                        );
+                    } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            "resuming scheduler ticks and condition checks",
+                        );
+                        // clear execution bucket because events may still have
+                        // occurred and maybe the user wanted to also pause event
+                        // based conditions (NOTE: this is questionable, since
+                        // multiple insertions are debounced it is probably more
+                        // correct to just obey instructions and verify conditions
+                        // associated to these events: commented out for now)
+                        // EXECUTION_BUCKET.clear();
+                        *APPLICATION_IS_PAUSED.lock().unwrap() = false;
+                    } else {
+                        log(
+                            LogType::Warn,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            "ignoring resume request: scheduler is not paused",
                         );
                     }
-                } else {
-                    // NOTE: here `v` is shadowing the outer one, could use
-                    // another name; however creating `v` here allows for
-                    // moving it into the new thread without having problems
-                    // concerning its lifetime
-                    let mut v: Vec<String> = Vec::new();
-                    for a in args {
-                        v.push(String::from(*a));
+                }
+                "reset_conditions" => {
+                    if args.is_empty() {
+                        log(
+                            LogType::Trace,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            "no names provided: attempt to reset all conditions",
+                        );
+                        if let Some(v) = CONDITION_REGISTRY.condition_names() {
+                            if !v.is_empty() {
+                                let _ = reset_conditions(v.as_slice());
+                            } else {
+                                // this branch is never executed: when there are
+                                // no conditions in the registry, the result is
+                                // always `None`
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_MAIN,
+                                    LOG_ACTION_RUN_COMMAND,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    "there are no conditions to reset",
+                                );
+                            }
+                        } else {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_MAIN,
+                                LOG_ACTION_RUN_COMMAND,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                "no conditions found in registry for reset",
+                            );
+                        }
+                    } else {
+                        // NOTE: here `v` is shadowing the outer one, could use
+                        // another name; however creating `v` here allows for
+                        // moving it into the new thread without having problems
+                        // concerning its lifetime
+                        let mut v: Vec<String> = Vec::new();
+                        for a in args {
+                            v.push(String::from(*a));
+                        }
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("attempting to reset conditions: {}", v.join(", ")),
+                        );
+                        // the new thread is to avoid the command line to be
+                        // unavailable while possibly waiting for busy conditions
+                        // to be free before actually performing the requested
+                        // action: the same holds for the other commands below
+                        // that might be blocking when their arguments refer to
+                        // busy items; the choice should be safe because the
+                        // input commands thread has the same lifetime as the
+                        // main thread, so it never ends unless the main thread
+                        // is forcibly terminated - in which case all the spawned
+                        // threads are terminated abruptly as well
+                        thread::spawn(move || { let _ = reset_conditions(v.as_slice()); });
                     }
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        &format!("attempting to reset conditions: {}", v.join(", ")),
-                    );
-                    // the new thread is to avoid the command line to be
-                    // unavailable while possibly waiting for busy conditions
-                    // to be free before actually performing the requested
-                    // action: the same holds for the other commands below
-                    // that might be blocking when their arguments refer to
-                    // busy items; the choice should be safe because the
-                    // input commands thread has the same lifetime as the
-                    // main thread, so it never ends unless the main thread
-                    // is forcibly terminated - in which case all the spawned
-                    // threads are terminated abruptly as well
-                    thread::spawn(move || { let _ = reset_conditions(v.as_slice()); });
                 }
-            }
-            "suspend_condition" => {
-                if args.len() != 1 {
+                "suspend_condition" => {
+                    if args.len() != 1 {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            "invalid number of arguments for command `suspend_condition`",
+                        );
+                    } else {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("attempting to suspend condition {}", args[0]),
+                        );
+                        // same considerations as above
+                        let arg = args[0].to_string();
+                        thread::spawn(move || { let _ = set_suspended_condition(&arg, true); });
+                    }
+                }
+                "resume_condition" => {
+                    if args.len() != 1 {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            "invalid number of arguments for command `resume_condition`",
+                        );
+                    } else {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("attempting to resume condition {}", args[0]),
+                        );
+                        // same considerations as above
+                        // condition is freed and the command can be executed
+                        let arg = args[0].to_string();
+                        thread::spawn(move || { let _ = set_suspended_condition(&arg, false); });
+                    }
+                }
+                "trigger" => {
+                    if args.len() != 1 {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            "invalid number of arguments for command `trigger`",
+                        );
+                    } else {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("attempting to trigger event {}", args[0]),
+                        );
+                        // same considerations as above
+                        let arg = args[0].to_string();
+                        thread::spawn(move || { let _ = trigger_event(&arg); });
+                    }
+                }
+                // ...
+    
+                "" => { /* do nothing here */ }
+                t => {
                     log(
                         LogType::Error,
                         LOG_EMITTER_MAIN,
                         LOG_ACTION_RUN_COMMAND,
                         None,
                         LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        "invalid number of arguments for command `suspend_condition`",
+                        LOG_STATUS_ERR,
+                        &format!("unrecognized command: `{t}`"),
                     );
-                } else {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        &format!("attempting to suspend condition {}", args[0]),
-                    );
-                    // same considerations as above
-                    let arg = args[0].to_string();
-                    thread::spawn(move || { let _ = set_suspended_condition(&arg, true); });
                 }
             }
-            "resume_condition" => {
-                if args.len() != 1 {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        "invalid number of arguments for command `resume_condition`",
-                    );
-                } else {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RUN_COMMAND,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        &format!("attempting to resume condition {}", args[0]),
-                    );
-                    // same considerations as above
-                    // condition is freed and the command can be executed
-                    let arg = args[0].to_string();
-                    thread::spawn(move || { let _ = set_suspended_condition(&arg, false); });
-                }
-            }
-            // ...
-
-            "" => { /* do nothing here */ }
-            t => {
-                log(
-                    LogType::Error,
-                    LOG_EMITTER_MAIN,
-                    LOG_ACTION_RUN_COMMAND,
-                    None,
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_ERR,
-                    &format!("unrecognized command: `{t}`"),
-                );
-            }
+            buffer.clear();
         }
-        buffer.clear();
         thread::sleep(rest_time);
     }
 
@@ -1154,7 +1282,7 @@ fn main() {
         None,
         LOG_WHEN_START,
         LOG_STATUS_MSG,
-        &format!("application {APP_NAME} version {APP_VERSION} starting"),
+        &format!("{APP_NAME} {APP_VERSION}"),
     );
 
     // read configuration, then in turn:
