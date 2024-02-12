@@ -132,6 +132,13 @@ pub const LOG_ACTION_MAIN_EXIT: &str = "exit";
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
 
+// default values
+pub const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
+pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
+
+// operational values
+pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;
+
 
 // crate-wide values
 lazy_static! {
