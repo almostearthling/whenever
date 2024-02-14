@@ -76,6 +76,7 @@ The [**_events_**](#events) that can fire _event_ based conditions are, at the m
 
 * [_Filesystem changes_](#filesystem-changes), that is, changes in files and/or directories that are set to be monitored
 * [_DBus signals_](#dbus-signals) that may be filtered for an expected payload.
+* [_Command line_](#command-line), that are manually triggered by writing to **whenever** standard input.
 
 Note that _DBus_ events and conditions are also (theoretically) supported on Windows, being one of the _DBus_ target platforms.
 
