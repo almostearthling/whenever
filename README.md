@@ -24,6 +24,7 @@
     - [Events](#events)
       - [Filesystem changes](#filesystem-changes)
       - [DBus signals](#dbus-signals)
+      - [Command line](#command-line)
   - [Logging](#logging)
   - [Input commands](#input-commands)
   - [Build issues](#build-issues)
@@ -693,15 +694,17 @@ For this type of conditions the actual test can be performed at a random time wi
 
 ### Events
 
-Only two types of event are supported, at least for now. The reason is that while on Linux DBus handles the majority of the communication between the system and the applications, via a well described subscription mechanism, other environments provide a less portable interface -- even more aimed at usage through APIs that are directly coded in applications. However, in many cases specific checks involving _command_ based conditions can be used to inspect the system status: for example, on Windows the [reg](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/reg) command can be used to inspect the registry, and the [wevtutil](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wevtutil) command to query the system event log.
+Three types of event are supported, at least for now. The reason is that while on Linux DBus handles the majority of the communication between the system and the applications, via a well described subscription mechanism, other environments provide a less portable interface -- even more aimed at usage through APIs that are directly coded in applications. However, in many cases specific checks involving _command_ based conditions can be used to inspect the system status: for example, on Windows the [reg](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/reg) command can be used to inspect the registry, and the [wevtutil](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wevtutil) command to query the system event log.
 
 One notable exception, which is also particularly useful, is the _notification_ of changes in the filesystem for watched entities (files or directories), which is implemented in **whenever** as one of the possible events that can fire conditions, the other being _DBus signals_ which are generally available on linux desktops (at least _Gnome_ and _KDE_).
+
+The third kind of events supported by **whenever** is based on its _stdin_ based [command interface](#input-commands). These events are directly raised by issuing a `trigger` command followed by the event name: a wrapper, even possibly a platform specific one, can therefore notify **whenever** that a specific event took place, or that the user explicitly required to trigger it from the available user interface. This type of event is the simplest one to define, as it has no criteria to be specified.
 
 Note that if an event arises more that once within the tick interval, it is automatically _debounced_ and a single occurrence is counted.
 
 All _event_ definition sections must start with the TOML `[[event]]` header.
 
-An optional entry, namely `tags`, is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings).
+An optional entry, namely `tags`, is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a map.
 
 The associated conditions must exist, otherwise an error is raised and **whenever** aborts.
 
@@ -783,6 +786,28 @@ and the details of the configuration entries are described in the table below:
 The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
+
+#### Command line
+
+As said above, this type of event has no other parameters than the name, the type identifier, and the associated condition. All parameters are mandatory. The event is raised when a wrapper (or the user) passes a `trigger` [command](#input-commands) to **whenever** through the _stdin_ stream of an active session.
+
+A sample configuration section follows:
+
+```toml
+name = "ManuallyTriggeredEvent"
+type = "cli"                        # mandatory value
+condition = "AssignedConditionName"
+```
+
+and the details of the configuration entries are described in the table below:
+
+| Entry                 | Default | Description                                                                                                                 |
+|-----------------------|:-------:|-----------------------------------------------------------------------------------------------------------------------------|
+| `name`                | N/A     | the unique name of the event (mandatory)                                                                                    |
+| `type`                | N/A     | must be set to `"cli"` (mandatory)                                                                                          |
+| `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                              |
+
+No listening service is installed, so the impact on resource consumption and performance is almost unnoticeable.
 
 
 ## Logging
@@ -888,8 +913,9 @@ The available commands are:
 | `reset_conditions`  | [Cond1 [Cond2 [...]]]  | reset the state of specified conditions: the _optional_ arguments are names of conditions to be reset (all by default) |
 | `suspend_condition` | Condition              | suspend the specified condition: the condition name argument is mandatory                                              |
 | `resume_condition`  | Condition              | resume the specified condition from a suspended state: the condition name argument is mandatory                        |
+| `trigger`           | Event                  | trigger the specified event causing the associated conditions to fire                                                  |
 
-The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Attempts to suspend conditions that are already suspended or to resume already active conditions are also ignored. Typing `exit` or `quit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_. The only command accepting arguments (at the moment) is `reset_conditions`, that resets the internal state of all configured conditions when no arguments are provided.
+The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Attempts to suspend conditions that are already suspended or to resume already active conditions are also ignored. Typing `exit` or `quit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_. The `reset_conditions` command resets the internal state of all configured conditions when no arguments are provided. The `trigger` command can only receive the name of a [Command line](#command-line) event as an argument: other uses will cause the command to be ignored and an error or a warning to be logged.
 
 > **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions and conditions that are _not recurring_. In the first case, the condition operates as if the interval counter has started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
 

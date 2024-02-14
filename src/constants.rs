@@ -112,6 +112,9 @@ pub const LOG_EMITTER_CONDITION_LUA: &str = "LUA_CONDITION";
 
 pub const LOG_ACTION_NEW: &str = "new";
 pub const LOG_ACTION_TICK: &str = "tick";
+pub const LOG_ACTION_FIRE: &str = "fire";
+pub const LOG_ACTION_TRIGGER: &str = "trigger";
+pub const LOG_ACTION_INSTALL: &str = "install";
 pub const LOG_ACTION_ACTIVE: &str = "active";
 pub const LOG_ACTION_LUA: &str = "exec_lua";
 pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
@@ -120,6 +123,7 @@ pub const LOG_ACTION_SUSPEND_CONDITION: &str = "suspend_condition";
 pub const LOG_ACTION_RESUME_CONDITION: &str = "resume_condition";
 pub const LOG_ACTION_CONDITION_BUSY: &str = "condition_busy";
 pub const LOG_ACTION_CONDITION_STATE: &str = "condition_state";
+pub const LOG_ACTION_EVENT_TRIGGER: &str = "event_trigger";
 pub const LOG_ACTION_RUN_COMMAND: &str = "command";
 pub const LOG_ACTION_MAIN_LISTENER: &str = "listener";
 pub const LOG_ACTION_MAIN_START: &str = "starting";
@@ -127,6 +131,13 @@ pub const LOG_ACTION_MAIN_EXIT: &str = "exit";
 
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
+
+// default values
+pub const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
+pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
+
+// operational values
+pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;
 
 
 // crate-wide values

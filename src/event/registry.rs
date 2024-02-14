@@ -48,6 +48,11 @@ pub struct EventRegistry {
     // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
     event_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>,
+    // the triggerable list is kept separate because the triggerable
+    // attribute is actually a constant that can be retrieved at
+    // startup and we do not want to be blocked while directly asking
+    // an active event on its ability to be manually triggered
+    triggerable_event_list: RwLock<HashMap<String, bool>>,
 }
 
 
@@ -58,6 +63,7 @@ impl EventRegistry {
     pub fn new() -> Self {
         EventRegistry {
             event_list: RwLock::new(HashMap::new()),
+            triggerable_event_list: RwLock::new(HashMap::new()),
         }
     }
 
@@ -115,6 +121,11 @@ impl EventRegistry {
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
+        let triggerable = boxed_event.triggerable();
+        self.triggerable_event_list
+            .write()
+            .expect("cannot write to triggerable event registry")
+            .insert(name.clone(), triggerable);
         self.event_list
             .write()
             .expect("cannot write to event registry")
@@ -213,6 +224,104 @@ impl EventRegistry {
         Some(id)
     }
 
+    /// Tell whether or not an event is triggerable, `None` if event not found
+    pub fn event_triggerable(&self, name: &str) -> Option<bool> {
+        if self.has_event(name) {
+            let triggerable = *self.triggerable_event_list
+                .read()
+                .expect("cannot read triggerable event registry")
+                .get(name)
+                .unwrap();
+            Some(triggerable)
+        } else {
+            None
+        }
+    }
+
+
+    /// Trigger an event.
+    ///
+    /// If the event can be manually triggered, fire its associated condition
+    /// and return the result of the call to the event `fire_condition()` call,
+    /// otherwise return `Ok(false)`.
+    ///
+    /// # Panics
+    ///
+    /// When the event it is called upon is not registered: in no way this
+    /// should be called for unregistered events.
+    pub fn trigger_event(&self, name: &str) -> std::io::Result<bool> {
+        if !self.has_event(name) {
+            panic!("event {name} not found in registry");
+        }
+
+        // also panic if the event is not triggerable: the caller must ensure this
+        if !self.event_triggerable(name).unwrap() {
+            panic!("event {name} cannot be manually triggered");
+        }
+
+        // what follows just *reads* the registry: the event is retrieved
+        // and the corresponding structure is operated in a way that mutates
+        // only its inner state, and not the wrapping pointer
+        let id = self.event_id(name).unwrap();
+        let guard = self.event_list
+            .read()
+            .expect("cannot read event registry");
+        let event = guard.get(name)
+            .expect("cannot retrieve event for triggering")
+            .clone();
+
+        let mxevent = event.lock()
+            .expect("cannot lock event for triggering");
+
+        log(
+            LogType::Trace,
+            LOG_EMITTER_EVENT_REGISTRY,
+            LOG_ACTION_TRIGGER,
+            Some((name, id)),
+            LOG_WHEN_PROC,
+            LOG_STATUS_OK,
+            &format!("manually triggering event {name}"),
+        );
+        match mxevent.fire_condition() {
+            Ok(res) => {
+                if res {
+                    log(
+                        LogType::Trace,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_FIRE,
+                        Some((name, id)),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("condition for event {name} fired"),
+                    );
+                } else {
+                    log(
+                        LogType::Trace,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_FIRE,
+                        Some((name, id)),
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("condition for event {name} could not fire"),
+                    );
+                }
+                Ok(res)
+            }
+            Err(e) =>  {
+                log(
+                    LogType::Debug,
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    LOG_ACTION_FIRE,
+                    Some((name, id)),
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
+                    &format!("condition for event {name} failed to fire"),
+                );
+                Err(e)
+            }
+        }
+    }
+
 
     /// Install the listening service for an event.
     ///
@@ -263,7 +372,7 @@ impl EventRegistry {
                             log(
                                 LogType::Debug,
                                 LOG_EMITTER_EVENT_REGISTRY,
-                                "install",
+                                LOG_ACTION_INSTALL,
                                 Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_OK,
@@ -273,7 +382,7 @@ impl EventRegistry {
                             log(
                                 LogType::Error,
                                 LOG_EMITTER_EVENT_REGISTRY,
-                                "install",
+                                LOG_ACTION_INSTALL,
                                 Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_FAIL,
@@ -286,7 +395,7 @@ impl EventRegistry {
                         log(
                             LogType::Error,
                             LOG_EMITTER_EVENT_REGISTRY,
-                            "install",
+                            LOG_ACTION_INSTALL,
                                 Some((&ename, id)),
                             LOG_WHEN_START,
                             LOG_STATUS_FAIL,
@@ -302,7 +411,7 @@ impl EventRegistry {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
-                    "install",
+                    LOG_ACTION_INSTALL,
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_OK,
@@ -313,7 +422,7 @@ impl EventRegistry {
                 log(
                     LogType::Error,
                     LOG_EMITTER_EVENT_REGISTRY,
-                    "install",
+                    LOG_ACTION_INSTALL,
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
@@ -358,7 +467,7 @@ impl EventRegistry {
                 log(
                     LogType::Trace,
                     LOG_EMITTER_EVENT_REGISTRY,
-                    "fire",
+                    LOG_ACTION_FIRE,
                     Some((name, id)),
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
@@ -368,7 +477,7 @@ impl EventRegistry {
                 log(
                     LogType::Trace,
                     LOG_EMITTER_EVENT_REGISTRY,
-                    "fire",
+                    LOG_ACTION_FIRE,
                     Some((name, id)),
                     LOG_WHEN_PROC,
                     LOG_STATUS_FAIL,
@@ -379,7 +488,7 @@ impl EventRegistry {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
-                "fire",
+                LOG_ACTION_FIRE,
                 Some((name, id)),
                 LOG_WHEN_PROC,
                 LOG_STATUS_FAIL,

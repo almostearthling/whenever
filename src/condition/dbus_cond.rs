@@ -907,7 +907,7 @@ impl DbusMethodCondition {
         // common optional parameter initialization
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
+            if !item.is_list() && !item.is_map() {
                 return _invalid_cfg(
                     cur_key,
                     STR_UNKNOWN_VALUE,
