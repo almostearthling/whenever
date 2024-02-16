@@ -8,7 +8,7 @@
 
 
 use std::fs;
-use std::io::stdin;
+use std::io::{stdin, Stdin, BufRead};
 use std::thread;
 use std::thread::JoinHandle;
 use std::sync::Mutex;
@@ -74,6 +74,9 @@ lazy_static! {
         String::from("time"),
         String::from("idle"),
         ];
+
+    // the buffered standard input for command line reads (no Mutex: already synchronized)
+    static ref STDIN: Stdin = stdin();
 
 }
 
@@ -860,8 +863,9 @@ fn trigger_event(name: &str) -> std::io::Result<bool> {
 fn interpret_commands() -> std::io::Result<bool> {
     let mut buffer = String::new();
     let rest_time = Duration::from_millis(MAIN_STDIN_READ_WAIT_MILLISECONDS);
+    let mut handle = STDIN.lock();
 
-    while let Ok(_n) = stdin().read_line(&mut buffer) {
+    while let Ok(_n) = handle.read_line(&mut buffer) {
         // note that `split_whitespace()` already trims its argument
         let v: Vec<&str> = buffer.split_whitespace().collect();
         if v.len() > 0 {
@@ -1142,7 +1146,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                     }
                 }
                 // ...
-    
+
                 "" => { /* do nothing here */ }
                 t => {
                     log(
