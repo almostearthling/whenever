@@ -148,7 +148,7 @@ _Tasks_ are handled first in this document, because _conditions_ must mandatoril
 
 Tasks are defined via a dedicated table, which means that every task definition must start with the TOML `[[task]]` section header.
 
-Task names are mandatory, and must be provided as alphanumeric strings (may include underscores), beginning with a letter. The task type must be either `"command"` or `"lua"` according to what is configured, any other value is considered a configuration error. There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings).
+Task names are mandatory, and must be provided as alphanumeric strings (may include underscores), beginning with a letter. The task type must be either `"command"` or `"lua"` according to what is configured, any other value is considered a configuration error. There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a table.
 
 #### Command tasks
 
@@ -288,7 +288,7 @@ For conditions that should be periodically checked and whose associated task lis
 
 The `suspended` entry can assume a _true_ value for conditions for which the user does not want to remove the configuration but should be (at least temporarily) prevented. However, a condition that is suspended by configuration can be awakened using an interactive command (usually by a wrapper): [input commands](#input-commands) passed via the _stdin_ based interface can be used to suspend and resume condition checks when the scheduler is running.
 
-There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings).
+There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a table.
 
 Another entry is common to several condition types, that is `check_after`: it can be set to the number of seconds that **whenever** has to wait after startup (and after the last check for _recurring_ conditions) for a subsequent check: this is useful for conditions that can run on a more relaxed schedule, or whose check process has a significant cost in terms of resources, or whose associated task sequence might take a long time to finish. Simpler conditions and conditions based on time do not accept this entry.
 
@@ -705,7 +705,7 @@ Note that if an event arises more that once within the tick interval, it is auto
 
 All _event_ definition sections must start with the TOML `[[event]]` header.
 
-An optional entry, namely `tags`, is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a map.
+An optional entry, namely `tags`, is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a table.
 
 The associated conditions must exist, otherwise an error is raised and **whenever** aborts.
 
