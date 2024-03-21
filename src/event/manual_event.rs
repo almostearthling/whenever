@@ -230,7 +230,7 @@ impl Event for ManualCommandEvent {
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
 
-    fn requires_thread(&self) -> bool { true }  // maybe false, let's see
+    fn requires_thread(&self) -> bool { false }
 
     fn triggerable(&self) -> bool { true }      // this is the only one
 

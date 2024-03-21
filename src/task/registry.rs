@@ -302,7 +302,7 @@ impl TaskRegistry {
             log(
                 LogType::Trace,
                 LOG_EMITTER_TASK_REGISTRY,
-                "run_seq",
+                LOG_ACTION_RUN_TASKS_SEQ,
                 Some((name, id)),
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
@@ -326,7 +326,7 @@ impl TaskRegistry {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_TASK_REGISTRY,
-                    "run_seq",
+                    LOG_ACTION_RUN_TASKS_SEQ,
                     Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
@@ -339,7 +339,7 @@ impl TaskRegistry {
         log(
             LogType::Trace,
             LOG_EMITTER_TASK_REGISTRY,
-            "run_seq",
+            LOG_ACTION_RUN_TASKS_SEQ,
             None,
             LOG_WHEN_END,
             LOG_STATUS_MSG,
@@ -445,7 +445,7 @@ impl TaskRegistry {
             log(
                 LogType::Warn,
                 LOG_EMITTER_TASK_REGISTRY,
-                "run_par",
+                LOG_ACTION_RUN_TASKS_PAR,
                 None,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
@@ -455,7 +455,7 @@ impl TaskRegistry {
             log(
                 LogType::Debug,
                 LOG_EMITTER_TASK_REGISTRY,
-                "run_par",
+                LOG_ACTION_RUN_TASKS_PAR,
                 None,
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,

@@ -128,6 +128,8 @@ pub const LOG_ACTION_RUN_COMMAND: &str = "command";
 pub const LOG_ACTION_MAIN_LISTENER: &str = "listener";
 pub const LOG_ACTION_MAIN_START: &str = "starting";
 pub const LOG_ACTION_MAIN_EXIT: &str = "exit";
+pub const LOG_ACTION_RUN_TASKS_SEQ: &str = "run_seq";
+pub const LOG_ACTION_RUN_TASKS_PAR: &str = "run_par";
 
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";

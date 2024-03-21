@@ -550,16 +550,34 @@ fn configure_events(
                                     std::io::ErrorKind::InvalidData,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
+                            } else if let Ok(r) = event_registry.install_service(&event_name) {
+                                if let Some(h) = r {
+                                    res.push(h);
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_MAIN,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!("service installed for event {event_name} (dedicated thread)"),
+                                    )
+                                } else {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_MAIN,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!("service installed for event {event_name}"),
+                                    )
+                                }
                             } else {
-                                log(
-                                    LogType::Trace,
-                                    LOG_EMITTER_MAIN,
-                                    LOG_ACTION_MAIN_LISTENER,
-                                    None,
-                                    LOG_WHEN_INIT,
-                                    LOG_STATUS_MSG,
-                                    &format!("event {event_name} registered"),
-                                )
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
                             }
                         }
                         // ...
