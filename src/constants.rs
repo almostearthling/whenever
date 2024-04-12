@@ -11,9 +11,20 @@ use regex::Regex;
 use std::time::Duration;
 
 
-/// The application name
+// The application name
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+
+// The application GUID in order to force a single instance: different GUIDs
+// are used in order to be able to launch a DEBUG instance when a release
+// instance is running: for developers, to be able to run quick tests without
+// having to stop a running instance
+#[cfg(debug_assertions)]
+pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440_DEBUG";
+
+#[cfg(not(debug_assertions))]
+pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440";
 
 
 #[allow(dead_code)]

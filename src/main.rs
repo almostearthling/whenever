@@ -57,7 +57,7 @@ lazy_static! {
     static ref EXECUTION_BUCKET: ExecutionBucket = ExecutionBucket::new();
 
     // single instance name
-    static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-663f98a9-a1ef-46ef-a7bc-bb2482f42440", username());
+    static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-{APP_GUID}", username());
 
     // set this if the application must exit
     static ref APPLICATION_MUST_EXIT: Mutex<bool> = Mutex::new(false);
