@@ -332,7 +332,10 @@ impl LuaTask {
                                 item.as_str().unwrap(),
                                 ERR_INVALID_VAR_NAME);
                         } else if let Some(value) = map.get(name) {
-                            if value.is_int() || value.is_float() {
+                            if value.is_int() {
+                                let v = value.as_int().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
+                            } else if value.is_float() {
                                 let v = value.as_float().unwrap();
                                 vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
                             } else if value.is_bool() {
