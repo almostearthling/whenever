@@ -57,7 +57,7 @@ A very lightweight cross-platform wrapper, namely [**whenever_tray**](https://gi
 
 **whenever** can perform the following types of [**_task_**](#tasks):
 
-* [_Execution of groups of OS executables_](#command-tasks), either sequentially or concurrently, checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
+* [_Execution of OS executables_](#command-tasks), checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
 * [_Execution of_ Lua _scripts_](#lua-script-tasks), using an embedded interpreter, with the possibility of checking the contents of _Lua_ variables for expected outcomes
 
 as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based _When_ scheduler: how tasks and conditions work is almost identical in both tools -- in fact, development of a tool to convert from _When_ _export files_ to **whenever** configuration files is underway.
@@ -179,7 +179,7 @@ failure_status = 2
 timeout_seconds = 60
 case_sensitive = false
 include_environment = false
-set_envvironment_variables = false
+set_environment_variables = false
 environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
 ```
 
@@ -421,9 +421,9 @@ The check for this type of condition is never randomized.
 This type of condition gives the possibility to execute an OS _command_ and decide whether or not the condition is verified testing the command exit code and/or what the command writes on its standard output or standard error channel. The available checks are of the same type as the ones available for command based tasks. In fact it is possible to:
 
 * identify a provided exit code as a failure or as a success
-* specifying that the presence of a substring or matching a regular expression corresponds to either a failure or a success.
+* specify that the presence of a substring or matching a regular expression corresponds to either a failure or a success.
 
-Of course only a success causes the corresponding tasks to be executed: as for command based tasks, it is not mandatory to follow the usual conventions -- this means, for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a success. A non-success has the same effect as a failure on task execution.
+Only a _success_ allows the corresponding tasks to be executed: however, as for command based tasks, it is not mandatory to follow the usual conventions -- this means, for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a success. A non-success outcome has the same effect as a failure on task execution.
 
 If a command is known to have the possibility to hang, a timeout can be configured by specifying the maximum number of seconds to wait for the process to exit: after this amount of time the process is terminated and fails.
 
