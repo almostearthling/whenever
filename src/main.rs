@@ -1194,7 +1194,7 @@ fn interpret_commands() -> std::io::Result<bool> {
 use clap::{Parser, ValueEnum};
 
 
-/// A simple background job launcher and scheduler
+/// A lightweight task scheduler and automation tool
 #[derive(Parser)]
 #[command(name=APP_NAME, version, about)]
 struct Args {

@@ -93,7 +93,7 @@ By invoking **whenever** and specifying `--help` as argument, the output is the 
 
 ```text
 ~$ whenever --help
-A simple background job launcher and scheduler
+A lightweight task scheduler and automation tool
 
 Usage: whenever [OPTIONS] <CONFIG>
 
