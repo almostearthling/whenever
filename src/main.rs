@@ -1198,9 +1198,17 @@ use clap::{Parser, ValueEnum};
 #[derive(Parser)]
 #[command(name=APP_NAME, version, about)]
 struct Args {
-    /// Suppress all output (requires logfile to be specified)
-    #[arg(short, long, requires = "log")]
+    /// Suppress all output
+    #[arg(short, long)]
     quiet: bool,
+
+    /// Start in paused mode
+    #[arg(short, long)]
+    pause: bool,
+
+    /// Check whether an instance is running
+    #[arg(short = 'r', long)]
+    check_running: bool,
 
     /// Specify the log file
     #[arg(short, long, value_name = "LOGFILE")]
@@ -1235,7 +1243,7 @@ struct Args {
 
     /// Path to configuration file
     #[arg(value_name = "CONFIG")]
-    config: String,
+    config: Option<String>,
 }
 
 
@@ -1258,7 +1266,37 @@ fn main() {
 
     // check that no other instance is running
     let instance = SingleInstance::new(&INSTANCE_GUID).unwrap();
+
+    // if asked to, check for a running instance and exit with a 0 exit status
+    // if an instance is already running, 1 if no instaance is running, and if
+    // not in quiet mode print a brief message on stdout
+    if args.check_running {
+        let not_running = instance.is_single();
+        if !args.quiet {
+            println!(
+                "{APP_NAME}: {}",
+                if not_running {
+                    "no running instances"
+                } else {
+                    "an instance is running"
+                }
+            );
+        }
+        if not_running {
+            std::process::exit(1);
+        } else {
+            std::process::exit(0);
+        }
+    }
+
     exit_if_fails!(args.quiet, check_single_instance(&instance));
+    
+    // now check that the config file name has been provided
+    if args.config.is_none() {
+        eprintln!("{APP_NAME} error: configuration file not specified");
+        std::process::exit(2);
+    }
+    let config = args.config.unwrap();
 
     // configure the logger
     let level = match args.log_level {
@@ -1314,7 +1352,7 @@ fn main() {
     // NOTE: the `unwrap_or` part is actually pleonastic, as the missing values
     //       are set by `configure()` to exactly the values below. This will
     //       eventually use plain `unwrap()`.
-    let configuration = exit_if_fails!(args.quiet, configure(&args.config));
+    let configuration = exit_if_fails!(args.quiet, configure(&config));
     let scheduler_tick_seconds = *configuration
         .get("scheduler_tick_seconds")
         .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
@@ -1342,6 +1380,21 @@ fn main() {
         &CONDITION_REGISTRY,
         &EXECUTION_BUCKET,
     ));
+
+    // first of all check whether the application is started in paused mode
+    // and if so check the appropriate flag and emit an info log message
+    if args.pause {
+        log(
+            LogType::Info,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_SCHEDULER_TICK,
+            None,
+            LOG_WHEN_PROC,
+            LOG_STATUS_MSG,
+            "starting in paused mode",
+        );
+        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+    }
 
     // add a thread for stdin interpreter (no args function thus no closure)
     _handles.push(thread::spawn(interpret_commands));
