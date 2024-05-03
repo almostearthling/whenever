@@ -103,26 +103,32 @@ Arguments:
   <CONFIG>  Path to configuration file
 
 Options:
-  -q, --quiet              Suppress all output (requires logfile to be specified)
+  -q, --quiet              Suppress all output
+  -p, --pause              Start in paused mode
+  -r, --check-running      Check whether an instance is running
   -l, --log <LOGFILE>      Specify the log file
-  -L, --log-level <LEVEL>  Specify the log level (default: warn) [default: warn] [possible values: trace, debug, info, warn, error]
+  -L, --log-level <LEVEL>  Specify the log level [default: warn] [possible values: trace, debug, info, warn, error]
   -a, --log-append         Append to an existing log file if found
-  -P, --log-plain          No colors when logging (default for log files)
-  -C, --log-color          Use colors when logging to console (default, ignored with log files)
+  -P, --log-plain          No colors when logging (default when logging to file)
+  -C, --log-color          Use colors when logging (default, ignored when logging to file)
   -J, --log-json           Use JSON format for logging
   -h, --help               Print help
   -V, --version            Print version
 ```
 
-As the available options are minimal, and mostly impact on [logging](#logging), the only elements that should be highlighted are the following:
+The only elements that should be highlighted are the following:
 
-* **whenever** requires a log file to run in _quiet_ mode (which also suppresses errors)
+* **whenever** also suppresses errors in _quiet_ mode, it is recommended to at least specify a log file
 * it is possible to suppress colors when logging to console, by specifying `--log-plain` as an argument
-* when run within a wrapper, **whenever** can emit log messages in the JSON format, to make it easier for the wrapper to interpret and classify them.
+* when run within a wrapper, **whenever** can emit log messages in the JSON format, to make it easier for the wrapper to interpret and classify them
+* **whenever** can be started in paused mode
+* when checking for another running instance, the `whenever --check-running` command exits immediately with a `0` exit code if another istance is found, `1` otherwise: it also writes an answer to the standard output that can be suppressed using the `--quiet` switch.[^5]
 
 When debugging a configuration file, it might be useful to set the log level at least to _debug_, if not to _trace_ which also emits some redundant messages.
 
 An important thing to notice is that configuration errors will cause **whenever** to abort, by issuing a very brief message on the console.
+
+Also, **whenever** will refuse to start when another instance is running for the same user (that is, most of the times in the same session): the `--check-running` switch has been introduced to possibly allow a launcher to perform a test before attempting to actually start the scheduler. On the same host, however, different users can launch instances of **whenever**, which are considered different.
 
 To exit from **whenever** (when running as a CLI program from an interactive shell) che usual _Ctrl+C_ key combination can be used. This will however wait for all currently running activities, be it condition checks or tasks, to finish. In order to force **whenever** to exit abruptly, either a [command](#input-commands) must be used or it must be explicitly killed.
 
@@ -141,7 +147,7 @@ Globals must be specified at the beginning of the configuration file. The suppor
 | `scheduler_tick_seconds`        | 5       | Number of seconds between scheduler ticks                                            |
 | `randomize_checks_within_ticks` | _false_ | Whether or not condition checks hould be uniformly randomized within the tick period |
 
-Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a very short value for the tick period, but in fact it mimics a certain responsiveness and synchronicity in checking _event_ based conditions. Note that conditions strictly depending on time do not comply to the request of randomizing the check time.
+Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a very short value for the tick period, but in fact it mimics a certain responsiveness and synchronization in checking _event_ based conditions. Note that conditions strictly depending on time do not comply to the request of randomizing the check instant.
 
 
 ### Tasks
@@ -154,7 +160,7 @@ Task names are mandatory, and must be provided as alphanumeric strings (may incl
 
 #### Command tasks
 
-_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on its output taking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for instance, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
+_Command_ based tasks actually execute commands at the OS level: they might have a _positive_ as well as a _negative_ outcome, depending on user-provided criteria. As said above, these criteria may not just depend on the exit code of the executed command, but also on checks performed on its output taking either the standard output or the standard error channels into account. By default no check is performed, but the user can choose, for instance, to consider a zero exit code as a successful execution (quite common for OS commands). It is possible to consider another exit code as successful, or the zero exit code as a failure (for example, if a file should not be found, performing `ls` on it would have the zero exit code as an _undesirable_ outcome). Also, a particular substring can be sought in the standard output or standard error streams both as expected or as unexpected. The two streams can be matched against a provided _regular expression_ if just seeking a certain substring is not fine-grained enough. Both substrings and regular expressions can be respectively sought or matched either case-sensitively or case-insensitively.
 
 A sample configuration for a command based task is the following:
 
@@ -282,7 +288,7 @@ _Conditions_ are at the heart of **whenever**, by triggering the execution of ta
 | `suspended`        | _false_ | if _true_, the condition will not be checked nor the associated tasks executed                                 |
 | `tasks`            | `[]`    | a list of task names that will be executed upon condition verification                                         |
 
-When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_.[^5]
+When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_.[^6]
 
 The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `"lua"`, `"event"`, and `"dbus"`. Any other value is considered a configuration error.
 
@@ -389,7 +395,7 @@ The check for this type of condition is never randomized.
 
 #### Idle session
 
-Conditions of the _idle_ type are verified after the session has been idle (that is, without user interaction), for the specified number of seconds.[^6] This does normally not interfere with other idle time based actions provided by the environment such as screensavers, and automatic session lock. The following is a sample configuration for this type of condition:
+Conditions of the _idle_ type are verified after the session has been idle (that is, without user interaction), for the specified number of seconds.[^7] This does normally not interfere with other idle time based actions provided by the environment such as screensavers, and automatic session lock. The following is a sample configuration for this type of condition:
 
 ```toml
 [[condition]]
@@ -557,7 +563,7 @@ For this type of condition the actual test can be performed at a random time wit
 
 #### DBus method
 
-The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^7] One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
+The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^8] One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
 
 So, as a rule of thumb:
 
@@ -587,7 +593,7 @@ A further difficulty is due to the fact that, while DBus is strictly typed and s
 * _List_: `ARRAY`
 * _Map_: `DICTIONARY`
 
-This means that there are a lot of value types that are not directly derived from the native JSON types. **whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\`, followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^8]) identifying the type. For example, the string `"\\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^9] containing the value _/com/example/MusicPlayer1_. A specially crafted string will be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\\w100"` is translated into a `STRING` holding the value _\w100_.
+This means that there are a lot of value types that are not directly derived from the native JSON types. **whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\`, followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^9]) identifying the type. For example, the string `"\\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^10] containing the value _/com/example/MusicPlayer1_. A specially crafted string will be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\\w100"` is translated into a `STRING` holding the value _\w100_.
 
 For return values, while the structure of complex entities received from DBus is kept, all values are automatically converted to more generic types: a returned `BYTE` is converted to a JSON _Integer_, and a returned `OBJECT_PATH` is consdered a JSON _String_ which, as a side effect, supports the `"match"` operator.
 
@@ -962,8 +968,9 @@ This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future):
 [^2]: Because TOML is sometimes too strict and is not able to represent certain types of structured data, [JSON](https://www.json.org/) is used in some cases within the TOML configuration file.
 [^3]: When run alone, with no wrapper: using the minimal provided wrapper, both programs together use less than 4MB of RAM and the combined CPU consumption in rare occasions reaches the 0.2% -- as reported by the Windows _Task Manager_.
 [^4]: The occurrence of an _event_, in fact, raises a flag that specifies that the associated condition will be considered as verified at the following tick: the condition is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the scheduler that executes the related tasks. Therefore _event_ based conditions are also referred to as _bucket_ conditions.
-[^5]: In this case the execution will continue as long as the outcome is _undefined_ until the first success or failure happens.
-[^6]: Except on _Wayland_ based Linux systems (e.g. Ubuntu), on which the idle time starts _after the session has been locked_.
-[^7]: In fact, in the original _When_ the DBus based conditions and events were considered an advanced feature: even the dialog box that allowed the configuration of user-defined DBus events was only available through a specific invocation using the command line.
-[^8]: See the [DBus Specification](https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types) for the complete list of supported types, and the ASCII character that identifies each of them.
-[^9]: in DBus, strings and object paths are considered different types.
+[^5]: Executables compiled in _debug mode_, however, do not consider an active release instance as running, and the instance check option will only report an active debug instance to a debug instance, and an active release instance to a release instance.
+[^6]: In this case the execution will continue as long as the outcome is _undefined_ until the first success or failure happens.
+[^7]: Except on _Wayland_ based Linux systems (e.g. Ubuntu), on which the idle time starts _after the session has been locked_.
+[^8]: In fact, in the original _When_ the DBus based conditions and events were considered an advanced feature: even the dialog box that allowed the configuration of user-defined DBus events was only available through a specific invocation using the command line.
+[^9]: See the [DBus Specification](https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types) for the complete list of supported types, and the ASCII character that identifies each of them.
+[^10]: in DBus, strings and object paths are considered different types.

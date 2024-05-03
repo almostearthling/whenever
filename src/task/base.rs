@@ -19,6 +19,7 @@ use crate::constants::*;
 /// **Note**: the methods prefixed with an underscore must be defined in
 ///           the types implementing the trait, but *must not* be used
 ///           by the trait object users.
+#[allow(dead_code)]
 pub trait Task: Send {
 
     /// Mandatory ID setter for registration.

@@ -25,6 +25,7 @@ use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
 
 
+#[allow(dead_code)]
 pub trait Event: Send + Sync {
 
     /// Mandatory ID setter for registration.
