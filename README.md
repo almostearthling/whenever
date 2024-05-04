@@ -122,7 +122,7 @@ The only elements that should be highlighted are the following:
 * it is possible to suppress colors when logging to console, by specifying `--log-plain` as an argument
 * when run within a wrapper, **whenever** can emit log messages in the JSON format, to make it easier for the wrapper to interpret and classify them
 * **whenever** can be started in paused mode
-* when checking for another running instance, the `whenever --check-running` command exits immediately with a `0` exit code if another istance is found, `1` otherwise: it also writes an answer to the standard output that can be suppressed using the `--quiet` switch.[^5]
+* when checking for another running instance, the `whenever --check-running` command exits immediately with a `0` exit code if another instance is found, `1` otherwise: it also writes an answer to the standard output that can be suppressed using the `--quiet` switch.[^5]
 
 When debugging a configuration file, it might be useful to set the log level at least to _debug_, if not to _trace_ which also emits some redundant messages.
 
