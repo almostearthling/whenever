@@ -380,7 +380,7 @@ impl LuaCondition {
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &s,
                         ERR_INVALID_TASK);
                 }
             }
@@ -446,6 +446,25 @@ impl LuaCondition {
             }
         }
 
+        let cur_key = "check_after";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_int() {
+                return _invalid_cfg(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER);
+            } else {
+                let i = *item.as_int().unwrap();
+                if i < 1 {
+                    return _invalid_cfg(
+                        cur_key,
+                        &i.to_string(),
+                        ERR_INVALID_PARAMETER);
+                }
+                new_condition.check_after = Some(Duration::from_secs(i as u64));
+            }
+        }
+
         // specific optional parameter initialization
         let cur_key = "expect_all";
         if cfgmap.contains_key(cur_key) {
@@ -467,7 +486,7 @@ impl LuaCondition {
                 if !item.is_map() {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        STR_UNKNOWN_VALUE,
                         ERR_INVALID_PARAMETER);
                 } else {
                     let map = item.as_map().unwrap();
@@ -476,7 +495,7 @@ impl LuaCondition {
                         if !RE_VAR_NAME.is_match(name) {
                             return _invalid_cfg(
                                 cur_key,
-                                item.as_str().unwrap(),
+                                &name,
                                 ERR_INVALID_VAR_NAME);
                         } else if let Some(value) = map.get(name) {
                             if value.is_int() {
@@ -500,7 +519,7 @@ impl LuaCondition {
                         } else {
                             return _invalid_cfg(
                                 cur_key,
-                                item.as_str().unwrap(),
+                                &name,
                                 ERR_INVALID_VAR_NAME);
                         }
                     }

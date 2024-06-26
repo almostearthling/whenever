@@ -584,7 +584,7 @@ impl CommandCondition {
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &s,
                         ERR_INVALID_TASK);
                 }
             }
@@ -725,7 +725,7 @@ impl CommandCondition {
                     if !RE_ENVVAR_NAME.is_match(name) {
                         return _invalid_cfg(
                             cur_key,
-                            item.as_str().unwrap(),
+                            &name,
                             ERR_INVALID_ENVVAR_NAME);
                     } else if let Some(value) = map.get(name) {
                         if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
@@ -759,7 +759,7 @@ impl CommandCondition {
                 if i < 1 {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &i.to_string(),
                         ERR_INVALID_PARAMETER);
                 }
                 new_condition.check_after = Some(Duration::from_secs(i as u64));
@@ -800,7 +800,7 @@ impl CommandCondition {
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
                     cur_key,
-                    item.as_str().unwrap(),
+                    &i.to_string(),
                     ERR_INVALID_PARAMETER);
             }
             new_condition.success_status = Some(i as u32);
@@ -840,7 +840,7 @@ impl CommandCondition {
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
                     cur_key,
-                    item.as_str().unwrap(),
+                    &i.to_string(),
                     ERR_INVALID_PARAMETER);
             }
             new_condition.failure_status = Some(i as u32);
@@ -858,7 +858,7 @@ impl CommandCondition {
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
                     cur_key,
-                    item.as_str().unwrap(),
+                    &i.to_string(),
                     ERR_INVALID_PARAMETER);
             }
             new_condition.timeout = Some(Duration::from_secs(i as u64));

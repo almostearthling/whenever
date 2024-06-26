@@ -928,7 +928,7 @@ impl DbusMethodCondition {
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &s,
                         ERR_INVALID_TASK);
                 }
             }
@@ -1007,7 +1007,7 @@ impl DbusMethodCondition {
                 if i < 1 {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &i.to_string(),
                         ERR_INVALID_PARAMETER);
                 }
                 new_condition.check_after = Some(Duration::from_secs(i as u64));

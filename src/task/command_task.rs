@@ -581,7 +581,7 @@ impl CommandTask {
                     if !RE_VAR_NAME.is_match(name) {
                         return _invalid_cfg(
                             cur_key,
-                            item.as_str().unwrap(),
+                            &name,
                             ERR_INVALID_ENVVAR_NAME);
                     } else if let Some(value) = map.get(name) {
                         if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
@@ -638,7 +638,7 @@ impl CommandTask {
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
                     cur_key,
-                    item.as_str().unwrap(),
+                    &i.to_string(),
                     ERR_INVALID_PARAMETER);
             }
             new_task.success_status = Some(i as u32);
@@ -678,7 +678,7 @@ impl CommandTask {
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
                     cur_key,
-                    item.as_str().unwrap(),
+                    &i.to_string(),
                     ERR_INVALID_PARAMETER);
             }
             new_task.failure_status = Some(i as u32);
@@ -696,7 +696,7 @@ impl CommandTask {
             if i < 0 || i as u64 > std::u32::MAX.into() {
                 return _invalid_cfg(
                     cur_key,
-                    item.as_str().unwrap(),
+                    &i.to_string(),
                     ERR_INVALID_PARAMETER);
             }
             new_task.timeout = Some(Duration::from_secs(i as u64));
