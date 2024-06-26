@@ -320,7 +320,7 @@ impl LuaTask {
                 if !item.is_map() {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        STR_UNKNOWN_VALUE,
                         ERR_INVALID_PARAMETER);
                 } else {
                     let map = item.as_map().unwrap();
@@ -329,7 +329,7 @@ impl LuaTask {
                         if !RE_VAR_NAME.is_match(name) {
                             return _invalid_cfg(
                                 cur_key,
-                                item.as_str().unwrap(),
+                                &name,
                                 ERR_INVALID_VAR_NAME);
                         } else if let Some(value) = map.get(name) {
                             if value.is_int() {
@@ -353,7 +353,7 @@ impl LuaTask {
                         } else {
                             return _invalid_cfg(
                                 cur_key,
-                                item.as_str().unwrap(),
+                                &name,
                                 ERR_INVALID_VAR_NAME);
                         }
                     }

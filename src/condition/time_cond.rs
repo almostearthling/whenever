@@ -446,7 +446,7 @@ impl TimeCondition {
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &s,
                         ERR_INVALID_TASK);
                 }
             }

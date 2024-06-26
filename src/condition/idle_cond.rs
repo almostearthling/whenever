@@ -238,7 +238,7 @@ impl IdleCondition {
                 if i < 0 {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &i.to_string(),
                         ERR_INVALID_PARAMETER);
                 }
                 idle_seconds = Duration::from_secs(i as u64);
@@ -285,7 +285,7 @@ impl IdleCondition {
                 if !new_condition.add_task(&s)? {
                     return _invalid_cfg(
                         cur_key,
-                        item.as_str().unwrap(),
+                        &s,
                         ERR_INVALID_TASK);
                 }
             }
