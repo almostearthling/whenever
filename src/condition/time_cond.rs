@@ -796,7 +796,7 @@ impl Condition for TimeCondition {
             LOG_STATUS_MSG,
             &format!(
                 "checking time based condition (at: {})",
-                dt.to_rfc3339()),
+                dt.format("%Y-%m-%dT%H:%M:%S [%a]")),
         );
 
         for tspec in self.time_specifications.iter() {
