@@ -3,7 +3,7 @@ name = "whenever"
 description = "Lightweight task scheduler and automation tool"
 readme = "README.md"
 license = "LGPL-2.1-or-later"
-version = "0.1.25"
+version = "0.2.1"
 authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 repository = "https://github.com/almostearthling/whenever/"
 edition = "2021"
@@ -33,6 +33,7 @@ notify = "6.0.0"
 async-std = "1.12.0"
 zbus = "3.13.1"
 whoami = "1.4.1"
+itertools = "0.8.2"
 
 # user-idle has a problem on wayland-based sessions: work around by using
 # user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }

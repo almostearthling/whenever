@@ -6,6 +6,8 @@
 //! main program acts as its service instead.
 
 
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use cfgmap::CfgMap;
 
 use super::base::Event;
@@ -37,6 +39,21 @@ pub struct ManualCommandEvent {
 
     // internal values
     // (none here)
+}
+
+// implement the hash protocol
+impl Hash for ManualCommandEvent {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.event_name.hash(state);
+        if let Some(s) = &self.condition_name {
+            s.hash(state);
+        }
+
+        // specific part
+        // (none here)
+    }
+
 }
 
 
@@ -229,6 +246,14 @@ impl Event for ManualCommandEvent {
     fn set_id(&mut self, id: i64) { self.event_id = id; }
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
+
 
     fn requires_thread(&self) -> bool { false }
 

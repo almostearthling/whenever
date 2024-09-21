@@ -8,6 +8,7 @@
 
 use std::time::{Instant, Duration};
 use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use cfgmap::{CfgMap, CfgValue};
 use regex::Regex;
@@ -31,7 +32,7 @@ const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 
 
 // an enum to store the operators for checking signal parameters
-#[derive(PartialEq)]
+#[derive(PartialEq, Hash)]
 enum ParamCheckOperator {
     Equal,              // "eq"
     NotEqual,           // "neq"
@@ -54,6 +55,7 @@ enum ParameterCheckValue {
 }
 
 // an enum containing the possible types of indexes for parameters
+#[derive(Hash)]
 enum ParameterIndex {
     Integer(u64),
     String(String),
@@ -73,6 +75,22 @@ struct ParameterCheckTest {
     index: Vec<ParameterIndex>,
     operator: ParamCheckOperator,
     value: ParameterCheckValue,
+}
+
+
+// implement the hash protocol for ParameterCheckTest
+impl Hash for ParameterCheckTest {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+        self.operator.hash(state);
+        match &self.value {
+            ParameterCheckValue::Boolean(x) => x.hash(state),
+            ParameterCheckValue::Integer(x) => x.hash(state),
+            ParameterCheckValue::Float(x) => x.to_bits().hash(state),
+            ParameterCheckValue::String(x) => x.hash(state),
+            ParameterCheckValue::Regex(x) => x.as_str().hash(state),
+        }
+    }
 }
 
 
@@ -469,6 +487,67 @@ pub struct DbusMethodCondition {
 
     // internal values
     check_last: Instant,
+}
+
+
+// implement the hash protocol
+impl Hash for DbusMethodCondition {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.cond_name.hash(state);
+        self.recurring.hash(state);
+        self.exec_sequence.hash(state);
+        self.break_on_failure.hash(state);
+        self.break_on_success.hash(state);
+        // suspended is more a status: let's not consider it yet
+        // self.suspended.hash(state);
+        // task order is significant: hash on vec is not sorted
+        self.task_names.hash(state);
+
+        // specific part
+        self.param_checks_all.hash(state);
+
+        // 0 is hashed on the else branch in order to avoid that adjacent
+        // strings one of which is undefined allow for hash collisions
+        if let Some(x) = &self.bus {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.service {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.object_path {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.interface {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.method {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+
+        // let's hope that to_string is a correct representation of the
+        if let Some(x) = &self.param_call {
+            for elem in x{
+                elem.to_string().hash(state);
+            }
+        } else {
+            0.hash(state);
+        }
+
+        self.param_checks.hash(state);
+        self.param_checks_all.hash(state);
+        self.check_after.hash(state);
+    }
 }
 
 
@@ -1278,6 +1357,13 @@ impl Condition for DbusMethodCondition {
     fn get_name(&self) -> String { self.cond_name.clone() }
     fn get_id(&self) -> i64 { self.cond_id }
     fn get_type(&self) -> &str { "interval" }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {

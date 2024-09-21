@@ -15,6 +15,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
 use std::collections::HashSet;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use cfgmap::CfgMap;
 
@@ -115,6 +116,25 @@ pub struct BucketCondition {
     execution_bucket: Option<&'static ExecutionBucket>,
 }
 
+
+// implement the hash protocol
+impl Hash for BucketCondition {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.cond_name.hash(state);
+        self.recurring.hash(state);
+        self.exec_sequence.hash(state);
+        self.break_on_failure.hash(state);
+        self.break_on_success.hash(state);
+        // suspended is more a status: let's not consider it yet
+        // self.suspended.hash(state);
+        // task order is significant: hash on vec is not sorted
+        self.task_names.hash(state);
+
+        // specific part
+        self.declared_type.hash(state);
+    }
+}
 
 
 #[allow(dead_code)]
@@ -419,6 +439,13 @@ impl Condition for BucketCondition {
     fn get_name(&self) -> String { self.cond_name.clone() }
     fn get_id(&self) -> i64 { self.cond_id }
     fn get_type(&self) -> &str { self.declared_type.as_str() }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {

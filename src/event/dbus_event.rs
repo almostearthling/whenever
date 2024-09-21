@@ -7,6 +7,7 @@
 
 use cfgmap::{CfgMap, CfgValue};
 use regex::Regex;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use async_std::task;
 use zbus::{self, AsyncDrop};
@@ -29,7 +30,7 @@ const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 
 
 /// an enum to store the operators for checking signal parameters
-#[derive(PartialEq)]
+#[derive(PartialEq, Hash)]
 enum ParamCheckOperator {
     Equal,              // "eq"
     NotEqual,           // "neq"
@@ -52,6 +53,7 @@ enum ParameterCheckValue {
 }
 
 /// an enum containing the possible types of indexes for parameters
+#[derive(Hash)]
 enum ParameterIndex {
     Integer(u64),
     String(String),
@@ -71,6 +73,22 @@ struct ParameterCheckTest {
     index: Vec<ParameterIndex>,
     operator: ParamCheckOperator,
     value: ParameterCheckValue,
+}
+
+
+// implement the hash protocol for ParameterCheckTest
+impl Hash for ParameterCheckTest {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+        self.operator.hash(state);
+        match &self.value {
+            ParameterCheckValue::Boolean(x) => x.hash(state),
+            ParameterCheckValue::Integer(x) => x.hash(state),
+            ParameterCheckValue::Float(x) => x.to_bits().hash(state),
+            ParameterCheckValue::String(x) => x.hash(state),
+            ParameterCheckValue::Regex(x) => x.as_str().hash(state),
+        }
+    }
 }
 
 
@@ -279,6 +297,38 @@ pub struct DbusMessageEvent {
 
     // internal values
     // (none here)
+}
+
+// implement the hash protocol
+impl Hash for DbusMessageEvent {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.event_name.hash(state);
+        if let Some(s) = &self.condition_name {
+            s.hash(state);
+        }
+
+        // specific part
+        // 0 is hashed on the else branch in order to avoid that adjacent
+        // strings one of which is undefined allow for hash collisions
+        if let Some(x) = &self.bus {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.match_rule {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.param_checks {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        self.param_checks_all.hash(state);
+    }
+
 }
 
 
@@ -793,6 +843,14 @@ impl Event for DbusMessageEvent {
     fn set_id(&mut self, id: i64) { self.event_id = id; }
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
+
 
     fn requires_thread(&self) -> bool { true }  // maybe false, let's see
 

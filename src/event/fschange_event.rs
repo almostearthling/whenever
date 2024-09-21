@@ -8,6 +8,7 @@
 
 use std::path::PathBuf;
 use std::time::Duration;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use notify::{self, Watcher};
 use cfgmap::CfgMap;
@@ -50,6 +51,29 @@ pub struct FilesystemChangeEvent {
 
     // internal values
     // (none here)
+}
+
+// implement the hash protocol
+impl Hash for FilesystemChangeEvent {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.event_name.hash(state);
+        if let Some(s) = &self.condition_name {
+            s.hash(state);
+        }
+
+        // specific part
+        if let Some(x) = &self.watched_locations {
+            let mut sorted = x.clone();
+            sorted.sort();
+            sorted.hash(state);
+        } else {
+            0.hash(state);
+        }
+        self.poll_seconds.hash(state);
+        self.recursive.hash(state);
+    }
+
 }
 
 
@@ -338,6 +362,14 @@ impl Event for FilesystemChangeEvent {
     fn set_id(&mut self, id: i64) { self.event_id = id; }
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
+
 
     fn requires_thread(&self) -> bool { true }  // maybe false, let's see
 

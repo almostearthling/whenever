@@ -8,6 +8,9 @@
 
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, Duration};
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use itertools::Itertools;
 
 use cfgmap::CfgMap;
 use rlua;
@@ -70,6 +73,39 @@ pub struct LuaCondition {
 
     // internal values
     check_last: Instant,
+}
+
+
+// implement the hash protocol
+impl Hash for LuaCondition {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.cond_name.hash(state);
+        self.recurring.hash(state);
+        self.exec_sequence.hash(state);
+        self.break_on_failure.hash(state);
+        self.break_on_success.hash(state);
+        // suspended is more a status: let's not consider it yet
+        // self.suspended.hash(state);
+        // task order is significant: hash on vec is not sorted
+        self.task_names.hash(state);
+
+        // specific part
+        self.script.hash(state);
+        self.set_vars.hash(state);
+        self.expect_all.hash(state);
+
+        // expected values is sorted because the order in which they are
+        // defined is not significant
+        for key in self.expected.keys().sorted() {
+            key.hash(state);
+            match &self.expected[key] {
+                LuaValue::LuaBoolean(x) => x.hash(state),
+                LuaValue::LuaNumber(x) => x.to_bits().hash(state),
+                LuaValue::LuaString(x) => x.hash(state),
+            }
+        }
+    }
 }
 
 
@@ -546,6 +582,13 @@ impl Condition for LuaCondition {
     fn get_name(&self) -> String { self.cond_name.clone() }
     fn get_id(&self) -> i64 { self.cond_id }
     fn get_type(&self) -> &str { "lua" }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {

@@ -9,6 +9,9 @@
 
 use std::collections::HashMap;
 use std::time::SystemTime;
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use itertools::Itertools;
 
 use cfgmap::CfgMap;
 use rlua;
@@ -58,6 +61,27 @@ pub struct LuaTask {
     expect_all: bool,
 }
 
+
+// implement the hash protocol
+impl Hash for LuaTask {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.task_name.hash(state);
+        self.script.hash(state);
+        self.set_vars.hash(state);
+        self.expect_all.hash(state);
+
+        // expected values is sorted because the order in which they are
+        // defined is not significant
+        for key in self.expected.keys().sorted() {
+            key.hash(state);
+            match &self.expected[key] {
+                LuaValue::LuaBoolean(x) => x.hash(state),
+                LuaValue::LuaNumber(x) => x.to_bits().hash(state),
+                LuaValue::LuaString(x) => x.hash(state),
+            }
+        }
+    }
+}
 
 
 #[allow(dead_code)]
@@ -376,6 +400,13 @@ impl Task for LuaTask {
     fn get_name(&self) -> String { self.task_name.clone() }
     fn get_id(&self) -> i64 { self.task_id }
 
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
     /// Execute this `LuaTask`
     ///

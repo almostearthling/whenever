@@ -20,6 +20,7 @@
 
 
 use std::time::Instant;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use chrono::prelude::*;
 use cfgmap::CfgMap;
@@ -41,6 +42,48 @@ struct TimeSpecification {
     hour: Option<u32>,          // 0, ..., 23
     minute: Option<u32>,        // 0, ..., 59
     second: Option<u32>,        // 0, ..., 59
+}
+
+
+// here it's easier to implement the hash protocol for a timespec
+impl Hash for TimeSpecification {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        if let Some(x) = self.year {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = self.month {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = self.day {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = self.dow {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = self.hour {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = self.minute {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = self.second {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+    }
 }
 
 
@@ -149,6 +192,29 @@ pub struct TimeCondition {
     // parameters
     time_specifications: Vec<TimeSpecification>,
     tick_duration: i64,
+}
+
+
+// implement the hash protocol
+impl Hash for TimeCondition {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.cond_name.hash(state);
+        self.recurring.hash(state);
+        self.exec_sequence.hash(state);
+        self.break_on_failure.hash(state);
+        self.break_on_success.hash(state);
+        // suspended is more a status: let's not consider it yet
+        // self.suspended.hash(state);
+        // task order is significant: hash on vec is not sorted
+        self.task_names.hash(state);
+
+        // specific part
+        self.tick_duration.hash(state);
+
+        // time specifications support the hash protocol
+        self.time_specifications.hash(state);
+    }
 }
 
 
@@ -672,6 +738,13 @@ impl Condition for TimeCondition {
     fn get_name(&self) -> String { self.cond_name.clone() }
     fn get_id(&self) -> i64 { self.cond_id }
     fn get_type(&self) -> &str { "time" }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {

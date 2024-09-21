@@ -31,7 +31,22 @@ pub trait Task: Send {
     /// Return the ID of the `Task`.
     fn get_id(&self) -> i64;
 
-    /// Internally called to actually execute the task.
+    /// Tell whether or not another `Task` is equal to this
+    fn eq(&self, other: Box<dyn Task>) -> bool {
+        self._hash() == other._hash()
+    }
+
+    /// Tell whether or not another `Task` is not equal to this
+    fn ne(&self, other: Box<dyn Task>) -> bool {
+        !self.eq(other)
+    }
+
+    /// Internally called to implement `eq()` and `neq()`: hash calculation
+    /// is costly in terms of time and possibly CPU, but it is supposed to
+    /// take place very seldomly, near to almost never
+    fn _hash(&self) -> u64;
+
+    /// Internally called to actually execute the `Task`.
     fn _run(
         &mut self,
         trigger_name: &str,

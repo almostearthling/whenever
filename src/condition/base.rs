@@ -57,6 +57,21 @@ pub trait Condition: Send {
     /// Mandatory task registry getter.
     fn task_registry(&self) -> Option<&'static TaskRegistry>;
 
+    /// Tell whether or not another `Condition` is equal to this
+    fn eq(&self, other: Box<dyn Condition>) -> bool {
+        self._hash() == other._hash()
+    }
+
+    /// Tell whether or not another `Condition` is not equal to this
+    fn ne(&self, other: Box<dyn Condition>) -> bool {
+        !self.eq(other)
+    }
+
+    /// Internally called to implement `eq()` and `neq()`: hash calculation
+    /// is costly in terms of time and possibly CPU, but it is supposed to
+    /// take place very seldomly, near to almost never
+    fn _hash(&self) -> u64;
+
 
     /// Return `true` if the condition is _suspended_.
     fn suspended(&self) -> bool;

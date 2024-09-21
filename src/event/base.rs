@@ -60,6 +60,21 @@ pub trait Event: Send + Sync {
     /// Condition bucket getter.
     fn condition_bucket(&self) -> Option<&'static ExecutionBucket>;
 
+    /// Tell whether or not another `Event` is equal to this
+    fn eq(&self, other: Box<dyn Event>) -> bool {
+        self._hash() == other._hash()
+    }
+
+    /// Tell whether or not another `Event` is not equal to this
+    fn ne(&self, other: Box<dyn Event>) -> bool {
+        !self.eq(other)
+    }
+
+    /// Internally called to implement `eq()` and `neq()`: hash calculation
+    /// is costly in terms of time and possibly CPU, but it is supposed to
+    /// take place very seldomly, near to almost never
+    fn _hash(&self) -> u64;
+
 
     /// Assign a condition to the event
     ///

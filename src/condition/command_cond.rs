@@ -20,6 +20,9 @@ use std::io::ErrorKind;
 use std::time::{Instant, SystemTime, Duration};
 use std::path::PathBuf;
 use std::ffi::OsString;
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use itertools::Itertools;
 
 use subprocess::{Popen, PopenConfig, Redirection, ExitStatus, PopenError};
 
@@ -94,6 +97,77 @@ pub struct CommandCondition {
     _process_status: u32,
     _process_failed: bool,
     _process_duration: Duration,
+}
+
+
+// implement the hash protocol
+impl Hash for CommandCondition {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.cond_name.hash(state);
+        self.recurring.hash(state);
+        self.exec_sequence.hash(state);
+        self.break_on_failure.hash(state);
+        self.break_on_success.hash(state);
+        // suspended is more a status: let's not consider it yet
+        // self.suspended.hash(state);
+        // task order is significant: hash on vec is not sorted
+        self.task_names.hash(state);
+
+        // specific part
+        self.command.hash(state);
+        self.args.hash(state);
+        self.startup_dir.hash(state);
+        self.match_exact.hash(state);
+        self.match_regexp.hash(state);
+        self.case_sensitive.hash(state);
+        self.include_env.hash(state);
+        self.set_envvars.hash(state);
+        self.timeout.hash(state);
+
+        // 0 is hashed on the else branch because if we get two items, for
+        // instance, one of which has only success_stdout defined as a string
+        // and the other which has only success_stderr defined as the very
+        // same string, they might have the same hash being in fact different
+        if let Some(x) = self.success_status {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.success_stdout {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.success_stderr {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+
+        if let Some(x) = self.failure_status {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.failure_stdout {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.failure_stderr {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+
+        // the keys are sorted because the order in which environment vars
+        // are defined is actually not significant
+        for key in self.environment_vars.keys().sorted() {
+            key.hash(state);
+            self.environment_vars[key].hash(state);
+        }
+    }
 }
 
 
@@ -881,6 +955,13 @@ impl Condition for CommandCondition {
     fn get_name(&self) -> String { self.cond_name.clone() }
     fn get_id(&self) -> i64 { self.cond_id }
     fn get_type(&self) -> &str { "command" }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
