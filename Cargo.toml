@@ -31,7 +31,8 @@ serde_json = "1.0.95"
 single-instance = "0.3.3"
 notify = "6.0.0"
 async-std = "1.12.0"
-zbus = "3.13.1"
+# zbus = "4.4.0"    # unresolved import `windows_sys::Win32::Networking::WinSock::WSAIoctl`
+zbus = "3.15.2"
 whoami = "1.4.1"
 itertools = "0.8.2"
 

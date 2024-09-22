@@ -148,13 +148,13 @@ impl TimeSpecification {
             {
                 if let Some(dow) = self.dow {
                     match dow {
-                        1 => "sun",
-                        2 => "mon",
-                        3 => "tue",
-                        4 => "wed",
-                        5 => "thu",
-                        6 => "fri",
-                        7 => "sat",
+                        1 => "Sun",
+                        2 => "Mon",
+                        3 => "Tue",
+                        4 => "Wed",
+                        5 => "Thu",
+                        6 => "Fri",
+                        7 => "Sat",
                         _ => "???",
                     }
                 } else { "___" }
