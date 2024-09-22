@@ -268,9 +268,9 @@ fn configure_events(
     cfgmap: &CfgMap,
     event_registry: &'static EventRegistry,
     cond_registry: &'static ConditionRegistry,
+    event_handles: &mut Vec<JoinHandle<Result<bool, std::io::Error>>>,
     bucket: &'static ExecutionBucket,
-) -> std::io::Result<Vec<JoinHandle<Result<bool, std::io::Error>>>> {
-    let mut res: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
+) -> std::io::Result<()> {
 
     if let Some(event_map) = cfgmap.get("event") {
         if !event_map.is_list() {
@@ -299,7 +299,7 @@ fn configure_events(
                                 ));
                             } else if let Ok(r) = event_registry.install_service(&event_name) {
                                 if let Some(h) = r {
-                                    res.push(h);
+                                    event_handles.push(h);
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_MAIN,
@@ -338,7 +338,7 @@ fn configure_events(
                                 ));
                             } else if let Ok(r) = event_registry.install_service(&event_name) {
                                 if let Some(h) = r {
-                                    res.push(h);
+                                    event_handles.push(h);
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_MAIN,
@@ -377,7 +377,7 @@ fn configure_events(
                                 ));
                             } else if let Ok(r) = event_registry.install_service(&event_name) {
                                 if let Some(h) = r {
-                                    res.push(h);
+                                    event_handles.push(h);
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_MAIN,
@@ -424,24 +424,30 @@ fn configure_events(
         }
     }
 
-    Ok(res)
+    // event_handles = &res;
+    Ok(())
 }
 
 
 
-/// Configure all items given a configuration map: returns the handles to
-/// the threads that have been possibly created to catch events
+/// Configure all items given a configuration map
 pub fn configure_items(
     cfgmap: &CfgMap,
     task_registry: &'static TaskRegistry,
     cond_registry: &'static ConditionRegistry,
     event_registry: &'static EventRegistry,
+    // passing the event_handles array here is temporary: the final implementation
+    // should discharge the main() function from the duty of joining those threads,
+    // they are to be handled at the event registry level in order to be dynamically
+    // started and stopped
+    event_handles: &mut Vec<JoinHandle<Result<bool, std::io::Error>>>,
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
-) -> std::io::Result<Vec<JoinHandle<Result<bool, std::io::Error>>>> {
+) -> std::io::Result<()> {
     configure_tasks(cfgmap, task_registry)?;
     configure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
-    configure_events(cfgmap, event_registry, cond_registry, bucket)
+    configure_events(cfgmap, event_registry, cond_registry, event_handles, bucket)?;
+    Ok(())
 }
 
 

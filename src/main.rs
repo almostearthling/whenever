@@ -11,6 +11,7 @@ use std::io::{stdin, Stdin, BufRead};
 use std::thread;
 use std::sync::Mutex;
 use std::time::Duration;
+use std::thread::JoinHandle;
 
 use lazy_static::lazy_static;
 
@@ -54,6 +55,13 @@ lazy_static! {
 
     // the execution bucket for the bucket/event based conditions
     static ref EXECUTION_BUCKET: ExecutionBucket = ExecutionBucket::new();
+
+    // array of handles for threads that might be started by event listeners
+    // WARNING: for now left alone, it would have to be synchronized and possibly
+    //          deserves a registry on its own or to be implemented in the event
+    //          registry itself in order to dynamically add or remove listeners;
+    //          the main function cannot to this job on its own
+    // static ref EVENT_HANDLES: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
 
     // single instance name
     static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-{APP_GUID}", username());
@@ -965,11 +973,13 @@ fn main() {
         .unwrap_or(&DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS);
 
     // configure items given the parsed configuration map
-    let mut _handles = exit_if_fails!(args.quiet, configure_items(
+    let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
+    exit_if_fails!(args.quiet, configure_items(
         &configuration,
         &TASK_REGISTRY,
         &CONDITION_REGISTRY,
         &EVENT_REGISTRY,
+        &mut _handles,
         &EXECUTION_BUCKET,
         scheduler_tick_seconds,
     ));

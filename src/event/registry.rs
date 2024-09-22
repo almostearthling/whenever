@@ -164,6 +164,7 @@ impl EventRegistry {
                 let Ok(mx) = Arc::try_unwrap(r) else {
                     panic!("cannot extract referenced event {name}")
                 };
+                // WARNING: we should also uninstall the related service if any!
                 let mut event = mx
                     .into_inner()
                     .expect("cannot extract locked event");
