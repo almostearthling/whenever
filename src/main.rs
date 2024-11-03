@@ -9,7 +9,7 @@
 
 use std::io::{stdin, Stdin, BufRead};
 use std::thread;
-use std::sync::Mutex;
+use std::sync::RwLock;
 use std::time::Duration;
 use std::thread::JoinHandle;
 
@@ -67,13 +67,13 @@ lazy_static! {
     static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-{APP_GUID}", username());
 
     // set this if the application must exit
-    static ref APPLICATION_MUST_EXIT: Mutex<bool> = Mutex::new(false);
+    static ref APPLICATION_MUST_EXIT: RwLock<bool> = RwLock::new(false);
 
     // set this if the application must exit
-    static ref APPLICATION_FORCE_EXIT: Mutex<bool> = Mutex::new(false);
+    static ref APPLICATION_FORCE_EXIT: RwLock<bool> = RwLock::new(false);
 
     // set this if the application must exit
-    static ref APPLICATION_IS_PAUSED: Mutex<bool> = Mutex::new(false);
+    static ref APPLICATION_IS_PAUSED: RwLock<bool> = RwLock::new(false);
 
     // types of conditions whose tick cannot be delayed
     static ref NO_DELAY_CONDITIONS: Vec<String> = vec![
@@ -109,7 +109,7 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // the new thread the tick might wait for a random duration,
 fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
     // skip if application is paused
-    if *APPLICATION_IS_PAUSED.lock().unwrap() {
+    if *APPLICATION_IS_PAUSED.read().unwrap() {
         log(
             LogType::Trace,
             LOG_EMITTER_MAIN,
@@ -525,7 +525,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_MSG,
                             "exit request received: terminating application",
                         );
-                        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                        *APPLICATION_MUST_EXIT.write().unwrap() = true;
                     }
                 }
                 "kill" => {
@@ -549,8 +549,8 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_MSG,
                             "kill request received: terminating application immediately",
                         );
-                        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
-                        *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
+                        *APPLICATION_MUST_EXIT.write().unwrap() = true;
+                        *APPLICATION_FORCE_EXIT.write().unwrap() = true;
                     }
                 }
                 "pause" => {
@@ -564,7 +564,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_ERR,
                             &format!("command `{cmd}` does not support arguments"),
                         );
-                    } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    } else if *APPLICATION_IS_PAUSED.read().unwrap() {
                         log(
                             LogType::Warn,
                             LOG_EMITTER_MAIN,
@@ -584,7 +584,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_MSG,
                             "pausing scheduler ticks: conditions not checked until resume",
                         );
-                        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+                        *APPLICATION_IS_PAUSED.write().unwrap() = true;
                     }
                 }
                 "resume" => {
@@ -598,7 +598,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_ERR,
                             &format!("command `{cmd}` does not support arguments"),
                         );
-                    } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    } else if *APPLICATION_IS_PAUSED.read().unwrap() {
                         log(
                             LogType::Debug,
                             LOG_EMITTER_MAIN,
@@ -615,7 +615,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                         // correct to just obey instructions and verify conditions
                         // associated to these events: commented out for now)
                         // EXECUTION_BUCKET.clear();
-                        *APPLICATION_IS_PAUSED.lock().unwrap() = false;
+                        *APPLICATION_IS_PAUSED.write().unwrap() = false;
                     } else {
                         log(
                             LogType::Warn,
@@ -803,6 +803,21 @@ fn interpret_commands() -> std::io::Result<bool> {
 }
 
 
+// the following is another separate thread for event registry management
+// NOTE: for now it is just a placeholder for the actual function
+fn manage_event_registry() -> std::io::Result<bool> {
+    let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
+
+    loop {
+        if *APPLICATION_MUST_EXIT.read().unwrap() {
+            break;
+        }
+        thread::sleep(rest_time);
+    }
+
+    Ok(true)
+}
+
 
 // argument parsing and command execution: doc comments are used by clap
 use clap::{Parser, ValueEnum};
@@ -942,7 +957,7 @@ fn main() {
             LOG_STATUS_MSG,
             "caught interruption request: terminating application",
         );
-        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+        *APPLICATION_MUST_EXIT.write().unwrap() = true;
     }));
 
     // write a banner to the log file, stating app name and version
@@ -972,6 +987,12 @@ fn main() {
         .as_bool()
         .unwrap_or(&DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS);
 
+    // before actual configuration the event service manager provided by
+    // the event registry must be started, so that all configured event
+    // services can be enqueued for startup at the beginning; this could
+    // actually take place also after the configuration step
+    event::registry::EventRegistry::start_event_service_manager(&EVENT_REGISTRY);
+
     // configure items given the parsed configuration map
     let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
     exit_if_fails!(args.quiet, configure_items(
@@ -996,11 +1017,14 @@ fn main() {
             LOG_STATUS_MSG,
             "starting in paused mode",
         );
-        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+        *APPLICATION_IS_PAUSED.write().unwrap() = true;
     }
 
     // add a thread for stdin interpreter (no args function thus no closure)
     _handles.push(thread::spawn(interpret_commands));
+
+    // add a thread to handle event registry management (same as above)
+    _handles.push(thread::spawn(manage_event_registry));
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
@@ -1024,11 +1048,15 @@ fn main() {
 
     // free_pending must be a fraction of scheduler tick interval (say 1/10)
     let free_pending = Duration::from_millis(scheduler_tick_seconds * 100);
+
+    // the main loop mostly sleeps, just to wake up every `free_pending` msecs
+    // and tell the scheduler to do its job checking conditions, check whether
+    // the exit flags are set and, if this is the case, set up things to exit
     loop {
         sched.run_pending();
         thread::sleep(free_pending);
-        if *APPLICATION_MUST_EXIT.lock().unwrap() {
-            if *APPLICATION_FORCE_EXIT.lock().unwrap() {
+        if *APPLICATION_MUST_EXIT.read().unwrap() {
+            if *APPLICATION_FORCE_EXIT.read().unwrap() {
                 log(
                     LogType::Warn,
                     LOG_EMITTER_MAIN,

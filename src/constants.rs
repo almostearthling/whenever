@@ -127,6 +127,7 @@ pub const LOG_ACTION_TICK: &str = "tick";
 pub const LOG_ACTION_FIRE: &str = "fire";
 pub const LOG_ACTION_TRIGGER: &str = "trigger";
 pub const LOG_ACTION_INSTALL: &str = "install";
+pub const LOG_ACTION_UNINSTALL: &str = "uninstall";
 pub const LOG_ACTION_ACTIVE: &str = "active";
 pub const LOG_ACTION_LUA: &str = "exec_lua";
 pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
@@ -152,6 +153,7 @@ pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 // operational values
 pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;
+pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100;
 
 
 // crate-wide values

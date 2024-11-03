@@ -8,6 +8,7 @@
 use cfgmap::{CfgMap, CfgValue};
 use regex::Regex;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::RwLock;
 
 use async_std::task;
 use zbus::{self, AsyncDrop};
@@ -296,7 +297,8 @@ pub struct DbusMessageEvent {
     param_checks_all: bool,
 
     // internal values
-    // (none here)
+    thread_running: RwLock<bool>,
+    must_exit: RwLock<bool>,
 }
 
 // implement the hash protocol
@@ -366,6 +368,8 @@ impl DbusMessageEvent {
             param_checks_all: false,
 
             // internal values
+            thread_running: RwLock::new(false),
+            must_exit: RwLock::new(false),
         }
     }
 
@@ -878,7 +882,7 @@ impl Event for DbusMessageEvent {
     }
 
 
-    fn _start_service(&self) -> std::io::Result<bool> {
+    fn _run_service(&self) -> std::io::Result<bool> {
 
         // NOTE: the following helpers are async here, but since this service
         //       runs in a dedicated thread, we will just block on every step;
@@ -1000,9 +1004,33 @@ impl Event for DbusMessageEvent {
             LOG_STATUS_OK,
             &format!("successfully subscribed to message on bus `{bus}`"),
         );
+
+        // now that all possibilities to exit have gone it's time to set
+        // the flag that states that the service thread is running
+        if let Ok(mut running) = self.thread_running.write() {
+            *running = true;
+        }
+
         // FIXME: maybe implement [try_for_each](https://docs.rs/futures/latest/futures/stream/trait.TryStreamExt.html#method.try_for_each)
         // instead of continuously looping over the next item?
         loop {
+            // first check whether someone told us we have to exit: if so
+            // exit gently with positive outcome
+            // FIXME: this *will not work*, as the check is only performed
+            // when there is a message on the bus, since we block_on stream!
+            if let Ok(mut quit) = self.must_exit.write() {
+                if *quit {
+                    if let Ok(mut running) = self.thread_running.write() {
+                        // this is useless: if we are here the flag is true
+                        if *running {
+                            *running = false;
+                        }
+                    }
+                    *quit = true;
+                    break;
+                }
+            }
+
             let msg = task::block_on(async {
                 self.log(
                     LogType::Debug,
@@ -1722,6 +1750,64 @@ impl Event for DbusMessageEvent {
             &format!("closing event listening service on bus `{bus}`"),
         );
         Ok(true)
+    }
+
+    fn _stop_service(&self) -> std::io::Result<bool> {
+        if let Ok(running) = self.thread_running.read() {
+            if *running {
+                if let Ok(mut quit) = self.must_exit.write() {
+                    *quit = true;
+                    self.log(
+                        LogType::Info,
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        &format!("the running service has been requested to stop"),
+                    );
+                    Ok(true)
+                } else {
+                    self.log(
+                        LogType::Error,
+                        LOG_WHEN_END,
+                        LOG_STATUS_ERR,
+                        &format!("could not request the service to stop"),
+                    );
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        "could not request the service to stop"
+                    ))
+                }
+            } else {
+                self.log(
+                    LogType::Trace,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("the service is not running: stop request dropped"),
+                );
+                Ok(false)
+            }
+        } else {
+            self.log(
+                LogType::Error,
+                LOG_WHEN_END,
+                LOG_STATUS_ERR,
+                &format!("could not determine whether the service is running"),
+            );
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "could not determine whether the service is running"
+            ))
+        }
+    }
+
+    fn _thread_running(&self) -> std::io::Result<bool> {
+        if let Ok(running) = self.thread_running.read() {
+            Ok(*running)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "could not determine whether the service is running"
+            ))
+        }
     }
 
 }

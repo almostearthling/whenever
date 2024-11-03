@@ -179,8 +179,16 @@ pub trait Event: Send + Sync {
     /// for possible outcome information, or fail with an error.
     ///
     /// **Note**: the worker function must be self-contained, in the sense that
-    ///           it must _not_ modify the internals of the structure.
-    fn _start_service(&self) -> std::io::Result<bool>;
+    ///           it must _not_ modify the internals of the structure, apart
+    ///           from a flag that states that the service thread is running.
+    fn _run_service(&self) -> std::io::Result<bool>;
+
+    /// This must be called to stop the event listening service
+    fn _stop_service(&self) -> std::io::Result<bool>;
+
+    /// This tells whether the service thread (if any) is active or not
+    fn _thread_running(&self) -> std::io::Result<bool>;
+
 
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);

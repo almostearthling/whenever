@@ -283,9 +283,19 @@ impl Event for ManualCommandEvent {
     }
 
 
-    fn _start_service(&self) -> std::io::Result<bool> {
+    fn _run_service(&self) -> std::io::Result<bool> {
         // in this case the service exits immediately without errors
         Ok(true)
+    }
+
+    fn _stop_service(&self) -> std::io::Result<bool> {
+        // in this case the service is already stopped
+        Ok(true)
+    }
+
+    fn _thread_running(&self) -> std::io::Result<bool> {
+        // no special thread is running for this kind of event
+        Ok(false)
     }
 
 }

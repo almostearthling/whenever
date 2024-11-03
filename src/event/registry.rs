@@ -14,6 +14,8 @@ use std::sync::RwLock;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::thread;
+use std::thread::JoinHandle;
+use std::time::Duration;
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
@@ -49,10 +51,16 @@ pub struct EventRegistry {
     // concurrent access to the list itself
     event_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>,
     // the triggerable list is kept separate because the triggerable
-    // attribute is actually a constant that can be retrieved at
-    // startup and we do not want to be blocked while directly asking
-    // an active event on its ability to be manually triggered
+    // attribute is actually a constant that can be retrieved at startup
+    // and we do not want to be blocked while directly asking an active
+    // event on its ability to be manually triggered
     triggerable_event_list: RwLock<HashMap<String, bool>>,
+    // the queue of events whose services need to be installed
+    event_service_install_queue: RwLock<Vec<String>>,
+    // the queue of events whose services are up to be removed
+    event_service_uninstall_queue: RwLock<Vec<String>>,
+    // flag to signal that the event service manager must exit
+    event_service_manager_exiting: RwLock<bool>,
 }
 
 
@@ -64,6 +72,146 @@ impl EventRegistry {
         EventRegistry {
             event_list: RwLock::new(HashMap::new()),
             triggerable_event_list: RwLock::new(HashMap::new()),
+            event_service_install_queue: RwLock::new(Vec::new()),
+            event_service_uninstall_queue: RwLock::new(Vec::new()),
+            event_service_manager_exiting: RwLock::new(false),
+        }
+    }
+
+
+    /// Start the main registry thread, which in turn handles all other
+    /// event listener threads
+    pub fn start_event_service_manager(registry: &'static Self) -> Result<JoinHandle<()>, std::io::Error> {
+        // self can be expected to be &'static mut because we know that this
+        // registry lives as much as the entire program instance lives
+        let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
+        
+        let registry = Arc::new(Mutex::new(Box::new(registry)));
+
+        if let Ok(uninstall_queue) = registry.clone().lock().unwrap().event_service_uninstall_queue.write() {
+            if let Ok(install_queue) = registry.lock().unwrap().event_service_install_queue.write() {
+                let mut uninstall_queue = uninstall_queue.clone();
+                let mut install_queue = install_queue.clone();
+                let registry_ref = registry.clone();
+                let _handle = thread::spawn(move || {
+                    loop {
+                        for name in uninstall_queue.iter() {
+                            let t= registry_ref.clone();
+                            if let Ok(_) = t.lock().unwrap().uninstall_service(name) {
+                                let id = registry_ref.lock().unwrap().event_id(name).unwrap();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_EVENT_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    Some((name, id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("stopped handling listening service for event {name}"),
+                                );
+                            } else {
+                                let id = registry_ref.lock().unwrap().event_id(name).unwrap();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_EVENT_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    Some((name, id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("could not stop handling listening service for event {name}"),
+                                );
+                            };
+                        }
+                        uninstall_queue.clear();
+                        for name in install_queue.iter() {
+                            let t= registry_ref.clone();
+                            if let Ok(o) = t.lock().unwrap().install_service(name) {
+                                if let Some(service) = o {
+                                    service.join();
+                                    let id = registry_ref.lock().unwrap().event_id(name).unwrap();
+                                    log(
+                                        LogType::Debug,
+                                        LOG_EMITTER_EVENT_REGISTRY,
+                                        LOG_ACTION_INSTALL,
+                                        Some((name, id)),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        &format!("listening service for event {name} is being handled"),
+                                    );
+                                }
+                            } else {
+                                let id = registry_ref.lock().unwrap().event_id(name).unwrap();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_EVENT_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    Some((name, id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("listening service for event {name} cannot be handled"),
+                                );
+                            };
+                        }
+                        install_queue.clear();
+                        if let Ok(_exiting) = registry_ref.lock().unwrap().event_service_manager_exiting.read() {
+                            break;
+                        } else {
+                            thread::sleep(rest_time);
+                        }
+                    }
+                    // after loop exit uninstall all installed services
+                    if let Some(remainig_events) = registry_ref.lock().unwrap().event_names() {
+                        for name in remainig_events {
+                            if let Ok(_) = registry_ref.lock().unwrap().uninstall_service(name.as_str()) {
+                                let id = registry_ref.lock().unwrap().event_id(name.as_str()).unwrap();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_EVENT_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    Some((name.as_str(), id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("stopped handling listening service for event {name}"),
+                                );
+                            } else {
+                                let id = registry_ref.lock().unwrap().event_id(name.as_str()).unwrap();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_EVENT_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    Some((name.as_str(), id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("could not stop handling listening service for event {name}"),
+                                );
+                            };
+                        }
+                    }
+                });
+                Ok(_handle)
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Unsupported,
+                    "cannot access service install queue",
+                ))
+            }
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "cannot access service uninstall queue",
+            ))
+        }
+    }
+
+    /// Stop the event service manager thread
+    pub fn stop_event_service_manager(registry: &'static Self) -> Result<(), std::io::Error> {
+        if let Ok(mut quit) = registry.event_service_manager_exiting.write() {
+            *quit = true;
+            Ok(())
+        } else {
+            Err(std::io::Error::new(
+                ErrorKind::PermissionDenied,
+                "could not request the event service manager to shut down",
+            ))
         }
     }
 
@@ -327,13 +475,13 @@ impl EventRegistry {
     /// Install the listening service for an event.
     ///
     /// Return a handle to a separate thread if the service requires it,
-    /// otherwise it returns `None`.
+    /// otherwise return `None`.
     ///
     /// # Panics
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn install_service(&self, name: &str) -> std::io::Result<Option<thread::JoinHandle<Result<bool, Error>>>> {
+    fn install_service(&self, name: &str) -> std::io::Result<Option<JoinHandle<Result<bool, Error>>>> {
         if !self.has_event(name) {
             panic!("event {name} not found in registry");
         }
@@ -356,7 +504,7 @@ impl EventRegistry {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
-                "install",
+                LOG_ACTION_INSTALL,
                 Some((name.as_ref(), id)),
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
@@ -366,7 +514,10 @@ impl EventRegistry {
             let event_name = event_name.clone();
             let handle = thread::spawn(move || {
                 let ename = event_name.lock().unwrap();
-                let res = event.lock().unwrap()._start_service();
+                let res = event.lock().unwrap()._run_service();
+                // FIXME: the following is *wrong*: the `_run_service()` task actually runs
+                // the listening service, and when it exits the service also is shut down;
+                // the actual success/failure tests have to be performed on `JoinHandle<..>`
                 match res {
                     Ok(ssres) => {
                         if ssres {
@@ -377,8 +528,9 @@ impl EventRegistry {
                                 Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_OK,
-                                &format!("listening service installed for event {ename}"),
+                                &format!("listening service installed for event {ename}"),      // FIXME
                             );
+                            Ok(true)
                         } else {
                             log(
                                 LogType::Error,
@@ -387,10 +539,10 @@ impl EventRegistry {
                                 Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_FAIL,
-                                &format!("listening service for event {ename} NOT installed"),
+                                &format!("listening service for event {ename} NOT installed"),  // FIXME
                             );
+                            Ok(false)
                         }
-                        Ok(ssres)
                     }
                     Err(e) => {
                         log(
@@ -400,7 +552,7 @@ impl EventRegistry {
                                 Some((&ename, id)),
                             LOG_WHEN_START,
                             LOG_STATUS_FAIL,
-                            &format!("listening service for event {ename} NOT installed: {e}"),
+                            &format!("listening service for event {ename} NOT installed: {e}"), // FIXME
                         );
                         Err(e)
                     }
@@ -408,7 +560,7 @@ impl EventRegistry {
             });
             Ok(Some(handle))
         } else {
-            if mxevent._start_service()? {
+            if mxevent._run_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -435,10 +587,52 @@ impl EventRegistry {
     }
 
 
+    /// Remove the installed service for an event.
+    /// 
+    /// # Panics
+    ///
+    /// When the event it is called upon is not registered: in no way this
+    /// should be called for unregistered events.
+    fn uninstall_service(&self, name: &str) -> std::io::Result<()> {
+        if !self.has_event(name) {
+            panic!("event {name} not found in registry");
+        }
+
+        // what follows just *reads* the registry: the event is retrieved
+        // and the corresponding structure is operated in a way that mutates
+        // only its inner state, and not the wrapping pointer
+        let id = self.event_id(name).unwrap();
+        let guard = self.event_list
+            .read()
+            .expect("cannot read event registry");
+        let event = guard.get(name)
+            .expect("cannot retrieve event for service setup")
+            .clone();
+
+        let mxevent = event.lock().expect("cannot lock event for service setup");
+
+        if mxevent.requires_thread() {
+            log(
+                LogType::Debug,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_UNINSTALL,
+                Some((name.as_ref(), id)),
+                LOG_WHEN_START,
+                LOG_STATUS_OK,
+                &format!("removing listening service for event {name} (dedicated thread)"),
+            );
+
+        }
+
+        Ok(())
+    }
+
+
+
     /// Fire the condition associated to the named event.
     ///
     /// This version calls in turn the events `fire_condition()` method, but
-    /// has the advantage of being implemented on an object that is has a
+    /// has the advantage of being implemented on an object that has a
     /// `'static` lifetime.
     ///
     /// # Panics
