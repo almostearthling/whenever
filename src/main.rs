@@ -991,16 +991,17 @@ fn main() {
     // the event registry must be started, so that all configured event
     // services can be enqueued for startup at the beginning; this could
     // actually take place also after the configuration step
-    event::registry::EventRegistry::start_event_service_manager(&EVENT_REGISTRY);
+    let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
+    if let Ok(h) = event::registry::EventRegistry::start_event_service_manager(&EVENT_REGISTRY) {
+        _handles.push(h);
+    }
 
     // configure items given the parsed configuration map
-    let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
     exit_if_fails!(args.quiet, configure_items(
         &configuration,
         &TASK_REGISTRY,
         &CONDITION_REGISTRY,
         &EVENT_REGISTRY,
-        &mut _handles,
         &EXECUTION_BUCKET,
         scheduler_tick_seconds,
     ));

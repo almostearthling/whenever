@@ -81,7 +81,7 @@ impl EventRegistry {
 
     /// Start the main registry thread, which in turn handles all other
     /// event listener threads
-    pub fn start_event_service_manager(registry: &'static Self) -> Result<JoinHandle<()>, std::io::Error> {
+    pub fn start_event_service_manager(registry: &'static Self) -> Result<JoinHandle<Result<bool, std::io::Error>>, std::io::Error> {
         // self can be expected to be &'static mut because we know that this
         // registry lives as much as the entire program instance lives
         let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
@@ -97,7 +97,7 @@ impl EventRegistry {
                     loop {
                         for name in uninstall_queue.iter() {
                             let t= registry_ref.clone();
-                            if let Ok(_) = t.lock().unwrap().uninstall_service(name) {
+                            if let Ok(_) = t.lock().unwrap().uninstall_event_service(name) {
                                 let id = registry_ref.lock().unwrap().event_id(name).unwrap();
                                 log(
                                     LogType::Debug,
@@ -124,19 +124,30 @@ impl EventRegistry {
                         uninstall_queue.clear();
                         for name in install_queue.iter() {
                             let t= registry_ref.clone();
-                            if let Ok(o) = t.lock().unwrap().install_service(name) {
+                            if let Ok(o) = t.lock().unwrap().install_event_service(name) {
                                 if let Some(service) = o {
-                                    service.join();
                                     let id = registry_ref.lock().unwrap().event_id(name).unwrap();
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_EVENT_REGISTRY,
-                                        LOG_ACTION_INSTALL,
-                                        Some((name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_OK,
-                                        &format!("listening service for event {name} is being handled"),
-                                    );
+                                    if service.join().is_ok() {
+                                        log(
+                                            LogType::Debug,
+                                            LOG_EMITTER_EVENT_REGISTRY,
+                                            LOG_ACTION_INSTALL,
+                                            Some((name, id)),
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!("listening service for event {name} is being handled"),
+                                        );
+                                    } else {
+                                        log(
+                                            LogType::Debug,
+                                            LOG_EMITTER_EVENT_REGISTRY,
+                                            LOG_ACTION_INSTALL,
+                                            Some((name, id)),
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_FAIL,
+                                            &format!("listening service for event {name} NOT handled"),
+                                        );
+                                    }
                                 }
                             } else {
                                 let id = registry_ref.lock().unwrap().event_id(name).unwrap();
@@ -161,7 +172,7 @@ impl EventRegistry {
                     // after loop exit uninstall all installed services
                     if let Some(remainig_events) = registry_ref.lock().unwrap().event_names() {
                         for name in remainig_events {
-                            if let Ok(_) = registry_ref.lock().unwrap().uninstall_service(name.as_str()) {
+                            if let Ok(_) = registry_ref.lock().unwrap().uninstall_event_service(name.as_str()) {
                                 let id = registry_ref.lock().unwrap().event_id(name.as_str()).unwrap();
                                 log(
                                     LogType::Debug,
@@ -186,17 +197,18 @@ impl EventRegistry {
                             };
                         }
                     }
+                    Ok(true)
                 });
                 Ok(_handle)
             } else {
                 Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
+                    std::io::ErrorKind::PermissionDenied,
                     "cannot access service install queue",
                 ))
             }
         } else {
             Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
+                std::io::ErrorKind::PermissionDenied,
                 "cannot access service uninstall queue",
             ))
         }
@@ -481,7 +493,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    fn install_service(&self, name: &str) -> std::io::Result<Option<JoinHandle<Result<bool, Error>>>> {
+    fn install_event_service(&self, name: &str) -> std::io::Result<Option<JoinHandle<Result<bool, Error>>>> {
         if !self.has_event(name) {
             panic!("event {name} not found in registry");
         }
@@ -514,10 +526,9 @@ impl EventRegistry {
             let event_name = event_name.clone();
             let handle = thread::spawn(move || {
                 let ename = event_name.lock().unwrap();
+
+                // this implements the listening service in current thread
                 let res = event.lock().unwrap()._run_service();
-                // FIXME: the following is *wrong*: the `_run_service()` task actually runs
-                // the listening service, and when it exits the service also is shut down;
-                // the actual success/failure tests have to be performed on `JoinHandle<..>`
                 match res {
                     Ok(ssres) => {
                         if ssres {
@@ -528,7 +539,7 @@ impl EventRegistry {
                                 Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_OK,
-                                &format!("listening service installed for event {ename}"),      // FIXME
+                                &format!("listening service for event {ename} exited successfully"),
                             );
                             Ok(true)
                         } else {
@@ -539,7 +550,7 @@ impl EventRegistry {
                                 Some((&ename, id)),
                                 LOG_WHEN_START,
                                 LOG_STATUS_FAIL,
-                                &format!("listening service for event {ename} NOT installed"),  // FIXME
+                                &format!("listening service for event {ename} exited unsuccessfully"),
                             );
                             Ok(false)
                         }
@@ -552,7 +563,7 @@ impl EventRegistry {
                                 Some((&ename, id)),
                             LOG_WHEN_START,
                             LOG_STATUS_FAIL,
-                            &format!("listening service for event {ename} NOT installed: {e}"), // FIXME
+                            &format!("listening service for event {ename} exited with error: {e}"),
                         );
                         Err(e)
                     }
@@ -568,10 +579,10 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_OK,
-                    &format!("installing listening service for event {name}"),
+                    &format!("listening service for event {name} installed"),
                 );
+                Ok(None)
             } else {
-                // FIXME: this might have to return Err(...) instead!?
                 log(
                     LogType::Error,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -581,8 +592,11 @@ impl EventRegistry {
                     LOG_STATUS_FAIL,
                     &format!("listening service for event {name} NOT installed"),
                 );
+                Err(std::io::Error::new(
+                    ErrorKind::Unsupported,
+                    format!("listening service for event {name} NOT installed"),
+                ))
             }
-            Ok(None)
         }
     }
 
@@ -593,7 +607,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    fn uninstall_service(&self, name: &str) -> std::io::Result<()> {
+    fn uninstall_event_service(&self, name: &str) -> std::io::Result<()> {
         if !self.has_event(name) {
             panic!("event {name} not found in registry");
         }
@@ -617,16 +631,114 @@ impl EventRegistry {
                 LOG_EMITTER_EVENT_REGISTRY,
                 LOG_ACTION_UNINSTALL,
                 Some((name.as_ref(), id)),
-                LOG_WHEN_START,
+                LOG_WHEN_END,
                 LOG_STATUS_OK,
-                &format!("removing listening service for event {name} (dedicated thread)"),
+                &format!("requesting removal of listening service for event {name} (dedicated thread)"),
             );
+            let _ = mxevent._stop_service()?;
 
+            Ok(())
+        } else {
+            if mxevent._stop_service()? {
+                log(
+                    LogType::Debug,
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    LOG_ACTION_INSTALL,
+                    Some((name, id)),
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("listening service for event {name} removed"),
+                );
+                Ok(())
+            } else {
+                log(
+                    LogType::Error,
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    LOG_ACTION_INSTALL,
+                    Some((name, id)),
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!("listening service for event {name} could NOT be removed"),
+                );
+                Err(std::io::Error::new(
+                    ErrorKind::Unsupported,
+                    format!("listening service for event {name} could NOT be removed"),
+                ))
+            }
         }
+    }
+
+
+    /// Start listening for an event
+    /// 
+    /// # Panics
+    ///
+    /// When the event it is called upon is not registered: in no way this
+    /// should be called for unregistered events.
+    pub fn listen_for(&self, name: &str) -> std::io::Result<()> {
+        if !self.has_event(name) {
+            panic!("event {name} not found in registry");
+        }
+
+        let mut queue = self
+            .event_service_install_queue
+            .write()
+            .expect("cannot open event listening service queue");
+        let sname = String::from(name);
+        if queue.contains(&sname) {
+            let index = queue.iter().position(|s| *s == sname).unwrap();
+            queue.remove(index);
+        }
+        queue.push(sname);
+        let id = self.event_id(name).unwrap();
+        log(
+            LogType::Debug,
+            LOG_EMITTER_EVENT_REGISTRY,
+            LOG_ACTION_INSTALL,
+            Some((name, id)),
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("service installation for event {name} requested"),
+        );
 
         Ok(())
     }
 
+
+    /// Stop listening for an event
+    /// 
+    /// # Panics
+    ///
+    /// When the event it is called upon is not registered: in no way this
+    /// should be called for unregistered events.
+    pub fn unlisten_for(&self, name: &str) -> std::io::Result<()> {
+        if !self.has_event(name) {
+            panic!("event {name} not found in registry");
+        }
+
+        let mut queue = self
+            .event_service_uninstall_queue
+            .write()
+            .expect("cannot open event unlistening service queue");
+        let sname = String::from(name);
+        if queue.contains(&sname) {
+            let index = queue.iter().position(|s| *s == sname).unwrap();
+            queue.remove(index);
+        }
+        queue.push(sname);
+        let id = self.event_id(name).unwrap();
+        log(
+            LogType::Debug,
+            LOG_EMITTER_EVENT_REGISTRY,
+            LOG_ACTION_INSTALL,
+            Some((name, id)),
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("service removal for event {name} requested"),
+        );
+
+        Ok(())
+    }
 
 
     /// Fire the condition associated to the named event.

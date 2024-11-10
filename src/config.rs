@@ -4,7 +4,6 @@
 
 use std::fs;
 use cfgmap::{CfgValue, CfgMap};
-use std::thread::JoinHandle;
 
 use crate::common::logging::{log, LogType};
 use crate::condition::bucket_cond::ExecutionBucket;
@@ -21,7 +20,6 @@ use crate::event;
 use crate::event::base::Event;
 
 
-// read the configuration from a string and build tasks and conditions
 // read the configuration from a string and build tasks and conditions
 pub fn configure(config_file: &str) -> std::io::Result<CfgMap> {
 
@@ -268,7 +266,6 @@ fn configure_events(
     cfgmap: &CfgMap,
     event_registry: &'static EventRegistry,
     cond_registry: &'static ConditionRegistry,
-    event_handles: &mut Vec<JoinHandle<Result<bool, std::io::Error>>>,
     bucket: &'static ExecutionBucket,
 ) -> std::io::Result<()> {
 
@@ -297,29 +294,16 @@ fn configure_events(
                                     std::io::ErrorKind::InvalidData,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
-                            } else if let Ok(r) = event_registry.install_service(&event_name) {
-                                if let Some(h) = r {
-                                    event_handles.push(h);
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name} (dedicated thread)"),
-                                    )
-                                } else {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    )
-                                }
+                            } else if let Ok(_) = event_registry.listen_for(&event_name) {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_MAIN_LISTENER,
+                                    None,
+                                    LOG_WHEN_INIT,
+                                    LOG_STATUS_MSG,
+                                    &format!("service installed for event {event_name} (dedicated thread)"),
+                                )
                             } else {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
@@ -336,29 +320,16 @@ fn configure_events(
                                     std::io::ErrorKind::InvalidData,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
-                            } else if let Ok(r) = event_registry.install_service(&event_name) {
-                                if let Some(h) = r {
-                                    event_handles.push(h);
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name} (dedicated thread)"),
-                                    )
-                                } else {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    )
-                                }
+                            } else if let Ok(_) = event_registry.listen_for(&event_name) {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_MAIN_LISTENER,
+                                    None,
+                                    LOG_WHEN_INIT,
+                                    LOG_STATUS_MSG,
+                                    &format!("service installed for event {event_name} (dedicated thread)"),
+                                )
                             } else {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
@@ -375,29 +346,16 @@ fn configure_events(
                                     std::io::ErrorKind::InvalidData,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
-                            } else if let Ok(r) = event_registry.install_service(&event_name) {
-                                if let Some(h) = r {
-                                    event_handles.push(h);
+                            } else if let Ok(_) = event_registry.listen_for(&event_name) {
                                     log(
                                         LogType::Trace,
-                                        LOG_EMITTER_MAIN,
+                                        LOG_EMITTER_CONFIGURATION,
                                         LOG_ACTION_MAIN_LISTENER,
                                         None,
                                         LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!("service installed for event {event_name} (dedicated thread)"),
                                     )
-                                } else {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    )
-                                }
                             } else {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
@@ -424,7 +382,6 @@ fn configure_events(
         }
     }
 
-    // event_handles = &res;
     Ok(())
 }
 
@@ -436,17 +393,12 @@ pub fn configure_items(
     task_registry: &'static TaskRegistry,
     cond_registry: &'static ConditionRegistry,
     event_registry: &'static EventRegistry,
-    // passing the event_handles array here is temporary: the final implementation
-    // should discharge the main() function from the duty of joining those threads,
-    // they are to be handled at the event registry level in order to be dynamically
-    // started and stopped
-    event_handles: &mut Vec<JoinHandle<Result<bool, std::io::Error>>>,
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
 ) -> std::io::Result<()> {
     configure_tasks(cfgmap, task_registry)?;
     configure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
-    configure_events(cfgmap, event_registry, cond_registry, event_handles, bucket)?;
+    configure_events(cfgmap, event_registry, cond_registry, bucket)?;
     Ok(())
 }
 
