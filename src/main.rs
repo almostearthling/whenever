@@ -1093,6 +1093,9 @@ fn main() {
         }
     }
 
+    // FIXME: the call to stop_event_service_manager has no effect (but the
+    // process exits successfully anyway), should we wait for something?
+    let _ = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY);
     log(
         LogType::Info,
         LOG_EMITTER_MAIN,
