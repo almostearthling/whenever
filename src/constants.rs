@@ -35,6 +35,7 @@ pub const ERR_INVALID_TASK_CONFIG: &str = "invalid task configuration";
 pub const ERR_INVALID_COND_CONFIG: &str = "invalid condition configuration";
 pub const ERR_INVALID_EVENT_CONFIG: &str = "invalid event configuration";
 pub const ERR_TASKREG_TASK_NOT_ADDED: &str = "could not add task to the registry";
+pub const ERR_TASKREG_TASK_NOT_REPLACED: &str = "could not replace task in the registry";
 pub const ERR_TASKREG_CANNOT_PULL_TASK: &str = "could not pull task out from the registry";
 pub const ERR_CONDREG_COND_NOT_ADDED: &str = "could not add condition to the registry";
 pub const ERR_CONDREG_CANNOT_PULL_COND: &str = "could not pull condition out from the registry";
@@ -43,6 +44,9 @@ pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition wh
 pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition while busy";
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
 pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
+pub const ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR: &str = "could not request the event service manager to shut down";
+pub const ERR_EVENTREG_SERVICE_NOT_INSTALLED: &str = "event listening service not installed";
+pub const ERR_EVENTREG_SERVICE_NOT_UNINSTALLED: &str = "event listening service not uninstalled";
 
 pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
 pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";

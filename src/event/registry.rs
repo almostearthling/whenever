@@ -245,7 +245,7 @@ impl EventRegistry {
         } else {
             Err(std::io::Error::new(
                 ErrorKind::PermissionDenied,
-                "could not request the event service manager to shut down",
+                ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR,
             ))
         }
     }
@@ -617,7 +617,7 @@ impl EventRegistry {
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,
-                    format!("listening service for event {name} NOT installed"),
+                    ERR_EVENTREG_SERVICE_NOT_INSTALLED,
                 ))
             }
         }
@@ -685,7 +685,7 @@ impl EventRegistry {
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,
-                    format!("listening service for event {name} could NOT be removed"),
+                    ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
                 ))
             }
         }
