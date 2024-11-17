@@ -38,6 +38,7 @@ pub const ERR_TASKREG_TASK_NOT_ADDED: &str = "could not add task to the registry
 pub const ERR_TASKREG_TASK_NOT_REPLACED: &str = "could not replace task in the registry";
 pub const ERR_TASKREG_CANNOT_PULL_TASK: &str = "could not pull task out from the registry";
 pub const ERR_CONDREG_COND_NOT_ADDED: &str = "could not add condition to the registry";
+pub const ERR_CONDREG_COND_NOT_REPLACED: &str = "could not replace condition in the registry";
 pub const ERR_CONDREG_CANNOT_PULL_COND: &str = "could not pull condition out from the registry";
 pub const ERR_CONDREG_COND_RESET_BUSY: &str = "attempt to reset condition while busy";
 pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition while busy";

@@ -55,7 +55,7 @@ pub struct TaskRegistry {
     task_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Task>>>>>,
 
     // counter to verify whether there are running tasks at a moment
-    running_sessions: Arc<Mutex<usize>>,
+    running_sessions: Arc<Mutex<u64>>,
     
     // the two queues for items to remove and items to add: the items that
     // need to be added are stored as full (dyn) items, while the ones to
@@ -159,9 +159,8 @@ impl TaskRegistry {
         Ok(true)
     }
 
-    /// Add or replace an already-boxed `Task` if its name is not present in
-    /// the registry while executing: if the registry is busy running any task
-    /// all modifications are deferred
+    /// Add or replace an already-boxed `Task` while running: if the registry
+    /// is busy running any task all modifications are deferred
     pub fn dynamic_add_or_replace_task(&self, boxed_task: Box<dyn Task>) -> Result<bool, std::io::Error> {
         let name = boxed_task.get_name();
         let sessions = self.running_sessions.clone();
@@ -443,7 +442,9 @@ impl TaskRegistry {
 
         // decrease the number of running sessions: if the number reaches zero
         // then perform the item add/removal routine while the session counter
-        // is locked, so that no one else can modify the current items list
+        // is locked, so that no one else can modify the current items list;
+        // note that since the counter is locked, no other sessions can be run
+        // in other possible threads
         {
             let mut sessions = sessions.lock().expect("cannot acquire running sessions counter");
             *sessions -= 1;
@@ -459,7 +460,7 @@ impl TaskRegistry {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_NEW,
+                                    LOG_ACTION_UNINSTALL,
                                     None,
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_OK,
@@ -469,7 +470,7 @@ impl TaskRegistry {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_NEW,
+                                    LOG_ACTION_UNINSTALL,
                                     None,
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_OK,
@@ -491,7 +492,7 @@ impl TaskRegistry {
                                     log(
                                         LogType::Debug,
                                         LOG_EMITTER_TASK_REGISTRY,
-                                        LOG_ACTION_NEW,
+                                        LOG_ACTION_INSTALL,
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
@@ -501,7 +502,7 @@ impl TaskRegistry {
                                     log(
                                         LogType::Debug,
                                         LOG_EMITTER_TASK_REGISTRY,
-                                        LOG_ACTION_NEW,
+                                        LOG_ACTION_INSTALL,
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
@@ -512,7 +513,7 @@ impl TaskRegistry {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_NEW,
+                                    LOG_ACTION_INSTALL,
                                     None,
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,

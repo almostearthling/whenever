@@ -49,6 +49,12 @@ pub struct ConditionRegistry {
     // flag is kept in a `Mutex` because it changes quite dynamically
     condition_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>,
     conditions_busy: Arc<Mutex<u64>>,
+    
+    // the two queues for items to remove and items to add: the items that
+    // need to be added are stored as full (dyn) items, while the ones to
+    // be removed are stored as names
+    items_to_remove: Arc<Mutex<Vec<String>>>,
+    items_to_add: Arc<Mutex<Vec<Box<dyn Condition>>>>,
 }
 
 
@@ -60,6 +66,9 @@ impl ConditionRegistry {
         ConditionRegistry {
             condition_list: RwLock::new(HashMap::new()),
             conditions_busy: Arc::new(Mutex::new(0_u64)),
+
+            items_to_remove: Arc::new(Mutex::new(Vec::new())),
+            items_to_add: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -156,6 +165,58 @@ impl ConditionRegistry {
         Ok(true)
     }
 
+    /// Add or replace an already-boxed `Condition` while running: if the
+    /// registry is busy running any condition all modifications are deferred
+    pub fn dynamic_add_or_replace_condition(&self, boxed_condition: Box<dyn Condition>) -> Result<bool, std::io::Error> {
+        let name = boxed_condition.get_name();
+        let busy = self.conditions_busy.clone();
+        let busy = busy.lock().expect("cannot acquire busy conditions counter");
+        if *busy == 0 {
+            if self.has_condition(&name) {
+                if let Ok(_) = self.remove_condition(&name) {
+                    if let Ok(res) = self.add_condition(boxed_condition) {
+                        return Ok(res);
+                    } else {
+                        return Err(Error::new(
+                            ErrorKind::Unsupported,
+                            ERR_CONDREG_COND_NOT_REPLACED,
+                        ));
+                    }
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Unsupported,
+                        ERR_CONDREG_CANNOT_PULL_COND,
+                    ));
+                }
+            } else {
+                if let Ok(res) = self.add_condition(boxed_condition) {
+                    return Ok(res);
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Unsupported,
+                        ERR_CONDREG_COND_NOT_ADDED,
+                    ));
+                }
+            }
+        } else {
+            let queue = self.items_to_add.clone();
+            let mut queue = queue.lock().expect("cannot acquire list of items to add");
+            queue.push(boxed_condition);
+            log(
+                LogType::Debug,
+                LOG_EMITTER_TASK_REGISTRY,
+                LOG_ACTION_NEW,
+                None,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("registry busy: condition {name} set to be added when no conditions are busy"),
+            );
+        }
+
+        Ok(true)
+    }
+
+
     /// Remove a named condition from the list and give it back stored in a Box.
     ///
     /// The returned `Condition` can be modified and stored back in the
@@ -201,6 +262,35 @@ impl ConditionRegistry {
             }
         } else {
             Ok(None)
+        }
+    }
+
+    /// Remove a named condition from the list operating on a running
+    /// registry: if any conditions are busy all modifications to the
+    /// registry are deferred
+    pub fn dynamic_remove_condition(&self, name: &str) -> Result<bool, std::io::Error> {
+        if self.has_condition(name) {
+            let busy = self.conditions_busy.clone();
+            let busy = busy.lock().expect("cannot acquire busy conditions counter");
+            if *busy == 0 {
+                self.remove_condition(name)?;
+            } else {
+                let queue = self.items_to_remove.clone();
+                let mut queue = queue.lock().expect("cannot acquire list of items to remove");
+                queue.push(String::from(name));
+                log(
+                    LogType::Debug,
+                    LOG_EMITTER_TASK_REGISTRY,
+                    LOG_ACTION_UNINSTALL,
+                    None,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("registry busy: condition {name} set to be removed when no conditions are busy"),
+                );
+            }
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
@@ -519,6 +609,88 @@ impl ConditionRegistry {
                 res = Ok(None)
             }
             *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") -= 1;
+
+            // this is the right time to operate on the registry if there are
+            // no busy conditions remaining: first remove conditions that must
+            // be uninstalled, then add the ones that have to be installed;
+            // note that locking the counter also prevents other tests to be
+            // performed in other possiblle threads
+            if *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") == 0 {
+                let rm_queue = self.items_to_remove.clone();
+                {
+                    let queue = rm_queue.lock().expect("cannot acquire list of items to remove");
+                    for name in queue.iter() {
+                        if let Ok(item) = self.remove_condition(name) {
+                            if let Some(item) = item {
+                                let name = item.get_name();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONDITION_REGISTRY,
+                                    LOG_ACTION_UNINSTALL,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("successfully removed condition {name} from the registry"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONDITION_REGISTRY,
+                                    LOG_ACTION_UNINSTALL,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition to remove {name} not found in the registry"),
+                                );
+                            }
+                        }
+                    }
+                }
+                let add_queue = self.items_to_add.clone();
+                {
+                    let mut queue = add_queue.lock().expect("cannot acquire list of items to add");
+                    while !queue.is_empty() {
+                        if let Some(boxed_item) = queue.pop() {
+                            let name = boxed_item.get_name();
+                            if let Ok(res) = self.add_condition(boxed_item) {
+                                let id = self.condition_id(&name).unwrap();
+                                if res {
+                                    log(
+                                        LogType::Debug,
+                                        LOG_EMITTER_CONDITION_REGISTRY,
+                                        LOG_ACTION_INSTALL,
+                                        Some((&name, id)),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        &format!("successfully added queued condition to the registry"),
+                                    );
+                                } else {
+                                    log(
+                                        LogType::Debug,
+                                        LOG_EMITTER_CONDITION_REGISTRY,
+                                        LOG_ACTION_INSTALL,
+                                        Some((&name, id)),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!("queued condition already present in the registry"),
+                                    );
+                                }
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONDITION_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("could not add queued condition {name} to the registry"),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
             res
         } else {
             log(
