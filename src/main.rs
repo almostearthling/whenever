@@ -29,6 +29,7 @@ mod event;
 mod common;
 mod constants;
 mod config;
+mod cfghelp;
 
 
 // bring the registries in scope
