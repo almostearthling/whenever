@@ -66,6 +66,7 @@ pub const ERR_LOGGER_NOT_INITIALIZED: &str = "could not initialize logger";
 pub const ERR_INVALID_CFG_ENTRY: &str = "invalid configuration entry";
 pub const ERR_MISSING_PARAMETER: &str = "missing parameter";
 pub const ERR_INVALID_PARAMETER: &str = "invalid parameter";
+pub const ERR_INVALID_PARAMETER_LIST: &str = "invalid list or list element";
 pub const ERR_INVALID_COND_NAME: &str = "invalid value for condition name";
 pub const ERR_INVALID_COND_TYPE: &str = "condition type invalid or mismatched";
 pub const ERR_INVALID_TASK_LIST: &str = "invalid task list specification";
@@ -84,6 +85,7 @@ pub const ERR_INVALID_TIMESPEC: &str = "invalid specification for date or time";
 pub const ERR_INVALID_TICK_SECONDS: &str = "invalid number of seconds for tick";
 pub const ERR_INVALID_VALUE_FOR: &str = "invalid value for";
 pub const ERR_INVALID_VALUE_FOR_ENTRY: &str = "invalid value for entry";
+pub const ERR_INVALID_VALUE_FOR_LIST_ENTRY: &str = "invalid value for list entry";
 
 pub const ERR_INVALID_TASK_NAME: &str = "invalid value for task name";
 pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";

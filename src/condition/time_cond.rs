@@ -405,7 +405,7 @@ impl TimeCondition {
     /// *must* be set to `"interval"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<TimeCondition> {
 
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -417,17 +417,10 @@ impl TimeCondition {
             "break_on_success",
             "suspended",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return Err(cfg_invalid_config(
-                    key,
-                    STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"),
-                ));
-            }
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
-        let _ = String::from(cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "time"))?.unwrap());
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "time"))?;
         let name = String::from(cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap());
 
         // specific mandatory parameter retrieval
@@ -444,10 +437,12 @@ impl TimeCondition {
         new_condition.suspended = false;
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return Err(cfg_invalid_config(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER,
@@ -455,19 +450,11 @@ impl TimeCondition {
             }
         }
 
-        let cur_key = "tasks";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return Err(cfg_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_LIST,
-                ));
-            }
-            for a in item.as_list().unwrap() {
-                let s = String::from(a.as_str().unwrap_or(&String::new()));
+        // retrieve task list and try to directly add each task
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+            for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_invalid_config(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         &s,
                         ERR_INVALID_TASK,
@@ -493,10 +480,14 @@ impl TimeCondition {
         }
 
         // specific optional parameter initialization
+
+        // there is no shortcut for retrieving the list of time specifications
+        // because it is a quite complex structure which is strongly tied just
+        // to this type of condition
         let cur_key = "time_specifications";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {
-                return Err(cfg_invalid_config(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER,
@@ -504,7 +495,7 @@ impl TimeCondition {
         } else {
                 for map in item.as_list().unwrap() {
                     if !map.is_map() {
-                        return Err(cfg_invalid_config(
+                        return Err(cfg_err_invalid_config(
                             cur_key,
                             STR_UNKNOWN_VALUE,
                             ERR_INVALID_TIMESPEC,
@@ -520,7 +511,7 @@ impl TimeCondition {
                         let dow;
                         if let Some(v) = map.get("year") {
                             if !v.is_int() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -533,7 +524,7 @@ impl TimeCondition {
                         }
                         if let Some(v) = map.get("month") {
                             if !v.is_int() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -546,7 +537,7 @@ impl TimeCondition {
                         }
                         if let Some(v) = map.get("day") {
                             if !v.is_int() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -559,7 +550,7 @@ impl TimeCondition {
                         }
                         if let Some(v) = map.get("hour") {
                             if !v.is_int() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -572,7 +563,7 @@ impl TimeCondition {
                         }
                         if let Some(v) = map.get("minute") {
                             if !v.is_int() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -585,7 +576,7 @@ impl TimeCondition {
                         }
                         if let Some(v) = map.get("second") {
                             if !v.is_int() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -598,7 +589,7 @@ impl TimeCondition {
                         }
                         if let Some(v) = map.get("weekday") {
                             if !v.is_str() {
-                                return Err(cfg_invalid_config(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
                                     ERR_INVALID_TIMESPEC,
@@ -621,7 +612,7 @@ impl TimeCondition {
                                     "sat" => 7,
                                     "saturday" => 7,
                                     _ => {
-                                        return Err(cfg_invalid_config(
+                                        return Err(cfg_err_invalid_config(
                                             cur_key,
                                             STR_UNKNOWN_VALUE,
                                             ERR_INVALID_TIMESPEC,
@@ -638,7 +629,7 @@ impl TimeCondition {
                 }
             }
         } else {
-            return Err(cfg_invalid_config(
+            return Err(cfg_err_invalid_config(
                 cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER,
