@@ -113,7 +113,7 @@ pub fn cfg_int(cfgmap: &CfgMap, key: &str) -> std::io::Result<Option<i64>> {
 }
 
 /// get an integer checking it with provided closure
-pub fn cfg_int_check<F: FnOnce(i64) -> bool>(cfgmap: &CfgMap, key: &str, check: F) -> std::io::Result<Option<i64>> {
+pub fn cfg_int_check<F: Fn(i64) -> bool>(cfgmap: &CfgMap, key: &str, check: F) -> std::io::Result<Option<i64>> {
     if let Some(v) = cfg_int(cfgmap, key)? {
         if check(v) {
             Ok(Some(v))
@@ -167,7 +167,7 @@ pub fn cfg_float(cfgmap: &CfgMap, key: &str) -> std::io::Result<Option<f64>> {
 }
 
 /// get a float checking it with provided closure
-pub fn cfg_float_check<F: FnOnce(f64) -> bool>(cfgmap: &CfgMap, key: &str, check: F) -> std::io::Result<Option<f64>> {
+pub fn cfg_float_check<F: Fn(f64) -> bool>(cfgmap: &CfgMap, key: &str, check: F) -> std::io::Result<Option<f64>> {
     if let Some(v) = cfg_float(cfgmap, key)? {
         if check(v) {
             Ok(Some(v))
@@ -222,7 +222,7 @@ pub fn cfg_string(cfgmap: &CfgMap, key: &str) -> std::io::Result<Option<String>>
 }
 
 /// get a string checking it with provided closure
-pub fn cfg_string_check<F: FnOnce(&str) -> bool>(cfgmap: &CfgMap, key: &str, check: F) -> std::io::Result<Option<String>> {
+pub fn cfg_string_check<F: Fn(&str) -> bool>(cfgmap: &CfgMap, key: &str, check: F) -> std::io::Result<Option<String>> {
     if let Some(v) = cfg_string(cfgmap, key)? {
         if check(&v) {
             Ok(Some(v))
@@ -359,7 +359,7 @@ pub fn cfg_vec_int_check_below_eq(cfgmap: &CfgMap, key: &str, a: i64) -> std::io
     cfg_vec_int_check(cfgmap, key, |x| x <= a)
 }
 
-/// get a list of integers provided that it is exactly a certain value
+/// get a list of integers provided that they are exactly a certain value
 pub fn cfg_vec_int_check_eq(cfgmap: &CfgMap, key: &str, a: i64) -> std::io::Result<Option<Vec<i64>>> {
     cfg_vec_int_check(cfgmap, key, |x| x == a)
 }
@@ -426,7 +426,7 @@ pub fn cfg_vec_float_check_below_eq(cfgmap: &CfgMap, key: &str, a: f64) -> std::
     cfg_vec_float_check(cfgmap, key, |x| x <= a)
 }
 
-/// get a list of floats provided that it is exactly a certain value
+/// get a list of floats provided that they are exactly a certain value
 pub fn cfg_vec_float_check_eq(cfgmap: &CfgMap, key: &str, a: f64) -> std::io::Result<Option<Vec<f64>>> {
     cfg_vec_float_check(cfgmap, key, |x| x == a)
 }
@@ -489,12 +489,12 @@ pub fn cfg_vec_string_check_exact_nocase(cfgmap: &CfgMap, key: &str, check: &str
     cfg_vec_string_check(cfgmap, key, |s| s.to_uppercase() == check.to_uppercase())
 }
 
-/// get a list of strings provided that it is in a certain set of strings
+/// get a list of strings provided that all of them are in a certain set of strings
 pub fn cfg_vec_string_check_within(cfgmap: &CfgMap, key: &str, check: &Vec<&str>) -> std::io::Result<Option<Vec<String>>> {
     cfg_vec_string_check(cfgmap, key, |x| check.contains(&x))
 }
 
-/// get a list of strings provided that it is in a certain set of strings ignoring case
+/// get a list of strings provided that all of them are in a certain set of strings ignoring case
 pub fn cfg_vec_string_check_within_nocase(cfgmap: &CfgMap, key: &str, check: &Vec<&str>) -> std::io::Result<Option<Vec<String>>> {
     // TODO: there is probably a less expensive way to do it
     let mut new_check: Vec<String> = Vec::new();
