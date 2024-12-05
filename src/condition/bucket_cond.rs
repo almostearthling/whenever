@@ -18,11 +18,14 @@ use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use cfgmap::CfgMap;
+use regex::Regex;
 
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
+
+use crate::cfghelp::*;
 
 
 
@@ -241,14 +244,7 @@ impl BucketCondition {
     /// *must* be set to `"bucket"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<BucketCondition> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<BucketCondition> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -259,58 +255,16 @@ impl BucketCondition {
             "break_on_success",
             "suspended",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
-
-        // check type
-        let cur_key = "type";
-        let cond_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COND_TYPE);
-            }
-            cond_type = item.as_str().unwrap().to_owned();
-            if cond_type != "bucket" && cond_type != "event" {
-                return _invalid_cfg(cur_key,
-                    &cond_type,
-                    ERR_INVALID_COND_TYPE);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COND_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_COND_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+
+        // type and name are both mandatory but type is only checked
+        let cond_type = cfg_mandatory!(cfg_string_check_regex(cfgmap, "type", &Regex::new(r"^event|bucket$").unwrap()))?.unwrap();
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
+
+        // specific mandatory parameter retrieval
+        // (none here)
 
         // initialize the structure
         // NOTE: the value of "event" for the condition type, which is
@@ -329,93 +283,46 @@ impl BucketCondition {
         new_condition.suspended = false;
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
-        let cur_key = "tasks";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_LIST);
-            }
-            for a in item.as_list().unwrap() {
-                let s = String::from(a.as_str().unwrap_or(&String::new()));
+        // retrieve task list and try to directly add each task
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+            for s in v {
                 if !new_condition.add_task(&s)? {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         &s,
-                        ERR_INVALID_TASK);
+                        ERR_INVALID_TASK,
+                    ));
                 }
             }
         }
 
-        let cur_key = "recurring";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.recurring = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "recurring")? {
+            new_condition.recurring = v;
         }
-
-        let cur_key = "execute_sequence";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.exec_sequence = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
+            new_condition.exec_sequence = v;
         }
-
-        let cur_key = "break_on_failure";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.break_on_failure = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "break_on_failure")? {
+            new_condition.break_on_failure = v;
         }
-
-        let cur_key = "break_on_success";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.break_on_success = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "break_on_success")? {
+            new_condition.break_on_success = v;
         }
-
-        let cur_key = "suspended";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.suspended = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "suspended")? {
+            new_condition.suspended = v;
         }
 
         // specific optional parameter initialization

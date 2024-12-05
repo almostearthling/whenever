@@ -24,7 +24,9 @@ use serde_json::value::Value;
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
+
+use crate::cfghelp::*;
 
 
 // see the DBus specification
@@ -761,13 +763,6 @@ impl DbusMethodCondition {
     /// *must* be set to `"dbus"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<DbusMethodCondition> {
 
-        fn _invalid_cfg(key: & str, value: &str, message: &str) -> std::io::Result<DbusMethodCondition> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
@@ -784,7 +779,7 @@ impl DbusMethodCondition {
             None
         }
 
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -805,168 +800,20 @@ impl DbusMethodCondition {
             "parameter_check_all",
             "parameter_check",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
-
-        // check type
-        let cur_key = "type";
-        let cond_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COND_TYPE);
-            }
-            cond_type = item.as_str().unwrap().to_owned();
-            if cond_type != "dbus" {
-                return _invalid_cfg(cur_key,
-                    &cond_type,
-                    ERR_INVALID_COND_TYPE);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COND_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_COND_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
 
-        let cur_key = "bus";
-        let bus;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-            bus = item.as_str().unwrap().to_owned();
-            if !RE_DBUS_MSGBUS_NAME.is_match(&bus) {
-                return _invalid_cfg(cur_key,
-                    &bus,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "dbus"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
-        let cur_key = "service";
-        let service;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-            service = item.as_str().unwrap().to_owned();
-            if !RE_DBUS_SERVICE_NAME.is_match(&service) {
-                return _invalid_cfg(cur_key,
-                    &bus,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "object_path";
-        let object_path;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-            object_path = item.as_str().unwrap().to_owned();
-            if !RE_DBUS_OBJECT_PATH.is_match(&object_path) {
-                return _invalid_cfg(cur_key,
-                    &object_path,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "interface";
-        let interface;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-            interface = item.as_str().unwrap().to_owned();
-            if !RE_DBUS_INTERFACE_NAME.is_match(&interface) {
-                return _invalid_cfg(cur_key,
-                    &interface,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "method";
-        let method;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-            method = item.as_str().unwrap().to_owned();
-            if !RE_DBUS_MEMBER_NAME.is_match(&method) {
-                return _invalid_cfg(cur_key,
-                    &method,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        // specific mandatory parameter retrieval
+        let bus = cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?.unwrap();
+        let service = cfg_mandatory!(cfg_string_check_regex(cfgmap, "service", &RE_DBUS_SERVICE_NAME))?.unwrap();
+        let object_path = cfg_mandatory!(cfg_string_check_regex(cfgmap, "object_path", &RE_DBUS_OBJECT_PATH))?.unwrap();
+        let interface = cfg_mandatory!(cfg_string_check_regex(cfgmap, "interface", &RE_DBUS_INTERFACE_NAME))?.unwrap();
+        let method = cfg_mandatory!(cfg_string_check_regex(cfgmap, "method", &RE_DBUS_MEMBER_NAME))?.unwrap();
 
         // initialize the structure
         let mut new_condition = DbusMethodCondition::new(
@@ -984,113 +831,51 @@ impl DbusMethodCondition {
         new_condition.suspended = false;
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
-        let cur_key = "tasks";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_LIST);
-            }
-            for a in item.as_list().unwrap() {
-                let s = String::from(a.as_str().unwrap_or(&String::new()));
+        // retrieve task list and try to directly add each task
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+            for s in v {
                 if !new_condition.add_task(&s)? {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         &s,
-                        ERR_INVALID_TASK);
+                        ERR_INVALID_TASK,
+                    ));
                 }
             }
         }
 
-        let cur_key = "recurring";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.recurring = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "recurring")? {
+            new_condition.recurring = v;
         }
-
-        let cur_key = "execute_sequence";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.exec_sequence = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
+            new_condition.exec_sequence = v;
         }
-
-        let cur_key = "break_on_failure";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.break_on_failure = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "break_on_failure")? {
+            new_condition.break_on_failure = v;
         }
-
-        let cur_key = "break_on_success";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.break_on_success = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "break_on_success")? {
+            new_condition.break_on_success = v;
         }
-
-        let cur_key = "suspended";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.suspended = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "suspended")? {
+            new_condition.suspended = v;
         }
 
         // specific optional parameter initialization
-        let cur_key = "check_after";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                let i = *item.as_int().unwrap();
-                if i < 1 {
-                    return _invalid_cfg(
-                        cur_key,
-                        &i.to_string(),
-                        ERR_INVALID_PARAMETER);
-                }
-                new_condition.check_after = Some(Duration::from_secs(i as u64));
-            }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "check_after", 1)? {
+            new_condition.check_after = Some(Duration::from_secs(v as u64));
         }
 
         // this is tricky: we build a list of elements constituted by:
@@ -1112,10 +897,11 @@ impl DbusMethodCondition {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
             // here we expect a JSON string, reason explained above
             if !item.is_str() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
@@ -1123,35 +909,39 @@ impl DbusMethodCondition {
                 &format!("{{\"0\": {}}}", item.as_str().unwrap())
             );
             if json.is_err() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
             }
             // and then we extract the '0' element and check it to be a list
             let item = CfgMap::from_json(json.unwrap());
             let item = item.get("0").unwrap();
             if !item.is_list() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
             }
             let item = item.as_list().unwrap();
             for spec in item.iter() {
                 if !spec.is_map() {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY);
+                        ERR_INVALID_VALUE_FOR_ENTRY,
+                    ));
                 }
                 let spec = spec.as_map().unwrap();
                 for key in spec.keys() {
                     if !check.contains(&key.as_str()) {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:{key}"),
                             STR_UNKNOWN_VALUE,
-                            &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
+                            &format!("{ERR_INVALID_CFG_ENTRY} ({key})"),
+                        ));
                     }
                 }
                 let mut index_list: Vec<ParameterIndex> = Vec::new();
@@ -1160,33 +950,37 @@ impl DbusMethodCondition {
                         if let Some(px) = _check_dbus_param_index(index) {
                             index_list.push(px);
                         } else {
-                            return _invalid_cfg(
+                            return Err(cfg_err_invalid_config(
                                 &format!("{cur_key}:index"),
                                 &format!("{index:?}"),
-                                ERR_INVALID_VALUE_FOR_ENTRY);
+                                ERR_INVALID_VALUE_FOR_ENTRY,
+                            ));
                         }
                     } else if index.is_list() {
                         for sub_index in index.as_list().unwrap() {
                             if let Some(px) = _check_dbus_param_index(sub_index) {
                                 index_list.push(px);
                             } else {
-                                return _invalid_cfg(
+                                return Err(cfg_err_invalid_config(
                                     &format!("{cur_key}:index"),
                                     &format!("{sub_index:?}"),
-                                    ERR_INVALID_VALUE_FOR_ENTRY);
+                                    ERR_INVALID_VALUE_FOR_ENTRY,
+                                ));
                             }
                         }
                     } else {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:index"),
                             &format!("{index:?}"),
-                            ERR_INVALID_VALUE_FOR_ENTRY);
+                            ERR_INVALID_VALUE_FOR_ENTRY,
+                        ));
                     }
                 } else {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:index"),
                         STR_UNKNOWN_VALUE,
-                        ERR_MISSING_PARAMETER);
+                        ERR_MISSING_PARAMETER,
+                    ));
                 }
 
                 let operator;
@@ -1203,23 +997,26 @@ impl DbusMethodCondition {
                             "contains" => ParamCheckOperator::Contains,
                             "ncontains" => ParamCheckOperator::NotContains,
                             _ => {
-                                return _invalid_cfg(
+                                return Err(cfg_err_invalid_config(
                                     &format!("{cur_key}:operator"),
                                     &format!("{oper:?}"),
-                                    ERR_INVALID_VALUE_FOR_ENTRY);
+                                    ERR_INVALID_VALUE_FOR_ENTRY,
+                                ));
                             }
                         };
                     } else {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
                             STR_UNKNOWN_VALUE,
-                            ERR_INVALID_VALUE_FOR_ENTRY);
+                            ERR_INVALID_VALUE_FOR_ENTRY,
+                        ));
                     }
                 } else {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:operator"),
                         STR_UNKNOWN_VALUE,
-                        ERR_MISSING_PARAMETER);
+                        ERR_MISSING_PARAMETER,
+                    ));
                 }
 
                 let value;
@@ -1237,25 +1034,28 @@ impl DbusMethodCondition {
                             if let Ok(re) = re {
                                 value = ParameterCheckValue::Regex(re);
                             } else {
-                                return _invalid_cfg(
+                                return Err(cfg_err_invalid_config(
                                     &format!("{cur_key}:value"),
-                                    &format!("{v:?}"),
-                                    ERR_INVALID_VALUE_FOR_ENTRY);
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_VALUE_FOR_ENTRY,
+                                ));
                             }
                         } else {
                             value = ParameterCheckValue::String(s.to_string());
                         }
                     } else {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:value"),
                             STR_UNKNOWN_VALUE,
-                            ERR_INVALID_VALUE_FOR_ENTRY);
+                            ERR_INVALID_VALUE_FOR_ENTRY,
+                        ));
                     }
                 } else {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:value"),
                         STR_UNKNOWN_VALUE,
-                        ERR_MISSING_PARAMETER);
+                        ERR_MISSING_PARAMETER,
+                    ));
                 }
                 // now that we have the full triple, we can add it to criteria
                 param_checks.push(ParameterCheckTest { index: index_list, operator, value });
@@ -1269,18 +1069,8 @@ impl DbusMethodCondition {
 
             // `parameter_check_all` only makes sense if the paramenter check
             // list was built: for this reason it is set only in this case
-            // the enclosing `if` is that `Some(item) = cfgmap.get(cur_key)`
-            // where `cur_key` is `"parameter_check"`
-            let cur_key = "parameter_check_all";
-            if let Some(item) = cfgmap.get(cur_key) {
-                if !item.is_bool() {
-                    return _invalid_cfg(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER);
-                } else {
-                    new_condition.param_checks_all = *item.as_bool().unwrap();
-                }
+            if let Some(v) = cfg_bool(cfgmap, "parameter_check_all")? {
+                new_condition.param_checks_all = v;
             }
         }
 
@@ -1296,10 +1086,11 @@ impl DbusMethodCondition {
             // the process here is the same as the one for parameter checks:
             // here we expect a JSON string, reason explained above
             if !item.is_str() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
@@ -1307,19 +1098,21 @@ impl DbusMethodCondition {
                 &format!("{{\"0\": {}}}", item.as_str().unwrap())
             );
             if json.is_err() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
             }
             // and then we extract the '0' element and check it to be a list
             let item = CfgMap::from_json(json.unwrap());
             let item = item.get("0").unwrap();
             if !item.is_list() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_VALUE_FOR_ENTRY);
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
             }
             let item = item.as_list().unwrap();
             // the `ToVariant` trait should do the tedious recursive job for
@@ -1330,10 +1123,11 @@ impl DbusMethodCondition {
                 if let Some(v) = v {
                     param_call.push(v.into());
                 } else {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY);
+                        ERR_INVALID_VALUE_FOR_ENTRY,
+                    ));
                 }
             }
             // the parameters for the message invocation can now be set

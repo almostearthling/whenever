@@ -20,7 +20,9 @@ use rlua;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
+
+use crate::cfghelp::*;
 
 
 
@@ -223,14 +225,7 @@ impl LuaTask {
     /// *must* be set to `"lua"` mandatorily for this type of `Task`.
     pub fn load_cfgmap(cfgmap: &CfgMap) -> std::io::Result<LuaTask> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<LuaTask> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_TASK_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -238,73 +233,14 @@ impl LuaTask {
             "expect_all",
             "expected_results",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
-        // check type
-        let cur_key = "type";
-        let task_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_TYPE);
-            }
-            task_type = item.as_str().unwrap().to_owned();
-            if task_type != "lua" {
-                return _invalid_cfg(cur_key,
-                    &task_type,
-                    ERR_INVALID_TASK_TYPE);
-            }
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "lua"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
 
-        // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_TASK_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_TASK_NAME);
-            }
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        // common mandatory parameter retrieval
-        let cur_key = "script";
-        let script;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            script = item.as_str().unwrap().to_owned();
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        // specific mandatory parameter retrieval
+        let script = cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap();
 
         // initialize the structure
         let mut new_task = LuaTask::new(
@@ -313,48 +249,44 @@ impl LuaTask {
         );
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
         // specific optional parameter initialization
-        let cur_key = "expect_all";
-        if cfgmap.contains_key(cur_key) {
-            if let Some(item) = cfgmap.get(cur_key) {
-                if !item.is_bool() {
-                    return _invalid_cfg(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER);
-                } else {
-                    new_task.expect_all = *item.as_bool().unwrap();
-                }
-            }
+        if let Some(v) = cfg_bool(cfgmap, "expect_all")? {
+            new_task.expect_all = v;
         }
 
+        // expected results are in a complex map, thus no shortcut is given
         let cur_key = "expected_results";
         if cfgmap.contains_key(cur_key) {
             if let Some(item) = cfgmap.get(cur_key) {
                 if !item.is_map() {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER);
+                        ERR_INVALID_PARAMETER,
+                    ));
                 } else {
                     let map = item.as_map().unwrap();
                     let mut vars: HashMap<String, LuaValue> = HashMap::new();
                     for name in map.keys() {
                         if !RE_VAR_NAME.is_match(name) {
-                            return _invalid_cfg(
+                            return Err(cfg_err_invalid_config(
                                 cur_key,
                                 &name,
-                                ERR_INVALID_VAR_NAME);
+                                ERR_INVALID_VAR_NAME,
+                            ));
                         } else if let Some(value) = map.get(name) {
                             if value.is_int() {
                                 let v = value.as_int().unwrap();
@@ -369,16 +301,18 @@ impl LuaTask {
                                 let v = value.as_str().unwrap();
                                 vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
                             } else {
-                                return _invalid_cfg(
+                                return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_VAR_VALUE);
+                                    ERR_INVALID_VAR_VALUE,
+                                ));
                             }
                         } else {
-                            return _invalid_cfg(
+                            return Err(cfg_err_invalid_config(
                                 cur_key,
                                 &name,
-                                ERR_INVALID_VAR_NAME);
+                                ERR_INVALID_VAR_NAME,
+                            ));
                         }
                     }
                     new_task.expected = vars;
@@ -387,6 +321,101 @@ impl LuaTask {
         }
 
         Ok(new_task)
+    }
+
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "script",
+            "expect_all",
+            "expected_results",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "lua"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
+
+        // specific mandatory parameter check
+        cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap();
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+        
+        // also for optional parameters just check and throw away the result
+        cfg_bool(cfgmap, "expect_all")?;
+        
+        // expected results are in a complex map, thus no shortcut is given
+        let cur_key = "expected_results";
+        if cfgmap.contains_key(cur_key) {
+            if let Some(item) = cfgmap.get(cur_key) {
+                if !item.is_map() {
+                    return Err(cfg_err_invalid_config(
+                        cur_key,
+                        STR_UNKNOWN_VALUE,
+                        ERR_INVALID_PARAMETER,
+                    ));
+                } else {
+                    let map = item.as_map().unwrap();
+                    let mut vars: HashMap<String, LuaValue> = HashMap::new();
+                    for name in map.keys() {
+                        if !RE_VAR_NAME.is_match(name) {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                &name,
+                                ERR_INVALID_VAR_NAME,
+                            ));
+                        } else if let Some(value) = map.get(name) {
+                            if value.is_int() {
+                                let v = value.as_int().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
+                            } else if value.is_float() {
+                                let v = value.as_float().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                            } else if value.is_bool() {
+                                let v = value.as_bool().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                            } else if value.is_str() {
+                                let v = value.as_str().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
+                            } else {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_VAR_VALUE,
+                                ));
+                            }
+                        } else {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                &name,
+                                ERR_INVALID_VAR_NAME,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(name)
     }
 
 }

@@ -59,7 +59,7 @@ macro_rules! cfg_mandatory {
 pub fn cfg_err_invalid_config(key: &str, value: &str, message: &str) -> std::io::Error {
     std::io::Error::new(
         std::io::ErrorKind::InvalidData,
-        format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
+        format!("{ERR_INVALID_ITEM_CONFIG}: ({key}={value}) {message}"),
     )
 }
 

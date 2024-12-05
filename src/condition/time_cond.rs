@@ -421,7 +421,7 @@ impl TimeCondition {
 
         // type and name are both mandatory but type is only checked
         cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "time"))?;
-        let name = String::from(cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap());
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
         // (none here)

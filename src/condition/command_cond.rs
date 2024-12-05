@@ -31,7 +31,9 @@ use cfgmap::CfgMap;
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
+
+use crate::cfghelp::*;
 
 
 
@@ -470,14 +472,7 @@ impl CommandCondition {
     /// *must* be set to `"command"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<CommandCondition> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<CommandCondition> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -505,121 +500,23 @@ impl CommandCondition {
             "failure_status",
             "timeout_seconds",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
-        // check type
-        let cur_key = "type";
-        let cond_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COND_TYPE);
-            }
-            cond_type = item.as_str().unwrap().to_owned();
-            if cond_type != "command" {
-                return _invalid_cfg(cur_key,
-                    &cond_type,
-                    ERR_INVALID_COND_TYPE);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COND_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_COND_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_COND_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "command"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
-        let cur_key = "command";
-        let command;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COMMAND_PATH);
-            }
-            command = PathBuf::from(item.as_str().unwrap().to_owned());
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "command_arguments";
-        let mut args = Vec::new();
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COMMAND_ARGUMENTS);
-            }
-            for a in item.as_list().unwrap() {
-                args.push(a.as_str().unwrap().clone());
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "startup_path";
-        let startup_path;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_STARTUP_PATH);
-            }
-            let sp = item.as_str().unwrap().to_owned();
-            // NOTE: canonicalized paths wouldn't often work on Windows
-            // startup_path = PathBuf::from(&sp).canonicalize().unwrap_or(PathBuf::new());
-            startup_path = PathBuf::from(&sp);
-            if !startup_path.is_dir() {
-                return _invalid_cfg(
-                    cur_key,
-                    &sp,
-                    ERR_INVALID_STARTUP_PATH);
-            };
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        let command = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "command"))?.unwrap());
+        let args = cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?.unwrap();
+        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        if !startup_path.is_dir() {
+            return Err(cfg_err_invalid_config(
+                "startup_path",
+                &startup_path.to_string_lossy(),
+                ERR_INVALID_STARTUP_PATH,
+            ));
+        };
 
         // initialize the structure
         let mut new_condition = CommandCondition::new(
@@ -635,307 +532,126 @@ impl CommandCondition {
         new_condition.suspended = false;
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
-        let cur_key = "tasks";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_LIST);
-            }
-            for a in item.as_list().unwrap() {
-                let s = String::from(a.as_str().unwrap_or(&String::new()));
+        // retrieve task list and try to directly add each task
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+            for s in v {
                 if !new_condition.add_task(&s)? {
-                    return _invalid_cfg(
+                    return Err(cfg_err_invalid_config(
                         cur_key,
                         &s,
-                        ERR_INVALID_TASK);
+                        ERR_INVALID_TASK,
+                    ));
                 }
             }
         }
 
-        let cur_key = "recurring";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.recurring = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "recurring")? {
+            new_condition.recurring = v;
         }
-
-        let cur_key = "execute_sequence";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.exec_sequence = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
+            new_condition.exec_sequence = v;
         }
-
-        let cur_key = "break_on_failure";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.break_on_failure = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "break_on_failure")? {
+            new_condition.break_on_failure = v;
         }
-
-        let cur_key = "break_on_success";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.break_on_success = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "break_on_success")? {
+            new_condition.break_on_success = v;
         }
-
-        let cur_key = "suspended";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.suspended = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "suspended")? {
+            new_condition.suspended = v;
         }
 
         // specific optional parameter initialization
-        let cur_key = "match_exact";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.match_exact = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "match_exact")? {
+            new_condition.match_exact = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "match_regular_expression")? {
+            new_condition.match_regexp = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "case_sensitive")? {
+            new_condition.case_sensitive = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "include_environment")? {
+            new_condition.include_env = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "set_environment_variables")? {
+            new_condition.set_envvars = v;
         }
 
-        let cur_key = "match_regular_expression";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.match_regexp = *item.as_bool().unwrap();
-            }
-        }
-
-        let cur_key = "case_sensitive";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.case_sensitive = *item.as_bool().unwrap();
-            }
-        }
-
-        let cur_key = "include_environment";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.include_env = *item.as_bool().unwrap();
-            }
-        }
-
-        let cur_key = "set_environment_variables";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_condition.set_envvars = *item.as_bool().unwrap();
-            }
-        }
-
+        // the environment variable case is peculiar and has no shortcut
         let cur_key = "environment_variables";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             } else {
                 let map = item.as_map().unwrap();
                 let mut vars: HashMap<String, String> = HashMap::new();
                 for name in map.keys() {
                     if !RE_ENVVAR_NAME.is_match(name) {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             cur_key,
                             &name,
-                            ERR_INVALID_ENVVAR_NAME);
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
                     } else if let Some(value) = map.get(name) {
                         if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
                             vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
-                            return _invalid_cfg(
+                            return Err(cfg_err_invalid_config(
                                 cur_key,
                                 STR_UNKNOWN_VALUE,
-                                ERR_INVALID_ENVVAR_VALUE);
+                                ERR_INVALID_ENVVAR_VALUE,
+                            ));
                         }
                     } else {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             cur_key,
                             STR_UNKNOWN_VALUE,
-                            ERR_INVALID_ENVVAR_NAME);
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
                     }
                 }
                 new_condition.environment_vars = vars;
             }
         }
 
-        let cur_key = "check_after";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                let i = *item.as_int().unwrap();
-                if i < 1 {
-                    return _invalid_cfg(
-                        cur_key,
-                        &i.to_string(),
-                        ERR_INVALID_PARAMETER);
-                }
-                new_condition.check_after = Some(Duration::from_secs(i as u64));
-            }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "check_after", 1)? {
+            new_condition.check_after = Some(Duration::from_secs(v as u64));
         }
 
-        let cur_key = "success_stdout";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.success_stdout = Some(item.as_str().unwrap().to_owned());
+        new_condition.success_stdout = cfg_string(cfgmap, "success_stdout")?;
+        new_condition.success_stderr = cfg_string(cfgmap, "success_stderr")?;
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)? {
+            new_condition.success_status = Some(v as u32);
         }
 
-        let cur_key = "success_stderr";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.success_stderr = Some(item.as_str().unwrap().to_owned());
+        new_condition.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
+        new_condition.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)? {
+            new_condition.failure_status = Some(v as u32);
         }
 
-        let cur_key = "success_status";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)? {
+            if v > 0 {
+                new_condition.timeout = Some(Duration::from_secs(v as u64));
             }
-            let i = *item.as_int().unwrap();
-            if i < 0 || i as u64 > std::u32::MAX.into() {
-                return _invalid_cfg(
-                    cur_key,
-                    &i.to_string(),
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.success_status = Some(i as u32);
-        }
-
-        let cur_key = "failure_stdout";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.failure_stdout = Some(item.as_str().unwrap().to_owned());
-        }
-
-        let cur_key = "failure_stderr";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.failure_stderr = Some(item.as_str().unwrap().to_owned());
-        }
-
-        let cur_key = "failure_status";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            let i = *item.as_int().unwrap();
-            if i < 0 || i as u64 > std::u32::MAX.into() {
-                return _invalid_cfg(
-                    cur_key,
-                    &i.to_string(),
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.failure_status = Some(i as u32);
-        }
-
-        let cur_key = "timeout_seconds";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            let i = *item.as_int().unwrap();
-            if i < 0 || i as u64 > std::u32::MAX.into() {
-                return _invalid_cfg(
-                    cur_key,
-                    &i.to_string(),
-                    ERR_INVALID_PARAMETER);
-            }
-            new_condition.timeout = Some(Duration::from_secs(i as u64));
         }
 
         // start the condition if the configuration did not suspend it
