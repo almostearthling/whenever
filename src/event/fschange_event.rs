@@ -270,6 +270,63 @@ impl FilesystemChangeEvent {
         Ok(new_event)
     }
 
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "condition",
+            "watch",
+            "recursive",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter retrieval
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "cli"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
+        // also for optional parameters just check and throw away the result
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        // assigned condition is checked against the provided array
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
+            if !available_conditions.contains(&v.as_str()) {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    &v,
+                    ERR_INVALID_EVENT_CONDITION,
+                ));
+            }
+        }
+
+        // specific optional parameter check
+        cfg_vec_string(cfgmap, "watch")?;   // see above: we do not check for correctness
+        cfg_bool(cfgmap, "recursive")?;
+        cfg_int_check_above_eq(cfgmap, "poll_seconds", 0)?;
+
+        Ok(name)
+    }
+
 }
 
 

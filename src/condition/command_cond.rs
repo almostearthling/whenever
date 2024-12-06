@@ -662,6 +662,157 @@ impl CommandCondition {
         Ok(new_condition)
     }
 
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "command",
+            "command_arguments",
+            "startup_path",
+            "tasks",
+            "recurring",
+            "execute_sequence",
+            "break_on_failure",
+            "break_on_success",
+            "suspended",
+            "match_exact",
+            "match_regular_expression",
+            "case_sensitive",
+            "include_environment",
+            "set_environment_variables",
+            "environment_variables",
+            "check_after",
+            "success_stdout",
+            "success_stderr",
+            "success_status",
+            "failure_stdout",
+            "failure_stderr",
+            "failure_status",
+            "timeout_seconds",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter check
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "command"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
+        // specific mandatory parameter check
+        cfg_mandatory!(cfg_string(cfgmap, "command"))?;
+        cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?;
+        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        if !startup_path.is_dir() {
+            return Err(cfg_err_invalid_config(
+                "startup_path",
+                &startup_path.to_string_lossy(),
+                ERR_INVALID_STARTUP_PATH,
+            ));
+        };
+
+
+        // also for optional parameters just check and throw away the result
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        // check configuration task list against the provided ones
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+            for s in v {
+                if !available_tasks.contains(&s.as_str()) {
+                    return Err(cfg_err_invalid_config(
+                        cur_key,
+                        &s,
+                        ERR_INVALID_TASK,
+                    ));
+                }
+            }
+        }
+
+        cfg_bool(cfgmap, "recurring")?;
+        cfg_bool(cfgmap, "execute_sequence")?;
+        cfg_bool(cfgmap, "break_on_failure")?;
+        cfg_bool(cfgmap, "break_on_success")?;
+        cfg_bool(cfgmap, "suspended")?;
+
+        cfg_int_check_above_eq(cfgmap, "check_after", 1)?;
+
+        cfg_bool(cfgmap, "match_exact")?;
+        cfg_bool(cfgmap, "match_regular_expression")?;
+        cfg_bool(cfgmap, "case_sensitive")?;
+        cfg_bool(cfgmap, "include_environment")?;
+        cfg_bool(cfgmap, "set_environment_variables")?;
+
+        // the environment variables case is peculiar and has no shortcut
+        let cur_key = "environment_variables";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                let map = item.as_map().unwrap();
+                let mut vars: HashMap<String, String> = HashMap::new();
+                for name in map.keys() {
+                    if !RE_VAR_NAME.is_match(name) {
+                        return Err(cfg_err_invalid_config(
+                            cur_key,
+                            &name,
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
+                    } else if let Some(value) = map.get(name) {
+                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                            vars.insert(name.to_string(), value.as_str().unwrap().to_string());
+                        } else {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_ENVVAR_VALUE,
+                            ));
+                        }
+                    } else {
+                        return Err(cfg_err_invalid_config(
+                            cur_key,
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
+                    }
+                }
+            }
+        }
+
+        cfg_string(cfgmap, "success_stdout")?;
+        cfg_string(cfgmap, "success_stderr")?;
+        cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?;
+
+        cfg_string(cfgmap, "failure_stdout")?;
+        cfg_string(cfgmap, "failure_stderr")?;
+        cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?;
+
+        cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)?;
+
+        Ok(name)
+    }
+
 }
 
 

@@ -743,6 +743,253 @@ impl DbusMessageEvent {
         Ok(new_event)
     }
 
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> std::io::Result<String> {
+
+        fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
+            if index.is_int() {
+                let i = *index.as_int().unwrap();
+                // as per specification, DBus supports at most 64 parameters
+                if !(0..=DBUS_MAX_NUMBER_OF_ARGUMENTS).contains(&i) {
+                    return None;
+                } else {
+                    return Some(ParameterIndex::Integer(i as u64));
+                }
+            } else if index.is_str() {
+                let s = String::from(index.as_str().unwrap());
+                return Some(ParameterIndex::String(s));
+            }
+            None
+        }
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "condition",
+            "bus",
+            "rule",
+            "parameter_check",
+            "parameter_check_all",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter retrieval
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "cli"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
+        // also for optional parameters just check and throw away the result
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        // assigned condition is checked against the provided array
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
+            if !available_conditions.contains(&v.as_str()) {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    &v,
+                    ERR_INVALID_EVENT_CONDITION,
+                ));
+            }
+        }
+
+        // specific optional parameter check
+
+        // this is tricky: we build a list of elements constituted by:
+        // - an index list (integers and strings, mixed) which will address
+        //   every nested structure,
+        // - an operator,
+        // - a value to check against using the operator;
+        // of course the value types found in TOML are less tructured than the
+        // ones supported by DBus, and subsequent tests will take this into
+        // account and compare only values compatible with each other, and
+        // compatible with the operator used
+        let check = [
+            "index",
+            "operator",
+            "value",
+        ];
+
+        let cur_key = "parameter_check";
+        if let Some(item) = cfgmap.get(cur_key) {
+            // here we expect a JSON string, reason explained above
+            if !item.is_str() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
+            }
+            // since CfgMap only accepts maps as input, and we expect a list
+            // instead, we build a map with a single element labeled '0':
+            let json = Value::from_str(
+                &format!("{{\"0\": {}}}", item.as_str().unwrap())
+            );
+            if json.is_err() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
+            }
+            // and then we extract the '0' element and check it to be a list
+            let item = CfgMap::from_json(json.unwrap());
+            let item = item.get("0").unwrap();
+            if !item.is_list() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_VALUE_FOR_ENTRY,
+                ));
+            }
+            let item = item.as_list().unwrap();
+            for spec in item.iter() {
+                if !spec.is_map() {
+                    return Err(cfg_err_invalid_config(
+                        cur_key,
+                        STR_UNKNOWN_VALUE,
+                        ERR_INVALID_VALUE_FOR_ENTRY,
+                    ));
+                }
+                let spec = spec.as_map().unwrap();
+                for key in spec.keys() {
+                    if !check.contains(&key.as_str()) {
+                        return Err(cfg_err_invalid_config(
+                            &format!("{cur_key}:{key}"),
+                            STR_UNKNOWN_VALUE,
+                            &format!("{ERR_INVALID_CFG_ENTRY} ({key})"),
+                        ));
+                    }
+                }
+                if let Some(index) = spec.get("index") {
+                    if index.is_int() {
+                        if _check_dbus_param_index(index).is_none() {
+                            return Err(cfg_err_invalid_config(
+                                &format!("{cur_key}:index"),
+                                &format!("{index:?}"),
+                                ERR_INVALID_VALUE_FOR_ENTRY,
+                            ));
+                        }
+                    } else if index.is_list() {
+                        for sub_index in index.as_list().unwrap() {
+                            if _check_dbus_param_index(sub_index).is_none() {
+                                return Err(cfg_err_invalid_config(
+                                    &format!("{cur_key}:index"),
+                                    &format!("{sub_index:?}"),
+                                    ERR_INVALID_VALUE_FOR_ENTRY,
+                                ));
+                            }
+                        }
+                    } else {
+                        return Err(cfg_err_invalid_config(
+                            &format!("{cur_key}:index"),
+                            &format!("{index:?}"),
+                            ERR_INVALID_VALUE_FOR_ENTRY,
+                        ));
+                    }
+                } else {
+                    return Err(cfg_err_invalid_config(
+                        &format!("{cur_key}:index"),
+                        STR_UNKNOWN_VALUE,
+                        ERR_MISSING_PARAMETER,
+                    ));
+                }
+
+                // we keep the same method of checking the operator as above
+                // instead of simply checking that the corresponding string
+                // is present in a fixed array in order to check for regex
+                // correctness below in the same way as load_cfgmap does
+                let operator;
+                if let Some(oper) = spec.get("operator") {
+                    if oper.is_str() {
+                        operator = match oper.as_str().unwrap().as_str() {
+                            "eq" => ParamCheckOperator::Equal,
+                            "neq" => ParamCheckOperator::NotEqual,
+                            "gt" => ParamCheckOperator::Greater,
+                            "ge" => ParamCheckOperator::GreaterEqual,
+                            "lt" => ParamCheckOperator::Less,
+                            "le" => ParamCheckOperator::LessEqual,
+                            "match" => ParamCheckOperator::Match,
+                            "contains" => ParamCheckOperator::Contains,
+                            "ncontains" => ParamCheckOperator::NotContains,
+                            _ => {
+                                return Err(cfg_err_invalid_config(
+                                    &format!("{cur_key}:operator"),
+                                    &format!("{oper:?}"),
+                                    ERR_INVALID_VALUE_FOR_ENTRY,
+                                ));
+                            }
+                        };
+                    } else {
+                        return Err(cfg_err_invalid_config(
+                            &format!("{cur_key}:operator"),
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_VALUE_FOR_ENTRY,
+                        ));
+                    }
+                } else {
+                    return Err(cfg_err_invalid_config(
+                        &format!("{cur_key}:operator"),
+                        STR_UNKNOWN_VALUE,
+                        ERR_MISSING_PARAMETER,
+                    ));
+                }
+
+                if let Some(v) = spec.get("value") {
+                    if v.is_str() {
+                        let s = v.as_str().unwrap();
+                        if operator == ParamCheckOperator::Match {
+                            let re = Regex::from_str(s);
+                            if re.is_err() {
+                                return Err(cfg_err_invalid_config(
+                                    &format!("{cur_key}:value"),
+                                    &format!("{v:?}"),
+                                    ERR_INVALID_VALUE_FOR_ENTRY,
+                                ));
+                            }
+                        }
+                    } else if !(v.is_bool() || v.is_int() || v.is_float()) {
+                        return Err(cfg_err_invalid_config(
+                            &format!("{cur_key}:value"),
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_VALUE_FOR_ENTRY,
+                        ));
+                    }
+                } else {
+                    return Err(cfg_err_invalid_config(
+                        &format!("{cur_key}:value"),
+                        STR_UNKNOWN_VALUE,
+                        ERR_MISSING_PARAMETER,
+                    ));
+                }
+            }
+
+            // `parameter_check_all` only makes sense if the paramenter check
+            // list was built: for this reason it is checked only in this case
+            // (so that the checks are the same as the ones in load_cfgmap)
+            cfg_bool(cfgmap, "parameter_check_all")?;
+        }
+
+        Ok(name)
+    }
+
 }
 
 

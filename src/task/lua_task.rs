@@ -341,12 +341,16 @@ impl LuaTask {
         ];
         cfg_check_keys(cfgmap, &check)?;
 
+        // common mandatory parameter check
+
         // type and name are both mandatory: type is checked and name is kept
         cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "lua"))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
 
         // specific mandatory parameter check
         cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap();
+
+        // also for optional parameters just check and throw away the result
 
         // tags are always simply checked this way
         let cur_key = "tags";
@@ -360,7 +364,6 @@ impl LuaTask {
             }
         }
         
-        // also for optional parameters just check and throw away the result
         cfg_bool(cfgmap, "expect_all")?;
         
         // expected results are in a complex map, thus no shortcut is given

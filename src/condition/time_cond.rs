@@ -492,7 +492,7 @@ impl TimeCondition {
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER,
                 ));
-        } else {
+            } else {
                 for map in item.as_list().unwrap() {
                     if !map.is_map() {
                         return Err(cfg_err_invalid_config(
@@ -642,6 +642,192 @@ impl TimeCondition {
         }
 
         Ok(new_condition)
+    }
+
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "time_specifications",
+            "tasks",
+            "recurring",
+            "execute_sequence",
+            "break_on_failure",
+            "break_on_success",
+            "suspended",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter check
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "time"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
+        // also for optional parameters just check and throw away the result
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        // check configuration task list against the provided ones
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+            for s in v {
+                if !available_tasks.contains(&s.as_str()) {
+                    return Err(cfg_err_invalid_config(
+                        cur_key,
+                        &s,
+                        ERR_INVALID_TASK,
+                    ));
+                }
+            }
+        }
+
+        cfg_bool(cfgmap, "recurring")?;
+        cfg_bool(cfgmap, "execute_sequence")?;
+        cfg_bool(cfgmap, "break_on_failure")?;
+        cfg_bool(cfgmap, "break_on_success")?;
+        cfg_bool(cfgmap, "suspended")?;
+
+        // specific optional parameter check
+
+        // there is no shortcut for checking the list of time specifications
+        // so we just reimplement the retrieval routine seen in load_cfgmap
+        // without actually storing values to update a condition object 
+        let cur_key = "time_specifications";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                for map in item.as_list().unwrap() {
+                    if !map.is_map() {
+                        return Err(cfg_err_invalid_config(
+                            cur_key,
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_TIMESPEC,
+                        ));
+                    } else {
+                        let map = map.as_map().unwrap();
+                        if let Some(v) = map.get("year") {
+                            if !v.is_int() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            }
+                        }
+                        if let Some(v) = map.get("month") {
+                            if !v.is_int() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            }
+                        }
+                        if let Some(v) = map.get("day") {
+                            if !v.is_int() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            }
+                        }
+                        if let Some(v) = map.get("hour") {
+                            if !v.is_int() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            }
+                        }
+                        if let Some(v) = map.get("minute") {
+                            if !v.is_int() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            }
+                        }
+                        if let Some(v) = map.get("second") {
+                            if !v.is_int() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            }
+                        }
+                        if let Some(v) = map.get("weekday") {
+                            if !v.is_str() {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_TIMESPEC,
+                                ));
+                            } else {
+                                let s = v.as_str().unwrap().to_ascii_lowercase();
+                                let _ = Some(match s.as_str() {
+                                    "sun" => 1,
+                                    "sunday" => 1,
+                                    "mon" => 2,
+                                    "monday" => 2,
+                                    "tue" => 3,
+                                    "tuesday" => 3,
+                                    "wed" => 4,
+                                    "wednesday" => 4,
+                                    "thu" => 5,
+                                    "thursday" => 5,
+                                    "fri" => 6,
+                                    "friday" => 6,
+                                    "sat" => 7,
+                                    "saturday" => 7,
+                                    _ => {
+                                        return Err(cfg_err_invalid_config(
+                                            cur_key,
+                                            STR_UNKNOWN_VALUE,
+                                            ERR_INVALID_TIMESPEC,
+                                        ));
+                                    },
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_MISSING_PARAMETER,
+            ));
+        }
+
+        Ok(name)
     }
 
 }

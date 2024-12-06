@@ -489,7 +489,7 @@ impl CommandTask {
             new_task.set_envvars = v;
         }
 
-        // the environment variable case is peculiar and has no shortcut
+        // the environment variables case is peculiar and has no shortcut
         let cur_key = "environment_variables";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_map() {
@@ -582,6 +582,8 @@ impl CommandTask {
         ];
         cfg_check_keys(cfgmap, &check)?;
 
+        // common mandatory parameter check
+
         // type and name are both mandatory: type is checked and name is kept
         cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "command"))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
@@ -599,13 +601,25 @@ impl CommandTask {
         };
 
         // also for optional parameters just check and throw away the result
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
         cfg_bool(cfgmap, "match_exact")?;
         cfg_bool(cfgmap, "match_regular_expression")?;
         cfg_bool(cfgmap, "case_sensitive")?;
         cfg_bool(cfgmap, "include_environment")?;
         cfg_bool(cfgmap, "set_environment_variables")?;
 
-        // the environment variable case is peculiar and has no shortcut
+        // the environment variables case is peculiar and has no shortcut
         let cur_key = "environment_variables";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_map() {
