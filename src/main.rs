@@ -972,6 +972,9 @@ fn main() {
         &format!("{APP_NAME} {APP_VERSION}"),
     );
 
+    // check configuration
+    exit_if_fails!(args.quiet, check_configuration(&config));
+
     // read configuration, then extract the global parameters and configure items
     // NOTE: the `unwrap_or` part is actually pleonastic, as the missing values
     //       are set by `configure()` to exactly the values below. This will

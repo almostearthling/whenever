@@ -19,17 +19,200 @@ use crate::condition;
 use crate::event;
 use crate::event::base::Event;
 
+use crate::cfghelp::*;
 
-// read the configuration from a string and build tasks and conditions
-pub fn configure(config_file: &str) -> std::io::Result<CfgMap> {
 
-    // helper to create a specific error
-    fn _c_error_invalid_config(key: &str) -> std::io::Error {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("{ERR_INVALID_CONFIG_FILE}:{key}"),
-        )
+// helper to create a specific error
+// fn _c_error_invalid_config(key: &str) -> std::io::Error {
+//     std::io::Error::new(
+//         std::io::ErrorKind::InvalidInput,
+//         format!("{ERR_INVALID_CONFIG_FILE}:{key}"),
+//     )
+// }
+
+
+/// Check the configuration from a string
+pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
+
+    let config_map: CfgMap;     // to be initialized below
+
+    match toml::from_str(fs::read_to_string(config_file)?.as_str()) {
+        Ok(toml_text) => {
+            config_map = CfgMap::from_toml(toml_text);
+        }
+        _ => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                ERR_INVALID_CONFIG_FILE,
+            ));
+        }
     }
+
+    // globals
+    cfg_int_check_above_eq(&config_map, "scheduler_tick_seconds", 1)?;
+    cfg_bool(&config_map, "randomize_checks_within_ticks")?;
+
+    // check tasks and build a list of names to check conditions against
+    let mut task_list: Vec<String> = Vec::new();
+    if let Some(item_map) = config_map.get("task") {
+        if !item_map.is_list() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                ERR_INVALID_TASK_CONFIG,
+            ));
+        } else {
+            for entry in item_map.as_list().unwrap() {
+                if !entry.is_map() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
+                } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
+                    let item_type = item_type.as_str().unwrap();
+                    let name;
+                    match item_type.as_str() {
+                        "command" => {
+                            name = task::command_task::CommandTask::check_cfgmap(&entry.as_map().unwrap())?;
+                        }
+                        "lua" => {
+                            name = task::lua_task::LuaTask::check_cfgmap(&entry.as_map().unwrap())?;
+                        }
+                        // ...
+
+                        _ => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                ERR_INVALID_TASK_TYPE,
+                            ));
+                        }
+                    };
+                    task_list.push(name);
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
+                }
+            }
+        }
+    }
+
+    // check conditions and build a list of names to check events against
+    let mut condition_list: Vec<String> = Vec::new();
+    if let Some(task_map) = config_map.get("condition") {
+        if !task_map.is_list() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                ERR_INVALID_TASK_CONFIG,
+            ));
+        } else {
+            for entry in task_map.as_list().unwrap() {
+                if !entry.is_map() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
+                } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
+                    let task_list = task_list.iter().map(|x| x.as_str()).collect();
+                    let item_type = item_type.as_str().unwrap();
+                    let name;
+                    match item_type.as_str() {
+                        "interval" => {
+                            name = condition::interval_cond::IntervalCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        "idle" => {
+                            name = condition::idle_cond::IdleCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        "time" => {
+                            name = condition::time_cond::TimeCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        "command" => {
+                            name = condition::command_cond::CommandCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        "lua" => {
+                            name = condition::lua_cond::LuaCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        "dbus" => {
+                            name = condition::dbus_cond::DbusMethodCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        "bucket" | "event" => {
+                            name = condition::bucket_cond::BucketCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                        }
+                        // ...
+
+                        _ => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                ERR_INVALID_TASK_TYPE,
+                            ));
+                        }
+                    };
+                    condition_list.push(name);
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
+                }
+            }
+        }
+    }
+
+    // check events
+    let mut event_list: Vec<String> = Vec::new();
+    if let Some(item_map) = config_map.get("event") {
+        if !item_map.is_list() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                ERR_INVALID_TASK_CONFIG,
+            ));
+        } else {
+            for entry in item_map.as_list().unwrap() {
+                if !entry.is_map() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
+                } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
+                    let condition_list = condition_list.iter().map(|x| x.as_str()).collect();
+                    let item_type = item_type.as_str().unwrap();
+                    let name;
+                    match item_type.as_str() {
+                        "fschange" => {
+                            name = event::fschange_event::FilesystemChangeEvent::check_cfgmap(&entry.as_map().unwrap(), &condition_list)?;
+                        }
+                        "dbus" => {
+                            name = event::dbus_event::DbusMessageEvent::check_cfgmap(&entry.as_map().unwrap(), &condition_list)?;
+                        }
+                        "cli" => {
+                            name = event::manual_event::ManualCommandEvent::check_cfgmap(&entry.as_map().unwrap(), &condition_list)?;
+                        }
+                        // ...
+
+                        _ => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                ERR_INVALID_TASK_TYPE,
+                            ));
+                        }
+                    };
+                    event_list.push(name);
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        ERR_INVALID_TASK_CONFIG,
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
+/// Read the configuration from a string and build items
+pub fn configure(config_file: &str) -> std::io::Result<CfgMap> {
 
     let mut config_map: CfgMap;     // to be initialized below
 
@@ -49,11 +232,17 @@ pub fn configure(config_file: &str) -> std::io::Result<CfgMap> {
     let mut scheduler_tick_seconds = DEFAULT_SCHEDULER_TICK_SECONDS;
     if let Some(item) = config_map.get(cur_key) {
         if !item.is_int() {
-            return Err(_c_error_invalid_config(cur_key));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+            ));
         }
         scheduler_tick_seconds = *item.as_int().unwrap();
         if scheduler_tick_seconds < 1 {
-            return Err(_c_error_invalid_config(cur_key));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+            ));
         }
     }
 
@@ -61,7 +250,10 @@ pub fn configure(config_file: &str) -> std::io::Result<CfgMap> {
     let mut randomize_checks_within_ticks = DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS;
     if let Some(item) = config_map.get(cur_key) {
         if !item.is_int() {
-            return Err(_c_error_invalid_config(cur_key));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+            ));
         }
         randomize_checks_within_ticks = *item.as_bool().unwrap();
     }

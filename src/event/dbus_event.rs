@@ -782,7 +782,7 @@ impl DbusMessageEvent {
         // common mandatory parameter retrieval
 
         // type and name are both mandatory: type is checked and name is kept
-        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "cli"))?;
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "dbus"))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
 
         // also for optional parameters just check and throw away the result
