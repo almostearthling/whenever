@@ -49,7 +49,8 @@ fn generate_event_id() -> i64 {
 pub struct EventRegistry {
     // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
-    event_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>,
+    //event_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>,
+    event_list: RwLock<HashMap<String, Arc<RwLock<Box<dyn Event>>>>>,
     // the triggerable list is kept separate because the triggerable
     // attribute is actually a constant that can be retrieved at startup
     // and we do not want to be blocked while directly asking an active
@@ -280,17 +281,16 @@ impl EventRegistry {
     pub fn has_event_eq(&self, event: &dyn Event) -> bool {
         let name = event.get_name();
         if self.has_event(name.as_str()) {
-            let events = self.event_list
+            let guard = self.event_list
                 .read()
                 .expect("cannot read event registry");
-            let found_event = events
+            let found_event = guard
                 .get(name.as_str())
-                .unwrap();
-            let guard = found_event.clone();
-            let locked_event = guard
-                .lock()
-                .expect("cannot check event for comparison");
-            return locked_event.eq(event)
+                .unwrap()
+                .clone();
+            drop(guard);
+            let equals = found_event.read().expect("cannot lock event").eq(event);  // <== EVENT IS ALREADY LOCKED!
+            return equals;
         }
 
         false
@@ -342,7 +342,7 @@ impl EventRegistry {
         self.event_list
             .write()
             .expect("cannot write to event registry")
-            .insert(name, Arc::new(Mutex::new(boxed_event)));
+            .insert(name, Arc::new(RwLock::new(boxed_event)));
         Ok(true)
     }
 
@@ -434,7 +434,7 @@ impl EventRegistry {
             .expect("cannot retrieve event")
             .clone();
         drop(guard);
-        let id = event.lock().expect("cannot lock event").get_id();
+        let id = event.read().expect("cannot lock event").get_id();
         Some(id)
     }
 
@@ -484,7 +484,7 @@ impl EventRegistry {
             .expect("cannot retrieve event for triggering")
             .clone();
 
-        let mxevent = event.lock()
+        let gevent = event.read()
             .expect("cannot lock event for triggering");
 
         log(
@@ -496,7 +496,7 @@ impl EventRegistry {
             LOG_STATUS_OK,
             &format!("manually triggering event {name}"),
         );
-        match mxevent.fire_condition() {
+        match gevent.fire_condition() {
             Ok(res) => {
                 if res {
                     log(
@@ -562,10 +562,10 @@ impl EventRegistry {
             .expect("cannot retrieve event for service setup")
             .clone();
 
-        let mxevent = event.lock().expect("cannot lock event for service setup");
+        let gevent = event.read().expect("cannot lock event for service setup");
         let name_copy = String::from(name);
         let event_name = Arc::new(Mutex::new(name_copy));
-        if mxevent.requires_thread() {
+        if gevent.requires_thread() {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -581,7 +581,7 @@ impl EventRegistry {
                 let ename = event_name.lock().unwrap();
 
                 // this implements the listening service in current thread
-                let res = event.lock().unwrap()._run_service();
+                let res = event.read().unwrap()._run_service();
                 match res {
                     Ok(ssres) => {
                         if ssres {
@@ -624,7 +624,7 @@ impl EventRegistry {
             });
             Ok(Some(handle))
         } else {
-            if mxevent._run_service()? {
+            if gevent._run_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -676,9 +676,9 @@ impl EventRegistry {
             .expect("cannot retrieve event for service setup")
             .clone();
 
-        let mxevent = event.lock().expect("cannot lock event for service setup");
+        let gevent = event.read().expect("cannot lock event for service setup");
 
-        if mxevent.requires_thread() {
+        if gevent.requires_thread() {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -688,11 +688,11 @@ impl EventRegistry {
                 LOG_STATUS_OK,
                 &format!("requesting removal of listening service for event {name} (dedicated thread)"),
             );
-            let _ = mxevent._stop_service()?;
+            let _ = gevent._stop_service()?;
 
             Ok(())
         } else {
-            if mxevent._stop_service()? {
+            if gevent._stop_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -734,15 +734,17 @@ impl EventRegistry {
         }
 
         let queue = self.event_service_install_queue.clone();
-        let mut locked_queue = queue
-            .lock()
-            .expect("cannot lock event service install queue");
-        let sname = String::from(name);
-        if locked_queue.contains(&sname) {
-            let index = locked_queue.iter().position(|s| *s == sname).unwrap();
-            locked_queue.remove(index);
+        {
+            let mut locked_queue = queue
+                .lock()
+                .expect("cannot lock event service install queue");
+            let sname = String::from(name);
+            if locked_queue.contains(&sname) {
+                let index = locked_queue.iter().position(|s| *s == sname).unwrap();
+                locked_queue.remove(index);
+            }
+            locked_queue.push(sname);
         }
-        locked_queue.push(sname);
         let id = self.event_id(name).unwrap();
         log(
             LogType::Debug,
@@ -769,15 +771,17 @@ impl EventRegistry {
             panic!("event {name} not found in registry");
         }
         let queue = self.event_service_uninstall_queue.clone();
-        let mut locked_queue = queue
-            .lock()
-            .expect("cannot lock event service uninstall queue");
-        let sname = String::from(name);
-        if locked_queue.contains(&sname) {
-            let index = locked_queue.iter().position(|s| *s == sname).unwrap();
-            locked_queue.remove(index);
+        {
+            let mut locked_queue = queue
+                .lock()
+                .expect("cannot lock event service uninstall queue");
+            let sname = String::from(name);
+            if locked_queue.contains(&sname) {
+                let index = locked_queue.iter().position(|s| *s == sname).unwrap();
+                locked_queue.remove(index);
+            }
+            locked_queue.push(sname);
         }
-        locked_queue.push(sname);
         let id = self.event_id(name).unwrap();
         log(
             LogType::Debug,
@@ -819,9 +823,9 @@ impl EventRegistry {
             .expect("cannot retrieve event for activation")
             .clone();
 
-        let mxevent = event.lock()
+        let gevent = event.read()
             .expect("cannot lock event for activation");
-        if let Ok(res) = mxevent.fire_condition() {
+        if let Ok(res) = gevent.fire_condition() {
             if res {
                 log(
                     LogType::Trace,

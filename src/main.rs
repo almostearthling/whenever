@@ -126,7 +126,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
         return Ok(false);
     }
     // also skip if application has been paused for reconfiguration
-    if *APPLICATION_IS_PAUSED.read().unwrap() {
+    if *APPLICATION_IS_RECONFIGURING.read().unwrap() {
         log(
             LogType::Trace,
             LOG_EMITTER_MAIN,
@@ -428,8 +428,6 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
 
 // attempt to reconfigure the application using the provided config file name
 fn reconfigure(config_file: &str) -> std::io::Result<()> {
-    // this is only set when actually modifying the configuration
-    let mut reconfiguring = APPLICATION_IS_RECONFIGURING.write().unwrap();
 
     if let Err(e) = check_configuration(config_file) {
         log(
@@ -444,9 +442,9 @@ fn reconfigure(config_file: &str) -> std::io::Result<()> {
         return Err(e);
     }
 
-    *reconfiguring = true;
+    *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
     let res = reconfigure_globals(config_file);
-    *reconfiguring = false;
+    *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
     match res {
         Ok(config) => {
             let scheduler_tick_seconds = *config
@@ -454,7 +452,7 @@ fn reconfigure(config_file: &str) -> std::io::Result<()> {
                 .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
                 .as_int()
                 .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS) as u64;
-            *reconfiguring = true;
+            *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
             let res = reconfigure_items(
                 &config, 
                 &TASK_REGISTRY,
@@ -462,7 +460,7 @@ fn reconfigure(config_file: &str) -> std::io::Result<()> {
                 &EVENT_REGISTRY,
                 &EXECUTION_BUCKET,
                 scheduler_tick_seconds);
-            *reconfiguring = false;
+            *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
             match res {
                 Ok(_) => {
                     log(
