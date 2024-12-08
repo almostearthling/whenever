@@ -95,6 +95,36 @@ impl TaskRegistry {
             .contains_key(name)
     }
 
+    /// Check whether or not the provided task is in the registry.
+    ///
+    /// # Arguments
+    ///
+    /// * name - the name of the task to check for registration
+    ///
+    /// # Panics
+    ///
+    /// May panic if the task registry could not be locked for enquiry
+    /// or the contained task cannot be locked for comparison.
+    pub fn has_task_eq(&self, task: &dyn Task) -> bool {
+        let name = task.get_name();
+        if self.has_task(name.as_str()) {
+            let tasks = self.task_list
+                .read()
+                .expect("cannot read event registry");
+            let found_task = tasks
+                .get(name.as_str())
+                .unwrap();
+            let guard = found_task.clone();
+            let locked_task = guard
+                .lock()
+                .expect("cannot check event for comparison");
+            return locked_task.eq(task)
+        }
+
+        false
+    }
+
+
     /// Check whether all tasks in a list are in the registry (**Note**: this
     /// function is mostly used internally for verification), returns `true`
     /// only if _all_ tasks in the list are found in the registry.

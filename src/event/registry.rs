@@ -267,6 +267,36 @@ impl EventRegistry {
             .contains_key(name)
     }
 
+    /// Check whether or not the provided event is in the registry.
+    ///
+    /// # Arguments
+    ///
+    /// * event - the reference to an event to check for registration
+    ///
+    /// # Panics
+    ///
+    /// May panic if the event registry could not be locked for enquiry
+    /// or the contained event cannot be locked for comparison.
+    pub fn has_event_eq(&self, event: &dyn Event) -> bool {
+        let name = event.get_name();
+        if self.has_event(name.as_str()) {
+            let events = self.event_list
+                .read()
+                .expect("cannot read event registry");
+            let found_event = events
+                .get(name.as_str())
+                .unwrap();
+            let guard = found_event.clone();
+            let locked_event = guard
+                .lock()
+                .expect("cannot check event for comparison");
+            return locked_event.eq(event)
+        }
+
+        false
+    }
+
+
     /// Add an already-boxed `Event` if its name is not present in the
     /// registry.
     ///

@@ -137,6 +137,7 @@ pub const LOG_ACTION_FIRE: &str = "fire";
 pub const LOG_ACTION_TRIGGER: &str = "trigger";
 pub const LOG_ACTION_INSTALL: &str = "install";
 pub const LOG_ACTION_UNINSTALL: &str = "uninstall";
+pub const LOG_ACTION_RECONFIGURE: &str = "reconfigure";
 pub const LOG_ACTION_ACTIVE: &str = "active";
 pub const LOG_ACTION_LUA: &str = "exec_lua";
 pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";

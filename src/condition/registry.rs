@@ -89,6 +89,35 @@ impl ConditionRegistry {
             .contains_key(name)
     }
 
+    /// Check whether or not a condition is in the registry.
+    ///
+    /// # Arguments
+    ///
+    /// * cond - the reference to a condition to check for registration
+    ///
+    /// # Panics
+    ///
+    /// May panic if the condition registry could not be locked for enquiry
+    /// or the contained condition cannot be locked for comparison.
+    pub fn has_condition_eq(&self, cond: &dyn Condition) -> bool {
+        let name = cond.get_name();
+        if self.has_condition(name.as_str()) {
+            let conditions = self.condition_list
+                .read()
+                .expect("cannot read event registry");
+            let found_condition = conditions
+                .get(name.as_str())
+                .unwrap();
+            let guard = found_condition.clone();
+            let locked_condition = guard
+                .lock()
+                .expect("cannot check event for comparison");
+            return locked_condition.eq(cond)
+        }
+
+        false
+    }
+
     /// Return the type of a condition given its name, or `None` if the
     /// condition is not found in the registry.
     ///

@@ -58,12 +58,12 @@ pub trait Condition: Send {
     fn task_registry(&self) -> Option<&'static TaskRegistry>;
 
     /// Tell whether or not another `Condition` is equal to this
-    fn eq(&self, other: Box<dyn Condition>) -> bool {
+    fn eq(&self, other: &dyn Condition) -> bool {
         self._hash() == other._hash()
     }
 
     /// Tell whether or not another `Condition` is not equal to this
-    fn ne(&self, other: Box<dyn Condition>) -> bool {
+    fn ne(&self, other: &dyn Condition) -> bool {
         !self.eq(other)
     }
 

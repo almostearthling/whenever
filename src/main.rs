@@ -70,11 +70,14 @@ lazy_static! {
     // set this if the application must exit
     static ref APPLICATION_MUST_EXIT: RwLock<bool> = RwLock::new(false);
 
-    // set this if the application must exit
+    // set this if the application must exit immediately
     static ref APPLICATION_FORCE_EXIT: RwLock<bool> = RwLock::new(false);
 
-    // set this if the application must exit
+    // set this if the application is paused
     static ref APPLICATION_IS_PAUSED: RwLock<bool> = RwLock::new(false);
+
+    // set this if the application is paused waiting for reconfiguration
+    static ref APPLICATION_IS_RECONFIGURING: RwLock<bool> = RwLock::new(false);
 
     // types of conditions whose tick cannot be delayed
     static ref NO_DELAY_CONDITIONS: Vec<String> = vec![
@@ -109,7 +112,7 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // finish and get out of the way to allow execution of subsequent ticks; within
 // the new thread the tick might wait for a random duration,
 fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
-    // skip if application is paused
+    // skip if application has been intentionally paused
     if *APPLICATION_IS_PAUSED.read().unwrap() {
         log(
             LogType::Trace,
@@ -119,6 +122,19 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
             "application is paused: tick skipped",
+        );
+        return Ok(false);
+    }
+    // also skip if application has been paused for reconfiguration
+    if *APPLICATION_IS_PAUSED.read().unwrap() {
+        log(
+            LogType::Trace,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_SCHEDULER_TICK,
+            None,
+            LOG_WHEN_PROC,
+            LOG_STATUS_MSG,
+            "application is reconfiguring: tick skipped",
         );
         return Ok(false);
     }
@@ -407,6 +423,87 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
     }
 
     Ok(true)
+}
+
+
+// attempt to reconfigure the application using the provided config file name
+fn reconfigure(config_file: &str) -> std::io::Result<()> {
+    // this is only set when actually modifying the configuration
+    let mut reconfiguring = APPLICATION_IS_RECONFIGURING.write().unwrap();
+
+    if let Err(e) = check_configuration(config_file) {
+        log(
+            LogType::Error,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_RECONFIGURE,
+            None,
+            LOG_WHEN_START,
+            LOG_STATUS_FAIL,
+            &format!("cannot use invalid configuration file `{config_file}`: {e}"),
+        );
+        return Err(e);
+    }
+
+    *reconfiguring = true;
+    let res = reconfigure_globals(config_file);
+    *reconfiguring = false;
+    match res {
+        Ok(config) => {
+            let scheduler_tick_seconds = *config
+                .get("scheduler_tick_seconds")
+                .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
+                .as_int()
+                .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS) as u64;
+            *reconfiguring = true;
+            let res = reconfigure_items(
+                &config, 
+                &TASK_REGISTRY,
+                &CONDITION_REGISTRY,
+                &EVENT_REGISTRY,
+                &EXECUTION_BUCKET,
+                scheduler_tick_seconds);
+            *reconfiguring = false;
+            match res {
+                Ok(_) => {
+                    log(
+                        LogType::Info,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RECONFIGURE,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        &format!("new configuration loaded from file `{config_file}`"),
+                    );
+                }
+                Err(e) => {
+                    log(
+                        LogType::Error,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RECONFIGURE,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("errors found in configuration file `{config_file}`: {e}"),
+                    );
+                    return Err(e);
+                }
+            }
+        }
+        Err(e) => {
+            log(
+                LogType::Error,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_RECONFIGURE,
+                None,
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                &format!("cannot load configuration file `{config_file}`: {e}"),
+            );
+            return Err(e);
+        }
+    }
+
+    Ok(())
 }
 
 
@@ -778,6 +875,32 @@ fn interpret_commands() -> std::io::Result<bool> {
                         thread::spawn(move || { let _ = trigger_event(&arg); });
                     }
                 }
+                "configure" => {
+                    if args.len() != 1 {
+                        log(
+                            LogType::Error,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            "invalid number of arguments for command `configure`",
+                        );
+                    } else {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_MAIN,
+                            LOG_ACTION_RUN_COMMAND,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("attempting to reconfigure using configuration file `{}`", args[0]),
+                        );
+                        // same considerations as above
+                        let arg = args[0].to_string();
+                        thread::spawn(move || { let _ = reconfigure(&arg); });
+                    }
+                }
                 // ...
 
                 "" => { /* do nothing here */ }
@@ -979,7 +1102,7 @@ fn main() {
     // NOTE: the `unwrap_or` part is actually pleonastic, as the missing values
     //       are set by `configure()` to exactly the values below. This will
     //       eventually use plain `unwrap()`.
-    let configuration = exit_if_fails!(args.quiet, configure(&config));
+    let configuration = exit_if_fails!(args.quiet, configure_globals(&config));
     let scheduler_tick_seconds = *configuration
         .get("scheduler_tick_seconds")
         .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))

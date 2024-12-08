@@ -61,12 +61,12 @@ pub trait Event: Send + Sync {
     fn condition_bucket(&self) -> Option<&'static ExecutionBucket>;
 
     /// Tell whether or not another `Event` is equal to this
-    fn eq(&self, other: Box<dyn Event>) -> bool {
+    fn eq(&self, other: &dyn Event) -> bool {
         self._hash() == other._hash()
     }
 
     /// Tell whether or not another `Event` is not equal to this
-    fn ne(&self, other: Box<dyn Event>) -> bool {
+    fn ne(&self, other: &dyn Event) -> bool {
         !self.eq(other)
     }
 

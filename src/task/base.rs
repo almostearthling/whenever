@@ -32,12 +32,12 @@ pub trait Task: Send {
     fn get_id(&self) -> i64;
 
     /// Tell whether or not another `Task` is equal to this
-    fn eq(&self, other: Box<dyn Task>) -> bool {
+    fn eq(&self, other: &dyn Task) -> bool {
         self._hash() == other._hash()
     }
 
     /// Tell whether or not another `Task` is not equal to this
-    fn ne(&self, other: Box<dyn Task>) -> bool {
+    fn ne(&self, other: &dyn Task) -> bool {
         !self.eq(other)
     }
 
