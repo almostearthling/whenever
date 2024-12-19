@@ -55,7 +55,24 @@ impl Hash for ManualCommandEvent {
         // specific part
         // (none here)
     }
+}
 
+// implement cloning
+impl Clone for ManualCommandEvent {
+    fn clone(&self) -> Self {
+        ManualCommandEvent {
+            // reset ID
+            event_id: 0,
+
+            // parameters
+            event_name: self.event_name.clone(),
+            condition_name: self.condition_name.clone(),
+
+            // internal values
+            condition_registry: None,
+            condition_bucket: None,
+        }
+    }
 }
 
 

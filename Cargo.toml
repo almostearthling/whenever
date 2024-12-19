@@ -35,6 +35,7 @@ async-std = "1.12.0"
 zbus = "3.15.2"
 whoami = "1.4.1"
 itertools = "0.8.2"
+futures = "0.3"
 
 # user-idle has a problem on wayland-based sessions: work around by using
 # user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }

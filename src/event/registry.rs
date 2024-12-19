@@ -82,16 +82,14 @@ impl EventRegistry {
 
     /// Start the main registry thread, which in turn handles all other
     /// event listener threads
-    pub fn start_event_service_manager(registry: &'static Self) -> Result<JoinHandle<Result<bool, std::io::Error>>, std::io::Error> {
+    pub fn run_event_service_manager(registry: &'static Self) -> Result<JoinHandle<Result<bool, std::io::Error>>, std::io::Error> {
         // self can be expected to be &'static mut because we know that this
         // registry lives as much as the entire program instance lives
         let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
-        
         let registry = Arc::new(Mutex::new(Box::new(registry)));
+        let mut service_handles: HashMap<String, JoinHandle<Result<bool, Error>>> = HashMap::new();
+        let mut cleanup_events: Vec<String> = Vec::new();
 
-        let install_queue = registry.clone().lock().unwrap().event_service_install_queue.clone();
-        let uninstall_queue = registry.clone().lock().unwrap().event_service_uninstall_queue.clone();
-        let registry_ref = registry.clone();
         let _handle = thread::spawn(move || {
             log(
                 LogType::Debug,
@@ -103,143 +101,258 @@ impl EventRegistry {
                 &format!("starting main event service manager"),
             );
             loop {
-                let names: Vec<String>;
-                {
-                    names = uninstall_queue
-                        .lock()
-                        .expect("cannot lock event service uninstall queue")
-                        .clone();
-                }
+                let uninstall_queue = registry
+                    .clone()
+                    .lock()
+                    .unwrap()
+                    .event_service_uninstall_queue
+                    .clone();
+                let lq = uninstall_queue
+                    .lock()
+                    .expect("cannot lock event service uninstall queue");
+                let names = lq.clone();
+                drop(lq);
                 for name in names {
-                    let t= registry_ref.clone();
-                    if let Ok(_) = t.lock().unwrap().uninstall_event_service(&name) {
-                        let id = registry_ref.lock().unwrap().event_id(&name).unwrap();
+                    let r1 = registry.clone();
+                    let id = r1.lock().unwrap().event_id(&name).unwrap();
+                    if r1.lock().unwrap().uninstall_event_service(&name).is_ok() {
                         log(
-                            LogType::Debug,
+                            LogType::Trace,
                             LOG_EMITTER_EVENT_REGISTRY,
-                            LOG_ACTION_INSTALL,
+                            LOG_ACTION_UNINSTALL,
                             Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_OK,
-                            &format!("stopped handling listening service for event {name}"),
+                            &format!("stopped handling listener"),
                         );
+                        cleanup_events.push(name);
                     } else {
-                        let id = registry_ref.lock().unwrap().event_id(&name).unwrap();
                         log(
-                            LogType::Debug,
+                            LogType::Trace,
                             LOG_EMITTER_EVENT_REGISTRY,
-                            LOG_ACTION_INSTALL,
+                            LOG_ACTION_UNINSTALL,
                             Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_FAIL,
-                            &format!("could not stop handling listening service for event {name}"),
+                            &format!("could not stop handling listener"),
                         );
                     };
                 }
                 uninstall_queue.clone().lock().expect("cannot lock event service uninstall queue").clear();
-                let names: Vec<String>;
-                {
-                    names = install_queue
-                        .lock()
-                        .expect("cannot lock event service install queue")
-                        .clone();
-                }
+                drop(uninstall_queue);
+
+                let install_queue = registry
+                    .clone()
+                    .lock()
+                    .unwrap()
+                    .event_service_install_queue.clone();
+                let lq = install_queue
+                    .lock()
+                    .expect("cannot lock event service install queue");
+                let names = lq.clone();
+                drop(lq);
                 for name in names {
-                    let t= registry_ref.clone();
-                    if let Ok(o) = t.lock().unwrap().install_event_service(&name) {
-                        if let Some(service) = o {
-                            let id = registry_ref.lock().unwrap().event_id(&name).unwrap();
-                            if service.join().is_ok() {
+                    // if an event has been modified and is still waiting to
+                    // be removed from the registry, it is not possible to
+                    // install its listener over the old one: skip and wait
+                    // for it to be removed
+                    if !cleanup_events.contains(&name) {
+                        let r1 = registry.clone();
+                        let id = r1.lock().unwrap().event_id(&name).unwrap();
+                        if let Ok(o) = r1.lock().unwrap().install_event_service(&name) {
+                            if let Some(service) = o {
+                                service_handles.insert(name.clone(), service);
                                 log(
-                                    LogType::Debug,
+                                    LogType::Trace,
                                     LOG_EMITTER_EVENT_REGISTRY,
                                     LOG_ACTION_INSTALL,
                                     Some((&name, id)),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_OK,
-                                    &format!("listening service for event {name} is being handled"),
+                                    &format!("event listener is being handled"),
                                 );
-                            } else {
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_EVENT_REGISTRY,
-                                    LOG_ACTION_INSTALL,
-                                    Some((&name, id)),
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    &format!("listening service for event {name} NOT handled"),
-                                );
-                            }
-                        }
-                    } else {
-                        let id = registry_ref.lock().unwrap().event_id(&name).unwrap();
-                        log(
-                            LogType::Debug,
-                            LOG_EMITTER_EVENT_REGISTRY,
-                            LOG_ACTION_INSTALL,
-                            Some((&name, id)),
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_FAIL,
-                            &format!("listening service for event {name} cannot be handled"),
-                        );
-                    };
+                            }   // otherwise no service is needed
+                        } else {
+                            log(
+                                LogType::Trace,
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                LOG_ACTION_INSTALL,
+                                Some((&name, id)),
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_FAIL,
+                                &format!("event listener cannot be handled"),
+                            );
+                        };
+                        // also accept an error and remove the name of the
+                        // event from the install queue: in the installation
+                        // section the queue cannot be simply emptied
+                        let i = install_queue
+                            .clone()
+                            .lock()
+                            .expect("cannot lock event service install queue")
+                            .iter()
+                            .position(|x| *x == name)
+                            .unwrap();
+                        install_queue
+                            .clone()
+                            .lock()
+                            .expect("cannot lock event service install queue")
+                            .remove(i);
+                    }
                 }
-                install_queue.lock().expect("cannot lock event service install queue").clear();
-                if let Ok(quit) = registry_ref.lock().unwrap().event_service_manager_exiting.read() {
+                // at this point the install queue might still contain some
+                // event names, that is the ones that could not be replaced
+                drop(install_queue);
+
+                // test whether any of the listening services in the cleanup
+                // list has stopped, and if so remove the corresponding event
+                // from the current list (sort of garbage collection)
+                let ce: Vec<String> = Vec::from(cleanup_events.iter().map(|x| String::from(x)).collect::<Vec<_>>());
+                for name in ce {
+                    let r1 = registry.clone();
+                    let id = r1.lock().unwrap().event_id(&name).unwrap();
+                    if !r1.lock().unwrap().service_running_for(&name) {
+                        if r1.lock().unwrap().remove_event(&name).is_ok() {
+                            log(
+                                LogType::Trace,
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                LOG_ACTION_UNINSTALL,
+                                Some((&name, id)),
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("event removed from registry"),
+                            );
+                            cleanup_events.remove(
+                                cleanup_events
+                                .iter()
+                                .position(|x| *x == name)
+                                .unwrap()
+                            );
+                        } else {
+                            log(
+                                LogType::Trace,
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                LOG_ACTION_UNINSTALL,
+                                Some((&name, id)),
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_FAIL,
+                                &format!("event could NOT be removed from registry"),
+                            );
+                        }
+                    }
+                }
+
+                if let Ok(quit) = registry
+                    .clone()
+                    .lock()
+                    .unwrap()
+                    .event_service_manager_exiting
+                    .read() {
                     if *quit {
                         log(
-                            LogType::Debug,
+                            LogType::Trace,
                             LOG_EMITTER_EVENT_REGISTRY,
                             LOG_ACTION_MAIN_LISTENER,
                             None,
                             LOG_WHEN_END,
                             LOG_STATUS_OK,
-                            &format!("stopping main event service manager"),
+                            "stopping main event service manager",
                         );
                         break;
                     } else {
                         thread::sleep(rest_time);
                     }
                 } else {
-                    // FIXME: this should break and return an error?
+                    // FIXME: maybe this should break and return an error?
                     thread::sleep(rest_time);
                 }
             }
+
             // after loop exit uninstall all installed services
-            if let Some(remainig_events) = registry_ref.lock().unwrap().event_names() {
+            log(
+                LogType::Debug,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_MAIN_LISTENER,
+                None,
+                LOG_WHEN_END,
+                LOG_STATUS_OK,
+                "stopping active event listeners",
+            );
+            let r1 = registry.clone();
+            if let Some(remainig_events) = r1.lock().unwrap().event_names() {
                 for name in remainig_events {
-                    if let Ok(_) = registry_ref.lock().unwrap().uninstall_event_service(name.as_str()) {
-                        let id = registry_ref.lock().unwrap().event_id(name.as_str()).unwrap();
+                    let id = r1.lock().unwrap().event_id(&name).unwrap();
+                    if let Ok(_) = r1.lock().unwrap().uninstall_event_service(&name) {
                         log(
-                            LogType::Debug,
+                            LogType::Trace,
                             LOG_EMITTER_EVENT_REGISTRY,
                             LOG_ACTION_INSTALL,
-                            Some((name.as_str(), id)),
+                            Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_OK,
-                            &format!("stopped handling listening service for event {name}"),
+                            &format!("stopped handling event listener"),
                         );
                     } else {
-                        let id = registry_ref.lock().unwrap().event_id(name.as_str()).unwrap();
                         log(
-                            LogType::Debug,
+                            LogType::Trace,
                             LOG_EMITTER_EVENT_REGISTRY,
                             LOG_ACTION_INSTALL,
-                            Some((name.as_str(), id)),
+                            Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_FAIL,
-                            &format!("could not stop handling listening service for event {name}"),
+                            &format!("could not stop handling event listener"),
                         );
                     };
                 }
             }
+
+            // join all remaining thread handles in the end
+            let names: Vec<String> = Vec::from(
+                service_handles
+                .keys()
+                .map(|x| String::from(x)).collect::<Vec<_>>()
+            );
+            for name in names {
+                let h = service_handles.remove(&name);
+                if let Some(h) = h {
+                    let _r = h.join();
+                }
+            }
+            log(
+                LogType::Debug,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_MAIN_LISTENER,
+                None,
+                LOG_WHEN_END,
+                LOG_STATUS_OK,
+                "main event service manager stopped",
+            );
             Ok(true)
         });
+
+        log(
+            LogType::Debug,
+            LOG_EMITTER_EVENT_REGISTRY,
+            LOG_ACTION_MAIN_LISTENER,
+            None,
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            "main event service manager start requested",
+        );
         Ok(_handle)
     }
 
     /// Stop the event service manager thread
     pub fn stop_event_service_manager(registry: &'static Self) -> Result<(), std::io::Error> {
+        log(
+            LogType::Debug,
+            LOG_EMITTER_EVENT_REGISTRY,
+            LOG_ACTION_MAIN_LISTENER,
+            None,
+            LOG_WHEN_END,
+            LOG_STATUS_OK,
+            "main event service manager stop requested",
+        );
         if let Ok(mut quit) = registry.event_service_manager_exiting.write() {
             *quit = true;
             Ok(())
@@ -289,12 +402,50 @@ impl EventRegistry {
                 .unwrap()
                 .clone();
             drop(guard);
-            let equals = found_event.read().expect("cannot lock event").eq(event);  // <== EVENT IS ALREADY LOCKED!
+            let equals = found_event
+                .read()
+                .expect("cannot read event")
+                .eq(event);
             return equals;
         }
 
         false
     }
+
+    /// Check whether or not the listening service for the provided event
+    /// name is running
+    ///
+    /// # Arguments
+    ///
+    /// * name - the event name
+    ///
+    /// # Panics
+    ///
+    /// May panic if the event registry could not be locked for enquiry
+    /// or the contained event cannot be locked for comparison.
+    pub fn service_running_for(&self, name: &str) -> bool {
+        if self.has_event(name) {
+            let guard = self.event_list
+                .read()
+                .expect("cannot read event registry");
+            let found_event = guard
+                .get(name)
+                .unwrap()
+                .clone();
+            drop(guard);
+            let Ok(running) = found_event
+                .read()
+                .expect("cannot read event")
+                ._thread_running() else {
+                return false
+            };
+            running
+        } else {
+            false
+        }
+    }
+
+
 
 
     /// Add an already-boxed `Event` if its name is not present in the
@@ -334,11 +485,10 @@ impl EventRegistry {
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
-        let triggerable = boxed_event.triggerable();
         self.triggerable_event_list
             .write()
             .expect("cannot write to triggerable event registry")
-            .insert(name.clone(), triggerable);
+            .insert(name.clone(), boxed_event.triggerable());
         self.event_list
             .write()
             .expect("cannot write to event registry")
@@ -351,7 +501,13 @@ impl EventRegistry {
     /// The returned `Event` can be modified and stored back in the
     /// registry: before returning, the boxed `Event` is 'uninitialized'
     /// (that is, its ID is set back to 0) so that it wouldn't be checked if
-    /// asked to; the rest of its internal status is preserved
+    /// asked to; the rest of its internal status is preserved.
+    ///
+    /// **Note**: this function should be called on events whose listening
+    /// service is not running, which can also be checked using the registry
+    /// API instead of directly inspecting the event; in fact the event
+    /// service manager should be the only utility using the removal function
+    /// although it has the drawback of completely dropping the event.
     ///
     /// # Arguments
     ///
@@ -370,15 +526,21 @@ impl EventRegistry {
     /// maybe it should return an error in this case?).
     pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>, std::io::Error> {
         if self.has_event(name) {
-            if let Some(r) = self.event_list
+            if let Some(e) = self.event_list
                 .write()
                 .expect("cannot write to event registry")
                 .remove(name) {
-                let Ok(mx) = Arc::try_unwrap(r) else {
-                    panic!("cannot extract referenced event {name}")
+                // in this case if the event cannot be extracted from the list
+                // no reference to the event is returned, but an error instead
+                // WARNING: the reference is dropped in that case!
+                let e = Arc::try_unwrap(e);
+                let Ok(event) = e else {
+                    return Err(Error::new(
+                        ErrorKind::Unsupported,
+                        ERR_EVENTREG_CANNOT_PULL_EVENT,
+                    ));
                 };
-                // WARNING: we should also uninstall the related service if any!
-                let mut event = mx
+                let mut event = event
                     .into_inner()
                     .expect("cannot extract locked event");
                 event.set_id(0);
@@ -386,7 +548,7 @@ impl EventRegistry {
             } else {
                 Err(Error::new(
                     ErrorKind::Unsupported,
-                    ERR_EVENTREG_CANNOT_PULL_EVENT,
+                    ERR_EVENTREG_CANNOT_REMOVE_EVENT,
                 ))
             }
         } else {
@@ -434,7 +596,7 @@ impl EventRegistry {
             .expect("cannot retrieve event")
             .clone();
         drop(guard);
-        let id = event.read().expect("cannot lock event").get_id();
+        let id = event.read().expect("cannot read event").get_id();
         Some(id)
     }
 
@@ -484,8 +646,8 @@ impl EventRegistry {
             .expect("cannot retrieve event for triggering")
             .clone();
 
-        let gevent = event.read()
-            .expect("cannot lock event for triggering");
+        let gdevent = event.read()
+            .expect("cannot read event for triggering");
 
         log(
             LogType::Trace,
@@ -496,7 +658,7 @@ impl EventRegistry {
             LOG_STATUS_OK,
             &format!("manually triggering event {name}"),
         );
-        match gevent.fire_condition() {
+        match gdevent.fire_condition() {
             Ok(res) => {
                 if res {
                     log(
@@ -562,23 +724,25 @@ impl EventRegistry {
             .expect("cannot retrieve event for service setup")
             .clone();
 
-        let gevent = event.read().expect("cannot lock event for service setup");
+        let gdevent = event
+            .read()
+            .expect("cannot read event for service setup");
         let name_copy = String::from(name);
         let event_name = Arc::new(Mutex::new(name_copy));
-        if gevent.requires_thread() {
+        if gdevent.requires_thread() {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
                 LOG_ACTION_INSTALL,
-                Some((name.as_ref(), id)),
+                Some((name, id)),
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
-                &format!("installing listening service for event {name} (dedicated thread)"),
+                &format!("installing event listener (dedicated thread)"),
             );
             let event = event.clone();
-            let event_name = event_name.clone();
+            let event_name = String::from(event_name.clone().lock().unwrap().as_str());
             let handle = thread::spawn(move || {
-                let ename = event_name.lock().unwrap();
+                let name = event_name.as_str();
 
                 // this implements the listening service in current thread
                 let res = event.read().unwrap()._run_service();
@@ -588,22 +752,22 @@ impl EventRegistry {
                             log(
                                 LogType::Debug,
                                 LOG_EMITTER_EVENT_REGISTRY,
-                                LOG_ACTION_INSTALL,
-                                Some((&ename, id)),
-                                LOG_WHEN_START,
+                                LOG_ACTION_UNINSTALL,
+                                Some((&name, id)),
+                                LOG_WHEN_END,
                                 LOG_STATUS_OK,
-                                &format!("listening service for event {ename} exited successfully"),
+                                &format!("event listener successfully shut down"),
                             );
                             Ok(true)
                         } else {
                             log(
                                 LogType::Error,
                                 LOG_EMITTER_EVENT_REGISTRY,
-                                LOG_ACTION_INSTALL,
-                                Some((&ename, id)),
-                                LOG_WHEN_START,
+                                LOG_ACTION_UNINSTALL,
+                                Some((&name, id)),
+                                LOG_WHEN_END,
                                 LOG_STATUS_FAIL,
-                                &format!("listening service for event {ename} exited unsuccessfully"),
+                                &format!("event listener unsuccessfully shut down"),
                             );
                             Ok(false)
                         }
@@ -612,11 +776,11 @@ impl EventRegistry {
                         log(
                             LogType::Error,
                             LOG_EMITTER_EVENT_REGISTRY,
-                            LOG_ACTION_INSTALL,
-                                Some((&ename, id)),
-                            LOG_WHEN_START,
+                            LOG_ACTION_UNINSTALL,
+                            Some((&name, id)),
+                            LOG_WHEN_END,
                             LOG_STATUS_FAIL,
-                            &format!("listening service for event {ename} exited with error: {e}"),
+                            &format!("event listener exited with error: {e}"),
                         );
                         Err(e)
                     }
@@ -624,7 +788,7 @@ impl EventRegistry {
             });
             Ok(Some(handle))
         } else {
-            if gevent._run_service()? {
+            if gdevent._run_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -632,7 +796,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_OK,
-                    &format!("listening service for event {name} installed"),
+                    &format!("event listener installed"),
                 );
                 Ok(None)
             } else {
@@ -643,7 +807,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
-                    &format!("listening service for event {name} NOT installed"),
+                    &format!("event listener NOT installed"),
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,
@@ -655,7 +819,7 @@ impl EventRegistry {
 
 
     /// Remove the installed service for an event.
-    /// 
+    ///
     /// # Panics
     ///
     /// When the event it is called upon is not registered: in no way this
@@ -673,26 +837,28 @@ impl EventRegistry {
             .read()
             .expect("cannot read event registry");
         let event = guard.get(name)
-            .expect("cannot retrieve event for service setup")
+            .expect("cannot retrieve event for service removal")
             .clone();
 
-        let gevent = event.read().expect("cannot lock event for service setup");
+        let gdevent = event
+            .read()
+            .expect("cannot read event for service removal");
 
-        if gevent.requires_thread() {
+        if gdevent.requires_thread() {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
                 LOG_ACTION_UNINSTALL,
-                Some((name.as_ref(), id)),
+                Some((name, id)),
                 LOG_WHEN_END,
                 LOG_STATUS_OK,
-                &format!("requesting removal of listening service for event {name} (dedicated thread)"),
+                &format!("requesting removal of event listener (dedicated thread)"),
             );
-            let _ = gevent._stop_service()?;
+            let _ = gdevent._stop_service()?;
 
             Ok(())
         } else {
-            if gevent._stop_service()? {
+            if gdevent._stop_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -700,7 +866,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("listening service for event {name} removed"),
+                    &format!("event listener removed"),
                 );
                 Ok(())
             } else {
@@ -711,7 +877,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("listening service for event {name} could NOT be removed"),
+                    &format!("event listener could NOT be removed"),
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,
@@ -723,7 +889,7 @@ impl EventRegistry {
 
 
     /// Start listening for an event
-    /// 
+    ///
     /// # Panics
     ///
     /// When the event it is called upon is not registered: in no way this
@@ -734,17 +900,15 @@ impl EventRegistry {
         }
 
         let queue = self.event_service_install_queue.clone();
-        {
-            let mut locked_queue = queue
-                .lock()
-                .expect("cannot lock event service install queue");
-            let sname = String::from(name);
-            if locked_queue.contains(&sname) {
-                let index = locked_queue.iter().position(|s| *s == sname).unwrap();
-                locked_queue.remove(index);
-            }
-            locked_queue.push(sname);
+        let mut locked_queue = queue
+            .lock()
+            .expect("cannot lock event service install queue");
+        let sname = String::from(name);
+        if locked_queue.contains(&sname) {
+            let index = locked_queue.iter().position(|s| *s == sname).unwrap();
+            locked_queue.remove(index);
         }
+        locked_queue.push(sname);
         let id = self.event_id(name).unwrap();
         log(
             LogType::Debug,
@@ -753,7 +917,7 @@ impl EventRegistry {
             Some((name, id)),
             LOG_WHEN_START,
             LOG_STATUS_OK,
-            &format!("service installation for event {name} requested"),
+            &format!("event listener installation requested"),
         );
 
         Ok(())
@@ -761,7 +925,7 @@ impl EventRegistry {
 
 
     /// Stop listening for an event
-    /// 
+    ///
     /// # Panics
     ///
     /// When the event it is called upon is not registered: in no way this
@@ -770,27 +934,23 @@ impl EventRegistry {
         if !self.has_event(name) {
             panic!("event {name} not found in registry");
         }
+        let sname = String::from(name);
         let queue = self.event_service_uninstall_queue.clone();
-        {
-            let mut locked_queue = queue
-                .lock()
-                .expect("cannot lock event service uninstall queue");
-            let sname = String::from(name);
-            if locked_queue.contains(&sname) {
-                let index = locked_queue.iter().position(|s| *s == sname).unwrap();
-                locked_queue.remove(index);
-            }
+        let mut locked_queue = queue
+            .lock()
+            .expect("cannot lock event service uninstall queue");
+        if !locked_queue.contains(&sname) {
             locked_queue.push(sname);
         }
         let id = self.event_id(name).unwrap();
         log(
             LogType::Debug,
             LOG_EMITTER_EVENT_REGISTRY,
-            LOG_ACTION_INSTALL,
+            LOG_ACTION_UNINSTALL,
             Some((name, id)),
-            LOG_WHEN_START,
+            LOG_WHEN_END,
             LOG_STATUS_OK,
-            &format!("service removal for event {name} requested"),
+            &format!("event listener removal requested"),
         );
 
         Ok(())
@@ -823,9 +983,9 @@ impl EventRegistry {
             .expect("cannot retrieve event for activation")
             .clone();
 
-        let gevent = event.read()
-            .expect("cannot lock event for activation");
-        if let Ok(res) = gevent.fire_condition() {
+        let gdevent = event.read()
+            .expect("cannot read event for activation");
+        if let Ok(res) = gdevent.fire_condition() {
             if res {
                 log(
                     LogType::Trace,

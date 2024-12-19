@@ -1049,8 +1049,17 @@ fn reconfigure_events(
                             let event_name = event.get_name();
                             if !event_registry.has_event(&event_name) || !event_registry.has_event_eq(&event) {
                                 if event_registry.has_event(&event_name) {
-                                    event_registry.unlisten_for(&event_name)?;
-                                    event_registry.remove_event(&event_name)?;
+                                    if event_registry.unlisten_for(&event_name).is_err() {
+                                        log(
+                                            LogType::Trace,
+                                            LOG_EMITTER_CONFIGURATION,
+                                            LOG_ACTION_MAIN_LISTENER,
+                                            None,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_FAIL,
+                                            &format!("service for event {event_name} still listening"),
+                                        );
+                                    }
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(std::io::Error::new(
@@ -1094,8 +1103,17 @@ fn reconfigure_events(
                             let event_name = event.get_name();
                             if !event_registry.has_event(&event_name) || !event_registry.has_event_eq(&event) {
                                 if event_registry.has_event(&event_name) {
-                                    event_registry.unlisten_for(&event_name)?;
-                                    event_registry.remove_event(&event_name)?;
+                                    if event_registry.unlisten_for(&event_name).is_err() {
+                                        log(
+                                            LogType::Trace,
+                                            LOG_EMITTER_CONFIGURATION,
+                                            LOG_ACTION_MAIN_LISTENER,
+                                            None,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_FAIL,
+                                            &format!("service for event {event_name} still listening"),
+                                        );
+                                    }
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(std::io::Error::new(
@@ -1139,8 +1157,17 @@ fn reconfigure_events(
                             let event_name = event.get_name();
                             if !event_registry.has_event(&event_name) || !event_registry.has_event_eq(&event) {
                                 if event_registry.has_event(&event_name) {
-                                    event_registry.unlisten_for(&event_name)?;
-                                    event_registry.remove_event(&event_name)?;
+                                    if event_registry.unlisten_for(&event_name).is_err() {
+                                        log(
+                                            LogType::Trace,
+                                            LOG_EMITTER_CONFIGURATION,
+                                            LOG_ACTION_MAIN_LISTENER,
+                                            None,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_FAIL,
+                                            &format!("service for event {event_name} still listening"),
+                                        );
+                                    }
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(std::io::Error::new(
@@ -1206,10 +1233,22 @@ fn reconfigure_events(
             None,
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
-            &format!("removing event {name} from registry"),
+            &format!("terminating listening service for event {name}"),
         );
-        event_registry.unlisten_for(&name)?;
-        event_registry.remove_event(&name)?;
+        if event_registry.unlisten_for(&name).is_err() {
+            // this condition is expected, because
+            // event listeners do not terminate
+            // synchronously
+            log(
+                LogType::Trace,
+                LOG_EMITTER_CONFIGURATION,
+                LOG_ACTION_MAIN_LISTENER,
+                None,
+                LOG_WHEN_PROC,
+                LOG_STATUS_FAIL,
+                &format!("service for removed event {name} still listening"),
+            );
+        }
     }
 
     Ok(())

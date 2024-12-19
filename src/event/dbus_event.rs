@@ -33,7 +33,7 @@ const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 
 
 /// an enum to store the operators for checking signal parameters
-#[derive(PartialEq, Hash)]
+#[derive(PartialEq, Hash, Clone)]
 enum ParamCheckOperator {
     Equal,              // "eq"
     NotEqual,           // "neq"
@@ -90,6 +90,33 @@ impl Hash for ParameterCheckTest {
             ParameterCheckValue::Float(x) => x.to_bits().hash(state),
             ParameterCheckValue::String(x) => x.hash(state),
             ParameterCheckValue::Regex(x) => x.as_str().hash(state),
+        }
+    }
+}
+
+impl Clone for ParameterCheckTest {
+    fn clone(&self) -> Self {
+        let mut index: Vec<ParameterIndex> = Vec::new();
+        for i in self.index.iter() {
+            index.push({
+                match i {
+                    ParameterIndex::Integer(u) => ParameterIndex::Integer(*u),
+                    ParameterIndex::String(s) => ParameterIndex::String(s.clone()),
+                }
+            });
+        }
+        let value = match &self.value {
+            ParameterCheckValue::Boolean(x) => ParameterCheckValue::Boolean(*x),
+            ParameterCheckValue::Integer(x) => ParameterCheckValue::Integer(*x),
+            ParameterCheckValue::Float(x) => ParameterCheckValue::Float(*x),
+            ParameterCheckValue::String(s) => ParameterCheckValue::String(s.clone()),
+            ParameterCheckValue::Regex(e) => ParameterCheckValue::Regex(e.clone()),
+        };
+
+        ParameterCheckTest {
+            index,
+            operator: self.operator.clone(),
+            value,
         }
     }
 }
@@ -333,6 +360,45 @@ impl Hash for DbusMessageEvent {
         self.param_checks_all.hash(state);
     }
 
+}
+
+// implement cloning
+impl Clone for DbusMessageEvent {
+    fn clone(&self) -> Self {
+        DbusMessageEvent {
+            // reset ID
+            event_id: 0,
+
+            // parameters
+            event_name: self.event_name.clone(),
+            condition_name: self.condition_name.clone(),
+
+            // internal values
+            condition_registry: None,
+            condition_bucket: None,
+
+            // specific members
+            // parameters
+            bus: self.bus.clone(),
+            match_rule: self.match_rule.clone(),
+            param_checks: {
+                if let Some(o) = &self.param_checks {
+                    let mut v: Vec<ParameterCheckTest> = Vec::new();
+                    for t in o {
+                        v.push(t.clone());
+                    }
+                    Some(v)
+                } else {
+                    None
+                }
+            },
+            param_checks_all: self.param_checks_all,
+
+            // internal values
+            thread_running: RwLock::new(false),
+            must_exit: RwLock::new(false),
+        }
+    }
 }
 
 
@@ -999,6 +1065,7 @@ impl Event for DbusMessageEvent {
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
 
+
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
         let mut s = DefaultHasher::new();
@@ -1169,15 +1236,13 @@ impl Event for DbusMessageEvent {
             // exit gently with positive outcome
             // FIXME: this *will not work*, as the check is only performed
             // when there is a message on the bus, since we block_on stream!
-            if let Ok(mut quit) = self.must_exit.write() {
+            if let Ok(quit) = self.must_exit.write() {
                 if *quit {
                     if let Ok(mut running) = self.thread_running.write() {
-                        // this is useless: if we are here the flag is true
                         if *running {
                             *running = false;
                         }
                     }
-                    *quit = true;
                     break;
                 }
             }

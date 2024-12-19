@@ -11,6 +11,13 @@ use std::time::Duration;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::RwLock;
 
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
+use std::sync::{Arc, Mutex};
+use futures::channel::mpsc::{channel, Receiver};
+use futures::{FutureExt, SinkExt, StreamExt, pin_mut};
+
 use notify::{self, Watcher};
 use cfgmap::CfgMap;
 
@@ -26,6 +33,46 @@ use crate::cfghelp::*;
 
 // default seconds to wayt between active polls: generally ignored
 const DEFAULT_FSCHANGE_POLL_SECONDS: u64 = 2;
+
+// this is only to satisfy the channel
+const MAX_FSEVENTS_ON_CHANNEL: usize = 1000;
+
+
+
+// this is the async base to allow for the request to leave to be inquired
+struct Quitter<'a> {
+    shared_state: Arc<Mutex<SharedState<'a>>>,
+}
+
+struct SharedState<'a> {
+    event: &'a FilesystemChangeEvent,
+    waker: Option<Waker>,
+}
+
+impl Future for Quitter<'_> {
+    type Output = ();
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut shared_state = self.shared_state.lock().unwrap();
+        let quit = shared_state.event.must_exit.read().expect("cannot get event service quitting status");
+        if *quit {
+            Poll::Ready(())
+        } else {
+            shared_state.waker = Some(cx.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+
+impl <'a> Quitter <'a> {
+    fn new(evt: &'a FilesystemChangeEvent) -> Self {
+        let shared_state = Arc::new(Mutex::new(SharedState {
+            event: evt,
+            waker: None,
+        }));
+
+        Quitter { shared_state }
+    }
+}
 
 
 
@@ -78,6 +125,34 @@ impl Hash for FilesystemChangeEvent {
         self.recursive.hash(state);
     }
 
+}
+
+// implement cloning
+impl Clone for FilesystemChangeEvent {
+    fn clone(&self) -> Self {
+        FilesystemChangeEvent {
+            // reset ID
+            event_id: 0,
+
+            // parameters
+            event_name: self.event_name.clone(),
+            condition_name: self.condition_name.clone(),
+
+            // internal values
+            condition_registry: None,
+            condition_bucket: None,
+
+            // specific members initialization
+            // parameters
+            watched_locations: self.watched_locations.clone(),
+            poll_seconds: self.poll_seconds,
+            recursive: self.recursive,
+
+            // internal values
+            thread_running: RwLock::new(false),
+            must_exit: RwLock::new(false),
+        }
+    }
 }
 
 
@@ -372,6 +447,29 @@ impl Event for FilesystemChangeEvent {
 
     fn _run_service(&self) -> std::io::Result<bool> {
 
+        async fn _wait_to_quit(evt: &FilesystemChangeEvent) {
+            let quitter = Quitter::new(evt);
+            quitter.await
+        }
+
+        // see https://github.com/notify-rs/notify/blob/main/examples/async_monitor.rs
+        fn _build_async_watcher(cfg: notify::Config) -> notify::Result<(notify::RecommendedWatcher, Receiver<notify::Result<notify::Event>>)> {
+            let (mut tx, rx) = channel(MAX_FSEVENTS_ON_CHANNEL);
+
+            // Automatically select the best implementation for your platform.
+            // You can also access each implementation directly e.g. INotifyWatcher.
+            let watcher = notify::RecommendedWatcher::new(
+                move |res| {
+                    futures::executor::block_on(async {
+                        tx.send(res).await.unwrap();
+                    })
+                },
+                cfg,
+            )?;
+
+            Ok((watcher, rx))
+        }
+
         if self.watched_locations.is_none() {
             self.log(
                 LogType::Error,
@@ -382,7 +480,6 @@ impl Event for FilesystemChangeEvent {
             return Ok(false);
         }
 
-        // clone the location as a pathbuf (will not panic: checked above)
         let rec = if self.recursive {
             notify::RecursiveMode::Recursive
         } else {
@@ -391,12 +488,15 @@ impl Event for FilesystemChangeEvent {
 
         // for the watching loop technique, see the official notify example
         // at: examples/watcher_kind.rs
-        let (tx, rx) = std::sync::mpsc::channel();
         let notify_cfg = notify::Config::default()
             .with_poll_interval(Duration::from_secs(self.poll_seconds));
 
-        let mut watcher = Box::new(
-            notify::RecommendedWatcher::new(tx, notify_cfg).unwrap());
+        // let (tx, rx) = std::sync::mpsc::channel();
+        // let mut watcher = Box::new(
+        //     notify::RecommendedWatcher::new(tx, notify_cfg).unwrap());
+
+        let (mut watcher, mut rx) = _build_async_watcher(notify_cfg)
+            .expect("could not create watcher");
 
         // if the watcher could be set to watch filesystem events, then an
         // endless cycle to catch these events is started: in this case all
@@ -439,86 +539,98 @@ impl Event for FilesystemChangeEvent {
             *running = true;
         }
 
-        for r_evt in rx {
-            // first check whether someone told us we have to exit: if so
-            // exit gently with positive outcome
-            // FIXME: this *will not work*, as the check only is performed
-            // when there is an event in the channel!
-            if let Ok(mut quit) = self.must_exit.write() {
-                if *quit {
-                    if let Ok(mut running) = self.thread_running.write() {
-                        // this is useless: if we are here the flag is true
-                        if *running {
-                            *running = false;
-                        }
-                    }
-                    *quit = true;
-                    break;
-                }
-            }
+        // the outer loop is async: the dedicated thread should block on it
+        futures::executor::block_on(async {
+            loop {
+                let fs_event = rx.next().fuse();
+                let quitting = _wait_to_quit(&self).fuse();
 
-            match r_evt {
-                Ok(evt) => {
-                    let evt_s = {
-                        if evt.kind.is_access() { "ACCESS" }
-                        else if evt.kind.is_create() { "CREATE" }
-                        else if evt.kind.is_modify() { "MODIFY" }
-                        else if evt.kind.is_remove() { "REMOVE" }
-                        else if evt.kind.is_other() { "OTHER" }
-                        else { "UNKNOWN" }
-                    };
-                    // ignore access events
-                    if !evt.kind.is_access() {
-                        self.log(
-                            LogType::Info,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_OK,
-                            &format!("event notification caught: {evt_s}"),
-                        );
-                        match self.fire_condition() {
-                            Ok(_) => {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    "condition fired successfully",
-                                );
-                            }
-                            Err(e) => {
-                                self.log(
-                                    LogType::Warn,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    &format!("error firing condition: {e}"),
-                                );
-                            }
-                        }
-                    } else {
+                pin_mut!(fs_event, quitting);
+
+                // wait either for a watched file event or a request to quit
+                futures::select! {
+                    () = quitting => {
+                        // if we are here, the quitter already found that this service must leave
                         self.log(
                             LogType::Debug,
-                            LOG_WHEN_PROC,
+                            LOG_WHEN_END,
                             LOG_STATUS_OK,
-                            &format!("non-change event notification caught: {evt_s}"),
+                            "event listener is stopping",
                         );
+                        break;
+                    }
+
+                    r_evt = fs_event => {
+                        if let Some(r_evt) = r_evt {
+                            match r_evt {
+                                Ok(evt) => {
+                                    let evt_s = {
+                                        if evt.kind.is_access() { "ACCESS" }
+                                        else if evt.kind.is_create() { "CREATE" }
+                                        else if evt.kind.is_modify() { "MODIFY" }
+                                        else if evt.kind.is_remove() { "REMOVE" }
+                                        else if evt.kind.is_other() { "OTHER" }
+                                        else { "UNKNOWN" }
+                                    };
+                                    // ignore access events
+                                    if !evt.kind.is_access() {
+                                        self.log(
+                                            LogType::Info,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!("event notification caught: {evt_s}"),
+                                        );
+                                        match self.fire_condition() {
+                                            Ok(_) => {
+                                                self.log(
+                                                    LogType::Debug,
+                                                    LOG_WHEN_PROC,
+                                                    LOG_STATUS_OK,
+                                                    "condition fired successfully",
+                                                );
+                                            }
+                                            Err(e) => {
+                                                self.log(
+                                                    LogType::Warn,
+                                                    LOG_WHEN_PROC,
+                                                    LOG_STATUS_FAIL,
+                                                    &format!("error firing condition: {e}"),
+                                                );
+                                            }
+                                        }
+                                    } else {
+                                        self.log(
+                                            LogType::Debug,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!("non-change event notification caught: {evt_s}"),
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    self.log(
+                                        LogType::Warn,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!("error in event notification: {e}"),
+                                    );
+                                }
+                            };
+                        }
                     }
                 }
-                Err(e) => {
-                    self.log(
-                        LogType::Warn,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        &format!("error in event notification: {e}"),
-                    );
-                }
             };
-        }
+        });
 
         self.log(
             LogType::Debug,
             LOG_WHEN_END,
             LOG_STATUS_OK,
-            &format!("stopping to watch files for changes"),
+            &format!("finished watching files for changes"),
         );
+        if let Ok(mut running) = self.thread_running.write() {
+            *running = false;
+        }
         Ok(true)
     }
 
@@ -531,7 +643,7 @@ impl Event for FilesystemChangeEvent {
                         LogType::Info,
                         LOG_WHEN_END,
                         LOG_STATUS_OK,
-                        &format!("the running service has been requested to stop"),
+                        &format!("the listener has been requested to stop"),
                     );
                     Ok(true)
                 } else {
@@ -539,11 +651,11 @@ impl Event for FilesystemChangeEvent {
                         LogType::Error,
                         LOG_WHEN_END,
                         LOG_STATUS_ERR,
-                        &format!("could not request the service to stop"),
+                        &format!("could not request the listener to stop"),
                     );
                     Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
-                        "could not request the service to stop"
+                        "could not request the listener to stop"
                     ))
                 }
             } else {
@@ -551,7 +663,7 @@ impl Event for FilesystemChangeEvent {
                     LogType::Trace,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("the service is not running: stop request dropped"),
+                    &format!("the listener is not running: stop request dropped"),
                 );
                 Ok(false)
             }
@@ -560,11 +672,11 @@ impl Event for FilesystemChangeEvent {
                 LogType::Error,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
-                &format!("could not determine whether the service is running"),
+                &format!("could not determine whether the listener is running"),
             );
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running"
+                "could not determine whether the listener is running"
             ))
         }
     }
@@ -575,7 +687,7 @@ impl Event for FilesystemChangeEvent {
         } else {
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running"
+                "could not determine whether the listener is running"
             ))
         }
     }

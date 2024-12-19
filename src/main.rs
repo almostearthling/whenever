@@ -927,18 +927,18 @@ fn interpret_commands() -> std::io::Result<bool> {
 
 // the following is another separate thread for event registry management
 // NOTE: for now it is just a placeholder for the actual function
-fn manage_event_registry() -> std::io::Result<bool> {
-    let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
+// fn manage_event_registry() -> std::io::Result<bool> {
+//     let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
 
-    loop {
-        if *APPLICATION_MUST_EXIT.read().unwrap() {
-            break;
-        }
-        thread::sleep(rest_time);
-    }
+//     loop {
+//         if *APPLICATION_MUST_EXIT.read().unwrap() {
+//             break;
+//         }
+//         thread::sleep(rest_time);
+//     }
 
-    Ok(true)
-}
+//     Ok(true)
+// }
 
 
 // argument parsing and command execution: doc comments are used by clap
@@ -1117,7 +1117,7 @@ fn main() {
     // services can be enqueued for startup at the beginning; this could
     // actually take place also after the configuration step
     let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
-    if let Ok(h) = event::registry::EventRegistry::start_event_service_manager(&EVENT_REGISTRY) {
+    if let Ok(h) = event::registry::EventRegistry::run_event_service_manager(&EVENT_REGISTRY) {
         _handles.push(h);
     }
 
@@ -1150,7 +1150,7 @@ fn main() {
     _handles.push(thread::spawn(interpret_commands));
 
     // add a thread to handle event registry management (same as above)
-    _handles.push(thread::spawn(manage_event_registry));
+    // _handles.push(thread::spawn(manage_event_registry));
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
@@ -1218,9 +1218,17 @@ fn main() {
         }
     }
 
-    // FIXME: the call to stop_event_service_manager has no effect (but the
-    // process exits successfully anyway), should we wait for something?
-    let _ = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY);
+    if let Err(e) = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY) {
+        log(
+            LogType::Debug,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_MAIN_EXIT,
+            None,
+            LOG_WHEN_END,
+            LOG_STATUS_FAIL,
+            &format!("error stopping event service manager: {e}"),
+        );
+    }
     log(
         LogType::Info,
         LOG_EMITTER_MAIN,

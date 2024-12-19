@@ -189,7 +189,6 @@ pub trait Event: Send + Sync {
     /// This tells whether the service thread (if any) is active or not
     fn _thread_running(&self) -> std::io::Result<bool>;
 
-
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);
 

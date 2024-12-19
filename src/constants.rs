@@ -46,6 +46,7 @@ pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition wh
 pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition while busy";
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
 pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
+pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
 pub const ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR: &str = "could not request the event service manager to shut down";
 pub const ERR_EVENTREG_SERVICE_NOT_INSTALLED: &str = "event listening service not installed";
 pub const ERR_EVENTREG_SERVICE_NOT_UNINSTALLED: &str = "event listening service not uninstalled";
@@ -162,8 +163,8 @@ pub const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
 pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 // operational values
-pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;
-pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100;
+pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;         // default: 100
+pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100;     // default: 100
 
 
 // crate-wide values
