@@ -5,10 +5,18 @@
 //! the related condition in the execution bucket when all constraints are met.
 
 
-use cfgmap::{CfgMap, CfgValue};
 use regex::Regex;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::RwLock;
+use std::sync::{RwLock, mpsc};
+
+// use std::future::Future;
+// use std::pin::Pin;
+// use std::task::{Context, Poll, Waker};
+// use std::sync::{Arc, Mutex};
+// use futures::channel::mpsc::{channel, Receiver};
+// use futures::{FutureExt, SinkExt, StreamExt, pin_mut};
+
+use cfgmap::{CfgMap, CfgValue};
 
 use async_std::task;
 use zbus::{self, AsyncDrop};
@@ -1100,7 +1108,9 @@ impl Event for DbusMessageEvent {
     }
 
 
-    fn _run_service(&self) -> std::io::Result<bool> {
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+
+        assert!(qrx.is_some());
 
         // NOTE: the following helpers are async here, but since this service
         //       runs in a dedicated thread, we will just block on every step;
@@ -1231,6 +1241,7 @@ impl Event for DbusMessageEvent {
 
         // FIXME: maybe implement [try_for_each](https://docs.rs/futures/latest/futures/stream/trait.TryStreamExt.html#method.try_for_each)
         // instead of continuously looping over the next item?
+        // 'outer: loop {
         loop {
             // first check whether someone told us we have to exit: if so
             // exit gently with positive outcome
@@ -1968,7 +1979,7 @@ impl Event for DbusMessageEvent {
         Ok(true)
     }
 
-    fn _stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> std::io::Result<bool> {
         if let Ok(running) = self.thread_running.read() {
             if *running {
                 if let Ok(mut quit) = self.must_exit.write() {
@@ -2015,7 +2026,7 @@ impl Event for DbusMessageEvent {
         }
     }
 
-    fn _thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> std::io::Result<bool> {
         if let Ok(running) = self.thread_running.read() {
             Ok(*running)
         } else {

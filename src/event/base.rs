@@ -19,6 +19,8 @@
 // use std::thread;
 // use std::io::{Error, ErrorKind};
 
+use std::sync::mpsc;
+
 use crate::common::logging::{log, LogType};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
@@ -176,21 +178,50 @@ pub trait Event: Send + Sync {
     /// thread (see above) or not; in the former case the service installer
     /// spawns the thread and returns a handle to join, and in the latter
     /// the installer just returns `None`. This method must return a boolean
-    /// for possible outcome information, or fail with an error.
+    /// for possible outcome information, or fail with an error. In case it
+    /// requires a separate thread, the receiving end of a channel must be
+    /// passed to the service, over which a unit value will be sent in order
+    /// to let the service know it must stop: the running thread must obey
+    /// receiving a `()` over the channel and leave immediately as soon as
+    /// it happens.
     ///
     /// **Note**: the worker function must be self-contained, in the sense that
     ///           it must _not_ modify the internals of the structure, apart
     ///           from a flag that states that the service thread is running.
-    fn _run_service(&self) -> std::io::Result<bool>;
+    /// 
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+        // in this case the service exits immediately without errors
+        assert!(qrx.is_none());
+        Ok(true)
+    }
 
-    /// This must be called to stop the event listening service
-    fn _stop_service(&self) -> std::io::Result<bool>;
+    /// This must be called to stop the event listening service.
+    /// 
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn stop_service(&self) -> std::io::Result<bool> {
+        Ok(true)
+    }
 
-    /// This tells whether the service thread (if any) is active or not
-    fn _thread_running(&self) -> std::io::Result<bool>;
+    /// This tells whether the service thread (if any) is active or not.
+    /// 
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn thread_running(&self) -> std::io::Result<bool> {
+        // no special thread is running for this kind of event
+        Ok(false)
+    }
 
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);
+
+    /// Assign a quit signal sender before the service starts.
+    /// 
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn _assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) { /* nothing */ }
 
 }
 

@@ -96,6 +96,8 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
+// pub const ERR_CANNOT_SETUP_EVENT_LISTENER: &str = "cannot setup event listener";
+
 
 // logging constants
 pub const LOG_WHEN_INIT: &str = "INIT";

@@ -14,6 +14,7 @@ use std::sync::RwLock;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::thread;
+use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -56,6 +57,8 @@ pub struct EventRegistry {
     // and we do not want to be blocked while directly asking an active
     // event on its ability to be manually triggered
     triggerable_event_list: RwLock<HashMap<String, bool>>,
+    // a list of comm channels for events that require a thread
+    event_txquit_channel_list: RwLock<HashMap<String, mpsc::Sender<()>>>,
     // the queue of events whose services need to be installed
     event_service_install_queue: Arc<Mutex<Vec<String>>>,
     // the queue of events whose services are up to be removed
@@ -73,6 +76,7 @@ impl EventRegistry {
         EventRegistry {
             event_list: RwLock::new(HashMap::new()),
             triggerable_event_list: RwLock::new(HashMap::new()),
+            event_txquit_channel_list: RwLock::new(HashMap::new()),
             event_service_install_queue: Arc::new(Mutex::new(Vec::new())),
             event_service_uninstall_queue: Arc::new(Mutex::new(Vec::new())),
             event_service_manager_exiting: RwLock::new(false),
@@ -436,7 +440,7 @@ impl EventRegistry {
             let Ok(running) = found_event
                 .read()
                 .expect("cannot read event")
-                ._thread_running() else {
+                .thread_running() else {
                 return false
             };
             running
@@ -724,12 +728,13 @@ impl EventRegistry {
             .expect("cannot retrieve event for service setup")
             .clone();
 
-        let gdevent = event
-            .read()
-            .expect("cannot read event for service setup");
         let name_copy = String::from(name);
         let event_name = Arc::new(Mutex::new(name_copy));
-        if gdevent.requires_thread() {
+        let requires_thread = event
+            .read()
+            .expect("cannot read event for service setup")
+            .requires_thread();
+        if requires_thread {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -741,11 +746,26 @@ impl EventRegistry {
             );
             let event = event.clone();
             let event_name = String::from(event_name.clone().lock().unwrap().as_str());
+            let (tx, rx) = mpsc::channel::<()>();
+
+            // WARNING: the following is the only place where the event is
+            // modified in order to listen for a potential `quit` signal:
+            // it should be safe as the operation is quick in any case
+            if let Ok(mut event) = event.clone().write() {
+                event._assign_quit_sender(tx.clone());
+            }
+
+            // the following line (and potentially the entire list) is useless
+            // if the responsibility to send the quit signal is left to the
+            // dedicated `stop_service()` interface
+            self.event_txquit_channel_list.write().expect("cannot write to event quit channel list").insert(event_name.clone(), tx.clone());
+
+            // the actual service thread
             let handle = thread::spawn(move || {
                 let name = event_name.as_str();
 
                 // this implements the listening service in current thread
-                let res = event.read().unwrap()._run_service();
+                let res = event.read().unwrap().run_service(Some(rx));
                 match res {
                     Ok(ssres) => {
                         if ssres {
@@ -788,7 +808,10 @@ impl EventRegistry {
             });
             Ok(Some(handle))
         } else {
-            if gdevent._run_service()? {
+            let e = event
+                .read()
+                .expect("cannot read event for service setup");
+            if e.run_service(None)? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -854,11 +877,11 @@ impl EventRegistry {
                 LOG_STATUS_OK,
                 &format!("requesting removal of event listener (dedicated thread)"),
             );
-            let _ = gdevent._stop_service()?;
+            let _ = gdevent.stop_service()?;
 
             Ok(())
         } else {
-            if gdevent._stop_service()? {
+            if gdevent.stop_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
