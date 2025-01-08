@@ -1258,9 +1258,9 @@ impl Event for DbusMessageEvent {
 
         // now it is time to set the internal `running` flag, before the
         // thread that waits for the quit signal is launched
-        if let Ok(mut running) = self.thread_running.write() {
-            *running = true;
-        }
+        let mut running = self.thread_running.write().unwrap();
+        *running = true;
+        drop(running);
 
         // spawn a thread that only listens to a possible request to quit:
         // this thread should be lightweight enough, as it just waits all
@@ -2030,6 +2030,9 @@ impl Event for DbusMessageEvent {
             LOG_STATUS_OK,
             &format!("closing event listening service on bus `{bus}`"),
         );
+
+        let mut running = self.thread_running.write().unwrap();
+        *running = false;
         Ok(true)
     }
 

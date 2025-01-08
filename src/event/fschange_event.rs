@@ -514,9 +514,9 @@ impl Event for FilesystemChangeEvent {
 
         // now it is time to set the internal `running` flag, before the
         // thread that waits for the quit signal is launched
-        if let Ok(mut running) = self.thread_running.write() {
-            *running = true;
-        }
+        let mut running = self.thread_running.write().unwrap();
+        *running = true;
+        drop(running);
 
         // spawn a thread that only listens to a possible request to quit:
         // this thread should be lightweight enough, as it just waits all
@@ -622,12 +622,16 @@ impl Event for FilesystemChangeEvent {
         // as said above this should be ininfluent
         let _ = _quit_handle.join();
 
+        // declare that the event has stopped
         self.log(
             LogType::Debug,
             LOG_WHEN_END,
             LOG_STATUS_OK,
             &format!("stopping file change watch service"),
         );
+
+        let mut running = self.thread_running.write().unwrap();
+        *running = false;
         Ok(true)
     }
 

@@ -57,8 +57,6 @@ pub struct EventRegistry {
     // and we do not want to be blocked while directly asking an active
     // event on its ability to be manually triggered
     triggerable_event_list: RwLock<HashMap<String, bool>>,
-    // a list of comm channels for events that require a thread
-    // event_txquit_channel_list: RwLock<HashMap<String, mpsc::Sender<()>>>,
     // the queue of events whose services need to be installed
     event_service_install_queue: Arc<Mutex<Vec<String>>>,
     // the queue of events whose services are up to be removed
@@ -76,7 +74,6 @@ impl EventRegistry {
         EventRegistry {
             event_list: RwLock::new(HashMap::new()),
             triggerable_event_list: RwLock::new(HashMap::new()),
-            // event_txquit_channel_list: RwLock::new(HashMap::new()),
             event_service_install_queue: Arc::new(Mutex::new(Vec::new())),
             event_service_uninstall_queue: Arc::new(Mutex::new(Vec::new())),
             event_service_manager_exiting: RwLock::new(false),
@@ -86,6 +83,10 @@ impl EventRegistry {
 
     /// Start the main registry thread, which in turn handles all other
     /// event listener threads
+    // NOTE: this function should really be implemented using async, because
+    // almost all operations are performed on the registry, which in turn
+    // exactly what it's requested to do in every moment, thus is also able
+    // to intentionally advance progress on the implemented futures
     pub fn run_event_service_manager(registry: &'static Self) -> Result<JoinHandle<Result<bool, std::io::Error>>, std::io::Error> {
         // self can be expected to be &'static mut because we know that this
         // registry lives as much as the entire program instance lives
@@ -105,12 +106,13 @@ impl EventRegistry {
                 &format!("starting main event service manager"),
             );
             loop {
-                let uninstall_queue = registry
-                    .clone()
+                let r0 = registry.clone();
+                let uninstall_queue = r0
                     .lock()
                     .unwrap()
                     .event_service_uninstall_queue
                     .clone();
+                drop(r0);
                 let lq = uninstall_queue
                     .lock()
                     .expect("cannot lock event service uninstall queue");
@@ -145,11 +147,13 @@ impl EventRegistry {
                 uninstall_queue.clone().lock().expect("cannot lock event service uninstall queue").clear();
                 drop(uninstall_queue);
 
-                let install_queue = registry
-                    .clone()
+                let r0 = registry.clone();
+                let install_queue = r0
                     .lock()
                     .unwrap()
-                    .event_service_install_queue.clone();
+                    .event_service_install_queue
+                    .clone();
+                drop(r0);
                 let lq = install_queue
                     .lock()
                     .expect("cannot lock event service install queue");
@@ -760,11 +764,6 @@ impl EventRegistry {
                     "communication with event listener not estabilished",
                 ));
             }
-
-            // the following line (and potentially the entire list) is useless
-            // if the responsibility to send the quit signal is left to the
-            // dedicated `stop_service()` interface
-            // self.event_txquit_channel_list.write().expect("cannot write to event quit channel list").insert(event_name.clone(), tx.clone());
 
             // the actual service thread
             let handle = thread::spawn(move || {
