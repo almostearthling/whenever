@@ -30,7 +30,6 @@ use crate::{cfg_mandatory, constants::*};
 use crate::cfghelp::*;
 
 
-
 // default seconds to wayt between active polls: generally ignored
 const DEFAULT_FSCHANGE_POLL_SECONDS: u64 = 2;
 
@@ -411,10 +410,8 @@ impl Event for FilesystemChangeEvent {
 
     fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
 
-        assert!(qrx.is_some());
-
-        // for now, assert this: if not true there is a bug somewhere...
-        assert!(self.quit_tx.is_some());
+        assert!(qrx.is_some(), "quit signal channel receiver must be provided");
+        assert!(self.quit_tx.is_some(), "quit signal channel transmitter not initialized");
 
         // unified event type that will be sent over an async channel by
         // either a `quit` command or the watcher: the `Target` option
@@ -470,9 +467,15 @@ impl Event for FilesystemChangeEvent {
 
         // and now build the watcher, passing a clone of the transmitting end
         // of the channel to the constructor
-        // FIXME: handle the Err!
-        let mut watcher = _build_watcher(
-            notify_cfg, async_tx.clone()).unwrap();
+        let mut watcher;
+        if let Ok(w) = _build_watcher(notify_cfg, async_tx.clone()) {
+            watcher = w;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "cannot initialize fschange notification service",
+            ));
+        }
 
         // if the watcher could be set to watch filesystem events, then an
         // endless cycle to catch these events is started: in this case all
@@ -504,16 +507,16 @@ impl Event for FilesystemChangeEvent {
                 LogType::Error,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
-                "no paths to watch have been specified",
+                "could not acquire list of paths to watch",
             );
             return Ok(false);
         }
 
         // now it is time to set the internal `running` flag, before the
         // thread that waits for the quit signal is launched
-        let mut running = self.thread_running.write().unwrap();
-        *running = true;
-        drop(running);
+        if let Ok(mut running) = self.thread_running.write() {
+            *running = true;
+        }
 
         // spawn a thread that only listens to a possible request to quit:
         // this thread should be lightweight enough, as it just waits all
@@ -534,7 +537,7 @@ impl Event for FilesystemChangeEvent {
             };
         });
 
-        // this also should be running in the local pool
+        // this should be running in the local pool
         futures::executor::block_on(async move {
             while let Some(toq) = async_rx.next().await {
                 match toq {
@@ -614,8 +617,17 @@ impl Event for FilesystemChangeEvent {
                     }
                 }
             }
-        });
+        });     // futures::executor::block_on(...)
 
+        // as said above this should be ininfluent
+        let _ = _quit_handle.join();
+
+        self.log(
+            LogType::Debug,
+            LOG_WHEN_END,
+            LOG_STATUS_OK,
+            &format!("stopping file change watch service"),
+        );
         Ok(true)
     }
 
@@ -635,7 +647,7 @@ impl Event for FilesystemChangeEvent {
                     Ok(true)
                 } else {
                     self.log(
-                        LogType::Trace,
+                        LogType::Warn,
                         LOG_WHEN_END,
                         LOG_STATUS_OK,
                         &format!("impossible to contact the listener: stop request dropped"),
@@ -644,7 +656,7 @@ impl Event for FilesystemChangeEvent {
                 }
             } else {
                 self.log(
-                    LogType::Trace,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     &format!("the listener is not running: stop request dropped"),

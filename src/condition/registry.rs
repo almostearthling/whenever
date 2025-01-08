@@ -49,7 +49,7 @@ pub struct ConditionRegistry {
     // flag is kept in a `Mutex` because it changes quite dynamically
     condition_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>,
     conditions_busy: Arc<Mutex<u64>>,
-    
+
     // the two queues for items to remove and items to add: the items that
     // need to be added are stored as full (dyn) items, while the ones to
     // be removed are stored as names
@@ -340,9 +340,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && self.condition_busy(name) {
             Err(Error::new(
@@ -385,9 +383,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && self.condition_busy(name) {
             Err(Error::new(
@@ -430,9 +426,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
         // parameter should not even be implemented here; however, since the
@@ -520,9 +514,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn condition_busy(&self, name: &str) -> bool {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -598,9 +590,7 @@ impl ConditionRegistry {
     /// and if the provided name is not found in the registry: in no way the
     /// `tick` function should be invoked with unknown conditions.
     pub fn tick(&self, name: &str) -> Result<Option<bool>, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates

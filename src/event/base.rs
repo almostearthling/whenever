@@ -119,32 +119,19 @@ pub trait Event: Send + Sync {
     /// has not been set: each would indicate an error in the program flow.
     /// Also panic if the event has not been registered.
     fn fire_condition(&self) -> std::io::Result<bool> {
-        if self.get_id() == 0 {
-            panic!("event {} not registered", self.get_name());
-        }
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        assert!(self.get_condition().is_some(), "no condition assigned");
+        assert!(self.condition_bucket().is_some(), "execution bucket not set");
 
-        if let Some(cond_name) = self.get_condition() {
-            if let Some(bucket) = self.condition_bucket() {
-                self.log(
-                    LogType::Info,
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_OK,
-                    &format!("condition {cond_name} firing"),
-                );
-                Ok(bucket.insert_condition(&cond_name))
-            } else {
-                panic!("execution bucket not set for condition {cond_name}")
-            }
-        } else {
-            // self.log(
-            //     LogType::Debug,
-            //     LOG_WHEN_PROC,
-            //     LOG_STATUS_FAIL,
-            //     &format!("no condition associated to event"),
-            // );
-            // Ok(false)
-            panic!("trying to fire with no condition assigned")
-        }
+        let cond_name = self.get_condition().unwrap();
+        let bucket = self.condition_bucket().unwrap();
+        self.log(
+            LogType::Info,
+            LOG_WHEN_PROC,
+            LOG_STATUS_OK,
+            &format!("condition {cond_name} firing"),
+        );
+        Ok(bucket.insert_condition(&cond_name))
     }
 
 
@@ -188,17 +175,17 @@ pub trait Event: Send + Sync {
     /// **Note**: the worker function must be self-contained, in the sense that
     ///           it must _not_ modify the internals of the structure, apart
     ///           from a flag that states that the service thread is running.
-    /// 
+    ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
     fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
         // in this case the service exits immediately without errors
-        assert!(qrx.is_none());
+        assert!(qrx.is_none(), "quit signal channel provided for event without listener");
         Ok(true)
     }
 
     /// This must be called to stop the event listening service.
-    /// 
+    ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
     fn stop_service(&self) -> std::io::Result<bool> {
@@ -206,7 +193,7 @@ pub trait Event: Send + Sync {
     }
 
     /// This tells whether the service thread (if any) is active or not.
-    /// 
+    ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
     fn thread_running(&self) -> std::io::Result<bool> {
@@ -218,7 +205,7 @@ pub trait Event: Send + Sync {
     fn _assign_condition(&mut self, cond_name: &str);
 
     /// Assign a quit signal sender before the service starts.
-    /// 
+    ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
     fn _assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) { /* nothing */ }

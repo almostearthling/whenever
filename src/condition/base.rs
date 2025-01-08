@@ -226,9 +226,7 @@ pub trait Condition: Send {
     /// considered a development error.
     fn test(&mut self) -> Result<Option<bool>, std::io::Error> {
         // panic if the condition has not yet been registered
-        if self.get_id() == 0 {
-            panic!("condition {} not registered", self.get_name());
-        }
+        assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
 
         // bail out if the condition has no associated tasks, if it
         // is suspended, or if it has been successful once and is not
@@ -448,9 +446,7 @@ pub trait Condition: Send {
     /// considered a development error.
     fn run_tasks(&mut self) -> Result<Option<bool>, std::io::Error> {
         // panic if the condition has not yet been registered
-        if self.get_id() == 0 {
-            panic!("condition {} not registered", self.get_name());
-        }
+        assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
 
         let registry = self.task_registry().unwrap();
         let mut s_task_names = String::new();

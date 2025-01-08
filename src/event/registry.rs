@@ -58,7 +58,7 @@ pub struct EventRegistry {
     // event on its ability to be manually triggered
     triggerable_event_list: RwLock<HashMap<String, bool>>,
     // a list of comm channels for events that require a thread
-    event_txquit_channel_list: RwLock<HashMap<String, mpsc::Sender<()>>>,
+    // event_txquit_channel_list: RwLock<HashMap<String, mpsc::Sender<()>>>,
     // the queue of events whose services need to be installed
     event_service_install_queue: Arc<Mutex<Vec<String>>>,
     // the queue of events whose services are up to be removed
@@ -76,7 +76,7 @@ impl EventRegistry {
         EventRegistry {
             event_list: RwLock::new(HashMap::new()),
             triggerable_event_list: RwLock::new(HashMap::new()),
-            event_txquit_channel_list: RwLock::new(HashMap::new()),
+            // event_txquit_channel_list: RwLock::new(HashMap::new()),
             event_service_install_queue: Arc::new(Mutex::new(Vec::new())),
             event_service_uninstall_queue: Arc::new(Mutex::new(Vec::new())),
             event_service_manager_exiting: RwLock::new(false),
@@ -630,14 +630,8 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn trigger_event(&self, name: &str) -> std::io::Result<bool> {
-        if !self.has_event(name) {
-            panic!("event {name} not found in registry");
-        }
-
-        // also panic if the event is not triggerable: the caller must ensure this
-        if !self.event_triggerable(name).unwrap() {
-            panic!("event {name} cannot be manually triggered");
-        }
+        assert!(self.has_event(name), "event {name} not in registry");
+        assert!(self.event_triggerable(name).unwrap(), "event {name} cannot be manually triggered");
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -713,9 +707,7 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     fn install_event_service(&self, name: &str) -> std::io::Result<Option<JoinHandle<Result<bool, Error>>>> {
-        if !self.has_event(name) {
-            panic!("event {name} not found in registry");
-        }
+        assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -753,12 +745,26 @@ impl EventRegistry {
             // it should be safe as the operation is quick in any case
             if let Ok(mut event) = event.clone().write() {
                 event._assign_quit_sender(tx.clone());
+            } else {
+                log(
+                    LogType::Warn,
+                    LOG_EMITTER_EVENT_REGISTRY,
+                    LOG_ACTION_INSTALL,
+                    Some((name, id)),
+                    LOG_WHEN_START,
+                    LOG_STATUS_FAIL,
+                    &format!("cannot initialize communication with event listener"),
+                );
+                return Err(std::io::Error::new(
+                    ErrorKind::ResourceBusy,
+                    "communication with event listener not estabilished",
+                ));
             }
 
             // the following line (and potentially the entire list) is useless
             // if the responsibility to send the quit signal is left to the
             // dedicated `stop_service()` interface
-            self.event_txquit_channel_list.write().expect("cannot write to event quit channel list").insert(event_name.clone(), tx.clone());
+            // self.event_txquit_channel_list.write().expect("cannot write to event quit channel list").insert(event_name.clone(), tx.clone());
 
             // the actual service thread
             let handle = thread::spawn(move || {
@@ -848,9 +854,7 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     fn uninstall_event_service(&self, name: &str) -> std::io::Result<()> {
-        if !self.has_event(name) {
-            panic!("event {name} not found in registry");
-        }
+        assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -918,9 +922,7 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn listen_for(&self, name: &str) -> std::io::Result<()> {
-        if !self.has_event(name) {
-            panic!("event {name} not found in registry");
-        }
+        assert!(self.has_event(name), "event {name} not in registry");
 
         let queue = self.event_service_install_queue.clone();
         let mut locked_queue = queue
@@ -954,9 +956,8 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn unlisten_for(&self, name: &str) -> std::io::Result<()> {
-        if !self.has_event(name) {
-            panic!("event {name} not found in registry");
-        }
+        assert!(self.has_event(name), "event {name} not in registry");
+
         let sname = String::from(name);
         let queue = self.event_service_uninstall_queue.clone();
         let mut locked_queue = queue
@@ -991,9 +992,7 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn fire_condition_for(&self, name: &str) {
-        if !self.has_event(name) {
-            panic!("event {name} not found in registry");
-        }
+        assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates

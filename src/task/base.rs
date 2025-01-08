@@ -105,12 +105,7 @@ pub trait Task: Send {
         &mut self,
         trigger_name: &str,
     ) -> Result<Option<bool>, std::io::Error> {
-        // panic if the task has not yet been registered
-        if self.get_id() == 0 {
-            panic!("(trigger {trigger_name}): task {} not registered",
-                self.get_name(),
-            );
-        }
+        assert!(self.get_id() != 0, "task {} not registered", self.get_name());
 
         self.log(
             LogType::Trace,

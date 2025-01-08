@@ -56,7 +56,7 @@ pub struct TaskRegistry {
 
     // counter to verify whether there are running tasks at a moment
     running_sessions: Arc<Mutex<u64>>,
-    
+
     // the two queues for items to remove and items to add: the items that
     // need to be added are stored as full (dyn) items, while the ones to
     // be removed are stored as names
@@ -394,11 +394,9 @@ impl TaskRegistry {
         break_failure: bool,
         break_success: bool,
     ) -> HashMap<String, Result<Option<bool>, std::io::Error>> {
-        let mut res: HashMap<String, Result<Option<bool>, std::io::Error>> = HashMap::new();
+        assert!(self.has_all_tasks(names), "some tasks not found in registry for condition `{trigger_name}`");
 
-        if !self.has_all_tasks(names) {
-            panic!("(trigger {trigger_name}): run_tasks_seq task(s) not found in registry")
-        }
+        let mut res: HashMap<String, Result<Option<bool>, std::io::Error>> = HashMap::new();
 
         // count the active running sessions: there can be more than a
         // command task session in execution at the moment, and knowing
@@ -602,9 +600,7 @@ impl TaskRegistry {
         trigger_name: &str,
         names: &Vec<&str>,
     ) -> HashMap<String, Result<Option<bool>, std::io::Error>> {
-        if !self.has_all_tasks(names) {
-            panic!("(trigger: {trigger_name}) run_tasks_par task(s) not found in registry")
-        }
+        assert!(self.has_all_tasks(names), "some tasks not found in registry for condition `{trigger_name}`");
 
         // count the active running sessions: there can be more than a
         // command task session in execution at the moment, and knowing
