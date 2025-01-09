@@ -50,17 +50,18 @@ fn generate_event_id() -> i64 {
 pub struct EventRegistry {
     // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
-    //event_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Event>>>>>,
     event_list: RwLock<HashMap<String, Arc<RwLock<Box<dyn Event>>>>>,
+
     // the triggerable list is kept separate because the triggerable
     // attribute is actually a constant that can be retrieved at startup
     // and we do not want to be blocked while directly asking an active
     // event on its ability to be manually triggered
     triggerable_event_list: RwLock<HashMap<String, bool>>,
-    // the queue of events whose services need to be installed
+
+    // the queues of events whose services need to be installed/removed
     event_service_install_queue: Arc<Mutex<Vec<String>>>,
-    // the queue of events whose services are up to be removed
     event_service_uninstall_queue: Arc<Mutex<Vec<String>>>,
+
     // flag to signal that the event service manager must exit
     event_service_manager_exiting: RwLock<bool>,
 }
@@ -286,11 +287,16 @@ impl EventRegistry {
                 LOG_STATUS_OK,
                 "stopping active event listeners",
             );
-            let r1 = registry.clone();
-            if let Some(remainig_events) = r1.lock().unwrap().event_names() {
+            let r0 = registry.clone();
+            let el0 = r0.lock().unwrap().event_names();
+            drop(r0);
+            if let Some(remainig_events) = el0 {
                 for name in remainig_events {
-                    let id = r1.lock().unwrap().event_id(&name).unwrap();
-                    if let Ok(_) = r1.lock().unwrap().uninstall_event_service(&name) {
+                    let r0 = registry.clone();
+                    let id = r0.lock().unwrap().event_id(&name).unwrap();
+                    drop(r0);
+                    let r0 = registry.clone();
+                    if r0.lock().unwrap().uninstall_event_service(&name).is_ok() {
                         log(
                             LogType::Trace,
                             LOG_EMITTER_EVENT_REGISTRY,
@@ -402,14 +408,14 @@ impl EventRegistry {
     pub fn has_event_eq(&self, event: &dyn Event) -> bool {
         let name = event.get_name();
         if self.has_event(name.as_str()) {
-            let guard = self.event_list
+            let el0 = self.event_list
                 .read()
                 .expect("cannot read event registry");
-            let found_event = guard
+            let found_event = el0
                 .get(name.as_str())
                 .unwrap()
                 .clone();
-            drop(guard);
+            drop(el0);
             let equals = found_event
                 .read()
                 .expect("cannot read event")
@@ -433,14 +439,14 @@ impl EventRegistry {
     /// or the contained event cannot be locked for comparison.
     pub fn service_running_for(&self, name: &str) -> bool {
         if self.has_event(name) {
-            let guard = self.event_list
+            let el0 = self.event_list
                 .read()
                 .expect("cannot read event registry");
-            let found_event = guard
+            let found_event = el0
                 .get(name)
                 .unwrap()
                 .clone();
-            drop(guard);
+            drop(el0);
             let Ok(running) = found_event
                 .read()
                 .expect("cannot read event")
@@ -591,21 +597,20 @@ impl EventRegistry {
 
     /// Return the id of the specified event
     pub fn event_id(&self, name: &str) -> Option<i64> {
-        let guard;
         if self.has_event(name) {
-            guard = self.event_list
+            let el0 = self.event_list
                 .read()
                 .expect("cannot read event registry");
+            let event = el0
+                .get(name)
+                .expect("cannot retrieve event")
+                .clone();
+            drop(el0);
+            let id = event.read().expect("cannot read event").get_id();
+            Some(id)
         } else {
-            return None
+            None
         }
-        let event = guard
-            .get(name)
-            .expect("cannot retrieve event")
-            .clone();
-        drop(guard);
-        let id = event.read().expect("cannot read event").get_id();
-        Some(id)
     }
 
     /// Tell whether or not an event is triggerable, `None` if event not found
@@ -641,14 +646,14 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let guard = self.event_list
+        let el0 = self.event_list
             .read()
             .expect("cannot read event registry");
-        let event = guard.get(name)
+        let e0 = el0.get(name)
             .expect("cannot retrieve event for triggering")
             .clone();
 
-        let gdevent = event.read()
+        let event = e0.read()
             .expect("cannot read event for triggering");
 
         log(
@@ -660,7 +665,7 @@ impl EventRegistry {
             LOG_STATUS_OK,
             &format!("manually triggering event {name}"),
         );
-        match gdevent.fire_condition() {
+        match event.fire_condition() {
             Ok(res) => {
                 if res {
                     log(
@@ -717,10 +722,10 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let guard = self.event_list
+        let el0 = self.event_list
             .read()
             .expect("cannot read event registry");
-        let event = guard.get(name)
+        let event = el0.get(name)
             .expect("cannot retrieve event for service setup")
             .clone();
 
@@ -859,18 +864,18 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let guard = self.event_list
+        let el0 = self.event_list
             .read()
             .expect("cannot read event registry");
-        let event = guard.get(name)
+        let e0 = el0.get(name)
             .expect("cannot retrieve event for service removal")
             .clone();
 
-        let gdevent = event
+        let event = e0
             .read()
             .expect("cannot read event for service removal");
 
-        if gdevent.requires_thread() {
+        if event.requires_thread() {
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -880,11 +885,11 @@ impl EventRegistry {
                 LOG_STATUS_OK,
                 &format!("requesting removal of event listener (dedicated thread)"),
             );
-            let _ = gdevent.stop_service()?;
+            let _ = event.stop_service()?;
 
             Ok(())
         } else {
-            if gdevent.stop_service()? {
+            if event.stop_service()? {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -997,16 +1002,16 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let guard = self.event_list
+        let el0 = self.event_list
             .read()
             .expect("cannot read event registry");
-        let event = guard.get(name)
+        let e0 = el0.get(name)
             .expect("cannot retrieve event for activation")
             .clone();
 
-        let gdevent = event.read()
+        let event = e0.read()
             .expect("cannot read event for activation");
-        if let Ok(res) = gdevent.fire_condition() {
+        if let Ok(res) = event.fire_condition() {
             if res {
                 log(
                     LogType::Trace,

@@ -108,8 +108,8 @@ impl ConditionRegistry {
             let found_condition = conditions
                 .get(name.as_str())
                 .unwrap();
-            let guard = found_condition.clone();
-            let locked_condition = guard
+            let c0 = found_condition.clone();
+            let locked_condition = c0
                 .lock()
                 .expect("cannot check event for comparison");
             return locked_condition.eq(cond)
@@ -351,10 +351,10 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let guard = self.condition_list
+            let cl0 = self.condition_list
                 .write()
                 .expect("cannot read condition registry");
-            let cond = guard
+            let cond = cl0
                 .get(name)
                 .expect("cannot retrieve condition for reset");
 
@@ -394,10 +394,10 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let guard = self.condition_list
+            let cl0 = self.condition_list
                 .read()
                 .expect("cannot read condition registry");
-            let cond = guard
+            let cond = cl0
                 .get(name)
                 .expect("cannot retrieve condition for suspend");
 
@@ -444,10 +444,10 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let guard = self.condition_list
+            let cl0 = self.condition_list
                 .read()
                 .expect("cannot read condition registry");
-            let cond = guard
+            let cond = cl0
                 .get(name)
                 .expect("cannot retrieve condition for resume");
 
@@ -480,21 +480,20 @@ impl ConditionRegistry {
 
     /// Return the id of the specified condition
     pub fn condition_id(&self, name: &str) -> Option<i64> {
-        let guard;
         if self.has_condition(name) {
-            guard = self.condition_list
+            let guard = self.condition_list
                 .read()
                 .expect("cannot read condition registry");
+            let cond = guard
+                .get(name)
+                .expect("cannot retrieve condition")
+                .clone();
+            drop(guard);
+            let id = cond.lock().expect("cannot lock condition").get_id();
+            Some(id)
         } else {
-            return None
+            None
         }
-        let cond = guard
-            .get(name)
-            .expect("cannot retrieve condition")
-            .clone();
-        drop(guard);
-        let id = cond.lock().expect("cannot lock condition").get_id();
-        Some(id)
     }
 
 

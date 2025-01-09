@@ -114,8 +114,8 @@ impl TaskRegistry {
             let found_task = tasks
                 .get(name.as_str())
                 .unwrap();
-            let guard = found_task.clone();
-            let locked_task = guard
+            let t0 = found_task.clone();
+            let locked_task = t0
                 .lock()
                 .expect("cannot check event for comparison");
             return locked_task.eq(task)
@@ -336,21 +336,20 @@ impl TaskRegistry {
 
     /// Return the id of the specified task
     pub fn task_id(&self, name: &str) -> Option<i64> {
-        let guard;
         if self.has_task(name) {
-            guard = self.task_list
+            let tl0 = self.task_list
                 .read()
                 .expect("cannot read task registry");
+            let task = tl0
+                .get(name)
+                .expect("cannot retrieve task")
+                .clone();
+            drop(tl0);
+            let id = task.lock().expect("cannot lock task").get_id();
+            Some(id)
         } else {
-            return None
+            None
         }
-        let task = guard
-            .get(name)
-            .expect("cannot retrieve task")
-            .clone();
-        drop(guard);
-        let id = task.lock().expect("cannot lock task").get_id();
-        Some(id)
     }
 
 
@@ -418,19 +417,19 @@ impl TaskRegistry {
             let id = self.task_id(name).unwrap();
             let mut breaks = false;
             let task;
-            let guard = self.task_list
+            let tl0 = self.task_list
                 .read()
                 .expect("cannot lock task registry");
-            task = guard
+            task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();
-            drop(guard);
+            drop(tl0);
             let cur_res;
-            let mut guard = task
+            let mut t0 = task
                 .lock()
                 .expect("cannot lock task while extracting");
-            cur_res = guard.run(trigger_name);
+            cur_res = t0.run(trigger_name);
             log(
                 LogType::Trace,
                 LOG_EMITTER_TASK_REGISTRY,
@@ -440,7 +439,7 @@ impl TaskRegistry {
                 LOG_STATUS_MSG,
                 &format!("task {name} finished running"),
             );
-            drop(guard);
+            drop(t0);
 
             let mut task_success = false;
             if let Ok(outcome) = cur_res {
@@ -632,14 +631,14 @@ impl TaskRegistry {
         for name in names.iter() {
             // the task list is only *read*: this greatly simplifies handling of
             // strings used as indexes, in this case the task name
-            let guard = self.task_list
+            let tl0 = self.task_list
                 .read()
                 .expect("cannot lock task registry");
-            let task = guard
+            let task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();
-            drop(guard);
+            drop(tl0);
 
             let aname = Arc::new(String::from(*name));
             let atrname = atrname.clone().to_string();

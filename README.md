@@ -50,7 +50,7 @@ Just like its predecessor, **whenever** overlaps to some extent with the standar
 
 Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a [simple _stdin_-based interface](#input-commands) that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to be performed are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format.[^2]
 
-A very lightweight cross-platform wrapper, namely [**whenever_tray**](https://github.com/almostearthling/whenever_tray), is available and under active testing on both Linux and Windows. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The minimalistic wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger occupation of the resources but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper, namely [**whenever_tray**](https://github.com/almostearthling/whenever_tray), is available and under active testing on both Linux and Windows. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The minimalistic wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger resource occupation but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of those tasks that, per configuration, _must_ run sequentially.
 
 The old version of _When_ itself is currently being converted to a frontend wrapper for **whenever**: see the [repository](https://github.com/almostearthling/when-command) for more details.
 
@@ -59,15 +59,15 @@ The old version of _When_ itself is currently being converted to a frontend wrap
 
 **whenever** can perform the following types of [**_task_**](#tasks):
 
-* [_Execution of OS executables_](#command-tasks), checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
+* [_Execution of OS executables_](#command-tasks), either binaries or scripts, checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
 * [_Execution of_ Lua _scripts_](#lua-script-tasks), using an embedded interpreter, with the possibility of checking the contents of _Lua_ variables for expected outcomes
 
-as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based _When_ scheduler: how tasks and conditions work is almost identical in both tools -- in fact, development of a tool to convert from _When_ _export files_ to **whenever** configuration files is underway.
+as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based _When_ scheduler: how tasks and conditions work is almost identical in both tools -- in fact, the development of a tool to convert from _When_ _export files_ to **whenever** configuration files is underway.
 
 The supported types of [**_condition_**](#conditions) are the following:
 
 * [_Interval_ based](#interval): the _periodic_ conditions are verified after a certain time interval has passed since **whenever** has started, and may be verified again after the same amount of time if the condition is set to be _recurring_
-* [_Time_ based](#time): one or more instants in time can be specified when the condition is verified
+* [_Time_ based](#time): one or more instants in time can be provided for the condition to be verified
 * [_Idle_ user session](#command): this type of condition is verified after the session has been idle for the specified amount of time
 * [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
 * [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
@@ -77,7 +77,7 @@ The supported types of [**_condition_**](#conditions) are the following:
 The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
 
 * [_Filesystem changes_](#filesystem-changes), that is, changes in files and/or directories that are set to be monitored
-* [_DBus signals_](#dbus-signals) that may be filtered for an expected payload.
+* [_DBus signals_](#dbus-signals), that may be filtered for an expected payload
 * [_Command line_](#command-line), that are manually triggered by writing to **whenever** standard input.
 
 Note that _DBus_ events and conditions are also (theoretically) supported on Windows, being one of the _DBus_ target platforms.
@@ -85,6 +85,8 @@ Note that _DBus_ events and conditions are also (theoretically) supported on Win
 All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
 Every type of check is performed periodically, even the ones involving _event_ based conditions[^4]: the periodic time interval at which the conditions are checked is referred here as _tick_, and the tick interval can be specified in the configuration file -- defaulting at 5 seconds. Note that, since performing all checks in the same instant at every tick could cause usage peaks in terms of computational resources, there is the option to attempt to randomly distribute some of the checks within the tick interval, by explicitly specifying this behaviour in the configuration file.
+
+The configuration can be also modified while the scheduler application is running, using a specific [command](#input-commands), in a dynamic fashion that does not reset the items whose configuration is unchanged.
 
 
 ## CLI
@@ -148,6 +150,8 @@ Globals must be specified at the beginning of the configuration file. The suppor
 | `randomize_checks_within_ticks` | _false_ | Whether or not condition checks hould be uniformly randomized within the tick period |
 
 Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a very short value for the tick period, but in fact it mimics a certain responsiveness and synchronization in checking _event_ based conditions. Note that conditions strictly depending on time do not comply to the request of randomizing the check instant.
+
+> **Note**: These values can _not_ be updated at runtime: possible changes of global parameters in the configuration file are only applied when the application is restarted.
 
 
 ### Tasks
@@ -743,7 +747,7 @@ The configuration entries are:
 | `name`             | N/A     | the unique name of the event (mandatory)                                                   |
 | `type`             | N/A     | must be set to `"fschange"` (mandatory)                                                    |
 | `condition`        | N/A     | the name of the associated _event_ based condition (mandatory)                             |
-| `watch`            | N/A     | a list of items to be monitored: possibly expressed with their full path                   |
+| `watch`            | (empty) | a list of items to be monitored: possibly expressed with their full path                   |
 | `recursive`        | _false_ | if _true_, listed directories will be monitored recursively                                |
 | `poll_seconds`     | 2       | generally not used, can be needed on systems where the notification service is unavailable |
 
@@ -909,7 +913,7 @@ The actual log record, also in JSON format, is emitted in the form of a single t
 
 As said above, **whenever** accepts commands (in the form of _command lines_) through the standard input. Actually, no prompt is shown, and the console log will keep showing up continuously even when an user types any interactive command: in fact the _stdin_ based interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these commands to control the scheduler.
 
-A _command line_ is intended as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects.
+A _command line_ is intended as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects. Note that a reload only affect item configurations: to reset the global parameters the scheduler application must be restarted.
 
 The available commands are:
 
@@ -923,10 +927,13 @@ The available commands are:
 | `suspend_condition` | Condition              | suspend the specified condition: the condition name argument is mandatory                                              |
 | `resume_condition`  | Condition              | resume the specified condition from a suspended state: the condition name argument is mandatory                        |
 | `trigger`           | Event                  | trigger the specified event causing the associated conditions to fire                                                  |
+| `configure`         | _valid path_           | load a new configuration from the file located at the provided path                                                    |
 
 The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Attempts to suspend conditions that are already suspended or to resume already active conditions are also ignored. Typing `exit` or `quit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_. The `reset_conditions` command resets the internal state of all configured conditions when no arguments are provided. The `trigger` command can only receive the name of a [Command line](#command-line) event as an argument: other uses will cause the command to be ignored and an error or a warning to be logged.
 
-> **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions and conditions that are _not recurring_. In the first case, the condition operates as if the interval counter has started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
+The `configure` command can be used to load a new configuration (or reload a modified one) while the scheduler is running: in case some of the items are already present in the configuration _and_ they are **identical** to the originally loaded ones in terms of provided parameters, the original ones are left in their status -- this means, in particular, that unchanged conditions are _not_ reset, and unchanged event listening services are _not_ restarted when reloading a configuration. It is important to notice that **all characters after the first blank** following the `configure` command are considered part of the provided file name, including further spaces other blank characters. Possible errors are detected and leave the application status unchanged. Also, neither environment variable nor _tilde_ expansions are performed.
+
+> **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions and conditions that are _not recurring_. In the first case, the condition operates as if the interval counter had started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
 
 
 ## Build issues

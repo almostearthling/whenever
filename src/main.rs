@@ -595,6 +595,7 @@ fn interpret_commands() -> std::io::Result<bool> {
 
     while let Ok(_n) = handle.read_line(&mut buffer) {
         // note that `split_whitespace()` already trims its argument
+        let buffer2 = String::from(&buffer);
         let v: Vec<&str> = buffer.split_whitespace().collect();
         if v.len() > 0 {
             let cmd = v[0];
@@ -847,6 +848,26 @@ fn interpret_commands() -> std::io::Result<bool> {
                         thread::spawn(move || { let _ = set_suspended_condition(&arg, false); });
                     }
                 }
+                "configure" => {
+                    // in this case take all the string after the first
+                    // space character in the command line, because the
+                    // filename might contain spaces, and in case of relative
+                    // paths even the first characters could be spaces:
+                    // "configure_".len() == 10
+                    let (_, fname) = buffer2.split_at(10);
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        &format!("attempting to reconfigure using configuration file `{}`", fname),
+                    );
+                    // same considerations as above
+                    let arg = fname.to_string();
+                    thread::spawn(move || { let _ = reconfigure(&arg); });
+                }
                 "trigger" => {
                     if args.len() != 1 {
                         log(
@@ -871,32 +892,6 @@ fn interpret_commands() -> std::io::Result<bool> {
                         // same considerations as above
                         let arg = args[0].to_string();
                         thread::spawn(move || { let _ = trigger_event(&arg); });
-                    }
-                }
-                "configure" => {
-                    if args.len() != 1 {
-                        log(
-                            LogType::Error,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_RUN_COMMAND,
-                            None,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_FAIL,
-                            "invalid number of arguments for command `configure`",
-                        );
-                    } else {
-                        log(
-                            LogType::Debug,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_RUN_COMMAND,
-                            None,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_MSG,
-                            &format!("attempting to reconfigure using configuration file `{}`", args[0]),
-                        );
-                        // same considerations as above
-                        let arg = args[0].to_string();
-                        thread::spawn(move || { let _ = reconfigure(&arg); });
                     }
                 }
                 // ...
@@ -1147,10 +1142,9 @@ fn main() {
     }
 
     // add a thread for stdin interpreter (no args function thus no closure)
-    _handles.push(thread::spawn(interpret_commands));
-
-    // add a thread to handle event registry management (same as above)
-    // _handles.push(thread::spawn(manage_event_registry));
+    // this thread can be abruptly killed without worrying, so it is not added
+    // to the threads to wait for before leaving
+    let _ = thread::spawn(interpret_commands);
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
@@ -1192,7 +1186,7 @@ fn main() {
                     LOG_STATUS_OK,
                     "application exiting: all activity will be forced to stop",
                 );
-                break;
+                std::process::exit(1);
             } else {
                 log(
                     LogType::Info,
@@ -1213,22 +1207,27 @@ fn main() {
                         break;
                     }
                 }
+                // stop the event service manager
+                if let Err(e) = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY) {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_MAIN_EXIT,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("error stopping event service manager: {e}"),
+                    );
+                }
+                // join all active thread handles and exit gracefully
+                for h in _handles {
+                    let _ = h.join();
+                }
                 break;
             }
         }
     }
 
-    if let Err(e) = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY) {
-        log(
-            LogType::Debug,
-            LOG_EMITTER_MAIN,
-            LOG_ACTION_MAIN_EXIT,
-            None,
-            LOG_WHEN_END,
-            LOG_STATUS_FAIL,
-            &format!("error stopping event service manager: {e}"),
-        );
-    }
     log(
         LogType::Info,
         LOG_EMITTER_MAIN,
