@@ -69,14 +69,10 @@ pub const ERR_INVALID_CFG_ENTRY: &str = "invalid configuration entry";
 pub const ERR_MISSING_PARAMETER: &str = "missing parameter";
 pub const ERR_INVALID_PARAMETER: &str = "invalid parameter";
 pub const ERR_INVALID_PARAMETER_LIST: &str = "invalid list or list element";
-// pub const ERR_INVALID_COND_NAME: &str = "invalid value for condition name";
 pub const ERR_INVALID_COND_TYPE: &str = "condition type invalid or mismatched";
-// pub const ERR_INVALID_TASK_LIST: &str = "invalid task list specification";
 pub const ERR_INVALID_TASK: &str = "invalid task specification or inexistent task";
 
 pub const ERR_INVALID_STARTUP_PATH: &str = "invalid startup path";
-// pub const ERR_INVALID_COMMAND_PATH: &str = "invalid command path";
-// pub const ERR_INVALID_COMMAND_ARGUMENTS: &str = "invalid command arguments";
 pub const ERR_INVALID_ENVVAR_NAME: &str = "invalid name for environment variable";
 pub const ERR_INVALID_ENVVAR_VALUE: &str = "invalid value for environment variable";
 
@@ -89,14 +85,10 @@ pub const ERR_INVALID_VALUE_FOR: &str = "invalid value for";
 pub const ERR_INVALID_VALUE_FOR_ENTRY: &str = "invalid value for entry";
 pub const ERR_INVALID_VALUE_FOR_LIST_ENTRY: &str = "invalid value for list entry";
 
-// pub const ERR_INVALID_TASK_NAME: &str = "invalid value for task name";
 pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 
-// pub const ERR_INVALID_EVENT_NAME: &str = "invalid value for event name";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
-
-// pub const ERR_CANNOT_SETUP_EVENT_LISTENER: &str = "cannot setup event listener";
 
 
 // logging constants

@@ -24,15 +24,6 @@ use crate::event::base::Event;
 use crate::cfghelp::*;
 
 
-// helper to create a specific error
-// fn _c_error_invalid_config(key: &str) -> std::io::Error {
-//     std::io::Error::new(
-//         std::io::ErrorKind::InvalidInput,
-//         format!("{ERR_INVALID_CONFIG_FILE}:{key}"),
-//     )
-// }
-
-
 /// Check the configuration from a string
 pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
 
@@ -105,14 +96,14 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
         if !task_map.is_list() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                ERR_INVALID_TASK_CONFIG,
+                ERR_INVALID_COND_CONFIG,
             ));
         } else {
             for entry in task_map.as_list().unwrap() {
                 if !entry.is_map() {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_TASK_CONFIG,
+                        ERR_INVALID_COND_CONFIG,
                     ));
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
                     let task_list = task_list.iter().map(|x| x.as_str()).collect();
@@ -145,7 +136,7 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                         _ => {
                             return Err(std::io::Error::new(
                                 std::io::ErrorKind::InvalidData,
-                                ERR_INVALID_TASK_TYPE,
+                                ERR_INVALID_COND_TYPE,
                             ));
                         }
                     };
@@ -153,7 +144,7 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                 } else {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_TASK_CONFIG,
+                        ERR_INVALID_COND_CONFIG,
                     ));
                 }
             }
@@ -166,14 +157,14 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
         if !item_map.is_list() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                ERR_INVALID_TASK_CONFIG,
+                ERR_INVALID_EVENT_CONFIG,
             ));
         } else {
             for entry in item_map.as_list().unwrap() {
                 if !entry.is_map() {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_TASK_CONFIG,
+                        ERR_INVALID_EVENT_CONFIG,
                     ));
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
                     let condition_list = condition_list.iter().map(|x| x.as_str()).collect();
@@ -194,7 +185,7 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                         _ => {
                             return Err(std::io::Error::new(
                                 std::io::ErrorKind::InvalidData,
-                                ERR_INVALID_TASK_TYPE,
+                                ERR_INVALID_EVENT_TYPE,
                             ));
                         }
                     };
@@ -202,7 +193,7 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                 } else {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_TASK_CONFIG,
+                        ERR_INVALID_EVENT_CONFIG,
                     ));
                 }
             }
@@ -236,14 +227,14 @@ pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
         if !item.is_int() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         scheduler_tick_seconds = *item.as_int().unwrap();
         if scheduler_tick_seconds < 1 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
     }
@@ -251,10 +242,10 @@ pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
     let cur_key = "randomize_checks_within_ticks";
     let mut randomize_checks_within_ticks = DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS;
     if let Some(item) = config_map.get(cur_key) {
-        if !item.is_int() {
+        if !item.is_bool() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         randomize_checks_within_ticks = *item.as_bool().unwrap();
@@ -295,14 +286,14 @@ pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
         if !item.is_int() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         scheduler_tick_seconds = *item.as_int().unwrap();
         if scheduler_tick_seconds < 1 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
     }
@@ -310,10 +301,10 @@ pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
     let cur_key = "randomize_checks_within_ticks";
     let mut randomize_checks_within_ticks = DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS;
     if let Some(item) = config_map.get(cur_key) {
-        if !item.is_int() {
+        if !item.is_bool() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}:{cur_key}"),
+                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         randomize_checks_within_ticks = *item.as_bool().unwrap();
