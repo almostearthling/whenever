@@ -1199,7 +1199,7 @@ impl DbusMethodCondition {
         cfg_mandatory!(cfg_string_check_regex(cfgmap, "object_path", &RE_DBUS_OBJECT_PATH))?;
         cfg_mandatory!(cfg_string_check_regex(cfgmap, "interface", &RE_DBUS_INTERFACE_NAME))?;
         cfg_mandatory!(cfg_string_check_regex(cfgmap, "method", &RE_DBUS_MEMBER_NAME))?;
-        
+
         // also for optional parameters just check and throw away the result
 
         // tags are always simply checked this way

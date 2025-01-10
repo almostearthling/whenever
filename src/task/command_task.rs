@@ -558,7 +558,7 @@ impl CommandTask {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap) -> std::io::Result<String> {
-    
+
         let check = vec![
             "type",
             "name",

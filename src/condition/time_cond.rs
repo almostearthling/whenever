@@ -709,7 +709,7 @@ impl TimeCondition {
 
         // there is no shortcut for checking the list of time specifications
         // so we just reimplement the retrieval routine seen in load_cfgmap
-        // without actually storing values to update a condition object 
+        // without actually storing values to update a condition object
         let cur_key = "time_specifications";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() {

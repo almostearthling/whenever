@@ -363,9 +363,9 @@ impl LuaTask {
                 ));
             }
         }
-        
+
         cfg_bool(cfgmap, "expect_all")?;
-        
+
         // expected results are in a complex map, thus no shortcut is given
         let cur_key = "expected_results";
         if cfgmap.contains_key(cur_key) {

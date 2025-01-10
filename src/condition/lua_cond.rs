@@ -550,7 +550,7 @@ impl LuaCondition {
                 }
             }
         }
-    
+
         Ok(name)
     }
 

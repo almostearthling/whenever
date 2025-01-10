@@ -454,7 +454,7 @@ fn reconfigure(config_file: &str) -> std::io::Result<()> {
                 .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS) as u64;
             *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
             let res = reconfigure_items(
-                &config, 
+                &config,
                 &TASK_REGISTRY,
                 &CONDITION_REGISTRY,
                 &EVENT_REGISTRY,
@@ -1020,7 +1020,7 @@ fn main() {
     }
 
     exit_if_fails!(args.quiet, check_single_instance(&instance));
-    
+
     // now check that the config file name has been provided
     if args.config.is_none() {
         eprintln!("{APP_NAME} error: configuration file not specified");

@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 /// pub cfghelp
-/// 
+///
 /// module providing shortcut functions/macros to help configuration of items
 /// by providing a CfgMap instance and the key to be retrieved
 
@@ -13,7 +13,7 @@ use crate::constants::*;
 
 
 /// use this to specify that a configuration element is mandatory
-/// 
+///
 /// Note: this macro is only intended to be used with the functions that are
 /// defined in this package, as no check is made on what expression is used
 /// as argument - at least for now

@@ -111,25 +111,32 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                     let name;
                     match item_type.as_str() {
                         "interval" => {
-                            name = condition::interval_cond::IntervalCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::interval_cond::IntervalCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         "idle" => {
-                            name = condition::idle_cond::IdleCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::idle_cond::IdleCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         "time" => {
-                            name = condition::time_cond::TimeCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::time_cond::TimeCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         "command" => {
-                            name = condition::command_cond::CommandCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::command_cond::CommandCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         "lua" => {
-                            name = condition::lua_cond::LuaCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::lua_cond::LuaCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         "dbus" => {
-                            name = condition::dbus_cond::DbusMethodCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::dbus_cond::DbusMethodCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         "bucket" | "event" => {
-                            name = condition::bucket_cond::BucketCondition::check_cfgmap(&entry.as_map().unwrap(), &task_list)?;
+                            name = condition::bucket_cond::BucketCondition::check_cfgmap(
+                                &entry.as_map().unwrap(), &task_list)?;
                         }
                         // ...
 
@@ -172,13 +179,16 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                     let name;
                     match item_type.as_str() {
                         "fschange" => {
-                            name = event::fschange_event::FilesystemChangeEvent::check_cfgmap(&entry.as_map().unwrap(), &condition_list)?;
+                            name = event::fschange_event::FilesystemChangeEvent::check_cfgmap(
+                                &entry.as_map().unwrap(), &condition_list)?;
                         }
                         "dbus" => {
-                            name = event::dbus_event::DbusMessageEvent::check_cfgmap(&entry.as_map().unwrap(), &condition_list)?;
+                            name = event::dbus_event::DbusMessageEvent::check_cfgmap(
+                                &entry.as_map().unwrap(), &condition_list)?;
                         }
                         "cli" => {
-                            name = event::manual_event::ManualCommandEvent::check_cfgmap(&entry.as_map().unwrap(), &condition_list)?;
+                            name = event::manual_event::ManualCommandEvent::check_cfgmap(
+                                &entry.as_map().unwrap(), &condition_list)?;
                         }
                         // ...
 
