@@ -14,11 +14,6 @@
 //! is independent from the particular implementation of the waiting service.
 
 
-// use std::sync::Arc;
-// use std::sync::Mutex;
-// use std::thread;
-// use std::io::{Error, ErrorKind};
-
 use std::sync::mpsc;
 
 use crate::common::logging::{log, LogType};
@@ -107,6 +102,18 @@ pub trait Event: Send + Sync {
         }
     }
 
+    /// Assign a quit signal sender before the service starts.
+    ///
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the event has not been registered.
+    fn assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) {
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+    }
+
 
     /// Fire the assigned condition by tossing it into the execution bucket
     ///
@@ -117,7 +124,7 @@ pub trait Event: Send + Sync {
     ///
     /// When either the condition is not associated or the execution bucket
     /// has not been set: each would indicate an error in the program flow.
-    /// Also panic if the event has not been registered.
+    /// Also panics if the event has not been registered.
     fn fire_condition(&self) -> std::io::Result<bool> {
         assert!(self.get_id() != 0, "event {} not registered", self.get_name());
         assert!(self.get_condition().is_some(), "no condition assigned");
@@ -203,12 +210,6 @@ pub trait Event: Send + Sync {
 
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);
-
-    /// Assign a quit signal sender before the service starts.
-    ///
-    /// The default implementation is only suitable for events that do not
-    /// require a listener, all other event type must reimplement it.
-    fn _assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) { /* nothing */ }
 
 }
 

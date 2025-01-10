@@ -1062,7 +1062,7 @@ impl Task for CommandTask {
                                 failure_reason = FailureReason::Other;
                             }
                             ExitStatus::Undetermined => {
-                                statusmsg = format!("UNDETERMINED");
+                                statusmsg = String::from("UNDETERMINED");
                                 self.log(
                                     LogType::Warn,
                                     LOG_WHEN_PROC,

@@ -920,22 +920,6 @@ fn interpret_commands() -> std::io::Result<bool> {
 }
 
 
-// the following is another separate thread for event registry management
-// NOTE: for now it is just a placeholder for the actual function
-// fn manage_event_registry() -> std::io::Result<bool> {
-//     let rest_time = Duration::from_millis(MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS);
-
-//     loop {
-//         if *APPLICATION_MUST_EXIT.read().unwrap() {
-//             break;
-//         }
-//         thread::sleep(rest_time);
-//     }
-
-//     Ok(true)
-// }
-
-
 // argument parsing and command execution: doc comments are used by clap
 use clap::{Parser, ValueEnum};
 

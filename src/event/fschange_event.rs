@@ -403,7 +403,8 @@ impl Event for FilesystemChangeEvent {
         self.condition_name = Some(String::from(cond_name));
     }
 
-    fn _assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
+    fn assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
         self.quit_tx = Some(sr);
     }
 
@@ -477,10 +478,7 @@ impl Event for FilesystemChangeEvent {
             ));
         }
 
-        // if the watcher could be set to watch filesystem events, then an
-        // endless cycle to catch these events is started: in this case all
-        // possible errors are treated as warnings from a logging point of
-        // view; otherwise exit with Ok(false), which indicates an error
+        // add locations to the watcher
         if let Some(wl) = self.watched_locations.clone() {
             for p in wl {
                 match watcher.watch(&p, rec) {
@@ -537,6 +535,10 @@ impl Event for FilesystemChangeEvent {
             };
         });
 
+        // if the watcher could be set to watch filesystem events, then an
+        // endless cycle to catch these events is started: in this case all
+        // possible errors are treated as warnings from a logging point of
+        // view; otherwise exit with Ok(false), which indicates an error;
         // this should be running in the local pool
         futures::executor::block_on(async move {
             while let Some(toq) = async_rx.next().await {
@@ -602,7 +604,7 @@ impl Event for FilesystemChangeEvent {
                             LogType::Warn,
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
-                            &format!("request to quit generated an error: exiting anyway"),
+                            "request to quit generated an error: exiting anyway",
                         );
                         break;
                     }
@@ -611,7 +613,7 @@ impl Event for FilesystemChangeEvent {
                             LogType::Debug,
                             LOG_WHEN_END,
                             LOG_STATUS_OK,
-                            &format!("event listener termination request caught"),
+                            "event listener termination request caught",
                         );
                         break;
                     }
@@ -627,7 +629,7 @@ impl Event for FilesystemChangeEvent {
             LogType::Debug,
             LOG_WHEN_END,
             LOG_STATUS_OK,
-            &format!("stopping file change watch service"),
+            "stopping file change watch service",
         );
 
         let mut running = self.thread_running.write().unwrap();
@@ -642,7 +644,7 @@ impl Event for FilesystemChangeEvent {
                     LogType::Info,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("the listener has been requested to stop"),
+                    "the listener has been requested to stop",
                 );
                 // send the quit signal
                 let quit_tx = self.quit_tx.clone();
@@ -654,7 +656,7 @@ impl Event for FilesystemChangeEvent {
                         LogType::Warn,
                         LOG_WHEN_END,
                         LOG_STATUS_OK,
-                        &format!("impossible to contact the listener: stop request dropped"),
+                        "impossible to contact the listener: stop request dropped",
                     );
                     Ok(false)
                 }
@@ -663,7 +665,7 @@ impl Event for FilesystemChangeEvent {
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("the listener is not running: stop request dropped"),
+                    "the listener is not running: stop request dropped",
                 );
                 Ok(false)
             }
@@ -672,7 +674,7 @@ impl Event for FilesystemChangeEvent {
                 LogType::Error,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
-                &format!("could not determine whether the listener is running"),
+                "could not determine whether the listener is running",
             );
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,

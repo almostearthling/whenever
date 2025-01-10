@@ -104,7 +104,7 @@ impl EventRegistry {
                 None,
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
-                &format!("starting main event service manager"),
+                "starting main event service manager",
             );
             loop {
                 let r0 = registry.clone();
@@ -130,7 +130,7 @@ impl EventRegistry {
                             Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_OK,
-                            &format!("stopped handling listener"),
+                            "stopped handling listener",
                         );
                         cleanup_events.push(name);
                     } else {
@@ -141,7 +141,7 @@ impl EventRegistry {
                             Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_FAIL,
-                            &format!("could not stop handling listener"),
+                            "could not stop handling listener",
                         );
                     };
                 }
@@ -178,7 +178,7 @@ impl EventRegistry {
                                     Some((&name, id)),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_OK,
-                                    &format!("event listener is being handled"),
+                                    "event listener is being handled",
                                 );
                             }   // otherwise no service is needed
                         } else {
@@ -189,7 +189,7 @@ impl EventRegistry {
                                 Some((&name, id)),
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
-                                &format!("event listener cannot be handled"),
+                                "event listener cannot be handled",
                             );
                         };
                         // also accept an error and remove the name of the
@@ -229,7 +229,7 @@ impl EventRegistry {
                                 Some((&name, id)),
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_OK,
-                                &format!("event removed from registry"),
+                                "event removed from registry",
                             );
                             cleanup_events.remove(
                                 cleanup_events
@@ -245,7 +245,7 @@ impl EventRegistry {
                                 Some((&name, id)),
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
-                                &format!("event could NOT be removed from registry"),
+                                "event could NOT be removed from registry",
                             );
                         }
                     }
@@ -290,8 +290,8 @@ impl EventRegistry {
             let r0 = registry.clone();
             let el0 = r0.lock().unwrap().event_names();
             drop(r0);
-            if let Some(remainig_events) = el0 {
-                for name in remainig_events {
+            if let Some(remaining_events) = el0 {
+                for name in remaining_events {
                     let r0 = registry.clone();
                     let id = r0.lock().unwrap().event_id(&name).unwrap();
                     drop(r0);
@@ -304,7 +304,7 @@ impl EventRegistry {
                             Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_OK,
-                            &format!("stopped handling event listener"),
+                            "stopped handling event listener",
                         );
                     } else {
                         log(
@@ -314,7 +314,7 @@ impl EventRegistry {
                             Some((&name, id)),
                             LOG_WHEN_PROC,
                             LOG_STATUS_FAIL,
-                            &format!("could not stop handling event listener"),
+                            "could not stop handling event listener",
                         );
                     };
                 }
@@ -329,7 +329,7 @@ impl EventRegistry {
             for name in names {
                 let h = service_handles.remove(&name);
                 if let Some(h) = h {
-                    let _r = h.join();
+                    let _ = h.join();
                 }
             }
             log(
@@ -743,7 +743,7 @@ impl EventRegistry {
                 Some((name, id)),
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
-                &format!("installing event listener (dedicated thread)"),
+                "installing event listener (dedicated thread)",
             );
             let event = event.clone();
             let event_name = String::from(event_name.clone().lock().unwrap().as_str());
@@ -753,7 +753,7 @@ impl EventRegistry {
             // modified in order to listen for a potential `quit` signal:
             // it should be safe as the operation is quick in any case
             if let Ok(mut event) = event.clone().write() {
-                event._assign_quit_sender(tx.clone());
+                event.assign_quit_sender(tx.clone());
             } else {
                 log(
                     LogType::Warn,
@@ -762,7 +762,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
-                    &format!("cannot initialize communication with event listener"),
+                    "cannot initialize communication with event listener",
                 );
                 return Err(std::io::Error::new(
                     ErrorKind::ResourceBusy,
@@ -786,7 +786,7 @@ impl EventRegistry {
                                 Some((&name, id)),
                                 LOG_WHEN_END,
                                 LOG_STATUS_OK,
-                                &format!("event listener successfully shut down"),
+                                "event listener successfully shut down",
                             );
                             Ok(true)
                         } else {
@@ -797,7 +797,7 @@ impl EventRegistry {
                                 Some((&name, id)),
                                 LOG_WHEN_END,
                                 LOG_STATUS_FAIL,
-                                &format!("event listener unsuccessfully shut down"),
+                                "event listener unsuccessfully shut down",
                             );
                             Ok(false)
                         }
@@ -829,7 +829,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_OK,
-                    &format!("event listener installed"),
+                    "event listener installed",
                 );
                 Ok(None)
             } else {
@@ -840,7 +840,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
-                    &format!("event listener NOT installed"),
+                    "event listener NOT installed",
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,
@@ -883,7 +883,7 @@ impl EventRegistry {
                 Some((name, id)),
                 LOG_WHEN_END,
                 LOG_STATUS_OK,
-                &format!("requesting removal of event listener (dedicated thread)"),
+                "requesting removal of event listener (dedicated thread)",
             );
             let _ = event.stop_service()?;
 
@@ -897,7 +897,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("event listener removed"),
+                    "event listener removed",
                 );
                 Ok(())
             } else {
@@ -908,7 +908,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("event listener could NOT be removed"),
+                    "event listener could NOT be removed",
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,
@@ -946,7 +946,7 @@ impl EventRegistry {
             Some((name, id)),
             LOG_WHEN_START,
             LOG_STATUS_OK,
-            &format!("event listener installation requested"),
+            "event listener installation requested",
         );
 
         Ok(())
@@ -978,7 +978,7 @@ impl EventRegistry {
             Some((name, id)),
             LOG_WHEN_END,
             LOG_STATUS_OK,
-            &format!("event listener removal requested"),
+            "event listener removal requested",
         );
 
         Ok(())

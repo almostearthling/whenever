@@ -261,10 +261,10 @@ impl ToVariant for CfgValue {
                     if let Some(v) = value.to_variant() {
                         h.insert(key.clone(), v);
                     } else {
-                        return None
+                        return None;
                     }
                 } else {
-                    return None
+                    return None;
                 }
             }
             Some(zvariant::Value::new(h))

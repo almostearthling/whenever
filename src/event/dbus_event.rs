@@ -620,7 +620,7 @@ impl DbusMessageEvent {
         //   every nested structure,
         // - an operator,
         // - a value to check against using the operator;
-        // of course the value types found in TOML are less tructured than the
+        // of course the value types found in TOML are less structured than the
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
@@ -885,21 +885,14 @@ impl DbusMessageEvent {
 
         // specific optional parameter check
 
-        // this is tricky: we build a list of elements constituted by:
-        // - an index list (integers and strings, mixed) which will address
-        //   every nested structure,
-        // - an operator,
-        // - a value to check against using the operator;
-        // of course the value types found in TOML are less tructured than the
-        // ones supported by DBus, and subsequent tests will take this into
-        // account and compare only values compatible with each other, and
-        // compatible with the operator used
         let check = [
             "index",
             "operator",
             "value",
         ];
 
+        // see above for the reason why the check/configuration step is
+        // performed like this: of course here no structure is created
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
             // here we expect a JSON string, reason explained above
@@ -1054,7 +1047,7 @@ impl DbusMessageEvent {
                 }
             }
 
-            // `parameter_check_all` only makes sense if the paramenter check
+            // `parameter_check_all` only makes sense if the parameter check
             // list was built: for this reason it is checked only in this case
             // (so that the checks are the same as the ones in load_cfgmap)
             cfg_bool(cfgmap, "parameter_check_all")?;
@@ -1106,7 +1099,8 @@ impl Event for DbusMessageEvent {
         self.condition_name = Some(String::from(cond_name));
     }
 
-    fn _assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
+    fn assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
         self.quit_tx = Some(sr);
     }
 
@@ -1290,7 +1284,7 @@ impl Event for DbusMessageEvent {
             // actually `msg` should never remain `Ok(None)`: this flow is
             // preferred to directly handling msg within the toq match in order
             // to avoid a too deeply involved loop
-            let mut msg= Ok(None);
+            let mut msg = Ok(None);
 
             if let Some(toq) = async_rx.next().await {
                 match toq {
@@ -1302,7 +1296,7 @@ impl Event for DbusMessageEvent {
                             LogType::Warn,
                             LOG_WHEN_PROC,
                             LOG_STATUS_FAIL,
-                            &format!("request to quit generated an error: exiting anyway"),
+                            "request to quit generated an error: exiting anyway",
                         );
                         break 'outer;
                     }
@@ -1311,7 +1305,7 @@ impl Event for DbusMessageEvent {
                             LogType::Debug,
                             LOG_WHEN_END,
                             LOG_STATUS_OK,
-                            &format!("event listener termination request caught"),
+                            "event listener termination request caught",
                         );
                         break 'outer;
                     }
@@ -2043,7 +2037,7 @@ impl Event for DbusMessageEvent {
                     LogType::Info,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("the listener has been requested to stop"),
+                    "the listener has been requested to stop",
                 );
                 // send the quit signal
                 let quit_tx = self.quit_tx.clone();
@@ -2055,7 +2049,7 @@ impl Event for DbusMessageEvent {
                         LogType::Warn,
                         LOG_WHEN_END,
                         LOG_STATUS_OK,
-                        &format!("impossible to contact the listener: stop request dropped"),
+                        "impossible to contact the listener: stop request dropped",
                     );
                     Ok(false)
                 }
@@ -2064,7 +2058,7 @@ impl Event for DbusMessageEvent {
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("the service is not running: stop request dropped"),
+                    "the service is not running: stop request dropped",
                 );
                 Ok(false)
             }
@@ -2073,7 +2067,7 @@ impl Event for DbusMessageEvent {
                 LogType::Error,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
-                &format!("could not determine whether the service is running"),
+                "could not determine whether the service is running",
             );
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,

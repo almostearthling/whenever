@@ -523,7 +523,7 @@ impl TaskRegistry {
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
-                                        &format!("successfully added queued task to the registry"),
+                                        "successfully added queued task to the registry",
                                     );
                                 } else {
                                     log(
@@ -533,7 +533,7 @@ impl TaskRegistry {
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("queued task already present in the registry"),
+                                        "queued task already present in the registry",
                                     );
                                 }
                             } else {
@@ -745,7 +745,7 @@ impl TaskRegistry {
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
-                                        &format!("successfully added queued task to the registry"),
+                                        "successfully added queued task to the registry",
                                     );
                                 } else {
                                     log(
@@ -755,7 +755,7 @@ impl TaskRegistry {
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("queued task already present in the registry"),
+                                        "queued task already present in the registry",
                                     );
                                 }
                             } else {

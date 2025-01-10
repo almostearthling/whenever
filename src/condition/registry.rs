@@ -432,9 +432,9 @@ impl ConditionRegistry {
         // parameter should not even be implemented here; however, since the
         // caller might try to invoke the operation on a condition that is
         // not suspended, before attempting to modify its state it is still
-        // safer to return this error on busy conditions: a better way to
-        // handle this situation is to return _Ok(false)_ here, because a
-        // busy condition is certainly not suspended
+        // safer to return this error on busy conditions: another way to
+        // handle this situation would be to return _Ok(false)_ here, because
+        // a busy condition is certainly not suspended
         if !wait && self.condition_busy(name) {
             Err(Error::new(
                 ErrorKind::WouldBlock,
@@ -680,7 +680,7 @@ impl ConditionRegistry {
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
-                                        &format!("successfully added queued condition to the registry"),
+                                        "successfully added queued condition to the registry",
                                     );
                                 } else {
                                     log(
@@ -690,7 +690,7 @@ impl ConditionRegistry {
                                         Some((&name, id)),
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("queued condition already present in the registry"),
+                                        "queued condition already present in the registry",
                                     );
                                 }
                             } else {
