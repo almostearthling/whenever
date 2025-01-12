@@ -798,7 +798,7 @@ impl EventRegistry {
                     Some((name, id)),
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
-                    "event listener NOT installed",
+                    "event listener not installed",
                 );
                 Err(std::io::Error::new(
                     ErrorKind::Unsupported,

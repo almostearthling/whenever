@@ -1986,7 +1986,7 @@ impl Event for DbusMessageEvent {
                                 LogType::Debug,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_MSG,
-                                "parameter check failed: condition NOT fired",
+                                "parameter check failed: condition not fired",
                             );
                         }
                     } else {
