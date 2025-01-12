@@ -595,7 +595,7 @@ fn interpret_commands() -> std::io::Result<bool> {
 
     while let Ok(_n) = handle.read_line(&mut buffer) {
         // note that `split_whitespace()` already trims its argument
-        let buffer2 = String::from(&buffer);
+        let buffer_save = String::from(&buffer);
         let v: Vec<&str> = buffer.split_whitespace().collect();
         if v.len() > 0 {
             let cmd = v[0];
@@ -854,7 +854,8 @@ fn interpret_commands() -> std::io::Result<bool> {
                     // filename might contain spaces, and in case of relative
                     // paths even the first characters could be spaces:
                     // "configure_".len() == 10
-                    let (_, fname) = buffer2.split_at(10);
+                    let (_, fname) = buffer_save.split_at(10);
+                    let fname = String::from(fname.to_string().trim());
                     log(
                         LogType::Debug,
                         LOG_EMITTER_MAIN,
@@ -865,8 +866,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                         &format!("attempting to reconfigure using configuration file `{}`", fname),
                     );
                     // same considerations as above
-                    let arg = fname.to_string();
-                    thread::spawn(move || { let _ = reconfigure(&arg); });
+                    thread::spawn(move || { let _ = reconfigure(&fname); });
                 }
                 "trigger" => {
                     if args.len() != 1 {

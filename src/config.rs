@@ -437,7 +437,7 @@ fn reconfigure_tasks(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -463,7 +463,7 @@ fn reconfigure_tasks(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -678,7 +678,7 @@ fn reconfigure_conditions(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -704,7 +704,7 @@ fn reconfigure_conditions(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -732,7 +732,7 @@ fn reconfigure_conditions(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -758,7 +758,7 @@ fn reconfigure_conditions(
                                     }
                                 } else {
                                     log(
-                                        LogType::Trace,
+                                        LogType::Debug,
                                         LOG_EMITTER_CONFIGURATION,
                                         LOG_ACTION_RECONFIGURE,
                                         None,
@@ -784,7 +784,7 @@ fn reconfigure_conditions(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -810,7 +810,7 @@ fn reconfigure_conditions(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -838,7 +838,7 @@ fn reconfigure_conditions(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -1050,7 +1050,7 @@ fn reconfigure_events(
                             let event_name = event.get_name();
                             if !event_registry.has_event(&event_name) || !event_registry.has_event_eq(&event) {
                                 if event_registry.has_event(&event_name) {
-                                    if event_registry.unlisten_for(&event_name).is_err() {
+                                    if event_registry.unlisten_and_remove(&event_name).is_err() {
                                         log(
                                             LogType::Trace,
                                             LOG_EMITTER_CONFIGURATION,
@@ -1085,7 +1085,7 @@ fn reconfigure_events(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -1104,7 +1104,7 @@ fn reconfigure_events(
                             let event_name = event.get_name();
                             if !event_registry.has_event(&event_name) || !event_registry.has_event_eq(&event) {
                                 if event_registry.has_event(&event_name) {
-                                    if event_registry.unlisten_for(&event_name).is_err() {
+                                    if event_registry.unlisten_and_remove(&event_name).is_err() {
                                         log(
                                             LogType::Trace,
                                             LOG_EMITTER_CONFIGURATION,
@@ -1139,7 +1139,7 @@ fn reconfigure_events(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -1158,7 +1158,7 @@ fn reconfigure_events(
                             let event_name = event.get_name();
                             if !event_registry.has_event(&event_name) || !event_registry.has_event_eq(&event) {
                                 if event_registry.has_event(&event_name) {
-                                    if event_registry.unlisten_for(&event_name).is_err() {
+                                    if event_registry.unlisten_and_remove(&event_name).is_err() {
                                         log(
                                             LogType::Trace,
                                             LOG_EMITTER_CONFIGURATION,
@@ -1193,7 +1193,7 @@ fn reconfigure_events(
                                 }
                             } else {
                                 log(
-                                    LogType::Trace,
+                                    LogType::Debug,
                                     LOG_EMITTER_CONFIGURATION,
                                     LOG_ACTION_RECONFIGURE,
                                     None,
@@ -1236,12 +1236,12 @@ fn reconfigure_events(
             LOG_STATUS_MSG,
             &format!("terminating listening service for event {name}"),
         );
-        if event_registry.unlisten_for(&name).is_err() {
+        if event_registry.unlisten_and_remove(&name).is_err() {
             // this condition is expected, because
             // event listeners do not terminate
             // synchronously
             log(
-                LogType::Trace,
+                LogType::Warn,
                 LOG_EMITTER_CONFIGURATION,
                 LOG_ACTION_MAIN_LISTENER,
                 None,
