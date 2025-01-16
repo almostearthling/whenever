@@ -900,7 +900,7 @@ impl Condition for LuaCondition {
         match failure_reason {
             FailureReason::NoFailure => {
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     &format!(
@@ -910,7 +910,7 @@ impl Condition for LuaCondition {
             }
             FailureReason::NoCheck => {
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
@@ -920,7 +920,7 @@ impl Condition for LuaCondition {
             }
             FailureReason::VariableMatch => {
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
@@ -930,7 +930,7 @@ impl Condition for LuaCondition {
             }
             FailureReason::ScriptError => {
                 self.log(
-                    LogType::Info,
+                    LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(

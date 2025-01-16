@@ -1259,9 +1259,8 @@ impl Event for DbusMessageEvent {
             &format!("successfully subscribed to message on bus `{bus}`"),
         );
 
-        // build an async communication channel: since two threads insist on
-        // it, a suitable capacity is needed (OK, 10 might be too much)
-        let (async_tx, mut async_rx) = channel(10);
+        // build an async communication channel for the quit signal 
+        let (aquit_tx, mut aquit_rx) = channel(10);
 
         // now it is time to set the internal `running` flag, before the
         // thread that waits for the quit signal is launched
@@ -1273,17 +1272,17 @@ impl Event for DbusMessageEvent {
         // this thread should be lightweight enough, as it just waits all
         // the time; it is also useless to join to because it dies as soon
         // as it catches a signal
-        let mut async_tx_clone = async_tx.clone();
+        let mut aq_tx_clone = aquit_tx.clone();
         let _quit_handle = thread::spawn(move || {
             if let Ok(_) = qrx.unwrap().recv() {
                 // send a quit message over the async channel
                 task::block_on({
-                    async move { async_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap(); }
+                    async move { aq_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap(); }
                 });
             } else {
                 // in case of error, send just the error option of the enum
                 task::block_on({
-                    async move { async_tx_clone.send(TargetOrQuitEvent::QuitError).await.unwrap(); }
+                    async move { aq_tx_clone.send(TargetOrQuitEvent::QuitError).await.unwrap(); }
                 });
             };
         });
@@ -1300,7 +1299,7 @@ impl Event for DbusMessageEvent {
 
             // wait on either one of the two possible messages
             let fdbus = _get_dbus_message(&mut dbus_stream_clone).fuse();
-            let fquit = _get_quit_message(&mut async_rx).fuse();
+            let fquit = _get_quit_message(&mut aquit_rx).fuse();
             pin_mut!(fdbus, fquit);
             let nextmessage = select! {
                 md = fdbus => md,
@@ -1346,9 +1345,6 @@ impl Event for DbusMessageEvent {
                     &format!("subscribed message received on bus `{bus_name}`"),
                 );
                 // check message parameters against provided criteria
-                // NOTE: any errors (bad indexes, invalid comparisons,
-                //       and such), cause the test to FAIL: this has
-                //       to be reported in the documentation
                 let mut verified = self.param_checks_all;
 
                 if let Some(checks) = &self.param_checks {

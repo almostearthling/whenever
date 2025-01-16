@@ -665,7 +665,7 @@ The specific parameters are described in the following table:
 
 The value corresponding to the `service` entry is often referred to as _bus name_ in various documents: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
-Methods resulting in an error will _always_ be considered as failed: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure.
+Methods resulting in an error will _always_ be considered as failed: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure. Also, any errors that may arise during checks will cause the check itself to yield _false_.
 
 Working on a file that mixes TOML and JSON, it is worth to remind that JSON supports inline maps distributed on multiple lines (see the example above, the third constraint) and that in JSON trailing commas are considered an error. Also, JSON does not support _literal_ strings, therefore when using backslashes (for instance when specifying typed values with strings as described above), the backslashes themselves have to be escaped within the provided JSON strings.
 
@@ -796,7 +796,7 @@ and the details of the configuration entries are described in the table below:
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
 | `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters               |
 
-The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method).
+The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method). It is worth to remind that any errors that may arise during checks will cause the check itself to yield _false_.
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
 

@@ -282,7 +282,7 @@ pub trait Condition: Send {
                     if outcome {
                         if self.set_succeeded()? {
                             self.log(
-                                LogType::Info,
+                                LogType::Debug,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_OK,
                                 "success: condition checked with positive outcome",
@@ -301,7 +301,7 @@ pub trait Condition: Send {
                         }
                     } else {
                         self.log(
-                            LogType::Info,
+                            LogType::Debug,
                             LOG_WHEN_PROC,
                             LOG_STATUS_OK,
                             "failure: condition checked with negative outcome",

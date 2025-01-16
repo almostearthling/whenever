@@ -1926,7 +1926,7 @@ impl Condition for CommandCondition {
             FailureReason::StdOut => {
                 self._process_failed = true;
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!("condition checked unsuccessfully (stdout check) in {:.2}s", self._process_duration.as_secs_f64()),
@@ -1936,7 +1936,7 @@ impl Condition for CommandCondition {
             FailureReason::StdErr => {
                 self._process_failed = true;
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!("condition checked unsuccessfully (stderr check) in {:.2}s",self._process_duration.as_secs_f64()),
@@ -1946,7 +1946,7 @@ impl Condition for CommandCondition {
             FailureReason::Status => {
                 self._process_failed = true;
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!("condition checked unsuccessfully (status check) in {:.2}s", self._process_duration.as_secs_f64()),
@@ -1956,7 +1956,7 @@ impl Condition for CommandCondition {
             FailureReason::Other => {
                 self._process_failed = true;
                 self.log(
-                    LogType::Info,
+                    LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!("task ended unexpectedly in {:.2}s", self._process_duration.as_secs_f64()),

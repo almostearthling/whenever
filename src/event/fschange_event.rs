@@ -12,6 +12,7 @@ use std::time::Duration;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::{RwLock, mpsc};
 
+use async_std::task;
 use futures::{
     channel::mpsc::{channel, Sender},
     SinkExt, StreamExt,
@@ -524,12 +525,12 @@ impl Event for FilesystemChangeEvent {
         let _quit_handle = thread::spawn(move || {
             if let Ok(_) = qrx.unwrap().recv() {
                 // send a quit message over the async channel
-                futures::executor::block_on({
+                task::block_on({
                     async move { async_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap(); }
                 });
             } else {
                 // in case of error, send just the error option of the enum
-                futures::executor::block_on({
+                task::block_on({
                     async move { async_tx_clone.send(TargetOrQuitEvent::QuitError).await.unwrap(); }
                 });
             };
