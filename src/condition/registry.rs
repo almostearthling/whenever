@@ -49,6 +49,12 @@ pub struct ConditionRegistry {
     // flag is kept in a `Mutex` because it changes quite dynamically
     condition_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>,
     conditions_busy: Arc<Mutex<u64>>,
+
+    // the two queues for items to remove and items to add: the items that
+    // need to be added are stored as full (dyn) items, while the ones to
+    // be removed are stored as names
+    items_to_remove: Arc<Mutex<Vec<String>>>,
+    items_to_add: Arc<Mutex<Vec<Box<dyn Condition>>>>,
 }
 
 
@@ -60,6 +66,9 @@ impl ConditionRegistry {
         ConditionRegistry {
             condition_list: RwLock::new(HashMap::new()),
             conditions_busy: Arc::new(Mutex::new(0_u64)),
+
+            items_to_remove: Arc::new(Mutex::new(Vec::new())),
+            items_to_add: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -78,6 +87,35 @@ impl ConditionRegistry {
             .read()
             .expect("cannot read condition registry")
             .contains_key(name)
+    }
+
+    /// Check whether or not a condition is in the registry.
+    ///
+    /// # Arguments
+    ///
+    /// * cond - the reference to a condition to check for registration
+    ///
+    /// # Panics
+    ///
+    /// May panic if the condition registry could not be locked for enquiry
+    /// or the contained condition cannot be locked for comparison.
+    pub fn has_condition_eq(&self, cond: &dyn Condition) -> bool {
+        let name = cond.get_name();
+        if self.has_condition(name.as_str()) {
+            let conditions = self.condition_list
+                .read()
+                .expect("cannot read event registry");
+            let found_condition = conditions
+                .get(name.as_str())
+                .unwrap();
+            let c0 = found_condition.clone();
+            let locked_condition = c0
+                .lock()
+                .expect("cannot check event for comparison");
+            return locked_condition.eq(cond)
+        }
+
+        false
     }
 
     /// Return the type of a condition given its name, or `None` if the
@@ -156,6 +194,58 @@ impl ConditionRegistry {
         Ok(true)
     }
 
+    /// Add or replace an already-boxed `Condition` while running: if the
+    /// registry is busy running any condition all modifications are deferred
+    pub fn dynamic_add_or_replace_condition(&self, boxed_condition: Box<dyn Condition>) -> Result<bool, std::io::Error> {
+        let name = boxed_condition.get_name();
+        let busy = self.conditions_busy.clone();
+        let busy = busy.lock().expect("cannot acquire busy conditions counter");
+        if *busy == 0 {
+            if self.has_condition(&name) {
+                if let Ok(_) = self.remove_condition(&name) {
+                    if let Ok(res) = self.add_condition(boxed_condition) {
+                        return Ok(res);
+                    } else {
+                        return Err(Error::new(
+                            ErrorKind::Unsupported,
+                            ERR_CONDREG_COND_NOT_REPLACED,
+                        ));
+                    }
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Unsupported,
+                        ERR_CONDREG_CANNOT_PULL_COND,
+                    ));
+                }
+            } else {
+                if let Ok(res) = self.add_condition(boxed_condition) {
+                    return Ok(res);
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Unsupported,
+                        ERR_CONDREG_COND_NOT_ADDED,
+                    ));
+                }
+            }
+        } else {
+            let queue = self.items_to_add.clone();
+            let mut queue = queue.lock().expect("cannot acquire list of items to add");
+            queue.push(boxed_condition);
+            log(
+                LogType::Debug,
+                LOG_EMITTER_TASK_REGISTRY,
+                LOG_ACTION_NEW,
+                None,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("registry busy: condition {name} set to be added when no conditions are busy"),
+            );
+        }
+
+        Ok(true)
+    }
+
+
     /// Remove a named condition from the list and give it back stored in a Box.
     ///
     /// The returned `Condition` can be modified and stored back in the
@@ -204,6 +294,35 @@ impl ConditionRegistry {
         }
     }
 
+    /// Remove a named condition from the list operating on a running
+    /// registry: if any conditions are busy all modifications to the
+    /// registry are deferred
+    pub fn dynamic_remove_condition(&self, name: &str) -> Result<bool, std::io::Error> {
+        if self.has_condition(name) {
+            let busy = self.conditions_busy.clone();
+            let busy = busy.lock().expect("cannot acquire busy conditions counter");
+            if *busy == 0 {
+                self.remove_condition(name)?;
+            } else {
+                let queue = self.items_to_remove.clone();
+                let mut queue = queue.lock().expect("cannot acquire list of items to remove");
+                queue.push(String::from(name));
+                log(
+                    LogType::Debug,
+                    LOG_EMITTER_TASK_REGISTRY,
+                    LOG_ACTION_UNINSTALL,
+                    None,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("registry busy: condition {name} set to be removed when no conditions are busy"),
+                );
+            }
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
 
     /// Reset the named condition if found in the registry
     ///
@@ -221,9 +340,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && self.condition_busy(name) {
             Err(Error::new(
@@ -234,10 +351,10 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let guard = self.condition_list
+            let cl0 = self.condition_list
                 .write()
                 .expect("cannot read condition registry");
-            let cond = guard
+            let cond = cl0
                 .get(name)
                 .expect("cannot retrieve condition for reset");
 
@@ -266,9 +383,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && self.condition_busy(name) {
             Err(Error::new(
@@ -279,10 +394,10 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let guard = self.condition_list
+            let cl0 = self.condition_list
                 .read()
                 .expect("cannot read condition registry");
-            let cond = guard
+            let cond = cl0
                 .get(name)
                 .expect("cannot retrieve condition for suspend");
 
@@ -311,17 +426,15 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
         // parameter should not even be implemented here; however, since the
         // caller might try to invoke the operation on a condition that is
         // not suspended, before attempting to modify its state it is still
-        // safer to return this error on busy conditions: a better way to
-        // handle this situation is to return _Ok(false)_ here, because a
-        // busy condition is certainly not suspended
+        // safer to return this error on busy conditions: another way to
+        // handle this situation would be to return _Ok(false)_ here, because
+        // a busy condition is certainly not suspended
         if !wait && self.condition_busy(name) {
             Err(Error::new(
                 ErrorKind::WouldBlock,
@@ -331,10 +444,10 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let guard = self.condition_list
+            let cl0 = self.condition_list
                 .read()
                 .expect("cannot read condition registry");
-            let cond = guard
+            let cond = cl0
                 .get(name)
                 .expect("cannot retrieve condition for resume");
 
@@ -367,21 +480,20 @@ impl ConditionRegistry {
 
     /// Return the id of the specified condition
     pub fn condition_id(&self, name: &str) -> Option<i64> {
-        let guard;
         if self.has_condition(name) {
-            guard = self.condition_list
+            let guard = self.condition_list
                 .read()
                 .expect("cannot read condition registry");
+            let cond = guard
+                .get(name)
+                .expect("cannot retrieve condition")
+                .clone();
+            drop(guard);
+            let id = cond.lock().expect("cannot lock condition").get_id();
+            Some(id)
         } else {
-            return None
+            None
         }
-        let cond = guard
-            .get(name)
-            .expect("cannot retrieve condition")
-            .clone();
-        drop(guard);
-        let id = cond.lock().expect("cannot lock condition").get_id();
-        Some(id)
     }
 
 
@@ -401,9 +513,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn condition_busy(&self, name: &str) -> bool {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -479,9 +589,7 @@ impl ConditionRegistry {
     /// and if the provided name is not found in the registry: in no way the
     /// `tick` function should be invoked with unknown conditions.
     pub fn tick(&self, name: &str) -> Result<Option<bool>, std::io::Error> {
-        if !self.has_condition(name) {
-            panic!("condition {name} not found in registry");
-        }
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -519,6 +627,88 @@ impl ConditionRegistry {
                 res = Ok(None)
             }
             *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") -= 1;
+
+            // this is the right time to operate on the registry if there are
+            // no busy conditions remaining: first remove conditions that must
+            // be uninstalled, then add the ones that have to be installed;
+            // note that locking the counter also prevents other tests to be
+            // performed in other possiblle threads
+            if *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") == 0 {
+                let rm_queue = self.items_to_remove.clone();
+                {
+                    let queue = rm_queue.lock().expect("cannot acquire list of items to remove");
+                    for name in queue.iter() {
+                        if let Ok(item) = self.remove_condition(name) {
+                            if let Some(item) = item {
+                                let name = item.get_name();
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONDITION_REGISTRY,
+                                    LOG_ACTION_UNINSTALL,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("successfully removed condition {name} from the registry"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONDITION_REGISTRY,
+                                    LOG_ACTION_UNINSTALL,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition to remove {name} not found in the registry"),
+                                );
+                            }
+                        }
+                    }
+                }
+                let add_queue = self.items_to_add.clone();
+                {
+                    let mut queue = add_queue.lock().expect("cannot acquire list of items to add");
+                    while !queue.is_empty() {
+                        if let Some(boxed_item) = queue.pop() {
+                            let name = boxed_item.get_name();
+                            if let Ok(res) = self.add_condition(boxed_item) {
+                                let id = self.condition_id(&name).unwrap();
+                                if res {
+                                    log(
+                                        LogType::Debug,
+                                        LOG_EMITTER_CONDITION_REGISTRY,
+                                        LOG_ACTION_INSTALL,
+                                        Some((&name, id)),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        "successfully added queued condition to the registry",
+                                    );
+                                } else {
+                                    log(
+                                        LogType::Debug,
+                                        LOG_EMITTER_CONDITION_REGISTRY,
+                                        LOG_ACTION_INSTALL,
+                                        Some((&name, id)),
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        "queued condition already present in the registry",
+                                    );
+                                }
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONDITION_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("could not add queued condition {name} to the registry"),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
             res
         } else {
             log(

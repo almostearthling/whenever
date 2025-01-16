@@ -7,18 +7,16 @@
 //! based [When](https://github.com/almostearthling/when-command) utility.
 
 
-use std::fs;
 use std::io::{stdin, Stdin, BufRead};
 use std::thread;
-use std::thread::JoinHandle;
-use std::sync::Mutex;
+use std::sync::RwLock;
 use std::time::Duration;
+use std::thread::JoinHandle;
 
-use event::base::Event;
 use lazy_static::lazy_static;
 
 use clokwerk::{Scheduler, TimeUnits};
-use cfgmap::{CfgValue, CfgMap};
+use cfgmap::CfgValue;
 use rand::{thread_rng, RngCore};
 use whoami::username;
 use single_instance::SingleInstance;
@@ -30,6 +28,8 @@ mod event;
 
 mod common;
 mod constants;
+mod config;
+mod cfghelp;
 
 
 // bring the registries in scope
@@ -40,6 +40,7 @@ use event::registry::EventRegistry;
 use condition::bucket_cond::ExecutionBucket;
 
 use common::logging::{log, init as log_init, LogType};
+use config::*;
 use constants::*;
 
 
@@ -56,17 +57,27 @@ lazy_static! {
     // the execution bucket for the bucket/event based conditions
     static ref EXECUTION_BUCKET: ExecutionBucket = ExecutionBucket::new();
 
+    // array of handles for threads that might be started by event listeners
+    // WARNING: for now left alone, it would have to be synchronized and possibly
+    //          deserves a registry on its own or to be implemented in the event
+    //          registry itself in order to dynamically add or remove listeners;
+    //          the main function cannot to this job on its own
+    // static ref EVENT_HANDLES: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
+
     // single instance name
     static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-{APP_GUID}", username());
 
     // set this if the application must exit
-    static ref APPLICATION_MUST_EXIT: Mutex<bool> = Mutex::new(false);
+    static ref APPLICATION_MUST_EXIT: RwLock<bool> = RwLock::new(false);
 
-    // set this if the application must exit
-    static ref APPLICATION_FORCE_EXIT: Mutex<bool> = Mutex::new(false);
+    // set this if the application must exit immediately
+    static ref APPLICATION_FORCE_EXIT: RwLock<bool> = RwLock::new(false);
 
-    // set this if the application must exit
-    static ref APPLICATION_IS_PAUSED: Mutex<bool> = Mutex::new(false);
+    // set this if the application is paused
+    static ref APPLICATION_IS_PAUSED: RwLock<bool> = RwLock::new(false);
+
+    // set this if the application is paused waiting for reconfiguration
+    static ref APPLICATION_IS_RECONFIGURING: RwLock<bool> = RwLock::new(false);
 
     // types of conditions whose tick cannot be delayed
     static ref NO_DELAY_CONDITIONS: Vec<String> = vec![
@@ -101,8 +112,8 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // finish and get out of the way to allow execution of subsequent ticks; within
 // the new thread the tick might wait for a random duration,
 fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
-    // skip if application is paused
-    if *APPLICATION_IS_PAUSED.lock().unwrap() {
+    // skip if application has been intentionally paused
+    if *APPLICATION_IS_PAUSED.read().unwrap() {
         log(
             LogType::Trace,
             LOG_EMITTER_MAIN,
@@ -111,6 +122,19 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
             "application is paused: tick skipped",
+        );
+        return Ok(false);
+    }
+    // also skip if application has been paused for reconfiguration
+    if *APPLICATION_IS_RECONFIGURING.read().unwrap() {
+        log(
+            LogType::Trace,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_SCHEDULER_TICK,
+            None,
+            LOG_WHEN_PROC,
+            LOG_STATUS_MSG,
+            "application is reconfiguring: tick skipped",
         );
         return Ok(false);
     }
@@ -208,399 +232,6 @@ macro_rules! exit_if_fails {
     }
 }
 
-
-
-// read the configuration from a string and build tasks and conditions
-fn configure(config_file: &str) -> std::io::Result<CfgMap> {
-
-    // helper to create a specific error
-    fn _c_error_invalid_config(key: &str) -> std::io::Error {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("{ERR_INVALID_CONFIG_FILE}:{key}"),
-        )
-    }
-
-    let mut config_map: CfgMap;     // to be initialized below
-
-    match toml::from_str(fs::read_to_string(config_file)?.as_str()) {
-        Ok(toml_text) => {
-            config_map = CfgMap::from_toml(toml_text);
-        }
-        _ => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                ERR_INVALID_CONFIG_FILE,
-            ));
-        }
-    }
-
-    let cur_key = "scheduler_tick_seconds";
-    let mut scheduler_tick_seconds = DEFAULT_SCHEDULER_TICK_SECONDS;
-    if let Some(item) = config_map.get(cur_key) {
-        if !item.is_int() {
-            return Err(_c_error_invalid_config(cur_key));
-        }
-        scheduler_tick_seconds = *item.as_int().unwrap();
-        if scheduler_tick_seconds < 1 {
-            return Err(_c_error_invalid_config(cur_key));
-        }
-    }
-
-    // ...
-
-    // complete the global configuration map if any values were not present
-    let _ = config_map.add(
-        "scheduler_tick_seconds", CfgValue::from(scheduler_tick_seconds));
-
-    Ok(config_map)
-}
-
-
-// configure the tasks according to the provided configuration map
-fn configure_tasks(
-    cfgmap: &CfgMap,
-    task_registry: &'static TaskRegistry
-) -> std::io::Result<()> {
-    if let Some(task_map) = cfgmap.get("task") {
-        if !task_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                ERR_INVALID_TASK_CONFIG,
-            ));
-        } else {
-            for entry in task_map.as_list().unwrap() {
-                if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_TASK_CONFIG,
-                    ));
-                } else if let Some(task_type) = entry.as_map().unwrap().get("type") {
-                    let task_type = task_type.as_str().unwrap();
-                    match task_type.as_str() {
-                        "command" => {
-                            let task = task::command_task::CommandTask::load_cfgmap(
-                                entry.as_map().unwrap())?;
-                            if !task_registry.add_task(Box::new(task))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_TASKREG_TASK_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "lua" => {
-                            let task = task::lua_task::LuaTask::load_cfgmap(
-                                entry.as_map().unwrap())?;
-                            if !task_registry.add_task(Box::new(task))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_TASKREG_TASK_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        // ...
-
-                        _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
-                                ERR_INVALID_TASK_TYPE,
-                            ));
-                        }
-                    }
-                } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_TASK_CONFIG,
-                    ));
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-
-// configure the conditions according to the provided configuration map
-fn configure_conditions(
-    cfgmap: &CfgMap,
-    cond_registry: &'static ConditionRegistry,
-    tick_secs: u64
-) -> std::io::Result<()> {
-    if let Some(condition_map) = cfgmap.get("condition") {
-        if !condition_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                ERR_INVALID_COND_CONFIG,
-            ));
-        } else {
-            for entry in condition_map.as_list().unwrap() {
-                if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_COND_CONFIG,
-                    ));
-                } else if let Some(condition_type) = entry.as_map().unwrap().get("type") {
-                    let condition_type = condition_type.as_str().unwrap();
-                    match condition_type.as_str() {
-                        "interval" => {
-                            let condition = condition::interval_cond::IntervalCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "idle" => {
-                            let condition = condition::idle_cond::IdleCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "time" => {
-                            // this is peculiar because it requires extra initialization after loading from map
-                            let mut condition = condition::time_cond::TimeCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            let _ = condition.set_tick_duration(tick_secs)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "command" => {
-                            let condition = condition::command_cond::CommandCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "lua" => {
-                            let condition = condition::lua_cond::LuaCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "dbus" => {
-                            let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "bucket" | "event" => {
-                            // this is peculiar because it requires extra initialization after loading from map
-                            let mut condition = condition::bucket_cond::BucketCondition::load_cfgmap(
-                                entry.as_map().unwrap(), &TASK_REGISTRY)?;
-                            let _ = condition.set_execution_bucket(&EXECUTION_BUCKET)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_CONDREG_COND_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        // ...
-
-                        _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
-                                ERR_INVALID_COND_TYPE,
-                            ));
-                        }
-                    }
-                } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_COND_CONFIG,
-                    ));
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-
-// configure the event according to the provided configuration map
-fn configure_events(
-    cfgmap: &CfgMap,
-    event_registry: &'static EventRegistry,
-    cond_registry: &'static ConditionRegistry,
-    bucket: &'static ExecutionBucket,
-) -> std::io::Result<Vec<JoinHandle<Result<bool, std::io::Error>>>> {
-    let mut res: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
-
-    if let Some(event_map) = cfgmap.get("event") {
-        if !event_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                ERR_INVALID_EVENT_CONFIG,
-            ));
-        } else {
-            for entry in event_map.as_list().unwrap() {
-                if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_EVENT_CONFIG,
-                    ));
-                } else if let Some(event_type) = entry.as_map().unwrap().get("type") {
-                    let event_type = event_type.as_str().unwrap();
-                    match event_type.as_str() {
-                        "fschange" => {
-                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
-                                entry.as_map().unwrap(), cond_registry, bucket)?;
-                            let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if let Ok(r) = event_registry.install_service(&event_name) {
-                                if let Some(h) = r {
-                                    res.push(h);
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name} (dedicated thread)"),
-                                    )
-                                } else {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    )
-                                }
-                            } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "dbus" => {
-                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
-                                entry.as_map().unwrap(), cond_registry, bucket)?;
-                            let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if let Ok(r) = event_registry.install_service(&event_name) {
-                                if let Some(h) = r {
-                                    res.push(h);
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name} (dedicated thread)"),
-                                    )
-                                } else {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    )
-                                }
-                            } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        "cli" => {
-                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
-                                entry.as_map().unwrap(), cond_registry, bucket)?;
-                            let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if let Ok(r) = event_registry.install_service(&event_name) {
-                                if let Some(h) = r {
-                                    res.push(h);
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name} (dedicated thread)"),
-                                    )
-                                } else {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_MAIN,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    )
-                                }
-                            } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            }
-                        }
-                        // ...
-
-                        _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
-                                ERR_INVALID_EVENT_TYPE,
-                            ));
-                        }
-                    }
-                } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        ERR_INVALID_EVENT_CONFIG,
-                    ));
-                }
-            }
-        }
-    }
-
-    Ok(res)
-}
 
 
 // reset the conditions whose names are provided in a vector of &str
@@ -795,6 +426,85 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
 }
 
 
+// attempt to reconfigure the application using the provided config file name
+fn reconfigure(config_file: &str) -> std::io::Result<()> {
+
+    if let Err(e) = check_configuration(config_file) {
+        log(
+            LogType::Error,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_RECONFIGURE,
+            None,
+            LOG_WHEN_START,
+            LOG_STATUS_FAIL,
+            &format!("cannot use invalid configuration file `{config_file}`: {e}"),
+        );
+        return Err(e);
+    }
+
+    *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
+    let res = reconfigure_globals(config_file);
+    *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
+    match res {
+        Ok(config) => {
+            let scheduler_tick_seconds = *config
+                .get("scheduler_tick_seconds")
+                .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
+                .as_int()
+                .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS) as u64;
+            *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
+            let res = reconfigure_items(
+                &config,
+                &TASK_REGISTRY,
+                &CONDITION_REGISTRY,
+                &EVENT_REGISTRY,
+                &EXECUTION_BUCKET,
+                scheduler_tick_seconds);
+            *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
+            match res {
+                Ok(_) => {
+                    log(
+                        LogType::Info,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RECONFIGURE,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        &format!("new configuration loaded from file `{config_file}`"),
+                    );
+                }
+                Err(e) => {
+                    log(
+                        LogType::Error,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RECONFIGURE,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("errors found in configuration file `{config_file}`: {e}"),
+                    );
+                    return Err(e);
+                }
+            }
+        }
+        Err(e) => {
+            log(
+                LogType::Error,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_RECONFIGURE,
+                None,
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                &format!("cannot load configuration file `{config_file}`: {e}"),
+            );
+            return Err(e);
+        }
+    }
+
+    Ok(())
+}
+
+
 // attempt to trigger an event
 fn trigger_event(name: &str) -> std::io::Result<bool> {
     if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
@@ -885,6 +595,7 @@ fn interpret_commands() -> std::io::Result<bool> {
 
     while let Ok(_n) = handle.read_line(&mut buffer) {
         // note that `split_whitespace()` already trims its argument
+        let buffer_save = String::from(&buffer);
         let v: Vec<&str> = buffer.split_whitespace().collect();
         if v.len() > 0 {
             let cmd = v[0];
@@ -911,7 +622,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_MSG,
                             "exit request received: terminating application",
                         );
-                        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+                        *APPLICATION_MUST_EXIT.write().unwrap() = true;
                     }
                 }
                 "kill" => {
@@ -935,8 +646,8 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_MSG,
                             "kill request received: terminating application immediately",
                         );
-                        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
-                        *APPLICATION_FORCE_EXIT.lock().unwrap() = true;
+                        *APPLICATION_MUST_EXIT.write().unwrap() = true;
+                        *APPLICATION_FORCE_EXIT.write().unwrap() = true;
                     }
                 }
                 "pause" => {
@@ -950,7 +661,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_ERR,
                             &format!("command `{cmd}` does not support arguments"),
                         );
-                    } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    } else if *APPLICATION_IS_PAUSED.read().unwrap() {
                         log(
                             LogType::Warn,
                             LOG_EMITTER_MAIN,
@@ -970,7 +681,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_MSG,
                             "pausing scheduler ticks: conditions not checked until resume",
                         );
-                        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+                        *APPLICATION_IS_PAUSED.write().unwrap() = true;
                     }
                 }
                 "resume" => {
@@ -984,7 +695,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                             LOG_STATUS_ERR,
                             &format!("command `{cmd}` does not support arguments"),
                         );
-                    } else if *APPLICATION_IS_PAUSED.lock().unwrap() {
+                    } else if *APPLICATION_IS_PAUSED.read().unwrap() {
                         log(
                             LogType::Debug,
                             LOG_EMITTER_MAIN,
@@ -1001,7 +712,7 @@ fn interpret_commands() -> std::io::Result<bool> {
                         // correct to just obey instructions and verify conditions
                         // associated to these events: commented out for now)
                         // EXECUTION_BUCKET.clear();
-                        *APPLICATION_IS_PAUSED.lock().unwrap() = false;
+                        *APPLICATION_IS_PAUSED.write().unwrap() = false;
                     } else {
                         log(
                             LogType::Warn,
@@ -1137,6 +848,26 @@ fn interpret_commands() -> std::io::Result<bool> {
                         thread::spawn(move || { let _ = set_suspended_condition(&arg, false); });
                     }
                 }
+                "configure" => {
+                    // in this case take all the string after the first
+                    // space character in the command line, because the
+                    // filename might contain spaces, and in case of relative
+                    // paths even the first characters could be spaces:
+                    // "configure_".len() == 10
+                    let (_, fname) = buffer_save.split_at(10);
+                    let fname = String::from(fname.to_string().trim());
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RUN_COMMAND,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        &format!("attempting to reconfigure using configuration file `{}`", fname),
+                    );
+                    // same considerations as above
+                    thread::spawn(move || { let _ = reconfigure(&fname); });
+                }
                 "trigger" => {
                     if args.len() != 1 {
                         log(
@@ -1187,7 +918,6 @@ fn interpret_commands() -> std::io::Result<bool> {
 
     Ok(true)
 }
-
 
 
 // argument parsing and command execution: doc comments are used by clap
@@ -1290,7 +1020,7 @@ fn main() {
     }
 
     exit_if_fails!(args.quiet, check_single_instance(&instance));
-    
+
     // now check that the config file name has been provided
     if args.config.is_none() {
         eprintln!("{APP_NAME} error: configuration file not specified");
@@ -1328,7 +1058,7 @@ fn main() {
             LOG_STATUS_MSG,
             "caught interruption request: terminating application",
         );
-        *APPLICATION_MUST_EXIT.lock().unwrap() = true;
+        *APPLICATION_MUST_EXIT.write().unwrap() = true;
     }));
 
     // write a banner to the log file, stating app name and version
@@ -1342,17 +1072,14 @@ fn main() {
         &format!("{APP_NAME} {APP_VERSION}"),
     );
 
-    // read configuration, then in turn:
-    //
-    // 1. extract the global variables
-    // 2. read and register tasks (necessary for conditions to be constructed)
-    // 3. read and register conditions (some have to be defined for events)
-    // 4. read and register events
-    //
+    // check configuration
+    exit_if_fails!(args.quiet, check_configuration(&config));
+
+    // read configuration, then extract the global parameters and configure items
     // NOTE: the `unwrap_or` part is actually pleonastic, as the missing values
     //       are set by `configure()` to exactly the values below. This will
     //       eventually use plain `unwrap()`.
-    let configuration = exit_if_fails!(args.quiet, configure(&config));
+    let configuration = exit_if_fails!(args.quiet, configure_globals(&config));
     let scheduler_tick_seconds = *configuration
         .get("scheduler_tick_seconds")
         .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
@@ -1364,21 +1091,23 @@ fn main() {
         .as_bool()
         .unwrap_or(&DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS);
 
-    // configure items: the order is crucial (tasks -> conditions -> events)
-    exit_if_fails!(args.quiet, configure_tasks(
+    // before actual configuration the event service manager provided by
+    // the event registry must be started, so that all configured event
+    // services can be enqueued for startup at the beginning; this could
+    // actually take place also after the configuration step
+    let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
+    if let Ok(h) = event::registry::EventRegistry::run_event_service_manager(&EVENT_REGISTRY) {
+        _handles.push(h);
+    }
+
+    // configure items given the parsed configuration map
+    exit_if_fails!(args.quiet, configure_items(
         &configuration,
         &TASK_REGISTRY,
-    ));
-    exit_if_fails!(args.quiet, configure_conditions(
-        &configuration,
         &CONDITION_REGISTRY,
-        scheduler_tick_seconds
-    ));
-    let mut _handles = exit_if_fails!(args.quiet, configure_events(
-        &configuration,
         &EVENT_REGISTRY,
-        &CONDITION_REGISTRY,
         &EXECUTION_BUCKET,
+        scheduler_tick_seconds,
     ));
 
     // first of all check whether the application is started in paused mode
@@ -1393,11 +1122,13 @@ fn main() {
             LOG_STATUS_MSG,
             "starting in paused mode",
         );
-        *APPLICATION_IS_PAUSED.lock().unwrap() = true;
+        *APPLICATION_IS_PAUSED.write().unwrap() = true;
     }
 
     // add a thread for stdin interpreter (no args function thus no closure)
-    _handles.push(thread::spawn(interpret_commands));
+    // this thread can be abruptly killed without worrying, so it is not added
+    // to the threads to wait for before leaving
+    let _ = thread::spawn(interpret_commands);
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
@@ -1421,11 +1152,15 @@ fn main() {
 
     // free_pending must be a fraction of scheduler tick interval (say 1/10)
     let free_pending = Duration::from_millis(scheduler_tick_seconds * 100);
+
+    // the main loop mostly sleeps, just to wake up every `free_pending` msecs
+    // and tell the scheduler to do its job checking conditions, check whether
+    // the exit flags are set and, if this is the case, set up things to exit
     loop {
         sched.run_pending();
         thread::sleep(free_pending);
-        if *APPLICATION_MUST_EXIT.lock().unwrap() {
-            if *APPLICATION_FORCE_EXIT.lock().unwrap() {
+        if *APPLICATION_MUST_EXIT.read().unwrap() {
+            if *APPLICATION_FORCE_EXIT.read().unwrap() {
                 log(
                     LogType::Warn,
                     LOG_EMITTER_MAIN,
@@ -1435,7 +1170,7 @@ fn main() {
                     LOG_STATUS_OK,
                     "application exiting: all activity will be forced to stop",
                 );
-                break;
+                std::process::exit(1);
             } else {
                 log(
                     LogType::Info,
@@ -1455,6 +1190,22 @@ fn main() {
                     } else {
                         break;
                     }
+                }
+                // stop the event service manager
+                if let Err(e) = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY) {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_MAIN_EXIT,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        &format!("error stopping event service manager: {e}"),
+                    );
+                }
+                // join all active thread handles and exit gracefully
+                for h in _handles {
+                    let _ = h.join();
                 }
                 break;
             }

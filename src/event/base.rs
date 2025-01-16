@@ -14,10 +14,7 @@
 //! is independent from the particular implementation of the waiting service.
 
 
-// use std::sync::Arc;
-// use std::sync::Mutex;
-// use std::thread;
-// use std::io::{Error, ErrorKind};
+use std::sync::mpsc;
 
 use crate::common::logging::{log, LogType};
 use crate::condition::bucket_cond::ExecutionBucket;
@@ -60,6 +57,21 @@ pub trait Event: Send + Sync {
     /// Condition bucket getter.
     fn condition_bucket(&self) -> Option<&'static ExecutionBucket>;
 
+    /// Tell whether or not another `Event` is equal to this
+    fn eq(&self, other: &dyn Event) -> bool {
+        self._hash() == other._hash()
+    }
+
+    /// Tell whether or not another `Event` is not equal to this
+    fn ne(&self, other: &dyn Event) -> bool {
+        !self.eq(other)
+    }
+
+    /// Internally called to implement `eq()` and `neq()`: hash calculation
+    /// is costly in terms of time and possibly CPU, but it is supposed to
+    /// take place very seldomly, near to almost never
+    fn _hash(&self) -> u64;
+
 
     /// Assign a condition to the event
     ///
@@ -90,6 +102,18 @@ pub trait Event: Send + Sync {
         }
     }
 
+    /// Assign a quit signal sender before the service starts.
+    ///
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the event has not been registered.
+    fn assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) {
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+    }
+
 
     /// Fire the assigned condition by tossing it into the execution bucket
     ///
@@ -100,34 +124,21 @@ pub trait Event: Send + Sync {
     ///
     /// When either the condition is not associated or the execution bucket
     /// has not been set: each would indicate an error in the program flow.
-    /// Also panic if the event has not been registered.
+    /// Also panics if the event has not been registered.
     fn fire_condition(&self) -> std::io::Result<bool> {
-        if self.get_id() == 0 {
-            panic!("event {} not registered", self.get_name());
-        }
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        assert!(self.get_condition().is_some(), "no condition assigned");
+        assert!(self.condition_bucket().is_some(), "execution bucket not set");
 
-        if let Some(cond_name) = self.get_condition() {
-            if let Some(bucket) = self.condition_bucket() {
-                self.log(
-                    LogType::Info,
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_OK,
-                    &format!("condition {cond_name} firing"),
-                );
-                Ok(bucket.insert_condition(&cond_name))
-            } else {
-                panic!("execution bucket not set for condition {cond_name}")
-            }
-        } else {
-            // self.log(
-            //     LogType::Debug,
-            //     LOG_WHEN_PROC,
-            //     LOG_STATUS_FAIL,
-            //     &format!("no condition associated to event"),
-            // );
-            // Ok(false)
-            panic!("trying to fire with no condition assigned")
-        }
+        let cond_name = self.get_condition().unwrap();
+        let bucket = self.condition_bucket().unwrap();
+        self.log(
+            LogType::Info,
+            LOG_WHEN_PROC,
+            LOG_STATUS_OK,
+            &format!("condition {cond_name} firing"),
+        );
+        Ok(bucket.insert_condition(&cond_name))
     }
 
 
@@ -161,11 +172,41 @@ pub trait Event: Send + Sync {
     /// thread (see above) or not; in the former case the service installer
     /// spawns the thread and returns a handle to join, and in the latter
     /// the installer just returns `None`. This method must return a boolean
-    /// for possible outcome information, or fail with an error.
+    /// for possible outcome information, or fail with an error. In case it
+    /// requires a separate thread, the receiving end of a channel must be
+    /// passed to the service, over which a unit value will be sent in order
+    /// to let the service know it must stop: the running thread must obey
+    /// receiving a `()` over the channel and leave immediately as soon as
+    /// it happens.
     ///
     /// **Note**: the worker function must be self-contained, in the sense that
-    ///           it must _not_ modify the internals of the structure.
-    fn _start_service(&self) -> std::io::Result<bool>;
+    ///           it must _not_ modify the internals of the structure, apart
+    ///           from a flag that states that the service thread is running.
+    ///
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+        // in this case the service exits immediately without errors
+        assert!(qrx.is_none(), "quit signal channel provided for event without listener");
+        Ok(true)
+    }
+
+    /// This must be called to stop the event listening service.
+    ///
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn stop_service(&self) -> std::io::Result<bool> {
+        Ok(true)
+    }
+
+    /// This tells whether the service thread (if any) is active or not.
+    ///
+    /// The default implementation is only suitable for events that do not
+    /// require a listener, all other event type must reimplement it.
+    fn thread_running(&self) -> std::io::Result<bool> {
+        // no special thread is running for this kind of event
+        Ok(false)
+    }
 
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);

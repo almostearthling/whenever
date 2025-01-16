@@ -6,13 +6,17 @@
 //! main program acts as its service instead.
 
 
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use cfgmap::CfgMap;
 
 use super::base::Event;
 use crate::condition::registry::ConditionRegistry;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
+
+use crate::cfghelp::*;
 
 
 
@@ -39,13 +43,45 @@ pub struct ManualCommandEvent {
     // (none here)
 }
 
+// implement the hash protocol
+impl Hash for ManualCommandEvent {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.event_name.hash(state);
+        if let Some(s) = &self.condition_name {
+            s.hash(state);
+        }
+
+        // specific part
+        // (none here)
+    }
+}
+
+// implement cloning
+impl Clone for ManualCommandEvent {
+    fn clone(&self) -> Self {
+        ManualCommandEvent {
+            // reset ID
+            event_id: 0,
+
+            // parameters
+            event_name: self.event_name.clone(),
+            condition_name: self.condition_name.clone(),
+
+            // internal values
+            condition_registry: None,
+            condition_bucket: None,
+        }
+    }
+}
+
 
 #[allow(dead_code)]
 impl ManualCommandEvent {
     pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
-            LOG_EMITTER_EVENT_FSCHANGE,
+            LOG_EMITTER_EVENT_MANUAL,
             LOG_ACTION_NEW,
             Some((name, 0)),
             LOG_WHEN_INIT,
@@ -86,82 +122,31 @@ impl ManualCommandEvent {
     /// # definition (mandatory)
     /// [[event]]
     /// name = "FilesystemChangeEventName"
-    /// type = "fschange"
+    /// type = "cli"
     /// condition = "AssignedConditionName"
+    /// ```
     ///
     /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"fschange"` mandatorily for this type of `Event`.
+    /// *must* be set to `"cli"` mandatorily for this type of `Event`.
     pub fn load_cfgmap(
         cfgmap: &CfgMap,
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
     ) -> std::io::Result<ManualCommandEvent> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<ManualCommandEvent> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_EVENT_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
             "condition",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
-
-        // check type
-        let cur_key = "type";
-        let cond_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_EVENT_TYPE);
-            }
-            cond_type = item.as_str().unwrap().to_owned();
-            if cond_type != "cli" {
-                return _invalid_cfg(cur_key,
-                    &cond_type,
-                    ERR_INVALID_EVENT_TYPE);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_EVENT_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_EVENT_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_EVENT_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "cli"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
 
         // initialize the structure
         // NOTE: the value of "event" for the condition type, which is
@@ -176,49 +161,84 @@ impl ManualCommandEvent {
         new_event.condition_bucket = Some(bucket);
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
-        let cur_key = "condition";
-        let condition;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
+            if !new_event.condition_registry.unwrap().has_condition(&v) {
+                return Err(cfg_err_invalid_config(
                     cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_EVENT_NAME);
+                    &v,
+                    ERR_INVALID_EVENT_CONDITION,
+                ));
             }
-            condition = item.as_str().unwrap().to_owned();
-            if !RE_COND_NAME.is_match(&condition) {
-                return _invalid_cfg(cur_key,
-                    &condition,
-                    ERR_INVALID_COND_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
+            new_event.assign_condition(&v)?;
         }
-        if !new_event.condition_registry.unwrap().has_condition(&condition) {
-            return _invalid_cfg(
-                cur_key,
-                &condition,
-                ERR_INVALID_EVENT_CONDITION);
-        }
-        new_event.assign_condition(&condition)?;
 
-        // common optional parameter initialization
+        // specific optional parameter initialization
         // (none here)
 
         Ok(new_event)
+    }
+
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "condition",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter retrieval
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "cli"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
+        // also for optional parameters just check and throw away the result
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        // assigned condition is checked against the provided array
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
+            if !available_conditions.contains(&v.as_str()) {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    &v,
+                    ERR_INVALID_EVENT_CONDITION,
+                ));
+            }
+        }
+
+        Ok(name)
     }
 
 }
@@ -229,6 +249,14 @@ impl Event for ManualCommandEvent {
     fn set_id(&mut self, id: i64) { self.event_id = id; }
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
+
 
     fn requires_thread(&self) -> bool { false }
 
@@ -255,12 +283,6 @@ impl Event for ManualCommandEvent {
     fn _assign_condition(&mut self, cond_name: &str) {
         // correctness has already been checked by the caller
         self.condition_name = Some(String::from(cond_name));
-    }
-
-
-    fn _start_service(&self) -> std::io::Result<bool> {
-        // in this case the service exits immediately without errors
-        Ok(true)
     }
 
 }

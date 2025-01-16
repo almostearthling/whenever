@@ -34,15 +34,22 @@ pub const ERR_INVALID_CONFIG_FILE: &str = "invalid configuration file";
 pub const ERR_INVALID_TASK_CONFIG: &str = "invalid task configuration";
 pub const ERR_INVALID_COND_CONFIG: &str = "invalid condition configuration";
 pub const ERR_INVALID_EVENT_CONFIG: &str = "invalid event configuration";
+pub const ERR_INVALID_ITEM_CONFIG: &str = "invalid item configuration";
 pub const ERR_TASKREG_TASK_NOT_ADDED: &str = "could not add task to the registry";
+pub const ERR_TASKREG_TASK_NOT_REPLACED: &str = "could not replace task in the registry";
 pub const ERR_TASKREG_CANNOT_PULL_TASK: &str = "could not pull task out from the registry";
 pub const ERR_CONDREG_COND_NOT_ADDED: &str = "could not add condition to the registry";
+pub const ERR_CONDREG_COND_NOT_REPLACED: &str = "could not replace condition in the registry";
 pub const ERR_CONDREG_CANNOT_PULL_COND: &str = "could not pull condition out from the registry";
 pub const ERR_CONDREG_COND_RESET_BUSY: &str = "attempt to reset condition while busy";
 pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition while busy";
 pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition while busy";
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
 pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
+pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
+pub const ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR: &str = "could not request the event service manager to shut down";
+pub const ERR_EVENTREG_SERVICE_NOT_INSTALLED: &str = "event listening service not installed";
+pub const ERR_EVENTREG_SERVICE_NOT_UNINSTALLED: &str = "event listening service not uninstalled";
 
 pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
 pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";
@@ -61,14 +68,11 @@ pub const ERR_LOGGER_NOT_INITIALIZED: &str = "could not initialize logger";
 pub const ERR_INVALID_CFG_ENTRY: &str = "invalid configuration entry";
 pub const ERR_MISSING_PARAMETER: &str = "missing parameter";
 pub const ERR_INVALID_PARAMETER: &str = "invalid parameter";
-pub const ERR_INVALID_COND_NAME: &str = "invalid value for condition name";
+pub const ERR_INVALID_PARAMETER_LIST: &str = "invalid list or list element";
 pub const ERR_INVALID_COND_TYPE: &str = "condition type invalid or mismatched";
-pub const ERR_INVALID_TASK_LIST: &str = "invalid task list specification";
 pub const ERR_INVALID_TASK: &str = "invalid task specification or inexistent task";
 
 pub const ERR_INVALID_STARTUP_PATH: &str = "invalid startup path";
-pub const ERR_INVALID_COMMAND_PATH: &str = "invalid command path";
-pub const ERR_INVALID_COMMAND_ARGUMENTS: &str = "invalid command arguments";
 pub const ERR_INVALID_ENVVAR_NAME: &str = "invalid name for environment variable";
 pub const ERR_INVALID_ENVVAR_VALUE: &str = "invalid value for environment variable";
 
@@ -79,11 +83,10 @@ pub const ERR_INVALID_TIMESPEC: &str = "invalid specification for date or time";
 pub const ERR_INVALID_TICK_SECONDS: &str = "invalid number of seconds for tick";
 pub const ERR_INVALID_VALUE_FOR: &str = "invalid value for";
 pub const ERR_INVALID_VALUE_FOR_ENTRY: &str = "invalid value for entry";
+pub const ERR_INVALID_VALUE_FOR_LIST_ENTRY: &str = "invalid value for list entry";
 
-pub const ERR_INVALID_TASK_NAME: &str = "invalid value for task name";
 pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 
-pub const ERR_INVALID_EVENT_NAME: &str = "invalid value for event name";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
@@ -108,12 +111,14 @@ pub const LOG_EMITTER_CONDITION: &str = "CONDITION";
 pub const LOG_EMITTER_CONDITION_REGISTRY: &str = "CONDITION_REGISTRY";
 pub const LOG_EMITTER_EVENT: &str = "EVENT";
 pub const LOG_EMITTER_EVENT_REGISTRY: &str = "EVENT_REGISTRY";
+pub const LOG_EMITTER_CONFIGURATION: &str = "CONFIGURATION";
 pub const LOG_EMITTER_MAIN: &str = "MAIN";
 
 pub const LOG_EMITTER_TASK_COMMAND: &str = "COMMAND_TASK";
 pub const LOG_EMITTER_TASK_LUA: &str = "LUA_TASK";
 pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
 pub const LOG_EMITTER_EVENT_FSCHANGE: &str = "FSCHANGE_EVENT";
+pub const LOG_EMITTER_EVENT_MANUAL: &str = "CMD_EVENT";
 pub const LOG_EMITTER_CONDITION_INTERVAL: &str = "INTERVAL_CONDITION";
 pub const LOG_EMITTER_CONDITION_BUCKET: &str = "BUCKET_CONDITION";
 pub const LOG_EMITTER_CONDITION_COMMAND: &str = "COMMAND_CONDITION";
@@ -126,6 +131,8 @@ pub const LOG_ACTION_TICK: &str = "tick";
 pub const LOG_ACTION_FIRE: &str = "fire";
 pub const LOG_ACTION_TRIGGER: &str = "trigger";
 pub const LOG_ACTION_INSTALL: &str = "install";
+pub const LOG_ACTION_UNINSTALL: &str = "uninstall";
+pub const LOG_ACTION_RECONFIGURE: &str = "reconfigure";
 pub const LOG_ACTION_ACTIVE: &str = "active";
 pub const LOG_ACTION_LUA: &str = "exec_lua";
 pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
@@ -150,7 +157,8 @@ pub const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
 pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 // operational values
-pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;
+pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;         // default: 100
+pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100;     // default: 100
 
 
 // crate-wide values

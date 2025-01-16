@@ -29,6 +29,9 @@ use std::io::ErrorKind;
 use std::time::{SystemTime, Duration};
 use std::path::PathBuf;
 use std::ffi::OsString;
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use itertools::Itertools;
 
 use subprocess::{Popen, PopenConfig, Redirection, ExitStatus, PopenError};
 
@@ -37,7 +40,9 @@ use cfgmap::CfgMap;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
+
+use crate::cfghelp::*;
 
 
 
@@ -77,6 +82,65 @@ pub struct CommandTask {
     _process_duration: Duration,
 }
 
+
+// implement the hash protocol
+impl Hash for CommandTask {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.task_name.hash(state);
+        self.command.hash(state);
+        self.args.hash(state);
+        self.startup_dir.hash(state);
+        self.match_exact.hash(state);
+        self.match_regexp.hash(state);
+        self.case_sensitive.hash(state);
+        self.include_env.hash(state);
+        self.set_envvars.hash(state);
+        self.timeout.hash(state);
+
+        // 0 is hashed on the else branch because if we get two items, for
+        // instance, one of which has only success_stdout defined as a string
+        // and the other which has only success_stderr defined as the very
+        // same string, they might have the same hash being in fact different
+        if let Some(x) = self.success_status {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.success_stdout {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.success_stderr {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+
+        if let Some(x) = self.failure_status {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.failure_stdout {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+        if let Some(x) = &self.failure_stderr {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+
+        // the keys are sorted because the order in which environment vars
+        // are defined is actually not significant
+        for key in self.environment_vars.keys().sorted() {
+            key.hash(state);
+            self.environment_vars[key].hash(state);
+        }
+    }
+}
 
 
 /// In case of failure, the reason will be one of the provided values
@@ -347,14 +411,7 @@ impl CommandTask {
     /// *must* be set to `"command"` mandatorily for this type of `Task`.
     pub fn load_cfgmap(cfgmap: &CfgMap) -> std::io::Result<CommandTask> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<CommandTask> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_TASK_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -375,117 +432,23 @@ impl CommandTask {
             "failure_status",
             "timeout_seconds",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
-        // check type
-        let cur_key = "type";
-        let task_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_TYPE);
-            }
-            task_type = item.as_str().unwrap().to_owned();
-            if task_type != "command" {
-                return _invalid_cfg(cur_key,
-                    &task_type,
-                    ERR_INVALID_TASK_TYPE);
-            }
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_TASK_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_TASK_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_TASK_NAME);
-            }
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "command"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
-        let cur_key = "command";
-        let command;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COMMAND_PATH);
-            }
-            command = PathBuf::from(item.as_str().unwrap().to_owned());
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "command_arguments";
-        let mut args = Vec::new();
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_COMMAND_ARGUMENTS);
-            }
-            for a in item.as_list().unwrap() {
-                args.push(a.as_str().unwrap().clone());
-            }
-        } else {
-            return _invalid_cfg(cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
-
-        let cur_key = "startup_path";
-        let startup_path;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_STARTUP_PATH);
-            }
-            let sp = item.as_str().unwrap().to_owned();
-            // NOTE: canonicalized paths wouldn't often work on Windows
-            // startup_path = PathBuf::from(&sp).canonicalize().unwrap_or(PathBuf::new());
-            startup_path = PathBuf::from(&sp);
-            if !startup_path.is_dir() {
-                return _invalid_cfg(
-                    cur_key,
-                    &sp,
-                    ERR_INVALID_STARTUP_PATH);
-            };
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        let command = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "command"))?.unwrap());
+        let args = cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?.unwrap();
+        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        if !startup_path.is_dir() {
+            return Err(cfg_err_invalid_config(
+                "startup_path",
+                &startup_path.to_string_lossy(),
+                ERR_INVALID_STARTUP_PATH,
+            ));
+        };
 
         // initialize the structure
         let mut new_task = CommandTask::new(
@@ -496,215 +459,218 @@ impl CommandTask {
         );
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
         // specific optional parameter initialization
-        let cur_key = "match_exact";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_task.match_exact = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "match_exact")? {
+            new_task.match_exact = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "match_regular_expression")? {
+            new_task.match_regexp = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "case_sensitive")? {
+            new_task.case_sensitive = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "include_environment")? {
+            new_task.include_env = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "set_environment_variables")? {
+            new_task.set_envvars = v;
         }
 
-        let cur_key = "match_regular_expression";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_task.match_regexp = *item.as_bool().unwrap();
-            }
-        }
-
-        let cur_key = "case_sensitive";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_task.case_sensitive = *item.as_bool().unwrap();
-            }
-        }
-
-        let cur_key = "include_environment";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_task.include_env = *item.as_bool().unwrap();
-            }
-        }
-
-        let cur_key = "set_environment_variables";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_task.set_envvars = *item.as_bool().unwrap();
-            }
-        }
-
+        // the environment variables case is peculiar and has no shortcut
         let cur_key = "environment_variables";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             } else {
                 let map = item.as_map().unwrap();
                 let mut vars: HashMap<String, String> = HashMap::new();
                 for name in map.keys() {
                     if !RE_VAR_NAME.is_match(name) {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             cur_key,
                             &name,
-                            ERR_INVALID_ENVVAR_NAME);
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
                     } else if let Some(value) = map.get(name) {
                         if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
                             vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
-                            return _invalid_cfg(
+                            return Err(cfg_err_invalid_config(
                                 cur_key,
                                 STR_UNKNOWN_VALUE,
-                                ERR_INVALID_ENVVAR_VALUE);
+                                ERR_INVALID_ENVVAR_VALUE,
+                            ));
                         }
                     } else {
-                        return _invalid_cfg(
+                        return Err(cfg_err_invalid_config(
                             cur_key,
                             STR_UNKNOWN_VALUE,
-                            ERR_INVALID_ENVVAR_NAME);
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
                     }
                 }
                 new_task.environment_vars = vars;
             }
         }
 
-
-        let cur_key = "success_stdout";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.success_stdout = Some(item.as_str().unwrap().to_owned());
+        new_task.success_stdout = cfg_string(cfgmap, "success_stdout")?;
+        new_task.success_stderr = cfg_string(cfgmap, "success_stderr")?;
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)? {
+            new_task.success_status = Some(v as u32);
         }
 
-        let cur_key = "success_stderr";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.success_stderr = Some(item.as_str().unwrap().to_owned());
+        new_task.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
+        new_task.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)? {
+            new_task.failure_status = Some(v as u32);
         }
 
-        let cur_key = "success_status";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)? {
+            if v > 0 {
+                new_task.timeout = Some(Duration::from_secs(v as u64));
             }
-            let i = *item.as_int().unwrap();
-            if i < 0 || i as u64 > std::u32::MAX.into() {
-                return _invalid_cfg(
-                    cur_key,
-                    &i.to_string(),
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.success_status = Some(i as u32);
-        }
-
-        let cur_key = "failure_stdout";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.failure_stdout = Some(item.as_str().unwrap().to_owned());
-        }
-
-        let cur_key = "failure_stderr";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.failure_stderr = Some(item.as_str().unwrap().to_owned());
-        }
-
-        let cur_key = "failure_status";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            let i = *item.as_int().unwrap();
-            if i < 0 || i as u64 > std::u32::MAX.into() {
-                return _invalid_cfg(
-                    cur_key,
-                    &i.to_string(),
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.failure_status = Some(i as u32);
-        }
-
-        let cur_key = "timeout_seconds";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            let i = *item.as_int().unwrap();
-            if i < 0 || i as u64 > std::u32::MAX.into() {
-                return _invalid_cfg(
-                    cur_key,
-                    &i.to_string(),
-                    ERR_INVALID_PARAMETER);
-            }
-            new_task.timeout = Some(Duration::from_secs(i as u64));
         }
 
         Ok(new_task)
     }
 
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "command",
+            "command_arguments",
+            "startup_path",
+            "match_exact",
+            "match_regular_expression",
+            "case_sensitive",
+            "include_environment",
+            "set_environment_variables",
+            "environment_variables",
+            "success_stdout",
+            "success_stderr",
+            "success_status",
+            "failure_stdout",
+            "failure_stderr",
+            "failure_status",
+            "timeout_seconds",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter check
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "command"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
+
+        // specific mandatory parameter check
+        cfg_mandatory!(cfg_string(cfgmap, "command"))?;
+        cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?;
+        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        if !startup_path.is_dir() {
+            return Err(cfg_err_invalid_config(
+                "startup_path",
+                &startup_path.to_string_lossy(),
+                ERR_INVALID_STARTUP_PATH,
+            ));
+        };
+
+        // also for optional parameters just check and throw away the result
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        cfg_bool(cfgmap, "match_exact")?;
+        cfg_bool(cfgmap, "match_regular_expression")?;
+        cfg_bool(cfgmap, "case_sensitive")?;
+        cfg_bool(cfgmap, "include_environment")?;
+        cfg_bool(cfgmap, "set_environment_variables")?;
+
+        // the environment variables case is peculiar and has no shortcut
+        let cur_key = "environment_variables";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                let map = item.as_map().unwrap();
+                let mut vars: HashMap<String, String> = HashMap::new();
+                for name in map.keys() {
+                    if !RE_VAR_NAME.is_match(name) {
+                        return Err(cfg_err_invalid_config(
+                            cur_key,
+                            &name,
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
+                    } else if let Some(value) = map.get(name) {
+                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                            vars.insert(name.to_string(), value.as_str().unwrap().to_string());
+                        } else {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_ENVVAR_VALUE,
+                            ));
+                        }
+                    } else {
+                        return Err(cfg_err_invalid_config(
+                            cur_key,
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_ENVVAR_NAME,
+                        ));
+                    }
+                }
+            }
+        }
+
+        cfg_string(cfgmap, "success_stdout")?;
+        cfg_string(cfgmap, "success_stderr")?;
+        cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?;
+
+        cfg_string(cfgmap, "failure_stdout")?;
+        cfg_string(cfgmap, "failure_stderr")?;
+        cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?;
+
+        cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)?;
+
+        Ok(name)
+    }
 }
 
 
@@ -715,6 +681,13 @@ impl Task for CommandTask {
     fn set_id(&mut self, id: i64) { self.task_id = id; }
     fn get_name(&self) -> String { self.task_name.clone() }
     fn get_id(&self) -> i64 { self.task_id }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
 
     /// Execute this `CommandTask`
     ///
@@ -1089,7 +1062,7 @@ impl Task for CommandTask {
                                 failure_reason = FailureReason::Other;
                             }
                             ExitStatus::Undetermined => {
-                                statusmsg = format!("UNDETERMINED");
+                                statusmsg = String::from("UNDETERMINED");
                                 self.log(
                                     LogType::Warn,
                                     LOG_WHEN_PROC,
@@ -1748,6 +1721,7 @@ impl Task for CommandTask {
             }
         }
     }
+
 }
 
 

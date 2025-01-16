@@ -57,6 +57,21 @@ pub trait Condition: Send {
     /// Mandatory task registry getter.
     fn task_registry(&self) -> Option<&'static TaskRegistry>;
 
+    /// Tell whether or not another `Condition` is equal to this
+    fn eq(&self, other: &dyn Condition) -> bool {
+        self._hash() == other._hash()
+    }
+
+    /// Tell whether or not another `Condition` is not equal to this
+    fn ne(&self, other: &dyn Condition) -> bool {
+        !self.eq(other)
+    }
+
+    /// Internally called to implement `eq()` and `neq()`: hash calculation
+    /// is costly in terms of time and possibly CPU, but it is supposed to
+    /// take place very seldomly, near to almost never
+    fn _hash(&self) -> u64;
+
 
     /// Return `true` if the condition is _suspended_.
     fn suspended(&self) -> bool;
@@ -211,9 +226,7 @@ pub trait Condition: Send {
     /// considered a development error.
     fn test(&mut self) -> Result<Option<bool>, std::io::Error> {
         // panic if the condition has not yet been registered
-        if self.get_id() == 0 {
-            panic!("condition {} not registered", self.get_name());
-        }
+        assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
 
         // bail out if the condition has no associated tasks, if it
         // is suspended, or if it has been successful once and is not
@@ -269,7 +282,7 @@ pub trait Condition: Send {
                     if outcome {
                         if self.set_succeeded()? {
                             self.log(
-                                LogType::Info,
+                                LogType::Debug,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_OK,
                                 "success: condition checked with positive outcome",
@@ -288,7 +301,7 @@ pub trait Condition: Send {
                         }
                     } else {
                         self.log(
-                            LogType::Info,
+                            LogType::Debug,
                             LOG_WHEN_PROC,
                             LOG_STATUS_OK,
                             "failure: condition checked with negative outcome",
@@ -433,9 +446,7 @@ pub trait Condition: Send {
     /// considered a development error.
     fn run_tasks(&mut self) -> Result<Option<bool>, std::io::Error> {
         // panic if the condition has not yet been registered
-        if self.get_id() == 0 {
-            panic!("condition {} not registered", self.get_name());
-        }
+        assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
 
         let registry = self.task_registry().unwrap();
         let mut s_task_names = String::new();

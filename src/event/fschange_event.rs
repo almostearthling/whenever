@@ -7,17 +7,28 @@
 
 
 use std::path::PathBuf;
+use std::thread;
 use std::time::Duration;
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::{RwLock, mpsc};
+
+use async_std::task;
+use futures::{
+    channel::mpsc::{channel, Sender},
+    SinkExt, StreamExt,
+};
 
 use notify::{self, Watcher};
 use cfgmap::CfgMap;
 
 use super::base::Event;
+
 use crate::condition::registry::ConditionRegistry;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::common::logging::{log, LogType};
-use crate::constants::*;
+use crate::{cfg_mandatory, constants::*};
 
+use crate::cfghelp::*;
 
 
 // default seconds to wayt between active polls: generally ignored
@@ -49,8 +60,60 @@ pub struct FilesystemChangeEvent {
     recursive: bool,
 
     // internal values
-    // (none here)
+    thread_running: RwLock<bool>,
+    quit_tx: Option<mpsc::Sender<()>>,
 }
+
+// implement the hash protocol
+impl Hash for FilesystemChangeEvent {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // common part
+        self.event_name.hash(state);
+        if let Some(s) = &self.condition_name {
+            s.hash(state);
+        }
+
+        // specific part
+        if let Some(x) = &self.watched_locations {
+            let mut sorted = x.clone();
+            sorted.sort();
+            sorted.hash(state);
+        } else {
+            0.hash(state);
+        }
+        self.poll_seconds.hash(state);
+        self.recursive.hash(state);
+    }
+}
+
+// implement cloning
+impl Clone for FilesystemChangeEvent {
+    fn clone(&self) -> Self {
+        FilesystemChangeEvent {
+            // reset ID
+            event_id: 0,
+
+            // parameters
+            event_name: self.event_name.clone(),
+            condition_name: self.condition_name.clone(),
+
+            // internal values
+            condition_registry: None,
+            condition_bucket: None,
+
+            // specific members initialization
+            // parameters
+            watched_locations: self.watched_locations.clone(),
+            poll_seconds: self.poll_seconds,
+            recursive: self.recursive,
+
+            // internal values
+            thread_running: RwLock::new(false),
+            quit_tx: None,
+        }
+    }
+}
+
 
 
 #[allow(dead_code)]
@@ -84,6 +147,8 @@ impl FilesystemChangeEvent {
             recursive: false,
 
             // internal values
+            thread_running: RwLock::new(false),
+            quit_tx: None,
         }
     }
 
@@ -161,14 +226,7 @@ impl FilesystemChangeEvent {
         bucket: &'static ExecutionBucket,
     ) -> std::io::Result<FilesystemChangeEvent> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<FilesystemChangeEvent> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_EVENT_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
-
-        let check = [
+        let check = vec![
             "type",
             "name",
             "tags",
@@ -176,58 +234,14 @@ impl FilesystemChangeEvent {
             "watch",
             "recursive",
         ];
-        for key in cfgmap.keys() {
-            if !check.contains(&key.as_str()) {
-                return _invalid_cfg(key, STR_UNKNOWN_VALUE,
-                    &format!("{ERR_INVALID_CFG_ENTRY} ({key})"));
-            }
-        }
-
-        // check type
-        let cur_key = "type";
-        let cond_type;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_EVENT_TYPE);
-            }
-            cond_type = item.as_str().unwrap().to_owned();
-            if cond_type != "fschange" {
-                return _invalid_cfg(cur_key,
-                    &cond_type,
-                    ERR_INVALID_EVENT_TYPE);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+        cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
-        let cur_key = "name";
-        let name;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_EVENT_NAME);
-            }
-            name = item.as_str().unwrap().to_owned();
-            if !RE_EVENT_NAME.is_match(&name) {
-                return _invalid_cfg(cur_key,
-                    &name,
-                    ERR_INVALID_EVENT_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
-        }
+
+        // type and name are both mandatory but type is only checked
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "fschange"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
 
         // initialize the structure
         // NOTE: the value of "event" for the condition type, which is
@@ -242,92 +256,110 @@ impl FilesystemChangeEvent {
         new_event.condition_bucket = Some(bucket);
 
         // common optional parameter initialization
+
+        // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
         if let Some(item) = cfgmap.get(cur_key) {
             if !item.is_list() && !item.is_map() {
-                return _invalid_cfg(
+                return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
+                    ERR_INVALID_PARAMETER,
+                ));
             }
         }
 
-        let cur_key = "condition";
-        let condition;
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_str() {
-                return _invalid_cfg(
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
+            if !new_event.condition_registry.unwrap().has_condition(&v) {
+                return Err(cfg_err_invalid_config(
                     cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_EVENT_NAME);
+                    &v,
+                    ERR_INVALID_EVENT_CONDITION,
+                ));
             }
-            condition = item.as_str().unwrap().to_owned();
-            if !RE_COND_NAME.is_match(&condition) {
-                return _invalid_cfg(cur_key,
-                    &condition,
-                    ERR_INVALID_COND_NAME);
-            }
-        } else {
-            return _invalid_cfg(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_MISSING_PARAMETER);
+            new_event.assign_condition(&v)?;
         }
-        if !new_event.condition_registry.unwrap().has_condition(&condition) {
-            return _invalid_cfg(
-                cur_key,
-                &condition,
-                ERR_INVALID_EVENT_CONDITION);
-        }
-        new_event.assign_condition(&condition)?;
 
         // specific optional parameter initialization
-        let cur_key = "watch";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            }
-            for a in item.as_list().unwrap() {
-                let s = String::from(a.as_str().unwrap_or(&String::new()));
+        if let Some(v) = cfg_vec_string(cfgmap, "watch")? {
+            for s in v {
                 // let's just log the errors and avoid refusing invalid entries
                 // if !new_event.watch_location(&s)? {
-                //     return _invalid_cfg(
+                //     return Err(cfg_err_invalid_config(
                 //         cur_key,
                 //         &s,
-                //         ERR_INVALID_VALUE_FOR_ENTRY);
+                //         ERR_INVALID_VALUE_FOR_ENTRY,
+                //     ));
                 // }
                 let _ = new_event.watch_location(&s)?;
             }
         }
 
-        let cur_key = "recursive";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_bool() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_event.recursive = *item.as_bool().unwrap();
-            }
+        if let Some(v) = cfg_bool(cfgmap, "recursive")? {
+            new_event.recursive = v;
         }
-
-        let cur_key = "poll_secoonds";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_int() {
-                return _invalid_cfg(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER);
-            } else {
-                new_event.poll_seconds = *item.as_int().unwrap() as u64;
-            }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "poll_seconds", 0)? {
+            new_event.poll_seconds = v as u64;
         }
 
         Ok(new_event)
+    }
+
+    /// Check a configuration map and return item name if Ok
+    ///
+    /// The check is performed exactly in the same way and in the same order
+    /// as in `load_cfgmap`, the only difference is that no actual item is
+    /// created and that a name is returned, which is the name of the item that
+    /// _would_ be created via the equivalent call to `load_cfgmap`
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> std::io::Result<String> {
+
+        let check = vec![
+            "type",
+            "name",
+            "tags",
+            "condition",
+            "watch",
+            "recursive",
+        ];
+        cfg_check_keys(cfgmap, &check)?;
+
+        // common mandatory parameter retrieval
+
+        // type and name are both mandatory: type is checked and name is kept
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "fschange"))?;
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+
+        // also for optional parameters just check and throw away the result
+
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key) {
+            if !item.is_list() && !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            }
+        }
+
+        // assigned condition is checked against the provided array
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
+            if !available_conditions.contains(&v.as_str()) {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    &v,
+                    ERR_INVALID_EVENT_CONDITION,
+                ));
+            }
+        }
+
+        // specific optional parameter check
+        cfg_vec_string(cfgmap, "watch")?;   // see above: we do not check for correctness
+        cfg_bool(cfgmap, "recursive")?;
+        cfg_int_check_above_eq(cfgmap, "poll_seconds", 0)?;
+
+        Ok(name)
     }
 
 }
@@ -338,6 +370,14 @@ impl Event for FilesystemChangeEvent {
     fn set_id(&mut self, id: i64) { self.event_id = id; }
     fn get_name(&self) -> String { self.event_name.clone() }
     fn get_id(&self) -> i64 { self.event_id }
+
+    /// Return a hash of this item for comparison
+    fn _hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
+    }
+
 
     fn requires_thread(&self) -> bool { true }  // maybe false, let's see
 
@@ -364,8 +404,41 @@ impl Event for FilesystemChangeEvent {
         self.condition_name = Some(String::from(cond_name));
     }
 
+    fn assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
+        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        self.quit_tx = Some(sr);
+    }
 
-    fn _start_service(&self) -> std::io::Result<bool> {
+
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+
+        assert!(qrx.is_some(), "quit signal channel receiver must be provided");
+        assert!(self.quit_tx.is_some(), "quit signal channel transmitter not initialized");
+
+        // unified event type that will be sent over an async channel by
+        // either a `quit` command or the watcher: the `Target` option
+        // contains the event generated by the watcher
+        enum TargetOrQuitEvent {
+            Target(notify::Result<notify::Event>),
+            Quit,
+            QuitError,
+        }
+
+        // see: https://github.com/notify-rs/notify/blob/main/examples/async_monitor.rs
+        // with the difference that this wraps the result in a `TargetOrQuitEvent`
+        // and that the transmitting part of the channel must be provided by
+        // the caller, therefore it only returns the watcher
+        fn _build_watcher(cfg: notify::Config, mut atx: Sender<TargetOrQuitEvent>) -> notify::Result<notify::RecommendedWatcher> {
+            let watcher = notify::RecommendedWatcher::new(
+                move |res| {
+                    futures::executor::block_on(async {
+                        atx.send(TargetOrQuitEvent::Target(res)).await.unwrap();
+                    })
+                },
+                cfg,
+            )?;
+            Ok(watcher)
+        }
 
         if self.watched_locations.is_none() {
             self.log(
@@ -377,7 +450,6 @@ impl Event for FilesystemChangeEvent {
             return Ok(false);
         }
 
-        // clone the location as a pathbuf (will not panic: checked above)
         let rec = if self.recursive {
             notify::RecursiveMode::Recursive
         } else {
@@ -386,17 +458,28 @@ impl Event for FilesystemChangeEvent {
 
         // for the watching loop technique, see the official notify example
         // at: examples/watcher_kind.rs
-        let (tx, rx) = std::sync::mpsc::channel();
+
+        // build an async communication channel: since two threads insist on
+        // it, a suitable capacity is needed (OK, 10 might be too much)
+        let (async_tx, mut async_rx) = channel(10);
+
+        // build a configuration
         let notify_cfg = notify::Config::default()
             .with_poll_interval(Duration::from_secs(self.poll_seconds));
 
-        let mut watcher = Box::new(
-            notify::RecommendedWatcher::new(tx, notify_cfg).unwrap());
+        // and now build the watcher, passing a clone of the transmitting end
+        // of the channel to the constructor
+        let mut watcher;
+        if let Ok(w) = _build_watcher(notify_cfg, async_tx.clone()) {
+            watcher = w;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "cannot initialize fschange notification service",
+            ));
+        }
 
-        // if the watcher could be set to watch filesystem events, then an
-        // endless cycle to catch these events is started: in this case all
-        // possible errors are treated as warnings from a logging point of
-        // view; otherwise exit with Ok(false), which indicates an error
+        // add locations to the watcher
         if let Some(wl) = self.watched_locations.clone() {
             for p in wl {
                 match watcher.watch(&p, rec) {
@@ -423,69 +506,193 @@ impl Event for FilesystemChangeEvent {
                 LogType::Error,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
-                "no paths to watch have been specified",
+                "could not acquire list of paths to watch",
             );
             return Ok(false);
         }
 
-        for r_evt in rx {
-            match r_evt {
-                Ok(evt) => {
-                    let evt_s = {
-                        if evt.kind.is_access() { "ACCESS" }
-                        else if evt.kind.is_create() { "CREATE" }
-                        else if evt.kind.is_modify() { "MODIFY" }
-                        else if evt.kind.is_remove() { "REMOVE" }
-                        else if evt.kind.is_other() { "OTHER" }
-                        else { "UNKNOWN" }
-                    };
-                    // ignore access events
-                    if !evt.kind.is_access() {
-                        self.log(
-                            LogType::Info,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_OK,
-                            &format!("event notification caught: {evt_s}"),
-                        );
-                        match self.fire_condition() {
-                            Ok(_) => {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    "condition fired successfully",
-                                );
+        // now it is time to set the internal `running` flag, before the
+        // thread that waits for the quit signal is launched
+        let mut running = self.thread_running.write().unwrap();
+        *running = true;
+        drop(running);
+
+        // spawn a thread that only listens to a possible request to quit:
+        // this thread should be lightweight enough, as it just waits all
+        // the time; it is also useless to join to because it dies as soon
+        // as it catches a signal
+        let mut async_tx_clone = async_tx.clone();
+        let _quit_handle = thread::spawn(move || {
+            if let Ok(_) = qrx.unwrap().recv() {
+                // send a quit message over the async channel
+                task::block_on({
+                    async move { async_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap(); }
+                });
+            } else {
+                // in case of error, send just the error option of the enum
+                task::block_on({
+                    async move { async_tx_clone.send(TargetOrQuitEvent::QuitError).await.unwrap(); }
+                });
+            };
+        });
+
+        // if the watcher could be set to watch filesystem events, then an
+        // endless cycle to catch these events is started: in this case all
+        // possible errors are treated as warnings from a logging point of
+        // view; otherwise exit with Ok(false), which indicates an error;
+        // this should be running in the local pool
+        futures::executor::block_on(async move {
+            while let Some(toq) = async_rx.next().await {
+                match toq {
+                    TargetOrQuitEvent::Target(r_evt) => {
+                        match r_evt {
+                            Ok(evt) => {
+                                let evt_s = {
+                                    if evt.kind.is_access() { "ACCESS" }
+                                    else if evt.kind.is_create() { "CREATE" }
+                                    else if evt.kind.is_modify() { "MODIFY" }
+                                    else if evt.kind.is_remove() { "REMOVE" }
+                                    else if evt.kind.is_other() { "OTHER" }
+                                    else { "UNKNOWN" }
+                                };
+                                // ignore access events
+                                if !evt.kind.is_access() {
+                                    self.log(
+                                        LogType::Info,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        &format!("event notification caught: {evt_s}"),
+                                    );
+                                    match self.fire_condition() {
+                                        Ok(_) => {
+                                            self.log(
+                                                LogType::Debug,
+                                                LOG_WHEN_PROC,
+                                                LOG_STATUS_OK,
+                                                "condition fired successfully",
+                                            );
+                                        }
+                                        Err(e) => {
+                                            self.log(
+                                                LogType::Warn,
+                                                LOG_WHEN_PROC,
+                                                LOG_STATUS_FAIL,
+                                                &format!("error firing condition: {e}"),
+                                            );
+                                        }
+                                    }
+                                } else {
+                                    self.log(
+                                        LogType::Debug,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        &format!("non-change event notification caught: {evt_s}"),
+                                    );
+                                }
                             }
                             Err(e) => {
                                 self.log(
                                     LogType::Warn,
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,
-                                    &format!("error firing condition: {e}"),
+                                    &format!("error in event notification: {e}"),
                                 );
                             }
-                        }
-                    } else {
+                        };
+                    }
+                    TargetOrQuitEvent::QuitError => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            "request to quit generated an error: exiting anyway",
+                        );
+                        break;
+                    }
+                    TargetOrQuitEvent::Quit => {
                         self.log(
                             LogType::Debug,
-                            LOG_WHEN_PROC,
+                            LOG_WHEN_END,
                             LOG_STATUS_OK,
-                            &format!("non-change event notification caught: {evt_s}"),
+                            "event listener termination request caught",
                         );
+                        break;
                     }
                 }
-                Err(e) => {
+            }
+        });     // futures::executor::block_on(...)
+
+        // as said above this should be ininfluent
+        let _ = _quit_handle.join();
+
+        // declare that the event has stopped
+        self.log(
+            LogType::Debug,
+            LOG_WHEN_END,
+            LOG_STATUS_OK,
+            "stopping file change watch service",
+        );
+
+        let mut running = self.thread_running.write().unwrap();
+        *running = false;
+        Ok(true)
+    }
+
+    fn stop_service(&self) -> std::io::Result<bool> {
+        if let Ok(running) = self.thread_running.read() {
+            if *running {
+                self.log(
+                    LogType::Info,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    "the listener has been requested to stop",
+                );
+                // send the quit signal
+                let quit_tx = self.quit_tx.clone();
+                if let Some(tx) = quit_tx {
+                    tx.clone().send(()).unwrap();
+                    Ok(true)
+                } else {
                     self.log(
                         LogType::Warn,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        &format!("error in event notification: {e}"),
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        "impossible to contact the listener: stop request dropped",
                     );
+                    Ok(false)
                 }
-            };
+            } else {
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    "the listener is not running: stop request dropped",
+                );
+                Ok(false)
+            }
+        } else {
+            self.log(
+                LogType::Error,
+                LOG_WHEN_END,
+                LOG_STATUS_ERR,
+                "could not determine whether the listener is running",
+            );
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "could not determine whether the listener is running"
+            ))
         }
+    }
 
-        Ok(true)
+    fn thread_running(&self) -> std::io::Result<bool> {
+        if let Ok(running) = self.thread_running.read() {
+            Ok(*running)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "could not determine whether the listener is running"
+            ))
+        }
     }
 
 }
