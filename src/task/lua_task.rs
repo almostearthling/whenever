@@ -198,31 +198,6 @@ impl LuaTask {
     /// The `LuaTask` is initialized according to the values provided in
     /// the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `LuaTask` an error is raised.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[task]]
-    /// name = "LuaTaskName"
-    /// type = "lua"                                # mandatory value
-    /// script = '''
-    ///     log.info("hello from Lua");
-    ///     result = 10;
-    ///     '''
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// expect_all = false
-    /// expected_results = { result = 10, ... }
-    /// ```
-    ///
-    /// Note that the script must be inline in the TOML file: this means that
-    /// the value for the `script` parameter cannot be the path to a script.
-    /// However the script can contain the `require` function, or directly
-    /// invoke a script via `dofile("/path/to/script.lua")` in a one-liner.
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"lua"` mandatorily for this type of `Task`.
     pub fn load_cfgmap(cfgmap: &CfgMap) -> std::io::Result<LuaTask> {
 
         let check = vec![

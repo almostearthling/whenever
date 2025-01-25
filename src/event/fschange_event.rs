@@ -192,34 +192,6 @@ impl FilesystemChangeEvent {
     /// provided in the `CfgMap` argument. If the `CfgMap` format does not
     /// comply with the requirements of a `FilesystemChangeEvent` an error is
     /// raised.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[event]]
-    /// name = "FilesystemChangeEventName"
-    /// type = "fschange"
-    /// condition = "AssignedConditionName"
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// watch = [
-    ///     "/path/to/resource1",
-    ///     "/path/to/resource2",
-    ///     ...
-    ///     ]
-    /// recursive = false       // only applied to directories
-    /// poll_seconds = 2        // ignored on most platforms
-    /// ```
-    ///
-    /// Note that the pointed-to resources must exist in the file system,
-    /// otherwise initialization will fail (FIXME: is it correct to act like
-    /// this? Maybe one would wait for creation of a non existing resource);
-    /// to watch for something that still does not exist, the parent directory
-    /// should be watched instead.
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"fschange"` mandatorily for this type of `Event`.
     pub fn load_cfgmap(
         cfgmap: &CfgMap,
         cond_registry: &'static ConditionRegistry,

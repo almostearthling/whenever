@@ -281,16 +281,17 @@ which might be useful if the scripts are aware of being run within **whenever**.
 
 _Conditions_ are at the heart of **whenever**, by triggering the execution of tasks. As mentioned above, several types of condition are supported. Part of the configuration is common to all conditions, that is:
 
-| Entry              | Default | Description                                                                                                    |
-|--------------------|:-------:|----------------------------------------------------------------------------------------------------------------|
-| `name`             | N/A     | the unique name of the condition (mandatory)                                                                   |
-| `type`             | N/A     | string describing the type of condition (mandatory, one of the possible values)                                |
-| `recurring`        | _false_ | if _false_, the condition is not checked anymore after first successful verification                           |
-| `execute_sequence` | _true_  | if _true_ the associated tasks are executed one after the other, in the order in which they are listed         |
-| `break_on_success` | _false_ | if _true_, task execution stops after the first successfully executed task (when `execute_sequence` is _true_) |
-| `break_on_failure` | _false_ | if _true_, task execution stops after the first failed task (when `execute_sequence` is _true_)                |
-| `suspended`        | _false_ | if _true_, the condition will not be checked nor the associated tasks executed                                 |
-| `tasks`            | `[]`    | a list of task names that will be executed upon condition verification                                         |
+| Entry                      | Default | Description                                                                                                    |
+|----------------------------|:-------:|----------------------------------------------------------------------------------------------------------------|
+| `name`                     | N/A     | the unique name of the condition (mandatory)                                                                   |
+| `type`                     | N/A     | string describing the type of condition (mandatory, one of the possible values)                                |
+| `recurring`                | _false_ | if _false_, the condition is not checked anymore after first successful verification                           |
+| `max_failed_tasks_retries` | 0       | how many times the tasks will be retried, when at least one of them fails, in non recurring conditions         |
+| `execute_sequence`         | _true_  | if _true_ the associated tasks are executed one after the other, in the order in which they are listed         |
+| `break_on_success`         | _false_ | if _true_, task execution stops after the first successfully executed task (when `execute_sequence` is _true_) |
+| `break_on_failure`         | _false_ | if _true_, task execution stops after the first failed task (when `execute_sequence` is _true_)                |
+| `suspended`                | _false_ | if _true_, the condition will not be checked nor the associated tasks executed                                 |
+| `tasks`                    | `[]`    | a list of task names that will be executed upon condition verification                                         |
 
 When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_.[^6]
 
@@ -298,11 +299,15 @@ The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `
 
 For conditions that should be periodically checked and whose associated task list has to be run _whenever_ they occur (and not just after the first occurrence), the `recurring` entry can be set to _true_. Conditions with no associated tasks (eg. when the user comments out all the associated tasks in the configuration file) are not checked.
 
+The `max_failed_tasks_retries` field indicates how many times the execution of a failed task, or a set of tasks of which _at least one_ has failed, will be retried in non recurring conditions when the condition check is successful: a value of _N_ indicates that the check will be performed at most _N_ times after the first failure in tasks before giving up checking. If all the tasks succeed at the first time or within the provided number of retries, the non recurring condition will cease its checks anyway. A provided value of `-1` instructs **whenever** that the checks must continue indefinitely until all the associated tasks succeed, a value of `0` indicates that there should be no retries after the first unsuccessful run. Values below `-1` are not admitted. This parameter is ignored in recurring conditions. Tasks whose outcome is not checked do **not** count as unsuccessful.
+
 The `suspended` entry can assume a _true_ value for conditions for which the user does not want to remove the configuration but should be (at least temporarily) prevented. However, a condition that is suspended by configuration can be awakened using an interactive command (usually by a wrapper): [input commands](#input-commands) passed via the _stdin_ based interface can be used to suspend and resume condition checks when the scheduler is running.
 
 There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a table.
 
 Another entry is common to several condition types, that is `check_after`: it can be set to the number of seconds that **whenever** has to wait after startup (and after the last check for _recurring_ conditions) for a subsequent check: this is useful for conditions that can run on a more relaxed schedule, or whose check process has a significant cost in terms of resources, or whose associated task sequence might take a long time to finish. Simpler conditions and conditions based on time do not accept this entry.
+
+Some condition types can set the `recur_after_check_failure` flag: it allows for avoidance of multiple subsequent task runs in case of a persistent situation that causes _recurring_ condition checks to be successful: the associated tasks are run as soon as the check is successful for the first time, then task execution is prevented as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 While a condition check or the execution of an associated task sequence is underway, the condition is marked as _busy_, and while a condition is in this state no further checks are performed. The condition is released from its _busy_ state only after all checks and tasks have been performed. This is important when long-running checks and tasks are requested, as this flag ensures that checks and tasks for a single long-running and recurring activity cannot overlap.
 
@@ -324,6 +329,7 @@ interval_seconds = 3600
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_failed_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -334,7 +340,7 @@ tasks = [
     ]
 ```
 
-describing a condition that is verified one hour after **whenever** has started, and not anymore after the first occurrence -- because `recurring` is _false_ here. Were it _true_, the condition would be verified _every_ hour.
+describing a condition that is verified one hour after **whenever** has started, and not anymore after the first occurrence -- because `recurring` is _false_ here and no retries are allowed. Were it _true_, the condition would be verified _every_ hour.
 
 The specific parameters for this type of condition are:
 
@@ -455,6 +461,7 @@ command_arguments = [
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_failed_tasks_retries = 3
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -464,7 +471,7 @@ tasks = [
     "Task2",
     ]
 check_after = 10
-
+recur_after_check_failure = true
 match_exact = false
 match_regular_expression = false
 success_stdout = "expected"
@@ -480,28 +487,31 @@ set_environment_variables = true
 environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
 ```
 
+Note that the `recurring` flag is `false`, and `max_failed_tasks_retries` is set to _3_: this means that the check will be performed _three more times_ after the first unsuccessful run of the associated tasks.
+
 The following table illustrates the parameters specific to _command_ based conditions:
 
-| Entry                       | Default | Description                                                                                                                  |
-|-----------------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
-| `type`                      | N/A     | has to be set to `"interval"` (mandatory)                                                                                    |
-| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_ |
-| `startup_path`              | N/A     | the directory in which the command is started (mandatory)                                                                    |
-| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)              |
-| `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                  |
-| `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                                                 |
-| `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                                        |
-| `case_sensitive`            | _false_ | if _true_, substring search or match and regular expressions match is performed case-sensitively                             |
-| `timeout_seconds`           | (empty) | if set, the number of seconds to wait before the command is terminated (with unsuccessful outcome)                           |
-| `success_status`            | (empty) | if set, when the execution ends with the provided exit code the condition is considered verified                             |
-| `failure_status`            | (empty) | if set, when the execution ends with the provided exit code the condition is considered failed                               |
-| `success_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task successful                                       |
-| `success_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task successful                                       |
-| `failure_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task failed                                           |
-| `failure_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task failed                                           |
-| `include_environment`       | _true_  | if _true_, the command is executed in the same environment in which **whenever** was started                                 |
-| `set_environment_variables` | _true_  | if _true_, **whenever** sets environment variables reporting the names of the task and the condition                         |
-| `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                              |
+| Entry                       | Default | Description                                                                                                                   |
+|-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                      | N/A     | has to be set to `"interval"` (mandatory)                                                                                     |
+| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_check_failure` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `startup_path`              | N/A     | the directory in which the command is started (mandatory)                                                                     |
+| `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)               |
+| `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                   |
+| `match_exact`               | _false_ | if _true_, the entire output is matched instead of searching for a substring                                                  |
+| `match_regular_expression`  | _false_ | if _true_, the match strings are considered regular expressions instead of substrings                                         |
+| `case_sensitive`            | _false_ | if _true_, substring search or match and regular expressions match is performed case-sensitively                              |
+| `timeout_seconds`           | (empty) | if set, the number of seconds to wait before the command is terminated (with unsuccessful outcome)                            |
+| `success_status`            | (empty) | if set, when the execution ends with the provided exit code the condition is considered verified                              |
+| `failure_status`            | (empty) | if set, when the execution ends with the provided exit code the condition is considered failed                                |
+| `success_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task successful                                        |
+| `success_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task successful                                        |
+| `failure_stdout`            | (empty) | the substring or RE to be found or matched on _stdout_ to consider the task failed                                            |
+| `failure_stderr`            | (empty) | the substring or RE to be found or matched on _stderr_ to consider the task failed                                            |
+| `include_environment`       | _true_  | if _true_, the command is executed in the same environment in which **whenever** was started                                  |
+| `set_environment_variables` | _true_  | if _true_, **whenever** sets environment variables reporting the names of the task and the condition                          |
+| `environment_variables`     | `{}`    | extra variables that might have to be set in the environment in which the provided command runs                               |
 
 If `set_environment_variables` is _true_, **whenever** sets the following environment variable:
 
@@ -526,6 +536,7 @@ script = '''
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_failed_tasks_retries = -1
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -535,19 +546,23 @@ tasks = [
     "Task2",
     ]
 check_after = 10
+recur_after_check_failure = false
 expect_all = false
 expected_results = { result = 10 }
 ```
 
+Note that the `recurring` flag is `false`, and `max_failed_tasks_retries` is set to _-1_: this means that the check will be performed until **all** the associated tasks are executed successfully.
+
 The specific parameters are described in the following table:
 
-| Entry              | Default | Description                                                                                                                  |
-|--------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
-| `type`             | N/A     | has to be set to `"lua"` (mandatory)                                                                                         |
-| `check_after`      | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_ |
-| `script`           | N/A     | the _Lua_ code that has to be executed by the internal interpreter (mandatory)                                               |
-| `expect_all`       | _false_ | if _true_, all the expected results have to be matched to consider the task successful, otherwise at least one               |
-| `expected_results` | `{}`    | a dictionary of variable names and their expected values to be checked after execution                                       |
+| Entry                       | Default | Description                                                                                                                   |
+|-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                      | N/A     | has to be set to `"lua"` (mandatory)                                                                                          |
+| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_check_failure` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `script`                    | N/A     | the _Lua_ code that has to be executed by the internal interpreter (mandatory)                                                |
+| `expect_all`                | _false_ | if _true_, all the expected results have to be matched to consider the task successful, otherwise at least one                |
+| `expected_results`          | `{}`    | a dictionary of variable names and their expected values to be checked after execution                                        |
 
 The same rules and possibilities seen for _Lua_ based tasks also apply to conditions: the embedded _Lua_ interpreter is enriched with library functions that allow to write to the **whenever** log, at all logging levels (_error_, _warn_, _info_, _debug_, _trace_). The library functions are the following:
 
@@ -562,6 +577,8 @@ and take a single string as their argument. Also, from the embedded _Lua_ interp
 * `whenever_condition` is the name of the condition being checked.
 
 External scripts can be executed via `dofile("/path/to/script.lua")` or by using the `require` function. While a successful execution is always determined by matching the provided criteria, an error in the script is always considered a failure.
+
+The `recur_after_check_failure` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
@@ -614,13 +631,14 @@ interface = "org.freedesktop.DBus"
 method = "NameHasOwner"
 
 # optional parameters (if omitted, defaults are used)
-recurring = false
+recurring = true
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
 suspended = true
 tasks = [ "Task1", "Task2" ]
 check_after = 60
+recur_after_check_failure = false
 parameter_call = """[
         "SomeObject",
         [42, "a structured parameter"],
@@ -650,18 +668,19 @@ Since `parameter_check_all` is _false_, satisfaction of one of the provided crit
 
 The specific parameters are described in the following table:
 
-| Entry                 | Default | Description                                                                                                                  |
-|-----------------------|:-------:|------------------------------------------------------------------------------------------------------------------------------|
-| `type`                | N/A     | has to be set to `"dbus"` (mandatory)                                                                                        |
-| `check_after`         | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_ |
-| `bus`                 | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
-| `service`             | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)              |
-| `object_path`         | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                         |
-| `interface`           | N/A     | the _interface_ to invoke or query (mandatory)                                                                               |
-| `method`              | N/A     | the name of the _method_ to be invoked (mandatory)                                                                           |
-| `parameter_call`      | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                  |
-| `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient   |
-| `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                |
+| Entry                       | Default | Description                                                                                                                   |
+|-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                      | N/A     | has to be set to `"dbus"` (mandatory)                                                                                         |
+| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_check_failure` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `bus`                       | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory)  |
+| `service`                   | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)               |
+| `object_path`               | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
+| `interface`                 | N/A     | the _interface_ to invoke or query (mandatory)                                                                                |
+| `method`                    | N/A     | the name of the _method_ to be invoked (mandatory)                                                                            |
+| `parameter_call`            | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                   |
+| `parameter_check_all`       | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient    |
+| `parameter_check`           | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                 |
 
 The value corresponding to the `service` entry is often referred to as _bus name_ in various documents: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
@@ -670,6 +689,8 @@ Methods resulting in an error will _always_ be considered as failed: therefore i
 Working on a file that mixes TOML and JSON, it is worth to remind that JSON supports inline maps distributed on multiple lines (see the example above, the third constraint) and that in JSON trailing commas are considered an error. Also, JSON does not support _literal_ strings, therefore when using backslashes (for instance when specifying typed values with strings as described above), the backslashes themselves have to be escaped within the provided JSON strings.
 
 Note that DBus based conditions are supported on Windows, however DBus should be running for such conditions to be useful -- which is very unlikely to say the least.
+
+The `recur_after_check_failure` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
 
@@ -684,6 +705,7 @@ type = "bucket"         # "bucket" or "event" are the allowed values
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_failed_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false

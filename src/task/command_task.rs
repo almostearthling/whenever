@@ -374,41 +374,6 @@ impl CommandTask {
     /// The `CommandTask` is initialized according to the values provided in
     /// the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `CommandTask` an error is raised.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[task]]
-    /// name = "CommandTaskName"
-    /// type = "command"                            # mandatory value
-    /// startup_path = "/some/startup/directory"    # must exist
-    /// command = "executable_name"
-    /// command_arguments = [
-    ///     "arg1",
-    ///     "arg2",
-    /// #   ...
-    ///     ]
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// match_exact = false
-    /// match_regular_expression = false
-    /// success_stdout = "expected"
-    /// success_stderr = "expected_error"
-    /// success_status = 0
-    /// failure_stdout = "unexpected"
-    /// failure_stderr = "unexpected_error"
-    /// failure_status = 2
-    /// timeout_seconds = 30
-    ///
-    /// case_sensitive = false
-    /// include_environment = false
-    /// set_environment_variables = false
-    /// environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2", ... }
-    /// ```
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"command"` mandatorily for this type of `Task`.
     pub fn load_cfgmap(cfgmap: &CfgMap) -> std::io::Result<CommandTask> {
 
         let check = vec![
