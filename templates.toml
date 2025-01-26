@@ -58,6 +58,7 @@ interval_seconds = 3600
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -77,6 +78,7 @@ idle_seconds = 3600
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -102,6 +104,7 @@ command_arguments = [
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -111,6 +114,7 @@ tasks = [
     "Task2",
     ]
 check_after = 10
+recur_after_failed_check = false
 
 match_exact = false
 match_regular_expression = false
@@ -139,6 +143,7 @@ script = '''
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -148,6 +153,7 @@ tasks = [
     "Task2",
     ]
 check_after = 10
+recur_after_failed_check = false
 expect_all = false
 expected_results = { result = 10 }
 
@@ -164,6 +170,7 @@ time_specifications = [
     { hour = 12, minute = 0, weekday = "wed" },
     ]
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -182,6 +189,7 @@ type = "bucket"         # "bucket" or "event" are the allowed values
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -205,12 +213,14 @@ method = "NameHasOwner"
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
 suspended = true
 tasks = [ "Task1", "Task2" ]
 check_after = 60
+recur_after_failed_check = false
 parameter_call = """[
         "SomeObject",
         [42, "a structured parameter"],

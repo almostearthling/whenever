@@ -2383,7 +2383,7 @@ impl Condition for DbusMethodCondition {
         // is required to succeed again
         let can_succeed = self.last_check_failed || !self.recur_after_failed_check;
         self.last_check_failed = !verified;
-        if can_succeed && verified {
+        if !can_succeed && verified {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_END,
