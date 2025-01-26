@@ -463,6 +463,7 @@ pub struct DbusMethodCondition {
     cond_name: String,
     task_names: Vec<String>,
     recurring: bool,
+    max_retries: i64,
     exec_sequence: bool,
     break_on_failure: bool,
     break_on_success: bool,
@@ -474,6 +475,8 @@ pub struct DbusMethodCondition {
     last_succeeded: Option<Instant>,
     startup_time: Option<Instant>,
     task_registry: Option<&'static TaskRegistry>,
+    left_retries: i64,
+    tasks_failed: bool,
 
     // specific members
     // parameters
@@ -485,10 +488,16 @@ pub struct DbusMethodCondition {
     param_call: Option<Vec<zvariant::OwnedValue>>,
     param_checks: Option<Vec<ParameterCheckTest>>,
     param_checks_all: bool,
+    recur_after_failed_check: bool,
     check_after: Option<Duration>,
 
     // internal values
     check_last: Instant,
+
+    // this is different from has_succeeded: the latter is set when the
+    // condition has actually been successful, which in this case may not
+    // be true, as a persistent success may not let the condition succeed
+    last_check_failed: bool,
 }
 
 
@@ -498,6 +507,7 @@ impl Hash for DbusMethodCondition {
         // common part
         self.cond_name.hash(state);
         self.recurring.hash(state);
+        self.max_retries.hash(state);
         self.exec_sequence.hash(state);
         self.break_on_failure.hash(state);
         self.break_on_success.hash(state);
@@ -549,6 +559,7 @@ impl Hash for DbusMethodCondition {
         self.param_checks.hash(state);
         self.param_checks_all.hash(state);
         self.check_after.hash(state);
+        self.recur_after_failed_check.hash(state);
     }
 }
 
@@ -580,6 +591,7 @@ impl DbusMethodCondition {
             cond_name: String::from(name),
             task_names: Vec::new(),
             recurring: false,
+            max_retries: 0,
             exec_sequence: true,
             break_on_failure: false,
             break_on_success: false,
@@ -591,6 +603,8 @@ impl DbusMethodCondition {
             last_succeeded: None,
             has_succeeded: false,
             task_registry: None,
+            left_retries: 0,
+            tasks_failed: false,
 
             // specific members initialization
             // parameters
@@ -603,9 +617,11 @@ impl DbusMethodCondition {
             param_call: None,
             param_checks: None,
             param_checks_all: false,
+            recur_after_failed_check: false,
 
-            // specific members initialization
+            // internal values
             check_last: t,
+            last_check_failed: true,
         }
     }
 
@@ -634,6 +650,13 @@ impl DbusMethodCondition {
         self
     }
 
+    /// Retry `num` times on task failure if not recurring
+    pub fn retries(mut self, num: i64) -> Self {
+        assert!(num >= -1, "max number of retries must be positive or -1");
+        self.max_retries = num;
+        self
+    }
+
     /// Set the bus name to the provided value (checks for validity)
     pub fn set_bus(&mut self, name: &str) -> bool {
         if RE_DBUS_BUS_NAME.is_match(name) {
@@ -642,6 +665,15 @@ impl DbusMethodCondition {
         }
         false
     }
+
+    /// Constructor modifier to specify that the condition is verified on
+    /// check success only if there has been at least one failure after the
+    /// last successful test
+    pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
+        self.recur_after_failed_check = yes;
+        self
+    }
+
 
     /// Return an owned copy of the bus name
     pub fn bus(&self) -> Option<String> { self.bus.clone() }
@@ -698,69 +730,6 @@ impl DbusMethodCondition {
     /// limited to accepting only lists of elements of the same type, and in
     /// our case we need to mix types both as arguments to a call and as index
     /// sequences.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[condition]]
-    /// name = "DbusMethodConditionName"
-    /// type = "dbus"                       # mandatory value
-    /// bus = ":session"                    # either ":session" or ":system"
-    /// service = "org.freedesktop.DBus"
-    /// object_path = "/org/freedesktop/DBus"
-    /// interface = "org.freedesktop.DBus"
-    /// method = "NameHasOwner"
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// recurring = false
-    /// execute_sequence = true
-    /// break_on_failure = false
-    /// break_on_success = false
-    /// suspended = true
-    /// tasks = [ "Task1", "Task2", ... ]
-    /// check_after = 60
-    ///
-    /// parameter_call = """[
-    ///         "SomeObject",
-    ///         [42, "a structured parameter"],
-    ///         ["the following is an u64", "\\t42"]
-    ///     ]"""
-    /// parameter_check_all = false
-    /// parameter_check = """[
-    ///          { "index": 0, "operator": "eq", "value": false },
-    ///          { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-    ///          {
-    ///              "index": [2, "mapidx", 5],
-    ///              "operator": "match",
-    ///              "value": "^[A-Z][a-zA-Z0-9_]*$"
-    ///          }
-    ///     ]"""
-    /// ```
-    ///
-    /// Normally the JSON->DBUS conversion is performed as follows when
-    /// interpreting the `parameter_call` entry:
-    ///
-    /// - Boolean --> Boolean
-    /// - Integer --> I64
-    /// - Float --> F64
-    /// - String --> String
-    /// - List --> Array
-    /// - Map --> Dictionary (_string_ keyed!)
-    ///
-    /// Values of types not directly converted can be provided, in order to
-    /// comply with signature, as strings (generally _literal_) prefixed with
-    /// a backslash, immediately followed by the signature character, as in
-    /// https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types,
-    /// and then the value to convert filling the string itself. This actually
-    /// yields for all _basic_ types. A double backslash is interpreted as a
-    /// backslash, and characters not specifying a basic type cause the string
-    /// to be interpreted literally: '\u42' is thus 42u32, and '\w100' is the
-    /// string "\w100" (including the backslash). Dictionaries with non-string
-    /// keys are _not_ supported.
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"dbus"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<DbusMethodCondition> {
 
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
@@ -785,6 +754,7 @@ impl DbusMethodCondition {
             "tags",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -798,6 +768,7 @@ impl DbusMethodCondition {
             "parameter_call",
             "parameter_check_all",
             "parameter_check",
+            "recur_after_failed_check",
         ];
         cfg_check_keys(cfgmap, &check)?;
 
@@ -859,6 +830,9 @@ impl DbusMethodCondition {
         if let Some(v) = cfg_bool(cfgmap, "recurring")? {
             new_condition.recurring = v;
         }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)? {
+            new_condition.max_retries = v;
+        }
         if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
             new_condition.exec_sequence = v;
         }
@@ -875,6 +849,9 @@ impl DbusMethodCondition {
         // specific optional parameter initialization
         if let Some(v) = cfg_int_check_above_eq(cfgmap, "check_after", 1)? {
             new_condition.check_after = Some(Duration::from_secs(v as u64));
+        }
+        if let Some(v) = cfg_bool(cfgmap, "recur_after_failed_check")? {
+            new_condition.recur_after_failed_check = v;
         }
 
         // this is tricky: we build a list of elements constituted by:
@@ -1066,7 +1043,7 @@ impl DbusMethodCondition {
             // and a warning log message will be issued (see below)
             new_condition.param_checks = Some(param_checks);
 
-            // `parameter_check_all` only makes sense if the paramenter check
+            // `parameter_check_all` only makes sense if the parameter check
             // list was built: for this reason it is set only in this case
             if let Some(v) = cfg_bool(cfgmap, "parameter_check_all")? {
                 new_condition.param_checks_all = v;
@@ -1171,6 +1148,7 @@ impl DbusMethodCondition {
             "tags",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -1184,6 +1162,7 @@ impl DbusMethodCondition {
             "parameter_call",
             "parameter_check_all",
             "parameter_check",
+            "recur_after_failed_check",
         ];
         cfg_check_keys(cfgmap, &check)?;
 
@@ -1228,12 +1207,14 @@ impl DbusMethodCondition {
         }
 
         cfg_bool(cfgmap, "recurring")?;
+        cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)?;
         cfg_bool(cfgmap, "execute_sequence")?;
         cfg_bool(cfgmap, "break_on_failure")?;
         cfg_bool(cfgmap, "break_on_success")?;
         cfg_bool(cfgmap, "suspended")?;
 
         cfg_int_check_above_eq(cfgmap, "check_after", 1)?;
+        cfg_bool(cfgmap, "recur_after_failed_check")?;
 
         // this is tricky: we build a list of elements constituted by:
         // - an index list (integers and strings, mixed) which will address
@@ -1529,13 +1510,36 @@ impl Condition for DbusMethodCondition {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
+        self.left_retries = self.max_retries + 1;
+        self.tasks_failed = true;
         Ok(true)
+    }
+
+
+    fn left_retries(&self) -> Option<i64> {
+        if self.max_retries == -1 {
+            None
+        } else {
+            Some(self.left_retries)
+        }
+    }
+
+    fn set_retried(&mut self) {
+        if self.left_retries > 0 {
+            self.left_retries -= 1;
+        }
     }
 
 
     fn start(&mut self) -> Result<bool, std::io::Error> {
         self.suspended = false;
+        self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
+
+        // set the tasks_failed flag upon start: no task has been run now
+        // and this is equivalent to a failure; the flag was set to `false`
+        // upon creation in order to have a zero-initialization
+        self.tasks_failed = true;
         Ok(true)
     }
 
@@ -1560,6 +1564,15 @@ impl Condition for DbusMethodCondition {
 
     fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
         Ok(self.task_names.clone())
+    }
+
+
+    fn any_tasks_failed(&self) -> bool {
+        self.tasks_failed
+    }
+
+    fn set_tasks_failed(&mut self, failed: bool) {
+        self.tasks_failed = failed;
     }
 
 
@@ -2366,7 +2379,20 @@ impl Condition for DbusMethodCondition {
         // only run at certain intervals
         self.check_last = t;
 
-        Ok(Some(verified))
+        // prevent success if in persistent success state and status change
+        // is required to succeed again
+        let can_succeed = self.last_check_failed || !self.recur_after_failed_check;
+        self.last_check_failed = !verified;
+        if !can_succeed && verified {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_END,
+                LOG_STATUS_MSG,
+                &format!("persistent success status: waiting for failure to recur"),
+            );
+        }
+
+        Ok(Some(verified && can_succeed))
     }
 
 }

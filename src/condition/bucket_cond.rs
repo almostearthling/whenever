@@ -99,6 +99,7 @@ pub struct BucketCondition {
     cond_name: String,
     task_names: Vec<String>,
     recurring: bool,
+    max_retries: i64,
     exec_sequence: bool,
     break_on_failure: bool,
     break_on_success: bool,
@@ -110,6 +111,8 @@ pub struct BucketCondition {
     last_succeeded: Option<Instant>,
     startup_time: Option<Instant>,
     task_registry: Option<&'static TaskRegistry>,
+    left_retries: i64,
+    tasks_failed: bool,
 
     // specific members
     // parameters
@@ -126,6 +129,7 @@ impl Hash for BucketCondition {
         // common part
         self.cond_name.hash(state);
         self.recurring.hash(state);
+        self.max_retries.hash(state);
         self.exec_sequence.hash(state);
         self.break_on_failure.hash(state);
         self.break_on_success.hash(state);
@@ -165,6 +169,7 @@ impl BucketCondition {
             cond_name: String::from(name),
             task_names: Vec::new(),
             recurring: false,
+            max_retries: 0,
             exec_sequence: true,
             break_on_failure: false,
             break_on_success: false,
@@ -176,6 +181,8 @@ impl BucketCondition {
             last_succeeded: None,
             has_succeeded: false,
             task_registry: None,
+            left_retries: 0,
+            tasks_failed: false,
 
             // specific members initialization
             // parameters
@@ -211,6 +218,13 @@ impl BucketCondition {
         self
     }
 
+    /// Retry `num` times on task failure if not recurring
+    pub fn retries(mut self, num: i64) -> Self {
+        assert!(num >= -1, "max number of retries must be positive or -1");
+        self.max_retries = num;
+        self
+    }
+
     /// Set the execution bucket, which has to be defined at application level
     pub fn set_execution_bucket(&mut self, bucket: &'static ExecutionBucket) -> std::io::Result<bool> {
         self.execution_bucket = Some(bucket);
@@ -222,26 +236,6 @@ impl BucketCondition {
     /// The `BucketCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `BucketCondition` an error is raised.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[condition]]
-    /// name = "BucketConditionName"
-    /// type = "bucket"         # "bucket" or "event" are the allowed values
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// recurring = false
-    /// execute_sequence = true
-    /// break_on_failure = false
-    /// break_on_success = false
-    /// suspended = false
-    /// tasks = [ "Task1", "Task2", ... ]
-    /// ```
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"bucket"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<BucketCondition> {
 
         let check = vec![
@@ -250,6 +244,7 @@ impl BucketCondition {
             "tags",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -312,6 +307,9 @@ impl BucketCondition {
         if let Some(v) = cfg_bool(cfgmap, "recurring")? {
             new_condition.recurring = v;
         }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)? {
+            new_condition.max_retries = v;
+        }
         if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
             new_condition.exec_sequence = v;
         }
@@ -350,6 +348,7 @@ impl BucketCondition {
             "tags",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -391,6 +390,7 @@ impl BucketCondition {
         }
 
         cfg_bool(cfgmap, "recurring")?;
+        cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)?;
         cfg_bool(cfgmap, "execute_sequence")?;
         cfg_bool(cfgmap, "break_on_failure")?;
         cfg_bool(cfgmap, "break_on_success")?;
@@ -460,13 +460,36 @@ impl Condition for BucketCondition {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
+        self.left_retries = self.max_retries + 1;
+        self.tasks_failed = true;
         Ok(true)
+    }
+
+
+    fn left_retries(&self) -> Option<i64> {
+        if self.max_retries == -1 {
+            None
+        } else {
+            Some(self.left_retries)
+        }
+    }
+
+    fn set_retried(&mut self) {
+        if self.left_retries > 0 {
+            self.left_retries -= 1;
+        }
     }
 
 
     fn start(&mut self) -> Result<bool, std::io::Error> {
         self.suspended = false;
+        self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
+
+        // set the tasks_failed flag upon start: no task has been run now
+        // and this is equivalent to a failure; the flag was set to `false`
+        // upon creation in order to have a zero-initialization
+        self.tasks_failed = true;
         Ok(true)
     }
 
@@ -491,6 +514,15 @@ impl Condition for BucketCondition {
 
     fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
         Ok(self.task_names.clone())
+    }
+
+
+    fn any_tasks_failed(&self) -> bool {
+        self.tasks_failed
+    }
+
+    fn set_tasks_failed(&mut self, failed: bool) {
+        self.tasks_failed = failed;
     }
 
 

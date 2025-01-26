@@ -60,6 +60,7 @@ pub struct CommandCondition {
     cond_name: String,
     task_names: Vec<String>,
     recurring: bool,
+    max_retries: i64,
     exec_sequence: bool,
     break_on_failure: bool,
     break_on_success: bool,
@@ -71,6 +72,8 @@ pub struct CommandCondition {
     last_succeeded: Option<Instant>,
     startup_time: Option<Instant>,
     task_registry: Option<&'static TaskRegistry>,
+    left_retries: i64,
+    tasks_failed: bool,
 
     // specific members
     // parameters
@@ -82,6 +85,7 @@ pub struct CommandCondition {
     case_sensitive: bool,
     include_env: bool,
     set_envvars: bool,
+    recur_after_failed_check: bool,
     environment_vars: HashMap<String, String>,
     check_after: Option<Duration>,
     success_stdout: Option<String>,
@@ -99,6 +103,11 @@ pub struct CommandCondition {
     _process_status: u32,
     _process_failed: bool,
     _process_duration: Duration,
+
+    // this is different from has_succeeded: the latter is set when the
+    // condition has actually been successful, which in this case may not
+    // be true, as a persistent success may not let the condition succeed
+    last_check_failed: bool,
 }
 
 
@@ -108,6 +117,7 @@ impl Hash for CommandCondition {
         // common part
         self.cond_name.hash(state);
         self.recurring.hash(state);
+        self.max_retries.hash(state);
         self.exec_sequence.hash(state);
         self.break_on_failure.hash(state);
         self.break_on_success.hash(state);
@@ -126,6 +136,7 @@ impl Hash for CommandCondition {
         self.include_env.hash(state);
         self.set_envvars.hash(state);
         self.timeout.hash(state);
+        self.recur_after_failed_check.hash(state);
 
         // 0 is hashed on the else branch because if we get two items, for
         // instance, one of which has only success_stdout defined as a string
@@ -203,6 +214,7 @@ impl CommandCondition {
             cond_name: String::from(name),
             task_names: Vec::new(),
             recurring: false,
+            max_retries: 0,
             exec_sequence: true,
             break_on_failure: false,
             break_on_success: false,
@@ -214,6 +226,8 @@ impl CommandCondition {
             last_succeeded: None,
             has_succeeded: false,
             task_registry: None,
+            left_retries: 0,
+            tasks_failed: false,
 
             // specific members initialization
             // parameters
@@ -225,6 +239,7 @@ impl CommandCondition {
             case_sensitive: false,
             include_env: true,
             set_envvars: true,
+            recur_after_failed_check: false,
             environment_vars: HashMap::new(),
             check_after: None,
             success_stdout: None,
@@ -237,6 +252,7 @@ impl CommandCondition {
 
             // internal values
             check_last: t,
+            last_check_failed: true,
             _process_stdout: String::new(),
             _process_stderr: String::new(),
             _process_status: 0,
@@ -282,6 +298,13 @@ impl CommandCondition {
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
+        self
+    }
+
+    /// Retry `num` times on task failure if not recurring
+    pub fn retries(mut self, num: i64) -> Self {
+        assert!(num >= -1, "max number of retries must be positive or -1");
+        self.max_retries = num;
         self
     }
 
@@ -421,55 +444,20 @@ impl CommandCondition {
         self
     }
 
+    /// Constructor modifier to specify that the condition is verified on
+    /// check success only if there has been at least one failure after the
+    /// last successful test
+    pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
+        self.recur_after_failed_check = yes;
+        self
+    }
+
+
     /// Load a `CommandCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
     /// The `CommandCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `CommandCondition` an error is raised.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[condition]]
-    /// name = "CommandConditionName"
-    /// type = "command"                            # mandatory value
-    ///
-    /// startup_path = "/some/startup/directory"    # must exist
-    /// command = "executable_name"
-    /// command_arguments = [
-    ///     "arg1",
-    ///     "arg2",
-    /// #   ...
-    ///     ]
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// recurring = false
-    /// execute_sequence = true
-    /// break_on_failure = false
-    /// break_on_success = false
-    /// suspended = true
-    /// tasks = [ "Task1", "Task2", ... ]
-    /// check_after = 10
-    ///
-    /// match_exact = false
-    /// match_regular_expression = false
-    /// success_stdout = "expected"
-    /// success_stderr = "expected_error"
-    /// success_status = 0
-    /// failure_stdout = "unexpected"
-    /// failure_stderr = "unexpected_error"
-    /// failure_status = 2
-    /// timeout_seconds = 30
-    ///
-    /// case_sensitive = false
-    /// include_environment = true
-    /// set_environment_variables = true
-    /// environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2", ... }
-    /// ```
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"command"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<CommandCondition> {
 
         let check = vec![
@@ -481,6 +469,7 @@ impl CommandCondition {
             "startup_path",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -490,6 +479,7 @@ impl CommandCondition {
             "case_sensitive",
             "include_environment",
             "set_environment_variables",
+            "recur_after_failed_check",
             "environment_variables",
             "check_after",
             "success_stdout",
@@ -561,6 +551,9 @@ impl CommandCondition {
         if let Some(v) = cfg_bool(cfgmap, "recurring")? {
             new_condition.recurring = v;
         }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)? {
+            new_condition.max_retries = v;
+        }
         if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
             new_condition.exec_sequence = v;
         }
@@ -589,6 +582,9 @@ impl CommandCondition {
         }
         if let Some(v) = cfg_bool(cfgmap, "set_environment_variables")? {
             new_condition.set_envvars = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "recur_after_failed_check")? {
+            new_condition.recur_after_failed_check = v;
         }
 
         // the environment variable case is peculiar and has no shortcut
@@ -679,6 +675,7 @@ impl CommandCondition {
             "startup_path",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -688,6 +685,7 @@ impl CommandCondition {
             "case_sensitive",
             "include_environment",
             "set_environment_variables",
+            "recur_after_failed_check",
             "environment_variables",
             "check_after",
             "success_stdout",
@@ -747,6 +745,7 @@ impl CommandCondition {
         }
 
         cfg_bool(cfgmap, "recurring")?;
+        cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)?;
         cfg_bool(cfgmap, "execute_sequence")?;
         cfg_bool(cfgmap, "break_on_failure")?;
         cfg_bool(cfgmap, "break_on_success")?;
@@ -759,6 +758,7 @@ impl CommandCondition {
         cfg_bool(cfgmap, "case_sensitive")?;
         cfg_bool(cfgmap, "include_environment")?;
         cfg_bool(cfgmap, "set_environment_variables")?;
+        cfg_bool(cfgmap, "recur_after_failed_check")?;
 
         // the environment variables case is peculiar and has no shortcut
         let cur_key = "environment_variables";
@@ -873,13 +873,36 @@ impl Condition for CommandCondition {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
+        self.left_retries = self.max_retries + 1;
+        self.tasks_failed = true;
         Ok(true)
+    }
+
+
+    fn left_retries(&self) -> Option<i64> {
+        if self.max_retries == -1 {
+            None
+        } else {
+            Some(self.left_retries)
+        }
+    }
+
+    fn set_retried(&mut self) {
+        if self.left_retries > 0 {
+            self.left_retries -= 1;
+        }
     }
 
 
     fn start(&mut self) -> Result<bool, std::io::Error> {
         self.suspended = false;
+        self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
+
+        // set the tasks_failed flag upon start: no task has been run now
+        // and this is equivalent to a failure; the flag was set to `false`
+        // upon creation in order to have a zero-initialization
+        self.tasks_failed = true;
         Ok(true)
     }
 
@@ -904,6 +927,15 @@ impl Condition for CommandCondition {
 
     fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
         Ok(self.task_names.clone())
+    }
+
+
+    fn any_tasks_failed(&self) -> bool {
+        self.tasks_failed
+    }
+
+    fn set_tasks_failed(&mut self, failed: bool) {
+        self.tasks_failed = failed;
     }
 
 
@@ -1879,7 +1911,10 @@ impl Condition for CommandCondition {
                         LogType::Warn,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
-                        &format!("could not execute command: `{}` (reason: {e})", self.command_line()),
+                        &format!(
+                            "could not execute command: `{}` (reason: {e})",
+                            self.command_line(),
+                        ),
                     );
                     self._process_failed = true;
                     failure_reason = FailureReason::Other;
@@ -1893,7 +1928,10 @@ impl Condition for CommandCondition {
                     LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("could not start command: `{}` (reason: {e})", self.command_line()),
+                    &format!(
+                        "could not start command: `{}` (reason: {e})",
+                        self.command_line(),
+                    ),
                 );
             } else {
                 self._process_failed = true;
@@ -1901,7 +1939,10 @@ impl Condition for CommandCondition {
                     LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("could not start command: `{}` (reason: unknown)", self.command_line()),
+                    &format!(
+                        "could not start command: `{}` (reason: unknown)",
+                        self.command_line(),
+                    ),
                 );
             }
             failure_reason = FailureReason::Other;
@@ -1912,54 +1953,87 @@ impl Condition for CommandCondition {
         // only run at certain intervals
         self.check_last = t;
 
-        // return true on success and false otherwise
+        // return true on success (not persistent unless allowed), false otherwise
         match failure_reason {
             FailureReason::NoFailure => {
+                let succeeds = self.last_check_failed || !self.recur_after_failed_check;
+                self.last_check_failed = false;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("condition checked successfully in {:.2}s", self._process_duration.as_secs_f64()),
+                    &format!(
+                        "condition checked successfully in {:.2}s",
+                        self._process_duration.as_secs_f64(),
+                    ),
                 );
-                Ok(Some(true))
+                if succeeds {
+                    Ok(Some(true))
+                } else {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_MSG,
+                        &format!(
+                            "persistent success status: waiting for failure to recur",
+                        ),
+                    );
+                    Ok(Some(false))
+                }
             }
             FailureReason::StdOut => {
+                self.last_check_failed = true;
                 self._process_failed = true;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("condition checked unsuccessfully (stdout check) in {:.2}s", self._process_duration.as_secs_f64()),
+                    &format!(
+                        "condition checked unsuccessfully (stdout check) in {:.2}s",
+                        self._process_duration.as_secs_f64(),
+                    ),
                 );
                 Ok(Some(false))
             }
             FailureReason::StdErr => {
+                self.last_check_failed = true;
                 self._process_failed = true;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("condition checked unsuccessfully (stderr check) in {:.2}s",self._process_duration.as_secs_f64()),
+                    &format!(
+                        "condition checked unsuccessfully (stderr check) in {:.2}s",
+                        self._process_duration.as_secs_f64(),
+                    ),
                 );
                 Ok(Some(false))
             }
             FailureReason::Status => {
+                self.last_check_failed = true;
                 self._process_failed = true;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("condition checked unsuccessfully (status check) in {:.2}s", self._process_duration.as_secs_f64()),
+                    &format!(
+                        "condition checked unsuccessfully (status check) in {:.2}s",
+                        self._process_duration.as_secs_f64(),
+                    ),
                 );
                 Ok(Some(false))
             }
             FailureReason::Other => {
+                self.last_check_failed = true;
                 self._process_failed = true;
                 self.log(
                     LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("task ended unexpectedly in {:.2}s", self._process_duration.as_secs_f64()),
+                    &format!(
+                        "task ended unexpectedly in {:.2}s",
+                        self._process_duration.as_secs_f64(),
+                    ),
                 );
                 Ok(Some(false))
             }

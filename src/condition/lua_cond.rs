@@ -53,6 +53,7 @@ pub struct LuaCondition {
     cond_name: String,
     task_names: Vec<String>,
     recurring: bool,
+    max_retries: i64,
     exec_sequence: bool,
     break_on_failure: bool,
     break_on_success: bool,
@@ -64,6 +65,8 @@ pub struct LuaCondition {
     last_succeeded: Option<Instant>,
     startup_time: Option<Instant>,
     task_registry: Option<&'static TaskRegistry>,
+    left_retries: i64,
+    tasks_failed: bool,
 
     // specific members
     // parameters
@@ -71,10 +74,16 @@ pub struct LuaCondition {
     set_vars: bool,
     expected: HashMap<String, LuaValue>,
     expect_all: bool,
+    recur_after_failed_check: bool,
     check_after: Option<Duration>,
 
     // internal values
     check_last: Instant,
+
+    // this is different from has_succeeded: the latter is set when the
+    // condition has actually been successful, which in this case may not
+    // be true, as a persistent success may not let the condition succeed
+    last_check_failed: bool,
 }
 
 
@@ -84,6 +93,7 @@ impl Hash for LuaCondition {
         // common part
         self.cond_name.hash(state);
         self.recurring.hash(state);
+        self.max_retries.hash(state);
         self.exec_sequence.hash(state);
         self.break_on_failure.hash(state);
         self.break_on_success.hash(state);
@@ -96,6 +106,7 @@ impl Hash for LuaCondition {
         self.script.hash(state);
         self.set_vars.hash(state);
         self.expect_all.hash(state);
+        self.recur_after_failed_check.hash(state);
 
         // expected values is sorted because the order in which they are
         // defined is not significant
@@ -139,6 +150,7 @@ impl LuaCondition {
             cond_name: String::from(name),
             task_names: Vec::new(),
             recurring: false,
+            max_retries: 0,
             exec_sequence: true,
             break_on_failure: false,
             break_on_success: false,
@@ -150,6 +162,8 @@ impl LuaCondition {
             last_succeeded: None,
             has_succeeded: false,
             task_registry: None,
+            left_retries: 0,
+            tasks_failed: false,
 
             // specific members initialization
             // parameters
@@ -157,10 +171,12 @@ impl LuaCondition {
             set_vars: true,
             expected: HashMap::new(),
             expect_all: false,
+            recur_after_failed_check: false,
             check_after: None,
 
             // internal values
             check_last: t,
+            last_check_failed: true,
         }
     }
 
@@ -187,6 +203,13 @@ impl LuaCondition {
     /// If true, create a recurring condition
     pub fn repeats(mut self, yes: bool) -> Self {
         self.recurring = yes;
+        self
+    }
+
+    /// Retry `num` times on task failure if not recurring
+    pub fn retries(mut self, num: i64) -> Self {
+        assert!(num >= -1, "max number of retries must be positive or -1");
+        self.max_retries = num;
         self
     }
 
@@ -217,12 +240,21 @@ impl LuaCondition {
     }
 
 
-    /// Constructor modifier to specify that the task should not set the
+    /// Constructor modifier to specify that the condition should not set the
     /// context variables that specify the task name and the condition that
     /// triggered the task, when set to `false`. The default behaviour is to
     /// export those variables.
     pub fn sets_vars(mut self, yes: bool) -> Self {
         self.set_vars = yes;
+        self
+    }
+
+
+    /// Constructor modifier to specify that the condition is verified on
+    /// check success only if there has been at least one failure after the
+    /// last successful test
+    pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
+        self.recur_after_failed_check = yes;
         self
     }
 
@@ -262,33 +294,6 @@ impl LuaCondition {
     /// The `LuaCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `LuaCondition` an error is raised.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[condition]]
-    /// name = "CommandConditionName"
-    /// name = "LuaTaskName"
-    /// type = "lua"                                # mandatory value
-    /// script = '''
-    ///     log.info("hello from Lua");
-    ///     result = 10;
-    ///     '''
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// expect_all = false
-    /// expected_results = { result = 10, ... }
-    /// tasks = [ "Task1", "Task2", ... ]
-    /// ```
-    ///
-    /// Note that the script must be inline in the TOML file: this means that
-    /// the value for the `script` parameter cannot be the path to a script.
-    /// However the script can contain the `require` function, or directly
-    /// invoke a script via `dofile("/path/to/script.lua")` in a one-liner.
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"lua"` mandatorily for this type of `Condition`.
     pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<LuaCondition> {
 
         fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<LuaCondition> {
@@ -305,11 +310,13 @@ impl LuaCondition {
             "script",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
             "suspended",
             "expect_all",
+            "recur_after_failed_check",
             "expected_results",
             "check_after",
         ];
@@ -365,6 +372,9 @@ impl LuaCondition {
         if let Some(v) = cfg_bool(cfgmap, "recurring")? {
             new_condition.recurring = v;
         }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)? {
+            new_condition.max_retries = v;
+        }
         if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
             new_condition.exec_sequence = v;
         }
@@ -381,6 +391,9 @@ impl LuaCondition {
         // specific optional parameter initialization
         if let Some(v) = cfg_bool(cfgmap, "expect_all")? {
             new_condition.expect_all = v;
+        }
+        if let Some(v) = cfg_bool(cfgmap, "recur_after_failed_check")? {
+            new_condition.recur_after_failed_check = v;
         }
 
         // expected results are in a complex map, thus no shortcut is given
@@ -459,11 +472,13 @@ impl LuaCondition {
             "script",
             "tasks",
             "recurring",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
             "suspended",
             "expect_all",
+            "recur_after_failed_check",
             "expected_results",
             "check_after",
         ];
@@ -503,6 +518,7 @@ impl LuaCondition {
         }
 
         cfg_bool(cfgmap, "recurring")?;
+        cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)?;
         cfg_bool(cfgmap, "execute_sequence")?;
         cfg_bool(cfgmap, "break_on_failure")?;
         cfg_bool(cfgmap, "break_on_success")?;
@@ -511,6 +527,7 @@ impl LuaCondition {
         cfg_int_check_above_eq(cfgmap, "check_after", 1)?;
 
         cfg_bool(cfgmap, "expect_all")?;
+        cfg_bool(cfgmap, "recur_after_failed_check")?;
 
         // expected results are in a complex map, thus no shortcut is given
         let cur_key = "expected_results";
@@ -615,13 +632,36 @@ impl Condition for LuaCondition {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
+        self.left_retries = self.max_retries + 1;
+        self.tasks_failed = true;
         Ok(true)
+    }
+
+
+    fn left_retries(&self) -> Option<i64> {
+        if self.max_retries == -1 {
+            None
+        } else {
+            Some(self.left_retries)
+        }
+    }
+
+    fn set_retried(&mut self) {
+        if self.left_retries > 0 {
+            self.left_retries -= 1;
+        }
     }
 
 
     fn start(&mut self) -> Result<bool, std::io::Error> {
         self.suspended = false;
+        self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
+
+        // set the tasks_failed flag upon start: no task has been run now
+        // and this is equivalent to a failure; the flag was set to `false`
+        // upon creation in order to have a zero-initialization
+        self.tasks_failed = true;
         Ok(true)
     }
 
@@ -646,6 +686,15 @@ impl Condition for LuaCondition {
 
     fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
         Ok(self.task_names.clone())
+    }
+
+
+    fn any_tasks_failed(&self) -> bool {
+        self.tasks_failed
+    }
+
+    fn set_tasks_failed(&mut self, failed: bool) {
+        self.tasks_failed = failed;
     }
 
 
@@ -899,43 +948,68 @@ impl Condition for LuaCondition {
         let duration = SystemTime::now().duration_since(startup_time).unwrap();
         match failure_reason {
             FailureReason::NoFailure => {
+                let succeeds = self.last_check_failed || !self.recur_after_failed_check;
+                self.last_check_failed = false;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     &format!(
                         "condition checked successfully in {:.2}s",
-                        duration.as_secs_f64()));
-                Ok(Some(true))
+                        duration.as_secs_f64(),
+                    ),
+                );
+                if succeeds {
+                    Ok(Some(true))
+                } else {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_MSG,
+                        &format!(
+                            "persistent success status: waiting for failure to recur",
+                        ),
+                    );
+                    Ok(Some(false))
+                }
             }
             FailureReason::NoCheck => {
+                self.last_check_failed = true;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
                         "condition checked with no outcome in {:.2}s",
-                        duration.as_secs_f64()));
+                        duration.as_secs_f64(),
+                    ),
+                );
                 Ok(None)
             }
             FailureReason::VariableMatch => {
+                self.last_check_failed = true;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
                         "condition checked unsuccessfully (unmatched values) in {:.2}s",
-                        duration.as_secs_f64()));
+                        duration.as_secs_f64(),
+                    ),
+                );
                 Ok(Some(false))
             }
             FailureReason::ScriptError => {
+                self.last_check_failed = true;
                 self.log(
                     LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
                         "condition checked unsuccessfully (script error) in {:.2}s",
-                        duration.as_secs_f64()));
+                        duration.as_secs_f64(),
+                    ),
+                );
                 Ok(Some(false))
             }
         }

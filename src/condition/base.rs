@@ -102,7 +102,6 @@ pub trait Condition: Send {
     /// Return the time in which condition tests were started (if they were).
     fn startup_time(&self) -> Option<Instant>;
 
-
     /// Set the internal _checked_ state to `true`.
     fn set_checked(&mut self) -> Result<bool, std::io::Error>;
 
@@ -114,6 +113,22 @@ pub trait Condition: Send {
 
     /// Fully reset internal state of the condition.
     fn reset(&mut self) -> Result<bool, std::io::Error>;
+
+
+    /// Return how many times the tasks can be retried, `None` means forever.
+    fn left_retries(&self) -> Option<i64>;
+
+    /// Consume a retry.
+    fn set_retried(&mut self);
+
+    /// Shortcut to test whether a condition can retry or not.
+    fn can_retry(&self) -> bool {
+        if let Some(c) = self.left_retries() {
+            c > 0
+        } else {
+            true
+        }
+    }
 
 
     /// Set the startup time to `Instant::now()`.
@@ -133,6 +148,14 @@ pub trait Condition: Send {
     fn has_tasks(&self) -> Result<bool, std::io::Error> {
         Ok(!self.task_names()?.is_empty())
     }
+
+
+    /// Check whether any tasks failed in the last run.
+    fn any_tasks_failed(&self) -> bool;
+
+    /// Inform the condition that some tasks failed or that all succeeded.
+    fn set_tasks_failed(&mut self, failed: bool);
+
 
     /// Verify last outcome after checking the `Condition`.
     ///
@@ -248,12 +271,22 @@ pub trait Condition: Send {
                 "skipping check: condition is suspended",
             );
             Ok(None)
-        } else if self.has_succeeded() && !self.recurring() {
+        } else if self.has_succeeded() && !self.recurring() && !self.any_tasks_failed() {
+            // TODO: check that all cases are actually taken into account
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 "skipping check: condition is not recurring",
+            );
+            Ok(None)
+        } else if self.has_succeeded() && !self.recurring() && !self.can_retry() {
+            // TODO: check that all cases are actually taken into account
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_MSG,
+                "skipping check: condition has no retries left and is not recurring",
             );
             Ok(None)
         } else {
@@ -474,7 +507,7 @@ pub trait Condition: Send {
             self.log(
                 LogType::Info,
                 LOG_WHEN_PROC,
-                LOG_STATUS_OK,
+                LOG_STATUS_MSG,
                 &format!("running tasks sequentially: {s_task_names}"),
             );
             registry.run_tasks_seq(
@@ -487,7 +520,7 @@ pub trait Condition: Send {
             self.log(
                 LogType::Info,
                 LOG_WHEN_PROC,
-                LOG_STATUS_OK,
+                LOG_STATUS_MSG,
                 &format!("running tasks simultaneously: {s_task_names}"),
             );
             registry.run_tasks_par(
@@ -496,14 +529,18 @@ pub trait Condition: Send {
             )
         };
 
+        let mut some_failed = false;
         for name in res.keys() {
             match res.get(name).unwrap() {
                 Ok(outcome) => {
                     if let Some(outcome) = outcome {
+                        if !*outcome {
+                            some_failed = true;
+                        }
                         self.log(
                             LogType::Info,
                             LOG_WHEN_PROC,
-                            LOG_STATUS_OK,
+                            LOG_STATUS_MSG,
                             &format!(
                                 "task {name} completed: outcome is {}",
                                 { if *outcome {"success"} else {"failure"} },
@@ -513,16 +550,17 @@ pub trait Condition: Send {
                         self.log(
                             LogType::Info,
                             LOG_WHEN_PROC,
-                            LOG_STATUS_OK,
+                            LOG_STATUS_MSG,
                             &format!("task {name} completed"),
                         );
                     }
                 }
                 Err(err) => {
+                    some_failed = true;
                     self.log(
                         LogType::Warn,
                         LOG_WHEN_PROC,
-                        LOG_STATUS_OK,
+                        LOG_STATUS_FAIL,
                         &format!("task {name} exited with error: {err}"),
                     );
                 }
@@ -535,6 +573,43 @@ pub trait Condition: Send {
             LOG_STATUS_OK,
             &format!("finished running tasks: {s_task_names}"),
         );
+
+        // now the retry part: it only applies to non-recurring condions, as
+        // recurring ones will check and possibly run tasks anyway; the item
+        // is informed that some tasks failed and, if it should not retry
+        // forever, a retry is consumed
+        self.set_tasks_failed(some_failed);
+        if !self.recurring() {
+            if let Some(left) = self.left_retries() {
+                self.set_retried();
+                let left = left - 1;
+                if left > 0 {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        &format!(
+                            "some tasks failed: will retry {left} more time{}",
+                            if left == 1 { "" } else { "s" },   // too much?
+                        ),
+                    );
+                } else {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("some tasks failed: no retries left, will stop checking"),
+                    );
+                }
+            } else {
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_MSG,
+                    &format!("some tasks failed: will retry until all succeed"),
+                );
+            }
+        }
 
         Ok(Some(true))
     }

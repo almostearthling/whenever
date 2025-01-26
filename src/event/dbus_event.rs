@@ -482,54 +482,6 @@ impl DbusMessageEvent {
     /// JSON strings, because TOML is intentionally limited to accepting only
     /// lists of elements of the same type, and in our case we need to mix
     /// types both as arguments to a call and as index sequences.
-    ///
-    /// The TOML configuration file format is the following
-    ///
-    /// ```toml
-    /// # definition (mandatory)
-    /// [[event]]
-    /// name = "DbusMessageEventName"
-    /// type = "dbus"                       # mandatory value
-    /// bus = ":session"                    # either ":session" or ":system"
-    /// condition = "AssignedConditionName"
-    /// rule = """\
-    ///     type='signal',\
-    ///     sender='org.freedesktop.DBus',\
-    ///     interface='org.freedesktop.DBus',\
-    ///     member='NameOwnerChanged',\
-    ///     arg0='org.freedesktop.zbus.MatchRuleStreamTest42'\
-    /// """
-    ///
-    /// # optional parameters (if omitted, defaults are used)
-    /// parameter_check_all = false
-    /// parameter_check = """[
-    ///          { "index": 0, "operator": "eq", "value": false },
-    ///          { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-    ///          {
-    ///              "index": [2, "mapidx", 5],
-    ///              "operator": "match",
-    ///              "value": "^[A-Z][a-zA-Z0-9_]*$"
-    ///          }
-    ///     ]"""
-    /// ```
-    ///
-    /// The `rule` parameter must comply with the [match rule specification](
-    /// https://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-routing-match-rules),
-    /// otherwise the service will not be able to listen to messages/signals.
-    ///
-    /// Parameter checks should be _valid_: this means that indexes, be they
-    /// integers or strings, must be used where they are accepted (that is, an
-    /// integer is only valid in arrays and a string in maps), and operators
-    /// as well: only numbers support order operators, strings only support
-    /// equality or inequality, booleans only support equality, regular
-    /// expression only support matching. Unsupported cases will render all
-    /// tests _false_, and a warning will be issued. Also, the first element
-    /// of a parameter traversal list _must_ be an integer, as parameters are
-    /// provided as a tuple-like object: using a string will not result in an
-    /// error, but will cause all parameter checks to fail.
-    ///
-    /// Any incorrect value will cause an error. The value of the `type` entry
-    /// *must* be set to `"dbus"` mandatorily for this type of `Event`.
     pub fn load_cfgmap(
         cfgmap: &CfgMap,
         cond_registry: &'static ConditionRegistry,
