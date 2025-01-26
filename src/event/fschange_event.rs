@@ -530,7 +530,7 @@ impl Event for FilesystemChangeEvent {
                                 // ignore access events
                                 if !evt.kind.is_access() {
                                     self.log(
-                                        LogType::Info,
+                                        LogType::Debug,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
                                         &format!("event notification caught: {evt_s}"),
@@ -614,7 +614,7 @@ impl Event for FilesystemChangeEvent {
         if let Ok(running) = self.thread_running.read() {
             if *running {
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     "the listener has been requested to stop",

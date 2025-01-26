@@ -1291,7 +1291,7 @@ impl Event for DbusMessageEvent {
             // if we reached this point, the message has to be interpreted
             if let Some(message) = msg {
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
                     &format!("subscribed message received on bus `{bus_name}`"),
@@ -1996,7 +1996,7 @@ impl Event for DbusMessageEvent {
         if let Ok(running) = self.thread_running.read() {
             if *running {
                 self.log(
-                    LogType::Info,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
                     "the listener has been requested to stop",
