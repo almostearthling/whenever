@@ -85,7 +85,7 @@ pub struct CommandCondition {
     case_sensitive: bool,
     include_env: bool,
     set_envvars: bool,
-    recur_after_check_failure: bool,
+    recur_after_failed_check: bool,
     environment_vars: HashMap<String, String>,
     check_after: Option<Duration>,
     success_stdout: Option<String>,
@@ -136,7 +136,7 @@ impl Hash for CommandCondition {
         self.include_env.hash(state);
         self.set_envvars.hash(state);
         self.timeout.hash(state);
-        self.recur_after_check_failure.hash(state);
+        self.recur_after_failed_check.hash(state);
 
         // 0 is hashed on the else branch because if we get two items, for
         // instance, one of which has only success_stdout defined as a string
@@ -239,7 +239,7 @@ impl CommandCondition {
             case_sensitive: false,
             include_env: true,
             set_envvars: true,
-            recur_after_check_failure: false,
+            recur_after_failed_check: false,
             environment_vars: HashMap::new(),
             check_after: None,
             success_stdout: None,
@@ -448,7 +448,7 @@ impl CommandCondition {
     /// check success only if there has been at least one failure after the
     /// last successful test
     pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
-        self.recur_after_check_failure = yes;
+        self.recur_after_failed_check = yes;
         self
     }
 
@@ -469,7 +469,7 @@ impl CommandCondition {
             "startup_path",
             "tasks",
             "recurring",
-            "max_failed_tasks_retries",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -479,7 +479,7 @@ impl CommandCondition {
             "case_sensitive",
             "include_environment",
             "set_environment_variables",
-            "recur_after_check_failure",
+            "recur_after_failed_check",
             "environment_variables",
             "check_after",
             "success_stdout",
@@ -551,7 +551,7 @@ impl CommandCondition {
         if let Some(v) = cfg_bool(cfgmap, "recurring")? {
             new_condition.recurring = v;
         }
-        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_failed_tasks_retries", -1)? {
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)? {
             new_condition.max_retries = v;
         }
         if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
@@ -583,8 +583,8 @@ impl CommandCondition {
         if let Some(v) = cfg_bool(cfgmap, "set_environment_variables")? {
             new_condition.set_envvars = v;
         }
-        if let Some(v) = cfg_bool(cfgmap, "recur_after_check_failure")? {
-            new_condition.recur_after_check_failure = v;
+        if let Some(v) = cfg_bool(cfgmap, "recur_after_failed_check")? {
+            new_condition.recur_after_failed_check = v;
         }
 
         // the environment variable case is peculiar and has no shortcut
@@ -675,7 +675,7 @@ impl CommandCondition {
             "startup_path",
             "tasks",
             "recurring",
-            "max_failed_tasks_retries",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -685,7 +685,7 @@ impl CommandCondition {
             "case_sensitive",
             "include_environment",
             "set_environment_variables",
-            "recur_after_check_failure",
+            "recur_after_failed_check",
             "environment_variables",
             "check_after",
             "success_stdout",
@@ -745,7 +745,7 @@ impl CommandCondition {
         }
 
         cfg_bool(cfgmap, "recurring")?;
-        cfg_int_check_above_eq(cfgmap, "max_failed_tasks_retries", -1)?;
+        cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)?;
         cfg_bool(cfgmap, "execute_sequence")?;
         cfg_bool(cfgmap, "break_on_failure")?;
         cfg_bool(cfgmap, "break_on_success")?;
@@ -758,7 +758,7 @@ impl CommandCondition {
         cfg_bool(cfgmap, "case_sensitive")?;
         cfg_bool(cfgmap, "include_environment")?;
         cfg_bool(cfgmap, "set_environment_variables")?;
-        cfg_bool(cfgmap, "recur_after_check_failure")?;
+        cfg_bool(cfgmap, "recur_after_failed_check")?;
 
         // the environment variables case is peculiar and has no shortcut
         let cur_key = "environment_variables";
@@ -1956,7 +1956,7 @@ impl Condition for CommandCondition {
         // return true on success (not persistent unless allowed), false otherwise
         match failure_reason {
             FailureReason::NoFailure => {
-                let succeeds = self.last_check_failed || !self.recur_after_check_failure;
+                let succeeds = self.last_check_failed || !self.recur_after_failed_check;
                 self.last_check_failed = false;
                 self.log(
                     LogType::Debug,

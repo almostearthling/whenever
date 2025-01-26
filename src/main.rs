@@ -200,7 +200,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
                             None,
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
-                            &format!("condition {name} tested with no outcome for tasks (not executed)"),
+                            &format!("condition {name} tested (tasks not executed)"),
                         );
                     }
                 }

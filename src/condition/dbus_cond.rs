@@ -488,7 +488,7 @@ pub struct DbusMethodCondition {
     param_call: Option<Vec<zvariant::OwnedValue>>,
     param_checks: Option<Vec<ParameterCheckTest>>,
     param_checks_all: bool,
-    recur_after_check_failure: bool,
+    recur_after_failed_check: bool,
     check_after: Option<Duration>,
 
     // internal values
@@ -559,7 +559,7 @@ impl Hash for DbusMethodCondition {
         self.param_checks.hash(state);
         self.param_checks_all.hash(state);
         self.check_after.hash(state);
-        self.recur_after_check_failure.hash(state);
+        self.recur_after_failed_check.hash(state);
     }
 }
 
@@ -617,7 +617,7 @@ impl DbusMethodCondition {
             param_call: None,
             param_checks: None,
             param_checks_all: false,
-            recur_after_check_failure: false,
+            recur_after_failed_check: false,
 
             // internal values
             check_last: t,
@@ -670,7 +670,7 @@ impl DbusMethodCondition {
     /// check success only if there has been at least one failure after the
     /// last successful test
     pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
-        self.recur_after_check_failure = yes;
+        self.recur_after_failed_check = yes;
         self
     }
 
@@ -754,7 +754,7 @@ impl DbusMethodCondition {
             "tags",
             "tasks",
             "recurring",
-            "max_failed_tasks_retries",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -768,7 +768,7 @@ impl DbusMethodCondition {
             "parameter_call",
             "parameter_check_all",
             "parameter_check",
-            "recur_after_check_failure",
+            "recur_after_failed_check",
         ];
         cfg_check_keys(cfgmap, &check)?;
 
@@ -830,7 +830,7 @@ impl DbusMethodCondition {
         if let Some(v) = cfg_bool(cfgmap, "recurring")? {
             new_condition.recurring = v;
         }
-        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_failed_tasks_retries", -1)? {
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)? {
             new_condition.max_retries = v;
         }
         if let Some(v) = cfg_bool(cfgmap, "execute_sequence")? {
@@ -850,8 +850,8 @@ impl DbusMethodCondition {
         if let Some(v) = cfg_int_check_above_eq(cfgmap, "check_after", 1)? {
             new_condition.check_after = Some(Duration::from_secs(v as u64));
         }
-        if let Some(v) = cfg_bool(cfgmap, "recur_after_check_failure")? {
-            new_condition.recur_after_check_failure = v;
+        if let Some(v) = cfg_bool(cfgmap, "recur_after_failed_check")? {
+            new_condition.recur_after_failed_check = v;
         }
 
         // this is tricky: we build a list of elements constituted by:
@@ -1148,7 +1148,7 @@ impl DbusMethodCondition {
             "tags",
             "tasks",
             "recurring",
-            "max_failed_tasks_retries",
+            "max_tasks_retries",
             "execute_sequence",
             "break_on_failure",
             "break_on_success",
@@ -1162,7 +1162,7 @@ impl DbusMethodCondition {
             "parameter_call",
             "parameter_check_all",
             "parameter_check",
-            "recur_after_check_failure",
+            "recur_after_failed_check",
         ];
         cfg_check_keys(cfgmap, &check)?;
 
@@ -1207,14 +1207,14 @@ impl DbusMethodCondition {
         }
 
         cfg_bool(cfgmap, "recurring")?;
-        cfg_int_check_above_eq(cfgmap, "max_failed_tasks_retries", -1)?;
+        cfg_int_check_above_eq(cfgmap, "max_tasks_retries", -1)?;
         cfg_bool(cfgmap, "execute_sequence")?;
         cfg_bool(cfgmap, "break_on_failure")?;
         cfg_bool(cfgmap, "break_on_success")?;
         cfg_bool(cfgmap, "suspended")?;
 
         cfg_int_check_above_eq(cfgmap, "check_after", 1)?;
-        cfg_bool(cfgmap, "recur_after_check_failure")?;
+        cfg_bool(cfgmap, "recur_after_failed_check")?;
 
         // this is tricky: we build a list of elements constituted by:
         // - an index list (integers and strings, mixed) which will address
@@ -2381,7 +2381,7 @@ impl Condition for DbusMethodCondition {
 
         // prevent success if in persistent success state and status change
         // is required to succeed again
-        let can_succeed = self.last_check_failed || !self.recur_after_check_failure;
+        let can_succeed = self.last_check_failed || !self.recur_after_failed_check;
         self.last_check_failed = !verified;
         if can_succeed && verified {
             self.log(

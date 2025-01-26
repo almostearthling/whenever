@@ -50,7 +50,7 @@ Just like its predecessor, **whenever** overlaps to some extent with the standar
 
 Also, **whenever** aims at being cross-platform: until now, all features are available on all supported operating systems -- although in some cases part of these features (DBus support, for example) can be of little or no use on some supported environments. In opposition to its predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM), and, since it does not interact with the user normally, it should be able to run at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a [simple _stdin_-based interface](#input-commands) that is mostly aimed at interacting with an independent _wrapper_. Also, no _persistence_ is implemented in this version. The actions to be performed are loaded every time at startup by means of a single configuration file that, as many modern tools do, uses the well known TOML format.[^2]
 
-A very lightweight cross-platform wrapper, namely [**whenever_tray**](https://github.com/almostearthling/whenever_tray), is available and under active testing on both Linux and Windows. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The minimalistic wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger resource occupation but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of those tasks that, per configuration, _must_ run sequentially.
+A very lightweight cross-platform wrapper, namely [**whenever_tray**](https://github.com/almostearthling/whenever_tray), is available and under active testing on both Linux and Windows. It is developed in C++ and uses the [WxWidgets](https://www.wxwidgets.org/) GUI library: it has been designed to implement the bare minimum of functionality and to just show an icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume the condition checks and therefore the execution of tasks that would derive from them. The minimalistic wrapper also hides the console window on Windows environments. Due to the use of _stdin_/_stdout_ for communication, it is possible to build more elaborate wrappers in any language that supports the possibility to spawn a process and control its I/O, at the expense of a larger resource occupation but possibly without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The _Python_ based _When_ application had an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file, and could noticeably use the CPU: this version, written in the [_Rust_](https://www.rust-lang.org/) programming language, needs around 1.5MB of RAM on Windows[^3] when using a configuration file that tests all possible types of _task_, _condition_, and _event_ supported on the platform. Nevertheless, **whenever** is fully multithreaded, condition checks have no influence on each other and, when needed, may run concurrently. Consequential task execution also takes place with full parallelism -- with the exception of those tasks that, per configuration, are set to run sequentially.
 
 The old version of _When_ itself is currently being converted to a frontend wrapper for **whenever**: see the [repository](https://github.com/almostearthling/when-command) for more details.
 
@@ -286,7 +286,7 @@ _Conditions_ are at the heart of **whenever**, by triggering the execution of ta
 | `name`                     | N/A     | the unique name of the condition (mandatory)                                                                   |
 | `type`                     | N/A     | string describing the type of condition (mandatory, one of the possible values)                                |
 | `recurring`                | _false_ | if _false_, the condition is not checked anymore after first successful verification                           |
-| `max_failed_tasks_retries` | 0       | how many times the tasks will be retried, when at least one of them fails, in non recurring conditions         |
+| `max_tasks_retries`        | 0       | how many times the tasks will be retried, when at least one of them fails, in non recurring conditions         |
 | `execute_sequence`         | _true_  | if _true_ the associated tasks are executed one after the other, in the order in which they are listed         |
 | `break_on_success`         | _false_ | if _true_, task execution stops after the first successfully executed task (when `execute_sequence` is _true_) |
 | `break_on_failure`         | _false_ | if _true_, task execution stops after the first failed task (when `execute_sequence` is _true_)                |
@@ -299,7 +299,7 @@ The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `
 
 For conditions that should be periodically checked and whose associated task list has to be run _whenever_ they occur (and not just after the first occurrence), the `recurring` entry can be set to _true_. Conditions with no associated tasks (eg. when the user comments out all the associated tasks in the configuration file) are not checked.
 
-The `max_failed_tasks_retries` field indicates how many times the execution of a failed task, or a set of tasks of which _at least one_ has failed, will be retried in non recurring conditions when the condition check is successful: a value of _N_ indicates that the check will be performed at most _N_ times after the first failure in tasks before giving up checking. If all the tasks succeed at the first time or within the provided number of retries, the non recurring condition will cease its checks anyway. A provided value of `-1` instructs **whenever** that the checks must continue indefinitely until all the associated tasks succeed, a value of `0` indicates that there should be no retries after the first unsuccessful run. Values below `-1` are not admitted. This parameter is ignored in recurring conditions. Tasks whose outcome is not checked do **not** count as unsuccessful.
+The `max_tasks_retries` field indicates how many times the execution of a failed task, or a set of tasks of which _at least one_ has failed, will be retried in non recurring conditions when the condition check is successful: a value of _N_ indicates that the check will be performed at most _N_ times after the first failure in tasks before giving up checking. If all the tasks succeed at the first time or within the provided number of retries, the non recurring condition will cease its checks anyway. A provided value of `-1` instructs **whenever** that the checks must continue indefinitely until all the associated tasks succeed, a value of `0` indicates that there should be no retries after the first unsuccessful run. Values below `-1` are not admitted. This parameter is ignored in recurring conditions. Tasks whose outcome is not checked do **not** count as unsuccessful. If `break_on_success` is _true_ and the first task in a sequence has a positive oucome, the entire sequence is considered successful: in other words, only tasks that have been executed count for outcome verification.
 
 The `suspended` entry can assume a _true_ value for conditions for which the user does not want to remove the configuration but should be (at least temporarily) prevented. However, a condition that is suspended by configuration can be awakened using an interactive command (usually by a wrapper): [input commands](#input-commands) passed via the _stdin_ based interface can be used to suspend and resume condition checks when the scheduler is running.
 
@@ -307,7 +307,7 @@ There is another optional entry, namely `tags`, that is accepted in item configu
 
 Another entry is common to several condition types, that is `check_after`: it can be set to the number of seconds that **whenever** has to wait after startup (and after the last check for _recurring_ conditions) for a subsequent check: this is useful for conditions that can run on a more relaxed schedule, or whose check process has a significant cost in terms of resources, or whose associated task sequence might take a long time to finish. Simpler conditions and conditions based on time do not accept this entry.
 
-Some condition types can set the `recur_after_check_failure` flag: it allows for avoidance of multiple subsequent task runs in case of a persistent situation that causes _recurring_ condition checks to be successful: the associated tasks are run as soon as the check is successful for the first time, then task execution is prevented as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
+Some condition types can set the `recur_after_failed_check` flag: it allows for avoidance of multiple subsequent task runs in case of a persistent situation that causes _recurring_ condition checks to be successful: the associated tasks are run as soon as the check is successful for the first time, then task execution is prevented as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 While a condition check or the execution of an associated task sequence is underway, the condition is marked as _busy_, and while a condition is in this state no further checks are performed. The condition is released from its _busy_ state only after all checks and tasks have been performed. This is important when long-running checks and tasks are requested, as this flag ensures that checks and tasks for a single long-running and recurring activity cannot overlap.
 
@@ -329,7 +329,7 @@ interval_seconds = 3600
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
-max_failed_tasks_retries = 0
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -461,7 +461,7 @@ command_arguments = [
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
-max_failed_tasks_retries = 3
+max_tasks_retries = 3
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -471,7 +471,7 @@ tasks = [
     "Task2",
     ]
 check_after = 10
-recur_after_check_failure = true
+recur_after_failed_check = true
 match_exact = false
 match_regular_expression = false
 success_stdout = "expected"
@@ -487,7 +487,7 @@ set_environment_variables = true
 environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
 ```
 
-Note that the `recurring` flag is `false`, and `max_failed_tasks_retries` is set to _3_: this means that the check will be performed _three more times_ after the first unsuccessful run of the associated tasks.
+Note that the `recurring` flag is `false`, and `max_tasks_retries` is set to _3_: this means that the check will be performed _three more times_ after the first unsuccessful run of the associated tasks.
 
 The following table illustrates the parameters specific to _command_ based conditions:
 
@@ -495,7 +495,7 @@ The following table illustrates the parameters specific to _command_ based condi
 |-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
 | `type`                      | N/A     | has to be set to `"interval"` (mandatory)                                                                                     |
 | `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
-| `recur_after_check_failure` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `recur_after_failed_check`  | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
 | `startup_path`              | N/A     | the directory in which the command is started (mandatory)                                                                     |
 | `command`                   | N/A     | path to the executable (mandatory; if the path is omitted, the executable should be found in the search _PATH_)               |
 | `command_arguments`         | N/A     | arguments to pass to the executable: can be an empty list, `[]` (mandatory)                                                   |
@@ -536,7 +536,7 @@ script = '''
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
-max_failed_tasks_retries = -1
+max_tasks_retries = -1
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -546,12 +546,12 @@ tasks = [
     "Task2",
     ]
 check_after = 10
-recur_after_check_failure = false
+recur_after_failed_check = false
 expect_all = false
 expected_results = { result = 10 }
 ```
 
-Note that the `recurring` flag is `false`, and `max_failed_tasks_retries` is set to _-1_: this means that the check will be performed until **all** the associated tasks are executed successfully.
+Note that the `recurring` flag is `false`, and `max_tasks_retries` is set to _-1_: this means that the check will be performed until **all** the associated tasks are executed successfully.
 
 The specific parameters are described in the following table:
 
@@ -559,7 +559,7 @@ The specific parameters are described in the following table:
 |-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
 | `type`                      | N/A     | has to be set to `"lua"` (mandatory)                                                                                          |
 | `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
-| `recur_after_check_failure` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `recur_after_failed_check`  | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
 | `script`                    | N/A     | the _Lua_ code that has to be executed by the internal interpreter (mandatory)                                                |
 | `expect_all`                | _false_ | if _true_, all the expected results have to be matched to consider the task successful, otherwise at least one                |
 | `expected_results`          | `{}`    | a dictionary of variable names and their expected values to be checked after execution                                        |
@@ -578,7 +578,7 @@ and take a single string as their argument. Also, from the embedded _Lua_ interp
 
 External scripts can be executed via `dofile("/path/to/script.lua")` or by using the `require` function. While a successful execution is always determined by matching the provided criteria, an error in the script is always considered a failure.
 
-The `recur_after_check_failure` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
+The `recur_after_failed_check` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
@@ -638,7 +638,7 @@ break_on_success = false
 suspended = true
 tasks = [ "Task1", "Task2" ]
 check_after = 60
-recur_after_check_failure = false
+recur_after_failed_check = false
 parameter_call = """[
         "SomeObject",
         [42, "a structured parameter"],
@@ -672,7 +672,7 @@ The specific parameters are described in the following table:
 |-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
 | `type`                      | N/A     | has to be set to `"dbus"` (mandatory)                                                                                         |
 | `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
-| `recur_after_check_failure` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `recur_after_failed_check`  | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
 | `bus`                       | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory)  |
 | `service`                   | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)               |
 | `object_path`               | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
@@ -690,7 +690,7 @@ Working on a file that mixes TOML and JSON, it is worth to remind that JSON supp
 
 Note that DBus based conditions are supported on Windows, however DBus should be running for such conditions to be useful -- which is very unlikely to say the least.
 
-The `recur_after_check_failure` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
+The `recur_after_failed_check` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
 
@@ -705,7 +705,7 @@ type = "bucket"         # "bucket" or "event" are the allowed values
 
 # optional parameters (if omitted, defaults are used)
 recurring = false
-max_failed_tasks_retries = 0
+max_tasks_retries = 0
 execute_sequence = true
 break_on_failure = false
 break_on_success = false
@@ -955,7 +955,7 @@ The `pause` command is ignored in paused state, and `resume` is ignored otherwis
 
 The `configure` command can be used to load a new configuration (or reload a modified one) while the scheduler is running: in case some of the items are already present in the configuration _and_ they are **identical** to the originally loaded ones in terms of provided parameters, the original ones are left in their status -- this means, in particular, that unchanged conditions are _not_ reset, and unchanged event listening services are _not_ restarted when reloading a configuration. It is important to notice that **all characters beginning from the first non-blank up to the last non-blank** following the `configure` command are considered part of the provided file name, including spaces other blank characters. Possible errors are detected and leave the application status unchanged. Also, neither environment variable nor _tilde_ expansions are performed, and both quotes (either single or double) and backslashes are interpreted literally.
 
-> **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions and conditions that are _not recurring_. In the first case, the condition operates as if the interval counter had started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
+> **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions, conditions that are _not recurring_ -- especially when the `max_tasks_retries` parameter is specified, as the number of available retries is set back to the provided value. In the first case, the condition operates as if the interval counter had started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
 
 
 ## Build issues
