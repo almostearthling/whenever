@@ -681,7 +681,7 @@ impl TaskRegistry {
             );
         } else {
             log(
-                LogType::Debug,
+                LogType::Trace,
                 LOG_EMITTER_TASK_REGISTRY,
                 LOG_ACTION_RUN_TASKS_PAR,
                 None,

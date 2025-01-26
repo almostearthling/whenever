@@ -881,7 +881,7 @@ As mentioned above, just after the _context_, in the message _payload_, a string
 This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
 
 ```text
-[2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/6: [PROC/OK] failure: condition checked with negative outcome
+[2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/6: [END/OK] failure: condition checked with negative outcome
 ```
 
 while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected quite often, this is the reason why the message documenting a failed check is reported as a positive (`[PROC/OK]`) log entry.

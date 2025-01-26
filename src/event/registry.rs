@@ -204,7 +204,7 @@ impl EventRegistry {
                                         );
                                     } else {
                                         log(
-                                            LogType::Warn,
+                                            LogType::Debug,
                                             LOG_EMITTER_EVENT_REGISTRY,
                                             LOG_ACTION_UNINSTALL,
                                             Some((&name, id)),
@@ -274,7 +274,7 @@ impl EventRegistry {
                     );
                 } else {
                     log(
-                        LogType::Warn,
+                        LogType::Debug,
                         LOG_EMITTER_EVENT_REGISTRY,
                         LOG_ACTION_UNINSTALL,
                         Some((&name, id)),
@@ -284,7 +284,6 @@ impl EventRegistry {
                     );
                 }
             }
-
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -296,7 +295,6 @@ impl EventRegistry {
             );
             Ok(true)
         });
-
 
         log(
             LogType::Debug,
@@ -863,7 +861,7 @@ impl EventRegistry {
                 Ok(())
             } else {
                 log(
-                    LogType::Error,
+                    LogType::Warn,
                     LOG_EMITTER_EVENT_REGISTRY,
                     LOG_ACTION_UNINSTALL,
                     Some((name, id)),
@@ -890,7 +888,7 @@ impl EventRegistry {
                 Ok(())
             } else {
                 log(
-                    LogType::Error,
+                    LogType::Warn,
                     LOG_EMITTER_EVENT_REGISTRY,
                     LOG_ACTION_UNINSTALL,
                     Some((name, id)),

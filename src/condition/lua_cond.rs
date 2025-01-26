@@ -767,7 +767,7 @@ impl Condition for LuaCondition {
         }
 
         self.log(
-            LogType::Debug,
+            LogType::Trace,
             LOG_WHEN_START,
             LOG_STATUS_MSG,
             "executing Lua script for condition check",

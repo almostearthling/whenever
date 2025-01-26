@@ -1186,7 +1186,7 @@ impl Condition for CommandCondition {
                     match e.kind() {
                         std::io::ErrorKind::TimedOut => {
                             self.log(
-                                LogType::Warn,
+                                LogType::Debug,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
                                 &format!("timeout reached running command `{}`",self.command_line()),
@@ -2027,11 +2027,11 @@ impl Condition for CommandCondition {
                 self.last_check_failed = true;
                 self._process_failed = true;
                 self.log(
-                    LogType::Warn,
+                    LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
-                        "task ended unexpectedly in {:.2}s",
+                        "command ended unexpectedly in {:.2}s",
                         self._process_duration.as_secs_f64(),
                     ),
                 );
