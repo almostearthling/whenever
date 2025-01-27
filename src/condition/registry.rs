@@ -605,7 +605,7 @@ impl ConditionRegistry {
         let mut lock = cond.try_lock();
         if let Ok(ref mut cond) = lock {
             log(
-                LogType::Debug,
+                LogType::Trace,
                 LOG_EMITTER_CONDITION_REGISTRY,
                 LOG_ACTION_TICK,
                 Some((name, id)),

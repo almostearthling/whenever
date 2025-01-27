@@ -133,7 +133,7 @@ pub trait Event: Send + Sync {
         let cond_name = self.get_condition().unwrap();
         let bucket = self.condition_bucket().unwrap();
         self.log(
-            LogType::Info,
+            LogType::Debug,
             LOG_WHEN_PROC,
             LOG_STATUS_OK,
             &format!("condition {cond_name} firing"),

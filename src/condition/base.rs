@@ -293,7 +293,7 @@ pub trait Condition: Send {
             if !self.reset_succeeded()? {
                 self.log(
                     LogType::Error,
-                    LOG_WHEN_PROC,
+                    LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     "aborting: condition could not reset success status",
                 );
@@ -316,14 +316,14 @@ pub trait Condition: Send {
                         if self.set_succeeded()? {
                             self.log(
                                 LogType::Debug,
-                                LOG_WHEN_PROC,
+                                LOG_WHEN_END,
                                 LOG_STATUS_OK,
                                 "success: condition checked with positive outcome",
                             );
                         } else {
                             self.log(
                                 LogType::Error,
-                                LOG_WHEN_PROC,
+                                LOG_WHEN_END,
                                 LOG_STATUS_FAIL,
                                 "aborting: condition could not be set to succeeded",
                             );
@@ -335,7 +335,7 @@ pub trait Condition: Send {
                     } else {
                         self.log(
                             LogType::Debug,
-                            LOG_WHEN_PROC,
+                            LOG_WHEN_END,
                             LOG_STATUS_OK,
                             "failure: condition checked with negative outcome",
                         );
@@ -344,7 +344,7 @@ pub trait Condition: Send {
                 } else {
                     self.log(
                         LogType::Warn,
-                        LOG_WHEN_PROC,
+                        LOG_WHEN_END,
                         LOG_STATUS_FAIL,
                         "exiting: condition provided NO outcome",
                     );
@@ -353,7 +353,7 @@ pub trait Condition: Send {
             } else {
                 self.log(
                     LogType::Error,
-                    LOG_WHEN_PROC,
+                    LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     "aborting: condition could not be set to checked",
                 );
@@ -496,7 +496,7 @@ pub trait Condition: Send {
         } else {
             self.log(
                 LogType::Warn,
-                LOG_WHEN_PROC,
+                LOG_WHEN_END,
                 LOG_STATUS_FAIL,
                 "no tasks found associated to condition",
             );
@@ -506,7 +506,7 @@ pub trait Condition: Send {
         let res = if self.exec_sequence() {
             self.log(
                 LogType::Info,
-                LOG_WHEN_PROC,
+                LOG_WHEN_INIT,
                 LOG_STATUS_MSG,
                 &format!("running tasks sequentially: {s_task_names}"),
             );
@@ -519,7 +519,7 @@ pub trait Condition: Send {
         } else {
             self.log(
                 LogType::Info,
-                LOG_WHEN_PROC,
+                LOG_WHEN_INIT,
                 LOG_STATUS_MSG,
                 &format!("running tasks simultaneously: {s_task_names}"),
             );
@@ -539,7 +539,7 @@ pub trait Condition: Send {
                         }
                         self.log(
                             LogType::Info,
-                            LOG_WHEN_PROC,
+                            LOG_WHEN_END,
                             LOG_STATUS_MSG,
                             &format!(
                                 "task {name} completed: outcome is {}",
@@ -549,7 +549,7 @@ pub trait Condition: Send {
                     } else {
                         self.log(
                             LogType::Info,
-                            LOG_WHEN_PROC,
+                            LOG_WHEN_END,
                             LOG_STATUS_MSG,
                             &format!("task {name} completed"),
                         );
@@ -559,7 +559,7 @@ pub trait Condition: Send {
                     some_failed = true;
                     self.log(
                         LogType::Warn,
-                        LOG_WHEN_PROC,
+                        LOG_WHEN_END,
                         LOG_STATUS_FAIL,
                         &format!("task {name} exited with error: {err}"),
                     );
@@ -569,7 +569,7 @@ pub trait Condition: Send {
 
         self.log(
             LogType::Debug,
-            LOG_WHEN_PROC,
+            LOG_WHEN_END,
             LOG_STATUS_OK,
             &format!("finished running tasks: {s_task_names}"),
         );
@@ -586,7 +586,7 @@ pub trait Condition: Send {
                 if left > 0 {
                     self.log(
                         LogType::Debug,
-                        LOG_WHEN_PROC,
+                        LOG_WHEN_END,
                         LOG_STATUS_MSG,
                         &format!(
                             "some tasks failed: will retry {left} more time{}",
@@ -596,7 +596,7 @@ pub trait Condition: Send {
                 } else {
                     self.log(
                         LogType::Debug,
-                        LOG_WHEN_PROC,
+                        LOG_WHEN_END,
                         LOG_STATUS_FAIL,
                         &format!("some tasks failed: no retries left, will stop checking"),
                     );
@@ -604,7 +604,7 @@ pub trait Condition: Send {
             } else {
                 self.log(
                     LogType::Debug,
-                    LOG_WHEN_PROC,
+                    LOG_WHEN_END,
                     LOG_STATUS_MSG,
                     &format!("some tasks failed: will retry until all succeed"),
                 );

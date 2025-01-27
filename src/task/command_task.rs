@@ -867,7 +867,7 @@ impl Task for CommandTask {
                     match e.kind() {
                         std::io::ErrorKind::TimedOut => {
                             self.log(
-                                LogType::Warn,
+                                LogType::Debug,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
                                 &format!("timeout reached running command `{}`", self.command_line()),
@@ -1679,7 +1679,7 @@ impl Task for CommandTask {
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
-                        "(trigger: {trigger_name}) task ended unexpectedly in {:.2}s",
+                        "(trigger: {trigger_name}) command ended unexpectedly in {:.2}s",
                         self._process_duration.as_secs_f64()),
                     );
                 Ok(Some(false))

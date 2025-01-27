@@ -143,7 +143,7 @@ impl EventRegistry {
                                         s0.push(name.clone());
                                         drop(s0);
                                         log(
-                                            LogType::Trace,
+                                            LogType::Debug,
                                             LOG_EMITTER_EVENT_REGISTRY,
                                             LOG_ACTION_INSTALL,
                                             Some((&name, id)),
@@ -194,7 +194,7 @@ impl EventRegistry {
                                         s0.remove(pos);
                                         drop(s0);
                                         log(
-                                            LogType::Trace,
+                                            LogType::Debug,
                                             LOG_EMITTER_EVENT_REGISTRY,
                                             LOG_ACTION_UNINSTALL,
                                             Some((&name, id)),
@@ -204,7 +204,7 @@ impl EventRegistry {
                                         );
                                     } else {
                                         log(
-                                            LogType::Warn,
+                                            LogType::Debug,
                                             LOG_EMITTER_EVENT_REGISTRY,
                                             LOG_ACTION_UNINSTALL,
                                             Some((&name, id)),
@@ -264,7 +264,7 @@ impl EventRegistry {
                     s0.remove(pos);
                     drop(s0);
                     log(
-                        LogType::Trace,
+                        LogType::Debug,
                         LOG_EMITTER_EVENT_REGISTRY,
                         LOG_ACTION_UNINSTALL,
                         Some((&name, id)),
@@ -274,7 +274,7 @@ impl EventRegistry {
                     );
                 } else {
                     log(
-                        LogType::Warn,
+                        LogType::Debug,
                         LOG_EMITTER_EVENT_REGISTRY,
                         LOG_ACTION_UNINSTALL,
                         Some((&name, id)),
@@ -284,7 +284,6 @@ impl EventRegistry {
                     );
                 }
             }
-
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -296,7 +295,6 @@ impl EventRegistry {
             );
             Ok(true)
         });
-
 
         log(
             LogType::Debug,
@@ -615,7 +613,7 @@ impl EventRegistry {
             .expect("cannot read event for triggering");
 
         log(
-            LogType::Trace,
+            LogType::Debug,
             LOG_EMITTER_EVENT_REGISTRY,
             LOG_ACTION_TRIGGER,
             Some((name, id)),
@@ -627,7 +625,7 @@ impl EventRegistry {
             Ok(res) => {
                 if res {
                     log(
-                        LogType::Trace,
+                        LogType::Debug,
                         LOG_EMITTER_EVENT_REGISTRY,
                         LOG_ACTION_FIRE,
                         Some((name, id)),
@@ -637,7 +635,7 @@ impl EventRegistry {
                     );
                 } else {
                     log(
-                        LogType::Trace,
+                        LogType::Debug,
                         LOG_EMITTER_EVENT_REGISTRY,
                         LOG_ACTION_FIRE,
                         Some((name, id)),
@@ -863,7 +861,7 @@ impl EventRegistry {
                 Ok(())
             } else {
                 log(
-                    LogType::Error,
+                    LogType::Warn,
                     LOG_EMITTER_EVENT_REGISTRY,
                     LOG_ACTION_UNINSTALL,
                     Some((name, id)),
@@ -890,7 +888,7 @@ impl EventRegistry {
                 Ok(())
             } else {
                 log(
-                    LogType::Error,
+                    LogType::Warn,
                     LOG_EMITTER_EVENT_REGISTRY,
                     LOG_ACTION_UNINSTALL,
                     Some((name, id)),
