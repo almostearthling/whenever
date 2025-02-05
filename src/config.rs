@@ -435,6 +435,15 @@ fn reconfigure_tasks(
                                         ERR_TASKREG_TASK_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("task {task_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -444,7 +453,7 @@ fn reconfigure_tasks(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!("not reconfiguring task {task_name}: no change detected"),
-                                )
+                                );
                             }
                             if to_remove.contains(&task_name) {
                                 to_remove.swap_remove(to_remove.iter().position(|x| task_name == *x).unwrap());
@@ -461,6 +470,15 @@ fn reconfigure_tasks(
                                         ERR_TASKREG_TASK_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("task {task_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -470,7 +488,7 @@ fn reconfigure_tasks(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!("not reconfiguring task {task_name}: no change detected"),
-                                )
+                                );
                             }
                             if to_remove.contains(&task_name) {
                                 to_remove.swap_remove(to_remove.iter().position(|x| task_name == *x).unwrap());
@@ -676,6 +694,15 @@ fn reconfigure_conditions(
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -685,7 +712,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!("not reconfiguring condition {cond_name}: no change detected"),
-                                )
+                                );
                             }
                             if to_remove.contains(&cond_name) {
                                 to_remove.swap_remove(to_remove.iter().position(|x| cond_name == *x).unwrap());
@@ -702,6 +729,15 @@ fn reconfigure_conditions(
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -711,7 +747,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!("not reconfiguring condition {cond_name}: no change detected"),
-                                )
+                                );
                             }
                             if to_remove.contains(&cond_name) {
                                 to_remove.swap_remove(to_remove.iter().position(|x| cond_name == *x).unwrap());
@@ -730,6 +766,15 @@ fn reconfigure_conditions(
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -739,7 +784,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!("not reconfiguring condition {cond_name}: no change detected"),
-                                )
+                                );
                             }
                             if to_remove.contains(&cond_name) {
                                 to_remove.swap_remove(to_remove.iter().position(|x| cond_name == *x).unwrap());
@@ -748,40 +793,58 @@ fn reconfigure_conditions(
                         "command" => {
                             let condition = condition::command_cond::CommandCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
-                                let cond_name = condition.get_name();
-                                if !cond_registry.has_condition(&cond_name) || cond_registry.has_condition_eq(&condition) {
-                                    if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                        return Err(std::io::Error::new(
-                                            std::io::ErrorKind::InvalidData,
-                                            ERR_CONDREG_COND_NOT_ADDED,
-                                        ));
-                                    }
-                                } else {
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_CONFIGURATION,
-                                        LOG_ACTION_RECONFIGURE,
-                                        None,
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_MSG,
-                                        &format!("not reconfiguring condition {cond_name}: no change detected"),
-                                    )
-                                }
-                                if to_remove.contains(&cond_name) {
-                                    to_remove.swap_remove(to_remove.iter().position(|x| cond_name == *x).unwrap());
-                                }
-                                }
-                        "lua" => {
-                            let condition = condition::lua_cond::LuaCondition::load_cfgmap(
-                                entry.as_map().unwrap(), task_registry)?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name) || cond_registry.has_condition_eq(&condition) {
+                            if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
                                     return Err(std::io::Error::new(
                                         std::io::ErrorKind::InvalidData,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!("not reconfiguring condition {cond_name}: no change detected"),
+                                );
+                            }
+                            if to_remove.contains(&cond_name) {
+                                to_remove.swap_remove(to_remove.iter().position(|x| cond_name == *x).unwrap());
+                            }
+                        }
+                        "lua" => {
+                            let condition = condition::lua_cond::LuaCondition::load_cfgmap(
+                                entry.as_map().unwrap(), task_registry)?;
+                            let cond_name = condition.get_name();
+                            if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
+                                if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
+                                    return Err(std::io::Error::new(
+                                        std::io::ErrorKind::InvalidData,
+                                        ERR_CONDREG_COND_NOT_ADDED,
+                                    ));
+                                }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -801,13 +864,22 @@ fn reconfigure_conditions(
                             let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name) || cond_registry.has_condition_eq(&condition) {
+                            if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
                                     return Err(std::io::Error::new(
                                         std::io::ErrorKind::InvalidData,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -829,13 +901,22 @@ fn reconfigure_conditions(
                                 entry.as_map().unwrap(), task_registry)?;
                             let _ = condition.set_execution_bucket(bucket)?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name) || cond_registry.has_condition_eq(&condition) {
+                            if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
                                     return Err(std::io::Error::new(
                                         std::io::ErrorKind::InvalidData,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -1083,6 +1164,15 @@ fn reconfigure_events(
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("event {event_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -1137,6 +1227,15 @@ fn reconfigure_events(
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("event {event_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
@@ -1191,6 +1290,15 @@ fn reconfigure_events(
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("event {event_name} has been reconfigured"),
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
