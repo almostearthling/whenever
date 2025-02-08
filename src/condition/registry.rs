@@ -712,13 +712,13 @@ impl ConditionRegistry {
             res
         } else {
             log(
-                LogType::Warn,
+                LogType::Debug,
                 LOG_EMITTER_CONDITION_REGISTRY,
                 LOG_ACTION_TICK,
                 Some((name, id)),
                 LOG_WHEN_START,
                 LOG_STATUS_MSG,
-                &format!("condition {name} is BUSY: skipping tick"),
+                &format!("condition {name} is busy: skipping tick"),
             );
             Ok(None)
         }
