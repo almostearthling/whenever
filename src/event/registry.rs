@@ -119,13 +119,13 @@ impl EventRegistry {
 
         let handle = thread::spawn(move || {
             log(
-                LogType::Debug,
+                LogType::Trace,
                 LOG_EMITTER_EVENT_REGISTRY,
                 LOG_ACTION_MAIN_LISTENER,
                 None,
                 LOG_WHEN_START,
                 LOG_STATUS_OK,
-                "starting main event service manager",
+                "the main event service manager now handles event listeners",
             );
             futures::executor::block_on(async move {
                 loop {
