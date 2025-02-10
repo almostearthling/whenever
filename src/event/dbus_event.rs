@@ -1076,6 +1076,13 @@ impl Event for DbusMessageEvent {
         //       the zbus::blocking option might be considered for further
         //       developement as well as rebuilding this service as real async
 
+        // this helper is just to avoid ugly code since the implementation of
+        // zbus used here still does not implement the `key_signature` method
+        // for dictionaries
+        fn _key_signature(d: &zvariant::Dict) -> String {
+            String::from(d.signature().as_str().chars().nth(2).unwrap())
+        }
+
         // a helper to apply a given operator to two values without clutter;
         // for simplicity sake the `Match` operator will just evaluate to
         // `false` here, instead of generating an error: the `Err()` case would
@@ -1396,39 +1403,38 @@ impl Event for DbusMessageEvent {
                                                     let s = s.as_str();
                                                     match field_value {
                                                         zvariant::Value::Dict(f) => {
-                                                            // in order to match either strings or object paths, we must identify the
-                                                            // third character of the signature: the signature in this case can either
-                                                            // be "a{s...}" or "a{o...}" at this point, thus these are the cases we
-                                                            // take into account; all other cases are treated as errors
-                                                            let sig = f.full_signature().as_str();
-                                                            let m;
-                                                            if sig.starts_with("a{s") {
-                                                                let k = zvariant::Str::from(s);
-                                                                m = f.get(&k);
-                                                            } else if sig.starts_with("a{o") {
-                                                                let res = zvariant::ObjectPath::try_from(s);
-                                                                if res.is_err() {
+                                                            // in order to match either strings or object paths, match key signature
+                                                            let m= match _key_signature(f).as_str() {
+                                                                "s" => {
+                                                                    let k = zvariant::Str::from(s);
+                                                                    f.get(&k)
+                                                                }
+                                                                "o" => {
+                                                                    let res = zvariant::ObjectPath::try_from(s);
+                                                                    if res.is_err() {
+                                                                        self.log(
+                                                                            LogType::Warn,
+                                                                            LOG_WHEN_PROC,
+                                                                            LOG_STATUS_FAIL,
+                                                                            &format!("could not retrieve result: index `{s}` should be an object path"),
+                                                                        );
+                                                                        verified = false;
+                                                                        break 'params;
+                                                                    } else {
+                                                                        let k = res.unwrap().to_owned();
+                                                                        f.get(&k)
+                                                                    }
+                                                                }
+                                                                _ =>{
                                                                     self.log(
                                                                         LogType::Warn,
                                                                         LOG_WHEN_PROC,
                                                                         LOG_STATUS_FAIL,
-                                                                        &format!("could not retrieve result: index `{s}` should be an object path"),
+                                                                        &format!("could not retrieve result: index `{s}` not matching dictionary key type"),
                                                                     );
                                                                     verified = false;
                                                                     break 'params;
-                                                                } else {
-                                                                    let k = res.unwrap().to_owned();
-                                                                    m = f.get(&k);
                                                                 }
-                                                            } else {
-                                                                self.log(
-                                                                    LogType::Warn,
-                                                                    LOG_WHEN_PROC,
-                                                                    LOG_STATUS_FAIL,
-                                                                    &format!("could not retrieve result: index `{s}` not matching dictionary key type"),
-                                                                );
-                                                                verified = false;
-                                                                break 'params;
                                                             };
                                                             field_value = match m {
                                                                 Ok(fv) => {
