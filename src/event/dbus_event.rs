@@ -1211,7 +1211,7 @@ impl Event for DbusMessageEvent {
             &format!("successfully subscribed to message on bus `{bus}`"),
         );
 
-        // build an async communication channel for the quit signal 
+        // build an async communication channel for the quit signal
         let (aquit_tx, mut aquit_rx) = channel(10);
 
         // now it is time to set the internal `running` flag, before the
@@ -1384,11 +1384,53 @@ impl Event for DbusMessageEvent {
                                                         }
                                                     }
                                                 }
+                                                // even though there would be the possibility to explicitly indicate an ObjectPath
+                                                // via an '\o' prefix (as we do for values), since object paths really are strings
+                                                // that adhere to a certain format, the conversion is automatically done for the
+                                                // cases where an ObjectPath is required in place of a string - just logging that
+                                                // a malformed string was configured as index where a well-formed object path had
+                                                // to be provided; the following code directly matching the signature beginning is
+                                                // in fact ugly as hell, however a nicer implementation might come with more recent
+                                                // releases of zbus, which provide enum variants for signature nested structures
                                                 ParameterIndex::String(s) => {
                                                     let s = s.as_str();
                                                     match field_value {
                                                         zvariant::Value::Dict(f) => {
-                                                            field_value = match f.get(s) {
+                                                            // in order to match either strings or object paths, we must identify the
+                                                            // third character of the signature: the signature in this case can either
+                                                            // be "a{s...}" or "a{o...}" at this point, thus these are the cases we
+                                                            // take into account; all other cases are treated as errors
+                                                            let sig = f.full_signature().as_str();
+                                                            let m;
+                                                            if sig.starts_with("a{s") {
+                                                                let k = zvariant::Str::from(s);
+                                                                m = f.get(&k);
+                                                            } else if sig.starts_with("a{o") {
+                                                                let res = zvariant::ObjectPath::try_from(s);
+                                                                if res.is_err() {
+                                                                    self.log(
+                                                                        LogType::Warn,
+                                                                        LOG_WHEN_PROC,
+                                                                        LOG_STATUS_FAIL,
+                                                                        &format!("could not retrieve result: index `{s}` should be an object path"),
+                                                                    );
+                                                                    verified = false;
+                                                                    break 'params;
+                                                                } else {
+                                                                    let k = res.unwrap().to_owned();
+                                                                    m = f.get(&k);
+                                                                }
+                                                            } else {
+                                                                self.log(
+                                                                    LogType::Warn,
+                                                                    LOG_WHEN_PROC,
+                                                                    LOG_STATUS_FAIL,
+                                                                    &format!("could not retrieve result: index `{s}` not matching dictionary key type"),
+                                                                );
+                                                                verified = false;
+                                                                break 'params;
+                                                            };
+                                                            field_value = match m {
                                                                 Ok(fv) => {
                                                                     if let Some(fv) = fv {
                                                                         fv
@@ -1891,7 +1933,7 @@ impl Event for DbusMessageEvent {
                                             LogType::Warn,
                                             LOG_WHEN_PROC,
                                             LOG_STATUS_FAIL,
-                                            "could not retrieve parameter index: no integer found",
+                                            "could not retrieve field index: first index must be integer",
                                         );
                                         verified = false;
                                         break;
