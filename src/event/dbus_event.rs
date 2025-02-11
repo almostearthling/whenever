@@ -142,14 +142,14 @@ fn key_signature(d: &zvariant::Dict) -> String {
 /// a trait that defines containable types: implementations are provided for
 /// all types found in the `ParameterCheckValue` enum defined above
 trait Containable {
-    fn is_contained_in(self, v: &zvariant::Value) -> bool;
+    fn is_contained_in(&self, v: &zvariant::Value) -> bool;
 }
 
 // implementations: dictionary value lookup will be provided as soon as there
 // will be a way, in _zbus_, to at least retrieve the dictionary keys (if not
 // directly the mapped values) in order to compare the contents with the value
 impl Containable for bool {
-    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+    fn is_contained_in(&self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
                 a.contains(&zvariant::Value::from(self))
@@ -160,7 +160,7 @@ impl Containable for bool {
 }
 
 impl Containable for i64 {
-    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+    fn is_contained_in(&self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
                 // to handle this we transform the array into a new array of
@@ -242,7 +242,7 @@ impl Containable for i64 {
                     }
                     _ => { return false; }
                 }
-                testv.contains(&Some(self))
+                testv.contains(&Some(*self))
             }
             _ => false
         }
@@ -250,10 +250,10 @@ impl Containable for i64 {
 }
 
 impl Containable for f64 {
-    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+    fn is_contained_in(&self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
-                a.contains(&zvariant::Value::from(self))
+                a.contains(&zvariant::Value::from(*self))
             }
             _ => false
         }
@@ -264,7 +264,7 @@ impl Containable for f64 {
 // (both of `Str` and `ObjectPath`) or, alternatively, to match a substring
 // of the returned `Str` or `ObjectPath`
 impl Containable for String {
-    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+    fn is_contained_in(&self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Str(s) => {
                 s.as_str().contains(self.as_str())
@@ -278,7 +278,7 @@ impl Containable for String {
                         a.contains(&zvariant::Value::from(self))
                     }
                     "o" => {
-                        let o = zvariant::ObjectPath::try_from(self);
+                        let o = zvariant::ObjectPath::try_from(self.as_str());
                         if let Ok(o) = o {
                             a.contains(&zvariant::Value::from(o))
                         } else {
@@ -296,7 +296,7 @@ impl Containable for String {
                 match key_signature(d).as_str() {
                     "s" => {
                         let k = zvariant::Str::from(self.as_str());
-                        let res: Result<Option<&zvariant::Str>, zvariant::Error> = d.get(&k);
+                        let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
                         if let Ok(res) = res {
                             if res.is_some() {
                                 true
@@ -308,11 +308,11 @@ impl Containable for String {
                         }
                     }
                     "o" => {
-                        let k = zvariant::ObjectPath::try_from(self);
+                        let k = zvariant::ObjectPath::try_from(self.as_str());
                         if k.is_err() {
                             return false
                         }
-                        let res: Result<Option<&zvariant::ObjectPath>, zvariant::Error> = d.get(&k.unwrap());
+                        let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k.unwrap());
                         if let Ok(res) = res {
                             if res.is_some() {
                                 true
@@ -331,10 +331,10 @@ impl Containable for String {
     }
 }
 
-// the following is totally arbitrary and should not be actually used: it is
+// the following is totally arbitrary and will actually not be used: it is
 // provided here only in order to complete the "required" implementations
 impl Containable for Regex {
-    fn is_contained_in(self, v: &zvariant::Value) -> bool {
+    fn is_contained_in(&self, v: &zvariant::Value) -> bool {
         match v {
             zvariant::Value::Array(a) => {
                 for elem in a.to_vec() {
@@ -1147,7 +1147,7 @@ impl Event for DbusMessageEvent {
         }
 
         // the following function allows for better readability
-        fn _contained_in<T: Containable>(v: T, a: &zvariant::Value) -> bool {
+        fn _contained_in<T: Containable>(v: &T, a: &zvariant::Value) -> bool {
             v.is_contained_in(a)
         }
 
@@ -1556,7 +1556,7 @@ impl Event for DbusMessageEvent {
                                                 } else if ck.operator == ParamCheckOperator::Contains {
                                                     match field_value {
                                                         zvariant::Value::Array(_) => {
-                                                            if _contained_in(*b, field_value) {
+                                                            if _contained_in(b, field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
@@ -1576,7 +1576,7 @@ impl Event for DbusMessageEvent {
                                                 } else if ck.operator == ParamCheckOperator::NotContains {
                                                     match field_value {
                                                         zvariant::Value::Array(_) => {
-                                                            if !_contained_in(*b, field_value) {
+                                                            if !_contained_in(b, field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
@@ -1701,7 +1701,7 @@ impl Event for DbusMessageEvent {
                                                     }
                                                     zvariant::Value::Array(_) => {
                                                         if ck.operator == ParamCheckOperator::Contains {
-                                                            if _contained_in(*i, field_value) {
+                                                            if _contained_in(i, field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
@@ -1713,7 +1713,7 @@ impl Event for DbusMessageEvent {
                                                                 }
                                                             }
                                                         } else if ck.operator == ParamCheckOperator::NotContains {
-                                                            if !_contained_in(*i, field_value) {
+                                                            if !_contained_in(i, field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
@@ -1763,7 +1763,7 @@ impl Event for DbusMessageEvent {
                                                     }
                                                     zvariant::Value::Array(_) => {
                                                         if ck.operator == ParamCheckOperator::Contains {
-                                                            if _contained_in(*f, field_value) {
+                                                            if _contained_in(f, field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
@@ -1775,7 +1775,7 @@ impl Event for DbusMessageEvent {
                                                                 }
                                                             }
                                                         } else if ck.operator == ParamCheckOperator::NotContains {
-                                                            if !_contained_in(*f, field_value) {
+                                                            if !_contained_in(f, field_value) {
                                                                 verified = true;
                                                                 if !self.param_checks_all {
                                                                     break 'params;
@@ -1888,7 +1888,7 @@ impl Event for DbusMessageEvent {
                                                         }
                                                     }
                                                 } else if ck.operator == ParamCheckOperator::Contains {
-                                                    if _contained_in(s.clone(), field_value) {
+                                                    if _contained_in(s, field_value) {
                                                         verified = true;
                                                         if !self.param_checks_all {
                                                             break 'params;
@@ -1900,7 +1900,7 @@ impl Event for DbusMessageEvent {
                                                         }
                                                     }
                                                 } else if ck.operator == ParamCheckOperator::NotContains {
-                                                    if !_contained_in(s.clone(), field_value) {
+                                                    if !_contained_in(s, field_value) {
                                                         verified = true;
                                                         if !self.param_checks_all {
                                                             break 'params;
