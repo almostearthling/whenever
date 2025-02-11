@@ -276,6 +276,15 @@ impl ToVariant for CfgValue {
 
 
 
+// this helper is just to avoid ugly code since the implementation of
+// zbus used here still does not implement the `key_signature` method
+// for dictionaries
+fn key_signature(d: &zvariant::Dict) -> String {
+    String::from(d.signature().as_str().chars().nth(2).unwrap())
+}
+
+
+
 /// a trait that defines containable types: implementations are provided for
 /// all types found in the `ParameterCheckValue` enum defined above
 trait Containable {
@@ -418,6 +427,44 @@ impl Containable for String {
                         let o = zvariant::ObjectPath::try_from(self);
                         if let Ok(o) = o {
                             a.contains(&zvariant::Value::from(o))
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false
+                }
+            }
+            // currently used version of Dict (the one in zbus 3.x) does not
+            // allow to search the keys as set or list, thus the easiest test
+            // that can be made is retrieving a value and checking for errors
+            // and that the result is something
+            zvariant::Value::Dict(d) => {
+                match key_signature(d).as_str() {
+                    "s" => {
+                        let k = zvariant::Str::from(self.as_str());
+                        let res: Result<Option<&zvariant::Str>, zvariant::Error> = d.get(&k);
+                        if let Ok(res) = res {
+                            if res.is_some() {
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                    "o" => {
+                        let k = zvariant::ObjectPath::try_from(self);
+                        if k.is_err() {
+                            return false
+                        }
+                        let res: Result<Option<&zvariant::ObjectPath>, zvariant::Error> = d.get(&k.unwrap());
+                        if let Ok(res) = res {
+                            if res.is_some() {
+                                true
+                            } else {
+                                false
+                            }
                         } else {
                             false
                         }
@@ -1611,13 +1658,6 @@ impl Condition for DbusMethodCondition {
         //       the zbus::blocking option might be considered for further
         //       developement as well as rebuilding this service as real async
 
-        // this helper is just to avoid ugly code since the implementation of
-        // zbus used here still does not implement the `key_signature` method
-        // for dictionaries
-        fn _key_signature(d: &zvariant::Dict) -> String {
-            String::from(d.signature().as_str().chars().nth(2).unwrap())
-        }
-
         // a helper to apply a given operator to two values without clutter;
         // for simplicity sake the `Match` operator will just evaluate to
         // `false` here, instead of generating an error: the `Err()` case would
@@ -1856,7 +1896,7 @@ impl Condition for DbusMethodCondition {
                                             match field_value {
                                                 zvariant::Value::Dict(f) => {
                                                     // in order to match either strings or object paths, match key signature
-                                                    let m= match _key_signature(f).as_str() {
+                                                    let m= match key_signature(f).as_str() {
                                                         "s" => {
                                                             let k = zvariant::Str::from(s);
                                                             f.get(&k)
