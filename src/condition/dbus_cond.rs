@@ -1611,6 +1611,13 @@ impl Condition for DbusMethodCondition {
         //       the zbus::blocking option might be considered for further
         //       developement as well as rebuilding this service as real async
 
+        // this helper is just to avoid ugly code since the implementation of
+        // zbus used here still does not implement the `key_signature` method
+        // for dictionaries
+        fn _key_signature(d: &zvariant::Dict) -> String {
+            String::from(d.signature().as_str().chars().nth(2).unwrap())
+        }
+
         // a helper to apply a given operator to two values without clutter;
         // for simplicity sake the `Match` operator will just evaluate to
         // `false` here, instead of generating an error: the `Err()` case would
@@ -1836,11 +1843,52 @@ impl Condition for DbusMethodCondition {
                                                 }
                                             }
                                         }
+                                        // even though there would be the possibility to explicitly indicate an ObjectPath
+                                        // via an '\o' prefix (as we do for values), since object paths really are strings
+                                        // that adhere to a certain format, the conversion is automatically done for the
+                                        // cases where an ObjectPath is required in place of a string - just logging that
+                                        // a malformed string was configured as index where a well-formed object path had
+                                        // to be provided; the following code directly matching the signature beginning is
+                                        // in fact ugly as hell, however a nicer implementation might come with more recent
+                                        // releases of zbus, which provide enum variants for signature nested structures
                                         ParameterIndex::String(s) => {
                                             let s = s.as_str();
                                             match field_value {
                                                 zvariant::Value::Dict(f) => {
-                                                    field_value = match f.get(s) {
+                                                    // in order to match either strings or object paths, match key signature
+                                                    let m= match _key_signature(f).as_str() {
+                                                        "s" => {
+                                                            let k = zvariant::Str::from(s);
+                                                            f.get(&k)
+                                                        }
+                                                        "o" => {
+                                                            let res = zvariant::ObjectPath::try_from(s);
+                                                            if res.is_err() {
+                                                                self.log(
+                                                                    LogType::Warn,
+                                                                    LOG_WHEN_PROC,
+                                                                    LOG_STATUS_FAIL,
+                                                                    &format!("could not retrieve result: index `{s}` should be an object path"),
+                                                                );
+                                                                verified = false;
+                                                                break 'params;
+                                                            } else {
+                                                                let k = res.unwrap().to_owned();
+                                                                f.get(&k)
+                                                            }
+                                                        }
+                                                        _ =>{
+                                                            self.log(
+                                                                LogType::Warn,
+                                                                LOG_WHEN_PROC,
+                                                                LOG_STATUS_FAIL,
+                                                                &format!("could not retrieve result: index `{s}` not matching dictionary key type"),
+                                                            );
+                                                            verified = false;
+                                                            break 'params;
+                                                        }
+                                                    };
+                                                    field_value = match m {
                                                         Ok(fv) => {
                                                             if let Some(fv) = fv {
                                                                 fv
@@ -2343,7 +2391,7 @@ impl Condition for DbusMethodCondition {
                                     LogType::Warn,
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,
-                                    "could not retrieve parameter index: no integer found",
+                                    "could not retrieve field index: first index must be integer",
                                 );
                                 verified = false;
                                 break;
