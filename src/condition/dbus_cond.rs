@@ -442,6 +442,7 @@ impl Containable for String {
                 match key_signature(d).as_str() {
                     "s" => {
                         let k = zvariant::Str::from(self.as_str());
+
                         let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
                         if let Ok(res) = res {
                             if res.is_some() {
