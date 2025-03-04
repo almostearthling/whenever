@@ -372,16 +372,20 @@ impl ConditionRegistry {
         }
     }
 
-    /// Queue a condition for reset
+    /// Queue a condition for reset: the current policy is that the
+    /// reset status will be set only when there are no busy condiions
     pub fn queue_reset_condition(&self, name: &str) -> Result<(), std::io::Error> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
-        let cl0 = self.conditions_to_reset.clone();
-        let mut cl1 = cl0
+        let mxq0 = self.conditions_to_reset.clone();
+        let mut queue = mxq0
             .lock()
             .expect("cannot lock list of conditions to reset");
-        cl1.push(String::from(name));
-
+        let s = String::from(name);
+        if !queue.contains(&s) {
+            queue.push(s);
+        }
+        
         Ok(())
     }
 
@@ -428,15 +432,19 @@ impl ConditionRegistry {
         }
     }
 
-    /// Queue a condition for reset
+    /// Queue a condition for suspension: the current policy is that the
+    /// suspended flag will be set only when there are no busy condiions
     pub fn queue_suspend_condition(&self, name: &str) -> Result<(), std::io::Error> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
-        let cl0 = self.conditions_to_suspend.clone();
-        let mut cl1 = cl0
+        let mxq0 = self.conditions_to_suspend.clone();
+        let mut queue = mxq0
             .lock()
             .expect("cannot lock list of conditions to resuspendset");
-        cl1.push(String::from(name));
+        let s = String::from(name);
+        if !queue.contains(&s) {
+            queue.push(s);
+        }
 
         Ok(())
     }
@@ -629,12 +637,14 @@ impl ConditionRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.condition_id(name).unwrap();
-        let guard = self.condition_list
+        let cl0 = self.condition_list
             .read()
             .expect("cannot read condition registry");
-        let cond = guard
+        let cond = cl0
             .get(name)
             .expect("cannot retrieve condition for testing");
+        let cond = cond.clone();
+        drop(cl0);
 
         let mut lock = cond.try_lock();
         if let Ok(ref mut cond) = lock {
@@ -650,87 +660,100 @@ impl ConditionRegistry {
             // increment number of busy conditions by one: this can be done
             // without *self being mut because conditions_busy is an Arc
             *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") += 1;
-            let res;
-            if let Some(outcome) = cond.test()? {
-                if outcome {
-                    res = cond.run_tasks();
-                } else {
-                    res = Ok(None)
+            let res= match cond.test() {
+                Ok(o) => {
+                    if let Some(outcome) = o {
+                        if outcome {
+                            cond.run_tasks()
+                        } else {
+                            Ok(None)
+                        }
+                    } else {
+                        Ok(None)
+                    }
                 }
-            } else {
-                res = Ok(None)
-            }
+                Err(e) => {
+                    Err(e)
+                }
+            };
             *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") -= 1;
 
+            // this cloned string is useful to look into queues
+            let sname = String::from(name);
+
+            // after this, check whether this condition is in one of the queues
+            // of conditions to be suspended, or reset (or removed?)
+            let mxq0=self.conditions_to_reset.clone();
+            let mut queue = mxq0.lock().expect("cannot acquire list of conditions to reset");
+            if queue.contains(&sname) {
+                if self.reset_condition(name, true).is_ok() {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_CONDITION_REGISTRY,
+                        LOG_ACTION_RESET_CONDITIONS,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("condition {name} successfully reset"),
+                    );
+                    // since it has been reset we can remove it from the queue
+                    let i = queue.iter().position(|x| *x == sname).unwrap();
+                    queue.swap_remove(i);
+                } else {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_CONDITION_REGISTRY,
+                        LOG_ACTION_RESET_CONDITIONS,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("condition {name} could not be reset"),
+                    );
+                }
+            }
+            drop(queue);
+            drop(mxq0);
+
+            let mxq0=self.conditions_to_suspend.clone();
+            let mut queue = mxq0.lock().expect("cannot acquire list of conditions to suspend");
+            if queue.contains(&sname) {
+                if self.reset_condition(name, true).is_ok() {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_CONDITION_REGISTRY,
+                        LOG_ACTION_SUSPEND_CONDITION,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("condition {name} successfully suspended"),
+                    );
+                    // since it has been suspended we can remove it from the queue
+                    let i = queue.iter().position(|x| *x == sname).unwrap();
+                    queue.swap_remove(i);
+                } else {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_CONDITION_REGISTRY,
+                        LOG_ACTION_SUSPEND_CONDITION,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("condition {name} could not be suspended"),
+                    );
+                }
+            }
+            drop(queue);
+            drop(mxq0);
+            
             // this is the right time to operate on the registry if there are
             // no busy conditions remaining, thus in this order:
             //
-            // 1. reset conditions in the reset list,
-            // 2. suspend conditions in the suspend list,
-            // 3. remove conditions that must be uninstalled,
-            // 4. add the conditions that have to be installed;
+            // 1. remove conditions that must be uninstalled,
+            // 2. add the conditions that have to be installed;
             //
             // note that locking the counter also prevents other tests to be
-            // performed in other possiblle threads
+            // performed in other threads
             if *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") == 0 {
-                // reset conditions
-                let rst_queue=self.conditions_to_reset.clone();
-                {
-                    let mut queue = rst_queue.lock().expect("cannot acquire list of conditions to reset");
-                    for name in queue.iter() {
-                        if self.reset_condition(name, true).is_ok() {
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_CONDITION_REGISTRY,
-                                LOG_ACTION_RESET_CONDITIONS,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_OK,
-                                &format!("condition {name} successfully reset"),
-                            );
-                        } else {
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_CONDITION_REGISTRY,
-                                LOG_ACTION_RESET_CONDITIONS,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("condition {name} could not be reset"),
-                            );
-                        }
-                    }
-                    queue.clear();
-                }
-                // suspend conditions
-                let susp_queue=self.conditions_to_suspend.clone();
-                {
-                    let mut queue = susp_queue.lock().expect("cannot acquire list of conditions to suspend");
-                    for name in queue.iter() {
-                        if self.suspend_condition(name, true).is_ok() {
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_CONDITION_REGISTRY,
-                                LOG_ACTION_SUSPEND_CONDITION,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_OK,
-                                &format!("condition {name} successfully suspend"),
-                            );
-                        } else {
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_CONDITION_REGISTRY,
-                                LOG_ACTION_SUSPEND_CONDITION,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("condition {name} could not be suspended"),
-                            );
-                        }
-                    }
-                    queue.clear();
-                }
                 // remove conditions
                 let rm_queue = self.items_to_remove.clone();
                 {

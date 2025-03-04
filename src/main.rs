@@ -258,7 +258,32 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                 LOG_STATUS_OK,
                 &format!("resetting condition {name}"),
             );
-            if CONDITION_REGISTRY.queue_reset_condition(name).is_ok() {
+            // since a reset request will block until a busy condition
+            // releases its lock, it is better to queue a reset request
+            // which will be handled by the registry
+            if CONDITION_REGISTRY.reset_condition(name, false).is_err() {
+                if CONDITION_REGISTRY.queue_reset_condition(name).is_ok() {
+                    log(
+                        LogType::Info,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RESET_CONDITIONS,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("condition {name} queued for reset"),
+                    );
+                } else {
+                    log(
+                        LogType::Warn,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_RESET_CONDITIONS,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("condition {name} could not be queued for reset"),
+                    );
+                }
+            } else {
                 log(
                     LogType::Info,
                     LOG_EMITTER_MAIN,
@@ -266,17 +291,7 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                     None,
                     LOG_WHEN_END,
                     LOG_STATUS_OK,
-                    &format!("condition {name} queued for reset"),
-                );
-            } else {
-                log(
-                    LogType::Warn,
-                    LOG_EMITTER_MAIN,
-                    LOG_ACTION_RESET_CONDITIONS,
-                    None,
-                    LOG_WHEN_END,
-                    LOG_STATUS_FAIL,
-                    &format!("condition {name} could not be queued for reset"),
+                    &format!("condition {name} successfully reset"),
                 );
             }
         }
@@ -312,43 +327,46 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
             }),
         );
         if suspended {
-            match CONDITION_REGISTRY.suspend_condition(name, true) {
-                Ok(res) => {
-                    if res {
-                        log(
-                            LogType::Info,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_SUSPEND_CONDITION,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_OK,
-                            &format!("condition {name} has been suspended"),
-                        );
-                    } else {
-                        log(
-                            LogType::Warn,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_SUSPEND_CONDITION,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_FAIL,
-                            &format!("condition {name} already suspended"),
-                        );
-                    }
-                }
-                Err(e) => {
+            // suspension is like reset: while a condition is busy it is
+            // better not to block waiting for it to be released, and just
+            // queue a suspension request
+            if CONDITION_REGISTRY.suspend_condition(name, false).is_err() {
+                if CONDITION_REGISTRY.queue_suspend_condition(name).is_ok() {
                     log(
-                        LogType::Error,
+                        LogType::Info,
                         LOG_EMITTER_MAIN,
                         LOG_ACTION_SUSPEND_CONDITION,
                         None,
-                        LOG_WHEN_END,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("condition {name} queued to be suspended"),
+                    );
+                } else {
+                    log(
+                        LogType::Warn,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_SUSPEND_CONDITION,
+                        None,
+                        LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
-                        &format!("error while suspending condition {name}: {e}"),
+                        &format!("condition {name} could not be queued to be suspended"),
                     );
                 }
+            } else {
+                log(
+                    LogType::Info,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_SUSPEND_CONDITION,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("condition {name} successfully suspended"),
+                );
             }
         } else {
+            // the resume case is different, because in most cases the
+            // condition is suspended and can be directly resumed, while if
+            // not an error is returned and logged
             match CONDITION_REGISTRY.resume_condition(name, true) {
                 Ok(res) => {
                     if res {
