@@ -50,6 +50,12 @@ pub struct ConditionRegistry {
     condition_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>,
     conditions_busy: Arc<Mutex<u64>>,
 
+    // a list of conditions to be reset as soon as they become not busy
+    conditions_to_reset: Arc<Mutex<Vec<String>>>,
+
+    // a list of conditions to be suspended as soon as they become not busy
+    conditions_to_suspend: Arc<Mutex<Vec<String>>>,
+
     // the two queues for items to remove and items to add: the items that
     // need to be added are stored as full (dyn) items, while the ones to
     // be removed are stored as names
@@ -66,6 +72,8 @@ impl ConditionRegistry {
         ConditionRegistry {
             condition_list: RwLock::new(HashMap::new()),
             conditions_busy: Arc::new(Mutex::new(0_u64)),
+            conditions_to_reset: Arc::new(Mutex::new(Vec::new())),
+            conditions_to_suspend: Arc::new(Mutex::new(Vec::new())),
 
             items_to_remove: Arc::new(Mutex::new(Vec::new())),
             items_to_add: Arc::new(Mutex::new(Vec::new())),
@@ -364,6 +372,19 @@ impl ConditionRegistry {
         }
     }
 
+    /// Queue a condition for reset
+    pub fn queue_reset_condition(&self, name: &str) -> Result<(), std::io::Error> {
+        assert!(self.has_condition(name), "condition {name} not in registry");
+
+        let cl0 = self.conditions_to_reset.clone();
+        let mut cl1 = cl0
+            .lock()
+            .expect("cannot lock list of conditions to reset");
+        cl1.push(String::from(name));
+
+        Ok(())
+    }
+
     /// Suspend the named condition if found in the registry
     ///
     /// # Arguments
@@ -405,6 +426,19 @@ impl ConditionRegistry {
             // here and return the operation result from the condition itself
             cond.clone().lock().expect("condition cannot be locked").suspend()
         }
+    }
+
+    /// Queue a condition for reset
+    pub fn queue_suspend_condition(&self, name: &str) -> Result<(), std::io::Error> {
+        assert!(self.has_condition(name), "condition {name} not in registry");
+
+        let cl0 = self.conditions_to_suspend.clone();
+        let mut cl1 = cl0
+            .lock()
+            .expect("cannot lock list of conditions to resuspendset");
+        cl1.push(String::from(name));
+
+        Ok(())
     }
 
     /// Resume the named condition if found in the registry
@@ -629,11 +663,75 @@ impl ConditionRegistry {
             *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") -= 1;
 
             // this is the right time to operate on the registry if there are
-            // no busy conditions remaining: first remove conditions that must
-            // be uninstalled, then add the ones that have to be installed;
+            // no busy conditions remaining, thus in this order:
+            //
+            // 1. reset conditions in the reset list,
+            // 2. suspend conditions in the suspend list,
+            // 3. remove conditions that must be uninstalled,
+            // 4. add the conditions that have to be installed;
+            //
             // note that locking the counter also prevents other tests to be
             // performed in other possiblle threads
             if *self.conditions_busy.clone().lock().expect("cannot lock condition busy counter") == 0 {
+                // reset conditions
+                let rst_queue=self.conditions_to_reset.clone();
+                {
+                    let mut queue = rst_queue.lock().expect("cannot acquire list of conditions to reset");
+                    for name in queue.iter() {
+                        if self.reset_condition(name, true).is_ok() {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_CONDITION_REGISTRY,
+                                LOG_ACTION_RESET_CONDITIONS,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("condition {name} successfully reset"),
+                            );
+                        } else {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_CONDITION_REGISTRY,
+                                LOG_ACTION_RESET_CONDITIONS,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_FAIL,
+                                &format!("condition {name} could not be reset"),
+                            );
+                        }
+                    }
+                    queue.clear();
+                }
+                // suspend conditions
+                let susp_queue=self.conditions_to_suspend.clone();
+                {
+                    let mut queue = susp_queue.lock().expect("cannot acquire list of conditions to suspend");
+                    for name in queue.iter() {
+                        if self.suspend_condition(name, true).is_ok() {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_CONDITION_REGISTRY,
+                                LOG_ACTION_SUSPEND_CONDITION,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("condition {name} successfully suspend"),
+                            );
+                        } else {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_CONDITION_REGISTRY,
+                                LOG_ACTION_SUSPEND_CONDITION,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_FAIL,
+                                &format!("condition {name} could not be suspended"),
+                            );
+                        }
+                    }
+                    queue.clear();
+                }
+                // remove conditions
                 let rm_queue = self.items_to_remove.clone();
                 {
                     let queue = rm_queue.lock().expect("cannot acquire list of items to remove");
@@ -657,13 +755,14 @@ impl ConditionRegistry {
                                     LOG_ACTION_UNINSTALL,
                                     None,
                                     LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
+                                    LOG_STATUS_FAIL,
                                     &format!("condition to remove {name} not found in the registry"),
                                 );
                             }
                         }
                     }
                 }
+                // add conditions
                 let add_queue = self.items_to_add.clone();
                 {
                     let mut queue = add_queue.lock().expect("cannot acquire list of items to add");

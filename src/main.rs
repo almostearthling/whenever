@@ -237,14 +237,6 @@ macro_rules! exit_if_fails {
 // reset the conditions whose names are provided in a vector of &str
 fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
 
-    // WARNING: this overly simplistic version, which is temporary, will
-    // wait for each provided condition to exit its possible busy state;
-    // this means that if a busy condition is met in the list, all the
-    // following conditions will have to wait for it to be freed in order
-    // to receive their reset instruction, and thiis can make the process
-    // of resetting many conditions very long, while also blocking the
-    // command interpreter thread
-
     for name in names {
         if !CONDITION_REGISTRY.has_condition(name) {
             log(
@@ -258,7 +250,7 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
             );
         } else {
             log(
-                LogType::Debug,
+                LogType::Trace,
                 LOG_EMITTER_MAIN,
                 LOG_ACTION_RESET_CONDITIONS,
                 None,
@@ -266,41 +258,26 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
                 LOG_STATUS_OK,
                 &format!("resetting condition {name}"),
             );
-            match CONDITION_REGISTRY.reset_condition(name, true) {
-                Ok(res) => {
-                    if res {
-                        log(
-                            LogType::Info,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_RESET_CONDITIONS,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_OK,
-                            &format!("condition {name} has been reset"),
-                        );
-                    } else {
-                        log(
-                            LogType::Warn,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_RESET_CONDITIONS,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_FAIL,
-                            &format!("condition {name} could not be reset"),
-                        );
-                    }
-                }
-                Err(e) => {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RESET_CONDITIONS,
-                        None,
-                        LOG_WHEN_END,
-                        LOG_STATUS_FAIL,
-                        &format!("error while resetting condition {name}: {e}"),
-                    );
-                }
+            if CONDITION_REGISTRY.queue_reset_condition(name).is_ok() {
+                log(
+                    LogType::Info,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_RESET_CONDITIONS,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("condition {name} queued for reset"),
+                );
+            } else {
+                log(
+                    LogType::Warn,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_RESET_CONDITIONS,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!("condition {name} could not be queued for reset"),
+                );
             }
         }
     }
