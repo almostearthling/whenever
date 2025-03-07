@@ -579,7 +579,7 @@ pub trait Condition: Send {
         // is informed that some tasks failed and, if it should not retry
         // forever, a retry is consumed
         self.set_tasks_failed(some_failed);
-        if !self.recurring() {
+        if !self.recurring() && some_failed {
             if let Some(left) = self.left_retries() {
                 self.set_retried();
                 let left = left - 1;
