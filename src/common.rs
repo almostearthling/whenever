@@ -44,6 +44,17 @@
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to
 //! organize communication to the user in a friendlier way.
+//! 
+//! This module also contains common enums, traits, structs, and functions
+//! shared between items that use the same technology. Shared collections are
+//! organized in modules:
+//! 
+//! * `cmditem` for assets common to command based tasks and conditions
+//! * `luaitem` for assets common to Lua based tasks and conditions
+//! * `dbusitem` for assets common to DBus based conditions and events
+//! 
+//! in order to avoid behaviour discrepancies, and possibly to save some
+//! memory by avoiding unnecessary duplications.
 
 use std::sync::RwLock;
 use lazy_static::lazy_static;
