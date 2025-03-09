@@ -24,28 +24,29 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use itertools::Itertools;
 
-use subprocess::{Popen, PopenConfig, Redirection, ExitStatus, PopenError};
+use subprocess::{Popen, PopenConfig, Redirection, PopenError};
 
 use cfgmap::CfgMap;
 
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
+use crate::common::cmditem::*;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
 
 
-/// In case of failure, the reason will be one of the provided values
-#[derive(Debug, PartialEq)]
-pub enum FailureReason {
-    NoFailure,
-    StdOut,
-    StdErr,
-    Status,
-    Other,
-}
+// /// In case of failure, the reason will be one of the provided values
+// #[derive(Debug, PartialEq)]
+// pub enum FailureReason {
+//     NoFailure,
+//     StdOut,
+//     StdErr,
+//     Status,
+//     Other,
+// }
 
 
 
@@ -973,120 +974,6 @@ impl Condition for CommandCondition {
     ///           the command based `CommandTask` task structure.
     fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
 
-        // helper to start a process (in the same thread), read stdout/stderr
-        // continuously (thus freeing its buffers), optionally terminate it
-        // after a certain timeout has been reached: it returns a tuple
-        // consisting of the exit status and, optionally, strings containing
-        // stdout and stderr contents; no way is given of providing input to
-        // the subprocess
-        fn spawn_process(
-            mut proc: Popen,
-            poll_interval: Duration,
-            timeout: Option<Duration>,
-        ) -> Result<(ExitStatus, Option<String>, Option<String>), std::io::Error> {
-            let mut stdout = String::new();
-            let mut stderr = String::new();
-            let mut out;
-            let mut err;
-            let mut exit_status;
-            let mut comm = proc.communicate_start(None).limit_time(poll_interval);
-            let startup = SystemTime::now();
-
-            loop {
-                // we intercept timeout error here because we just could be
-                // waiting for more output to be available; the timed_out
-                // flag is used to avoid waiting extra time when reading
-                // from stdout/stderr has already had a cost in this terms
-                let mut timed_out = false;
-                let cres = comm.read_string();
-                if cres.is_err() {
-                    if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
-                        let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
-                        timed_out = true;
-                        if co.is_some() {
-                            out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
-                        } else {
-                            out = None;
-                        }
-                        if ce.is_some() {
-                            err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
-                        } else {
-                            err = None;
-                        }
-                    } else {
-                        return Err(std::io::Error::new(
-                            cres.as_ref().unwrap_err().kind(),
-                            cres.as_ref().unwrap_err().to_string(),
-                        ));
-                    }
-                } else {
-                    (out, err) = cres.unwrap();
-                }
-
-                if let Some(ref o) = out { stdout.push_str(o.as_str()); }
-                if let Some(ref e) = err { stderr.push_str(e.as_str()); }
-                exit_status = proc.poll();
-                if exit_status.is_none() {
-                    if let Some(t) = timeout {
-                        if SystemTime::now() > startup + t {
-                            let res = proc.terminate();
-                            if res.is_err() {
-                                let _ = proc.kill();
-                            }
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::TimedOut,
-                                ERR_TIMEOUT_REACHED,
-                            ));
-                        }
-                    }
-                } else {
-                    break;
-                }
-                if !timed_out {
-                    std::thread::sleep(poll_interval);
-                }
-            }
-
-            // same as above
-            let cres = comm.read_string();
-            if cres.is_err() {
-                if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
-                    let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
-                    if co.is_some() {
-                        out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
-                    } else {
-                        out = None;
-                    }
-                    if ce.is_some() {
-                        err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
-                    } else {
-                        err = None;
-                    }
-                } else {
-                    return Err(std::io::Error::new(
-                        cres.as_ref().unwrap_err().kind(),
-                        cres.as_ref().unwrap_err().to_string(),
-                    ));
-                }
-            } else {
-                (out, err) = cres.unwrap();
-            }
-            if let Some(ref o) = out { stdout.push_str(o); }
-            if let Some(ref e) = err { stderr.push_str(e); }
-            if let Some(exit_status) = exit_status {
-                Ok((
-                    exit_status,
-                    { if !stdout.is_empty() { Some(stdout) } else { None } },
-                    { if !stderr.is_empty() { Some(stderr) } else { None } },
-                ))
-            } else {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    ERR_UNKNOWN_EXITSTATUS,
-                ))
-            }
-        }
-
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
@@ -1166,7 +1053,7 @@ impl Condition for CommandCondition {
         );
 
         // run the process and capture possible errors
-        let mut failure_reason: FailureReason = FailureReason::NoFailure;
+        let failure_reason;
         self._process_failed = false;
         self._process_status = 0;
         self._process_stderr = String::new();
@@ -1213,698 +1100,49 @@ impl Condition for CommandCondition {
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {
                 Ok(exit_status) => {
-                    let statusmsg: String;
-                    if exit_status.success() {
-                        // exit code is 0, and this usually indicates success
-                        // however if it was not the expected exit code the
-                        // failure reason has to be set to Status (for now);
-                        // note that also the case of exit code 0 considered
-                        // as a failure status is taken into account here
-                        statusmsg = String::from("OK/0");
-                        self.log(
-                            LogType::Debug,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_OK,
-                            &format!("command: `{}` exited with SUCCESS status {statusmsg}", self.command_line()),
-                        );
-                        self._process_status = 0;
-                        if let Some(expected) = self.success_status {
-                            if expected != 0 {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("condition expected success exit code NOT matched: {expected}"),
-                                );
-                                failure_reason = FailureReason::Status;
-                            }
-                        } else if let Some(expectedf) = self.failure_status {
-                            if expectedf == 0 {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("condition expected failure exit code matched: {expectedf}"),
-                                );
-                                failure_reason = FailureReason::Status;
-                            }
-                        }
-                    } else {
-                        match exit_status {
-                            // exit code is nonzero, however this might be the
-                            // expected behaviour of the executed command: if
-                            // the exit code had to be checked then the check
-                            // is performed with the following priority rule:
-                            // 1. match resulting status for expected failure
-                            // 2. match resulting status for unsuccessfulness
-                            ExitStatus::Exited(v) => {
-                                statusmsg = format!("ERROR/{v}");
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("command: `{}` exited with FAILURE status {statusmsg}", self.command_line()),
-                                );
-                                if let Some(expectedf) = self.failure_status {
-                                    if v == expectedf {
-                                        self.log(
-                                            LogType::Debug,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_OK,
-                                            &format!("condition expected failure exit code {expectedf} matched"),
-                                        );
-                                        failure_reason = FailureReason::Status;
-                                    } else if let Some(expected) = self.success_status {
-                                        if v == expected {
-                                            self.log(
-                                                LogType::Debug,
-                                                LOG_WHEN_PROC,
-                                                LOG_STATUS_OK,
-                                                &format!("condition expected success exit code {expected} matched"),
-                                            );
-                                        } else {
-                                            self.log(
-                                                LogType::Debug,
-                                                LOG_WHEN_PROC,
-                                                LOG_STATUS_OK,
-                                                &format!("condition expected success exit code {expected} NOT matched: {v}"),
-                                            );
-                                            failure_reason = FailureReason::Status;
-                                        }
-                                    } else {
-                                        self.log(
-                                            LogType::Debug,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_OK,
-                                            &format!("condition expected failure exit code {expectedf} NOT matched"),
-                                        );
-                                    }
-                                } else if let Some(expected) = self.success_status {
-                                    if v == expected {
-                                        self.log(
-                                            LogType::Debug,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_OK,
-                                            &format!("condition expected success exit code {expected} matched"),
-                                        );
-                                    } else {
-                                        self.log(
-                                            LogType::Debug,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_OK,
-                                            &format!("condition expected success exit code {expected} NOT matched: {v}"),
-                                        );
-                                        failure_reason = FailureReason::Status;
-                                    }
-                                }
-                                // if we are here, neither the success exit
-                                // code nor the failure exit code were set by
-                                // configuration, thus the status is still
-                                // set to NoFailure
-                            }
-                            // if the subprocess did not exit properly it has
-                            // to be considered as unsuccessful anyway: set the
-                            // failure reason appropriately
-                            ExitStatus::Signaled(v) => {
-                                statusmsg = format!("SIGNAL/{v}");
-                                self.log(
-                                    LogType::Warn,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    &format!("command: `{}` ended for reason {statusmsg}", self.command_line()),
-                                );
-                                failure_reason = FailureReason::Other;
-                            }
-                            ExitStatus::Other(v) => {
-                                statusmsg = format!("UNKNOWN/{v}");
-                                self.log(
-                                    LogType::Warn,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    &format!("command: `{}` ended for reason {statusmsg}", self.command_line()),
-                                );
-                                failure_reason = FailureReason::Other;
-                            }
-                            ExitStatus::Undetermined => {
-                                statusmsg = String::from("UNDETERMINED");
-                                self.log(
-                                    LogType::Warn,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    &format!("command: `{}` ended for reason {statusmsg}", self.command_line()),
-                                );
-                                failure_reason = FailureReason::Other;
-                            }
-                        }
-                    }
 
-                    // temporarily use the failure reason to determine whether
-                    // or not to check for task success in the command output
-                    match failure_reason {
-                        // only when no other failure has occurred we harvest
-                        // process IO and perform stdout/stderr text analysis
-                        FailureReason::NoFailure => {
-                            // command output based task result determination:
-                            // both in regex matching and in direct text
-                            // comparison the tests are performed in this
-                            // order:
-                            //   1. against expected success in stdout
-                            //   2. against expected success in stderr
-                            //   3. against expected failure in stdout
-                            //   3. against expected failure in stderr
-                            // if any of the tests does not fail, then the
-                            // further test is performed; on the other side,
-                            // failure in any of the tests causes skipping
-                            // of all the following ones
+                    let ck_process_status;
+                    let ck_process_failed;
+                    let ck_failure_reason;
+                    let log_severity;
+                    let log_when;
+                    let log_status;
+                    let log_message;
+                    (
+                        ck_process_status,
+                        ck_process_failed,
+                        ck_failure_reason,
+                        log_severity,
+                        log_when,
+                        log_status,
+                        log_message,
+                    ) = check_process_outcome(
+                        &exit_status,
+                        &self._process_stdout,
+                        &self._process_stderr,
+                        &self.command_line(),
+                        self.match_exact,
+                        self.match_regexp,
+                        self.case_sensitive,
+                        &self.success_stdout,
+                        &self.success_stderr,
+                        &self.success_status,
+                        &self.failure_stdout,
+                        &self.failure_stderr,
+                        &self.failure_status,
+                    );
 
-                            // NOTE: in the following blocks, all the checks
-                            // for failure_reason not to be NoFailure are
-                            // needed to bail out if a failure condition has
-                            // been already determined: this also enforces a
-                            // check priority (as described above); the first
-                            // of these checks is pleonastic because NoFailure
-                            // has been just matched, however it improves code
-                            // modularity and readability, and possibility to
-                            // change priority by just moving code: it has
-                            // little cost compared to this so we keep it
+                    self._process_status = ck_process_status;
+                    self._process_failed = ck_process_failed;
+                    failure_reason = ck_failure_reason;
 
-                            // A. regular expresion checks: case sensitiveness
-                            //    is directly handled by the Regex engine
-                            if self.match_regexp {
-                                // A.1 regex success stdout check
-                                if failure_reason == FailureReason::NoFailure {
-                                    if let Some(p) = &self.success_stdout { if !p.is_empty() {
-                                        if let Ok(re) = regex::RegexBuilder::new(p)
-                                            .case_insensitive(!self.case_sensitive).build() {
-                                            if self.match_exact {
-                                                if re.is_match(&self._process_stdout) {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stdout (regex) {p:?} matched"),
-                                                    );
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stdout (regex) {p:?} NOT matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
-                                            } else if re.find(&self._process_stdout).is_some() {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stdout (regex) {p:?} found"),
-                                                );
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stdout (regex) {p:?} NOT found"),
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            }
-                                        } else {
-                                            self.log(
-                                                LogType::Error,
-                                                LOG_WHEN_PROC,
-                                                LOG_STATUS_FAIL,
-                                                &format!("provided INVALID stdout regex {p:?} NOT found/matched"),
-                                            );
-                                            failure_reason = FailureReason::StdOut;
-                                        }}
-                                    }
-                                }
-                                // A.2 regex success stderr check
-                                if failure_reason == FailureReason::NoFailure {
-                                    if let Some(p) = &self.success_stderr { if !p.is_empty() {
-                                        if let Ok(re) = regex::RegexBuilder::new(p)
-                                            .case_insensitive(!self.case_sensitive).build() {
-                                            if self.match_exact {
-                                                if re.is_match(&self._process_stderr) {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr (regex) {p:?} matched"),
-                                                    );
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr (regex) {p:?} NOT matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
-                                            } else if re.find(&self._process_stderr).is_some() {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr (regex) {p:?} found"),
-                                                );
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr (regex) {p:?} NOT found"),
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            }
-                                        } else {
-                                            self.log(
-                                                LogType::Error,
-                                                LOG_WHEN_PROC,
-                                                LOG_STATUS_FAIL,
-                                                &format!("provided INVALID stderr regex {p:?} NOT found/matched"),
-                                            );
-                                            failure_reason = FailureReason::StdErr;
-                                        }}
-                                    }
-                                }
-                                // A.3 regex failure stdout check
-                                if failure_reason == FailureReason::NoFailure {
-                                    if let Some(p) = &self.failure_stdout { if !p.is_empty() {
-                                        if let Ok(re) = regex::RegexBuilder::new(p)
-                                            .case_insensitive(!self.case_sensitive).build() {
-                                            if self.match_exact {
-                                                if re.is_match(&self._process_stdout) {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stdout (regex) {p:?} matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stdout (regex) {p:?} NOT matched"),
-                                                    );
-                                                }
-                                            } else if re.find(&self._process_stdout).is_some() {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stdout (regex) {p:?} found"),
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stdout (regex) {p:?} NOT found"),
-                                                );
-                                            }
-                                        } else {
-                                            self.log(
-                                                LogType::Error,
-                                                LOG_WHEN_PROC,
-                                                LOG_STATUS_FAIL,
-                                                &format!("provided INVALID failure stdout regex {p:?} NOT found/matched"),
-                                            );
-                                        }}
-                                    }
-                                }
-                                // A.4 regex failure stderr check
-                                if failure_reason == FailureReason::NoFailure {
-                                    if let Some(p) = &self.failure_stderr { if !p.is_empty() {
-                                        if let Ok(re) = regex::RegexBuilder::new(p)
-                                            .case_insensitive(!self.case_sensitive).build() {
-                                            if self.match_exact {
-                                                if re.is_match(&self._process_stderr) {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr (regex) {p:?} matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr (regex) {p:?} NOT matched"),
-                                                    );
-                                                }
-                                            } else if re.find(&self._process_stderr).is_some() {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr (regex) {p:?} found"),
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr (regex) {p:?} NOT found"),
-                                                );
-                                            }
-                                        } else {
-                                            self.log(
-                                                LogType::Error,
-                                                LOG_WHEN_PROC,
-                                                LOG_STATUS_FAIL,
-                                                &format!("provided INVALID stderr regex {p:?} NOT found/matched"),
-                                            );
-                                        }}
-                                    }
-                                }
-                            } else {
-                                // B. text checks: the case sensitive and case
-                                //    insensitive options are handled separately
-                                //    because they require different comparisons
-                                if self.case_sensitive {
-                                    // B.1a CS text success stdout check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.success_stdout { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stdout == *p {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stdout {p:?} matched"),
-                                                    );
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stdout {p:?} NOT matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
-                                            } else if self._process_stdout.contains(p) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stdout {p:?} found"),
-                                                );
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stdout {p:?} NOT found"),
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            }
-                                        }}
-                                    }
-                                    // B.2a CS text success stderr check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.success_stderr { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stderr == *p {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr {p:?} matched"),
-                                                    );
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr {p:?} NOT matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
-                                            } else if self._process_stderr.contains(p) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr {p:?} found"),
-                                                );
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr {p:?} NOT found"),
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            }
-                                        }}
-                                    }
-                                    // B.3a CS text failure stdout check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.failure_stdout { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stdout == *p {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stdout {p:?} matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stdout {p:?} NOT matched"),
-                                                    );
-                                                }
-                                            } else if self._process_stdout.contains(p) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stdout {p:?} found"),
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stdout {p:?} NOT found"),
-                                                );
-                                            }
-                                        }}
-                                    }
-                                    // B.4a CS text failure stderr check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.failure_stderr { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stderr == *p {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stderr {p:?} matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stderr {p:?} NOT matched"),
-                                                    );
-                                                }
-                                            } else if self._process_stderr.contains(p) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stderr {p:?} found"),
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stderr {p:?} NOT found"),
-                                                );
-                                            }
-                                        }}
-                                    }
-                                } else {
-                                    // B.1b CI text success stdout check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.success_stdout { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stdout.to_uppercase() == p.to_uppercase() {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stdout {p:?} matched"),
-                                                    );
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stdout {p:?} NOT matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdOut;
-                                                }
-                                            } else if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stdout {p:?} found"),
-                                                );
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stdout {p:?} NOT found"),
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            }
-                                        }}
-                                    }
-                                    // B.2b CI text success stderr check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.success_stderr { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stderr.to_uppercase() == p.to_uppercase() {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr {p:?} matched"),
-                                                    );
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition success stderr {p:?} NOT matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdErr;
-                                                }
-                                            } else if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr {p:?} found"),
-                                                );
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition success stderr {p:?} NOT found"),
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            }
-                                        }}
-                                    }
-                                    // B.3b CI text failure stdout check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.failure_stdout { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stdout.to_uppercase() == p.to_uppercase() {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stdout {p:?} matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdOut;
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stdout {p:?} NOT matched"),
-                                                    );
-                                                }
-                                            } else if self._process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stdout {p:?} found"),
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stdout {p:?} NOT found"),
-                                                );
-                                            }
-                                        }}
-                                    }
-                                    // B.4b CI text failure stderr check
-                                    if failure_reason == FailureReason::NoFailure {
-                                        if let Some(p) = &self.failure_stderr { if !p.is_empty() {
-                                            if self.match_exact {
-                                                if self._process_stderr.to_uppercase() == p.to_uppercase() {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stderr {p:?} matched"),
-                                                    );
-                                                    failure_reason = FailureReason::StdErr;
-                                                } else {
-                                                    self.log(
-                                                        LogType::Debug,
-                                                        LOG_WHEN_PROC,
-                                                        LOG_STATUS_OK,
-                                                        &format!("condition failure stderr {p:?} NOT matched"),
-                                                    );
-                                                }
-                                            } else if self._process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stderr {p:?} found"),
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            } else {
-                                                self.log(
-                                                    LogType::Debug,
-                                                    LOG_WHEN_PROC,
-                                                    LOG_STATUS_OK,
-                                                    &format!("condition failure stderr {p:?} NOT found"),
-                                                );
-                                            }
-                                        }}
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
-                            // need not to check for other failure types
-                            self._process_failed = true;
-                        }
-                    }
+                    self.log(
+                        log_severity,
+                        log_when,
+                        log_status,
+                        &log_message,
+                    );
                 }
-
                 // the command could not be executed thus an error is reported
                 Err(e) => {
                     self.log(

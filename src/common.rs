@@ -272,7 +272,7 @@ pub mod logging {
     ///
     /// while non-constant parameters must be defined as follows
     ///
-    /// * `item` can to be a tuple consisting of item _name_ and _id_
+    /// * `item` can be a tuple consisting of item _name_ and _id_
     /// * `message` is the only arbitrary string that can be passed
     ///
     /// This allows JSON messages to be easily interpretable by a wrapper
@@ -330,6 +330,794 @@ pub mod logging {
     }
 
 }
+
+
+
+#[allow(dead_code)]
+/// This module helps command based items perform common activities
+pub mod cmditem {
+    use subprocess::{Popen, ExitStatus};
+    use std::time::{SystemTime, Duration};
+
+    use crate::constants::*;
+    use crate::LogType;
+
+
+    /// In case of failure, the reason will be one of the provided values
+    #[derive(Debug, PartialEq)]
+    pub enum FailureReason {
+        NoFailure,
+        StdOut,
+        StdErr,
+        Status,
+        Other,
+    }
+
+
+    /// Helper to start a process (in the same thread), read stdout/stderr
+    /// continuously (thus freeing its buffers), optionally terminate it after
+    /// a certain timeout has been reached: it returns a tuple consisting of
+    /// status and, optionally, strings containing stdout and stderr contents.
+    ///
+    /// The process to be spawned must be created _before_ invoking the helper,
+    /// thus it is a caller's responsibility to provide a ready-to-run process
+    /// with open output channels, as the `proc` parameter. `poll_interval` is
+    /// the time interval that interleaves subsequent reads of _stdout_ and
+    /// _stderr_, and `timeout`, if any, is the time that will be waited for
+    /// before terminating the subprocess. No way is provided to feed input to
+    /// the subprocess.
+    ///
+    /// This helper is used by:
+    ///
+    /// * `task::command_task::CommandTask::_run()`
+    /// * `condition::command_cond::CommandCondition::_check_condition()`
+    pub fn spawn_process(
+        mut proc: Popen,
+        poll_interval: Duration,
+        timeout: Option<Duration>,
+    ) -> Result<(ExitStatus, Option<String>, Option<String>), std::io::Error> {
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+        let mut out;
+        let mut err;
+        let mut exit_status;
+        let mut comm = proc.communicate_start(None).limit_time(poll_interval);
+        let startup = SystemTime::now();
+
+        loop {
+            // we intercept timeout error here because we just could be waiting
+            // for more output to be available; the timed_out flag is used to
+            // avoid waiting extra time when reading from stdout/stderr has
+            // already had a cost in this terms
+            let mut timed_out = false;
+            let cres = comm.read_string();
+            if cres.is_err() {
+                if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
+                    let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
+                    timed_out = true;
+                    if co.is_some() {
+                        out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
+                    } else {
+                        out = None;
+                    }
+                    if ce.is_some() {
+                        err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
+                    } else {
+                        err = None;
+                    }
+                } else {
+                    return Err(std::io::Error::new(
+                        cres.as_ref().unwrap_err().kind(),
+                        cres.as_ref().unwrap_err().to_string(),
+                    ));
+                }
+            } else {
+                (out, err) = cres.unwrap();
+            }
+
+            if let Some(ref o) = out { stdout.push_str(o.as_str()); }
+            if let Some(ref e) = err { stderr.push_str(e.as_str()); }
+            exit_status = proc.poll();
+            if exit_status.is_none() {
+                if let Some(t) = timeout {
+                    if SystemTime::now() > startup + t {
+                        let res = proc.terminate();
+                        if res.is_err() {
+                            let _ = proc.kill();
+                        }
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            ERR_TIMEOUT_REACHED,
+                        ));
+                    }
+                }
+            } else {
+                break;
+            }
+            if !timed_out {
+                std::thread::sleep(poll_interval);
+            }
+        }
+
+        // same as above
+        let cres = comm.read_string();
+        if cres.is_err() {
+            if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
+                let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
+                if co.is_some() {
+                    out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
+                } else {
+                    out = None;
+                }
+                if ce.is_some() {
+                    err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
+                } else {
+                    err = None;
+                }
+            } else {
+                return Err(std::io::Error::new(
+                    cres.as_ref().unwrap_err().kind(),
+                    cres.as_ref().unwrap_err().to_string(),
+                ));
+            }
+        } else {
+            (out, err) = cres.unwrap();
+        }
+        if let Some(ref o) = out { stdout.push_str(o); }
+        if let Some(ref e) = err { stderr.push_str(e); }
+        if let Some(exit_status) = exit_status {
+            Ok((
+                exit_status,
+                { if !stdout.is_empty() { Some(stdout) } else { None } },
+                { if !stderr.is_empty() { Some(stderr) } else { None } },
+            ))
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                ERR_UNKNOWN_EXITSTATUS,
+            ))
+        }
+    }
+
+
+    /// Check process outcome for items that spawn processes (that is: command
+    /// based tasks and command based conditions), by taking refeence to most
+    /// of their parameters and returning a tuple containing the check result:
+    ///
+    /// * the exit status
+    /// * whether the process failed or not
+    /// * the failure reason as a `FailureReason`
+    ///
+    /// and what is needed to build a log message:
+    ///
+    /// * the severity of the log line
+    /// * the _when_ part of the log line
+    /// * the _status_ part of the log line
+    /// * the payload (human readable) message of the log line
+    ///
+    /// Of course the caller is responsible for interpretation of the return
+    /// value and for logging the result of hte check, as well as setting the
+    /// internal status of the item.
+    ///
+    /// This helper is quite inelegant: being used in two items, it is probably
+    /// not worth to create a trait that is common to the two that can be used
+    /// to pass the item directly -- even because _zero cost abstraction_ would
+    /// probably duplicate the compiled code in this case, in order to achieve
+    /// efficiency, which is exactly the opposite of what the condensation was
+    /// intended for!
+    ///
+    /// This helper is used by:
+    ///
+    /// * `task::command_task::CommandTask::_run()`
+    /// * `condition::command_cond::CommandCondition::_check_condition()`
+    pub fn check_process_outcome(
+        exit_status: &ExitStatus,
+        process_stdout: &str,
+        process_stderr: &str,
+        command_line: &str,
+
+        // from item configuration: flags
+        match_exact: bool,
+        match_regexp: bool,
+        case_sensitive: bool,
+
+        // from item configuration: expected outcomes
+        success_stdout: &Option<String>,
+        success_stderr: &Option<String>,
+        success_status: &Option<u32>,
+        failure_stdout: &Option<String>,
+        failure_stderr: &Option<String>,
+        failure_status: &Option<u32>,
+
+    ) -> (
+        u32,                // process_status
+        bool,               // process_failed
+        FailureReason,      // failure_reason
+        LogType,            // the log severity
+        &'static str,       // log/when (LOG_WHEN_...)
+        &'static str,       // log/status (LOG_STATUS_...)
+        String,             // log message
+    ) {
+        let mut process_status: u32 = 0;
+        let mut process_failed: bool = false;
+        let mut failure_reason: FailureReason = FailureReason::NoFailure;
+        let mut severity: LogType;
+        let mut ref_log_when: &str;
+        let mut ref_log_status: &str;
+        let mut log_message: String;
+
+        let statusmsg: String;
+        if exit_status.success() {
+            // exit code is 0, and this usually indicates success however if it
+            // was not the expected exit code the failure reason has to be set
+            // to Status (for now); note that also the case of exit code 0
+            // considered as a failure status is taken into account here
+            statusmsg = String::from("OK/0");
+                severity = LogType::Debug;
+                ref_log_when = LOG_WHEN_PROC;
+                ref_log_status = LOG_STATUS_OK;
+                log_message = String::from(format!("command: `{}` exited with SUCCESS status {statusmsg}", command_line));
+            if let Some(expected) = success_status {
+                if *expected != 0 {
+                    severity = LogType::Debug;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_OK;
+                    log_message = String::from(format!("condition expected success exit code NOT matched: {expected}"));
+                    failure_reason = FailureReason::Status;
+                }
+            } else if let Some(expectedf) = failure_status {
+                if *expectedf == 0 {
+                    severity = LogType::Debug;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_OK;
+                    log_message = String::from(format!("condition expected failure exit code matched: {expectedf}"));
+                    failure_reason = FailureReason::Status;
+                }
+            }
+        } else {
+            match exit_status {
+                // exit code is nonzero, however this might be the expected
+                // behavior of the executed command: if the exit code had to be
+                // checked then the check is performed with the following
+                // priority rule:
+                // 1. match resulting status for expected failure
+                // 2. match resulting status for unsuccessfulness
+                ExitStatus::Exited(v) => {
+                    statusmsg = format!("ERROR/{v}");
+                    severity = LogType::Debug;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_OK;
+                    process_status = *v;
+                    log_message = String::from(format!("command: `{}` exited with FAILURE status {statusmsg}", command_line));
+                    if let Some(expectedf) = failure_status {
+                        if v == expectedf {
+                            severity = LogType::Debug;
+                            ref_log_when = LOG_WHEN_PROC;
+                            ref_log_status = LOG_STATUS_OK;
+                            log_message = String::from(format!("condition expected failure exit code {expectedf} matched"));
+                            failure_reason = FailureReason::Status;
+                        } else if let Some(expected) = success_status {
+                            if v == expected {
+                                severity = LogType::Debug;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_OK;
+                                log_message = String::from(format!("condition expected success exit code {expected} matched"));
+                            } else {
+                                severity = LogType::Debug;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_OK;
+                                log_message = String::from(format!("condition expected success exit code {expected} NOT matched: {v}"));
+                                failure_reason = FailureReason::Status;
+                            }
+                        } else {
+                            severity = LogType::Debug;
+                            ref_log_when = LOG_WHEN_PROC;
+                            ref_log_status = LOG_STATUS_OK;
+                            log_message = String::from(format!("condition expected failure exit code {expectedf} NOT matched"));
+                        }
+                    } else if let Some(expected) = success_status {
+                        if v == expected {
+                            severity = LogType::Debug;
+                            ref_log_when = LOG_WHEN_PROC;
+                            ref_log_status = LOG_STATUS_OK;
+                            log_message = String::from(format!("condition expected success exit code {expected} matched"));
+                        } else {
+                            severity = LogType::Debug;
+                            ref_log_when = LOG_WHEN_PROC;
+                            ref_log_status = LOG_STATUS_OK;
+                            log_message = String::from(format!("condition expected success exit code {expected} NOT matched: {v}"));
+                            failure_reason = FailureReason::Status;
+                        }
+                    }
+                    // if we are here, neither the success exit code nor the
+                    // failure exit code were set by configuration, thus status
+                    // is still set to NoFailure
+                }
+                // if the subprocess did not exit properly is considered
+                // unsuccessful anyway: set the failure reason appropriately
+                ExitStatus::Signaled(v) => {
+                    statusmsg = format!("SIGNAL/{v}");
+                    severity = LogType::Warn;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_FAIL;
+                    log_message = String::from(format!("command: `{}` ended for reason {statusmsg}", command_line));
+                    failure_reason = FailureReason::Other;
+                }
+                ExitStatus::Other(v) => {
+                    statusmsg = format!("UNKNOWN/{v}");
+                    severity = LogType::Warn;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_FAIL;
+                    log_message = String::from(format!("command: `{}` ended for reason {statusmsg}", command_line));
+                    failure_reason = FailureReason::Other;
+                }
+                ExitStatus::Undetermined => {
+                    statusmsg = String::from("UNDETERMINED");
+                    severity = LogType::Warn;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_FAIL;
+                    log_message = String::from(format!("command: `{}` ended for reason {statusmsg}", command_line));
+                    failure_reason = FailureReason::Other;
+                }
+            }
+        }
+
+        // temporarily use the failure reason to determine whether or not to
+        // check for task success in the command output
+        match failure_reason {
+            // only when no other failure has occurred we harvest process IO
+            // and perform stdout/stderr text analysis
+            FailureReason::NoFailure => {
+                // command output based task result determination: both in
+                // regex matching and in direct text comparison the tests are
+                // performed in this order:
+                //   1. against expected success in stdout
+                //   2. against expected success in stderr
+                //   3. against expected failure in stdout
+                //   3. against expected failure in stderr
+                // if any of the tests does not fail, then the further test is
+                // performed; on the other side, failure in any of the tests
+                // causes skipping of all the following ones
+
+                // NOTE: in the following blocks, all the checks for
+                // failure_reason not to be NoFailure are needed to bail out if
+                // a failure condition has been already determined: this also
+                // enforces a check priority (as described above); the first
+                // of these checks is pleonastic because NoFailure has been
+                // just matched, however it improves code modularity and
+                // readability, and possibility to change priority by just
+                // moving code: cost is small compared to this so we keep it
+
+                // A. regular expresion checks: case sensitiveness is directly
+                //    handled by the Regex engine
+                if match_regexp {
+                    // A.1 regex success stdout check
+                    if failure_reason == FailureReason::NoFailure {
+                        if let Some(p) = &success_stdout { if !p.is_empty() {
+                            if let Ok(re) = regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build() {
+                                if match_exact {
+                                    if re.is_match(process_stdout) {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stdout (regex) {p:?} matched"));
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stdout (regex) {p:?} NOT matched"));
+                                        failure_reason = FailureReason::StdOut;
+                                    }
+                                } else if re.find(process_stdout).is_some() {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stdout (regex) {p:?} found"));
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stdout (regex) {p:?} NOT found"));
+                                    failure_reason = FailureReason::StdOut;
+                                }
+                            } else {
+                                severity = LogType::Error;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_FAIL;
+                                log_message = String::from(format!("provided INVALID stdout regex {p:?} NOT found/matched"));
+                                failure_reason = FailureReason::StdOut;
+                            }}
+                        }
+                    }
+                    // A.2 regex success stderr check
+                    if failure_reason == FailureReason::NoFailure {
+                        if let Some(p) = &success_stderr { if !p.is_empty() {
+                            if let Ok(re) = regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build() {
+                                if match_exact {
+                                    if re.is_match(process_stderr) {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr (regex) {p:?} matched"));
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr (regex) {p:?} NOT matched"));
+                                        failure_reason = FailureReason::StdErr;
+                                    }
+                                } else if re.find(process_stderr).is_some() {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr (regex) {p:?} found"));
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr (regex) {p:?} NOT found"));
+                                    failure_reason = FailureReason::StdErr;
+                                }
+                            } else {
+                                severity = LogType::Error;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_FAIL;
+                                log_message = String::from(format!("provided INVALID stderr regex {p:?} NOT found/matched"));
+                                failure_reason = FailureReason::StdErr;
+                            }}
+                        }
+                    }
+                    // A.3 regex failure stdout check
+                    if failure_reason == FailureReason::NoFailure {
+                        if let Some(p) = &failure_stdout { if !p.is_empty() {
+                            if let Ok(re) = regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build() {
+                                if match_exact {
+                                    if re.is_match(process_stdout) {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stdout (regex) {p:?} matched"));
+                                        failure_reason = FailureReason::StdOut;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stdout (regex) {p:?} NOT matched"));
+                                    }
+                                } else if re.find(process_stdout).is_some() {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stdout (regex) {p:?} found"));
+                                    failure_reason = FailureReason::StdOut;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stdout (regex) {p:?} NOT found"));
+                                }
+                            } else {
+                                severity = LogType::Error;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_FAIL;
+                                log_message = String::from(format!("provided INVALID failure stdout regex {p:?} NOT found/matched"));
+                            }}
+                        }
+                    }
+                    // A.4 regex failure stderr check
+                    if failure_reason == FailureReason::NoFailure {
+                        if let Some(p) = &failure_stderr { if !p.is_empty() {
+                            if let Ok(re) = regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build() {
+                                if match_exact {
+                                    if re.is_match(process_stderr) {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr (regex) {p:?} matched"));
+                                        failure_reason = FailureReason::StdErr;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr (regex) {p:?} NOT matched"));
+                                    }
+                                } else if re.find(process_stderr).is_some() {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr (regex) {p:?} found"));
+                                    failure_reason = FailureReason::StdErr;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr (regex) {p:?} NOT found"));
+                                }
+                            } else {
+                                severity = LogType::Error;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_FAIL;
+                                log_message = String::from(format!("provided INVALID stderr regex {p:?} NOT found/matched"));
+                            }}
+                        }
+                    }
+                } else {
+                    // B. text checks: the case sensitive and case insensitive
+                    //    options are handled separately because they require
+                    //    different comparisons
+                    if case_sensitive {
+                        // B.1a CS text success stdout check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = success_stdout { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout == *p {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stdout {p:?} matched"));
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stdout {p:?} NOT matched"));
+                                        failure_reason = FailureReason::StdOut;
+                                    }
+                                } else if process_stdout.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stdout {p:?} found"));
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stdout {p:?} NOT found"));
+                                    failure_reason = FailureReason::StdOut;
+                                }
+                            }}
+                        }
+                        // B.2a CS text success stderr check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = success_stderr { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr == *p {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr {p:?} matched"));
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr {p:?} NOT matched"));
+                                        failure_reason = FailureReason::StdErr;
+                                    }
+                                } else if process_stderr.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr {p:?} found"));
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr {p:?} NOT found"));
+                                    failure_reason = FailureReason::StdErr;
+                                }
+                            }}
+                        }
+                        // B.3a CS text failure stdout check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = failure_stdout { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout == *p {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stdout {p:?} matched"));
+                                        failure_reason = FailureReason::StdOut;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stdout {p:?} NOT matched"));
+                                    }
+                                } else if process_stdout.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stdout {p:?} found"));
+                                    failure_reason = FailureReason::StdOut;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stdout {p:?} NOT found"));
+                                }
+                            }}
+                        }
+                        // B.4a CS text failure stderr check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = failure_stderr { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr == *p {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stderr {p:?} matched"));
+                                        failure_reason = FailureReason::StdErr;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stderr {p:?} NOT matched"));
+                                    }
+                                } else if process_stderr.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stderr {p:?} found"));
+                                    failure_reason = FailureReason::StdErr;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stderr {p:?} NOT found"));
+                                }
+                            }}
+                        }
+                    } else {
+                        // B.1b CI text success stdout check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = success_stdout { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout.to_uppercase() == p.to_uppercase() {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stdout {p:?} matched"));
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stdout {p:?} NOT matched"));
+                                        failure_reason = FailureReason::StdOut;
+                                    }
+                                } else if process_stdout.to_uppercase().contains(&p.to_uppercase()) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stdout {p:?} found"));
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stdout {p:?} NOT found"));
+                                    failure_reason = FailureReason::StdOut;
+                                }
+                            }}
+                        }
+                        // B.2b CI text success stderr check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = success_stderr { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr.to_uppercase() == p.to_uppercase() {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr {p:?} matched"));
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition success stderr {p:?} NOT matched"));
+                                        failure_reason = FailureReason::StdErr;
+                                    }
+                                } else if process_stderr.to_uppercase().contains(&p.to_uppercase()) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr {p:?} found"));
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition success stderr {p:?} NOT found"));
+                                    failure_reason = FailureReason::StdErr;
+                                }
+                            }}
+                        }
+                        // B.3b CI text failure stdout check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = failure_stdout { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout.to_uppercase() == p.to_uppercase() {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stdout {p:?} matched"));
+                                        failure_reason = FailureReason::StdOut;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stdout {p:?} NOT matched"));
+                                    }
+                                } else if process_stdout.to_uppercase().contains(&p.to_uppercase()) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stdout {p:?} found"));
+                                    failure_reason = FailureReason::StdOut;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stdout {p:?} NOT found"));
+                                }
+                            }}
+                        }
+                        // B.4b CI text failure stderr check
+                        if failure_reason == FailureReason::NoFailure {
+                            if let Some(p) = failure_stderr { if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr.to_uppercase() == p.to_uppercase() {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stderr {p:?} matched"));
+                                        failure_reason = FailureReason::StdErr;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = String::from(format!("condition failure stderr {p:?} NOT matched"));
+                                    }
+                                } else if process_stderr.to_uppercase().contains(&p.to_uppercase()) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stderr {p:?} found"));
+                                    failure_reason = FailureReason::StdErr;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = String::from(format!("condition failure stderr {p:?} NOT found"));
+                                }
+                            }}
+                        }
+                    }
+                }
+            }
+            _ => {
+                // need not to check for other failure types
+                process_failed = true;
+            }
+        }
+
+        // returns this:
+        (
+            process_status,
+            process_failed,
+            failure_reason,
+            severity,
+            ref_log_when,
+            ref_log_status,
+            log_message,
+        )
+    }
+
+}
+
 
 
 // end.
