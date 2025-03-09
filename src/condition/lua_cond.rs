@@ -18,27 +18,10 @@ use mlua;
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
+use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
-/// The possible values to be checked from Lua
-enum LuaValue {
-    LuaString(String),
-    LuaNumber(f64),
-    LuaBoolean(bool),
-}
-
-
-/// In case of failure, the reason will be one of the provided values
-#[derive(Debug, PartialEq)]
-pub enum FailureReason {
-    NoCheck,
-    NoFailure,
-    VariableMatch,
-    ScriptError,
-}
 
 
 

@@ -20,29 +20,10 @@ use mlua;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{log, LogType};
+use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
-
-/// The possible values to be checked from Lua
-enum LuaValue {
-    LuaString(String),
-    LuaNumber(f64),
-    LuaBoolean(bool),
-}
-
-
-
-/// In case of failure, the reason will be one of the provided values
-#[derive(Debug, PartialEq)]
-pub enum FailureReason {
-    NoCheck,
-    NoFailure,
-    VariableMatch,
-    ScriptError,
-}
 
 
 
@@ -554,7 +535,8 @@ impl Task for LuaTask {
                         LOG_STATUS_MSG,
                         &format!(
                             "(trigger: {trigger_name}) checking results: {}",
-                            &self.repr_checks()),
+                            &self.repr_checks(),
+                        ),
                     );
                     if self.expect_all {
                         failure_reason = FailureReason::NoFailure;
