@@ -44,15 +44,15 @@
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to
 //! organize communication to the user in a friendlier way.
-//! 
+//!
 //! This module also contains common enums, traits, structs, and functions
 //! shared between items that use the same technology. Shared collections are
 //! organized in modules:
-//! 
+//!
 //! * `cmditem` for assets common to command based tasks and conditions
 //! * `luaitem` for assets common to Lua based tasks and conditions
 //! * `dbusitem` for assets common to DBus based conditions and events
-//! 
+//!
 //! in order to avoid behaviour discrepancies, and possibly to save some
 //! memory by avoiding unnecessary duplications.
 
@@ -1161,7 +1161,9 @@ pub mod dbusitem {
     use std::hash::{Hash, Hasher};
     use cfgmap::CfgValue;
     use zbus;
+    use zbus::Message;
     use zbus::zvariant;
+    use crate::LogType;
     use crate::constants::*;
 
     // this helper is just to avoid ugly code since the implementation of
@@ -1186,7 +1188,7 @@ pub mod dbusitem {
         NotContains,        // "ncontains"
     }
 
-    /// an enum containing the value that the parameter should be checked 
+    /// an enum containing the value that the parameter should be checked
     /// against
     pub enum ParameterCheckValue {
         Boolean(bool),
@@ -1653,9 +1655,676 @@ pub mod dbusitem {
         }
     }
 
+    // a helper to apply a given operator to two values without clutter;
+    // for simplicity sake the `Match` operator will just evaluate to
+    // `false` here, instead of generating an error: the `Err()` case would
+    // clutter the code for numerical comparisons uslessly, as we also know
+    // that the test are built only via `load_cfgmap`, and that it only
+    // admits 'match' for regular expressions; the `Contains` operator also
+    // evaluates to `false` here since this function only compares args
+    // that are `PartialOrd+PartialEq`, and arrays are not
+    fn _oper<T: PartialOrd+PartialEq>(op: &ParamCheckOperator, o1: T, o2: T) -> bool {
+        match op {
+            ParamCheckOperator::Equal => o1 == o2,
+            ParamCheckOperator::NotEqual => o1 != o2,
+            ParamCheckOperator::Less => o1 < o2,
+            ParamCheckOperator::LessEqual => o1 <= o2,
+            ParamCheckOperator::Greater => o1 > o2,
+            ParamCheckOperator::GreaterEqual => o1 >= o2,
+            ParamCheckOperator::Match => false,
+            ParamCheckOperator::Contains => false,
+            ParamCheckOperator::NotContains => false,
+        }
+    }
+
+    // the following function allows for better readability
+    fn _contained_in<T: Containable>(v: &T, a: &zvariant::Value) -> bool {
+        v.is_contained_in(a)
+    }
+
+
+    /// This is the heart of DBus message/parameter checks:it takes references
+    /// to the message and to the list of checks that has been configured, and
+    /// performs the checks (all or some depends on the value of `checks_all`)
+    /// on the message contents.
+    ///
+    /// It returns a boolean that specified if the check was successful or not
+    /// (under the condition that either some or all the parameters had to be
+    /// tested), and four other values that form the variable part of a log
+    /// message, suitable for being issued by the specialized logging function
+    /// defined by the item.
+    pub fn dbus_check_message(
+        message: &Message,                  // the dbus message
+        checks: &Vec<ParameterCheckTest>,   // item.param_checks
+        checks_all: bool,                    // item.checks_all
+    ) -> (
+        bool,               // verified
+        LogType,            // the log severity
+        &'static str,       // log/when (LOG_WHEN_...)
+        &'static str,       // log/status (LOG_STATUS_...)
+        String,             // log message
+    ) {
+        let mut verified: bool = checks_all;
+        let mut severity: LogType = LogType::Trace;
+        let mut ref_log_when: &str = LOG_WHEN_PROC;
+        let mut ref_log_status: &str = LOG_STATUS_OK;
+        let mut log_message: String = String::from("no check performed");
+
+        if let Ok(mbody) = message.body::<zvariant::Structure>() {
+            // the label is set to make sure that we can break out from
+            // any nested loop on shortcut evaluation condition (that is
+            // when all condition had to be true and at least one is false
+            // or when one true condition is sufficient and we find it)
+            // or when an error occurs, which implies evaluation to false
+            'params: for ck in checks.iter() {
+                let argnum = ck.index.get(0);
+                if let Some(argnum) = argnum {
+                    match argnum {
+                        ParameterIndex::Integer(x) => {
+                            if *x >= mbody.fields().len() as u64 {
+                                severity = LogType::Warn;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_FAIL;
+                                log_message = format!("could not retrieve result: index {x} out of range");
+                                verified = false;
+                                break 'params;
+                            }
+                            let mut field_value = mbody.fields().get(*x as usize).unwrap();
+                            for x in 1 .. ck.index.len() {
+                                match ck.index.get(x).unwrap() {
+                                    ParameterIndex::Integer(i) => {
+                                        let i = *i as usize;
+                                        match field_value {
+                                            zvariant::Value::Array(f) => {
+                                                if i >= f.len() {
+                                                    severity = LogType::Warn;
+                                                    ref_log_when = LOG_WHEN_PROC;
+                                                    ref_log_status = LOG_STATUS_FAIL;
+                                                    log_message = format!("could not retrieve result: index {i} out of range");
+                                                }
+                                                // if something is wrong here, either the test
+                                                // or the next "parameter shift" will go berserk
+                                                field_value = &f[i];
+                                            }
+                                            zvariant::Value::Structure(f) => {
+                                                let f = f.fields();
+                                                if i >= f.len() {
+                                                    severity = LogType::Warn;
+                                                    ref_log_when = LOG_WHEN_PROC;
+                                                    ref_log_status = LOG_STATUS_FAIL;
+                                                    log_message = format!("could not retrieve result: index {i} out of range");
+                                                }
+                                                if let Some(v) = f.get(i) {
+                                                    field_value = &v;
+                                                } else {
+                                                    severity = LogType::Warn;
+                                                    ref_log_when = LOG_WHEN_PROC;
+                                                    ref_log_status = LOG_STATUS_FAIL;
+                                                    log_message = format!("could not retrieve result: index {i} provided no value");
+                                                }
+                                            }
+                                            _ => {
+                                                severity = LogType::Warn;
+                                                ref_log_when = LOG_WHEN_PROC;
+                                                ref_log_status = LOG_STATUS_FAIL;
+                                                log_message = format!("could not retrieve result using index {i}");
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    // even though there would be the possibility to explicitly indicate an ObjectPath
+                                    // via an '\o' prefix (as we do for values), since object paths really are strings
+                                    // that adhere to a certain format, the conversion is automatically done for the
+                                    // cases where an ObjectPath is required in place of a string - just logging that
+                                    // a malformed string was configured as index where a well-formed object path had
+                                    // to be provided; the following code directly matching the signature beginning is
+                                    // in fact ugly as hell, however a nicer implementation might come with more recent
+                                    // releases of zbus, which provide enum variants for signature nested structures
+                                    ParameterIndex::String(s) => {
+                                        let s = s.as_str();
+                                        match field_value {
+                                            zvariant::Value::Dict(f) => {
+                                                // in order to match either strings or object paths, match key signature
+                                                let m= match key_signature(f).as_str() {
+                                                    "s" => {
+                                                        let k = zvariant::Str::from(s);
+                                                        f.get(&k)
+                                                    }
+                                                    "o" => {
+                                                        let res = zvariant::ObjectPath::try_from(s);
+                                                        if res.is_err() {
+                                                            severity = LogType::Warn;
+                                                            ref_log_when = LOG_WHEN_PROC;
+                                                            ref_log_status = LOG_STATUS_FAIL;
+                                                            log_message = format!("could not retrieve result: index `{s}` should be an object path");
+                                                            verified = false;
+                                                            break 'params;
+                                                        } else {
+                                                            let k = res.unwrap().to_owned();
+                                                            f.get(&k)
+                                                        }
+                                                    }
+                                                    _ =>{
+                                                        severity = LogType::Warn;
+                                                        ref_log_when = LOG_WHEN_PROC;
+                                                        ref_log_status = LOG_STATUS_FAIL;
+                                                        log_message = format!("could not retrieve result: index `{s}` not matching dictionary key type");
+                                                        verified = false;
+                                                        break 'params;
+                                                    }
+                                                };
+                                                field_value = match m {
+                                                    Ok(fv) => {
+                                                        if let Some(fv) = fv {
+                                                            fv
+                                                        } else {
+                                                            severity = LogType::Warn;
+                                                            ref_log_when = LOG_WHEN_PROC;
+                                                            ref_log_status = LOG_STATUS_FAIL;
+                                                            log_message = format!("could not retrieve result: index `{s}` invalid");
+                                                            verified = false;
+                                                            break 'params;
+                                                        }
+                                                    },
+                                                    Err(_) => {
+                                                        severity = LogType::Warn;
+                                                        ref_log_when = LOG_WHEN_PROC;
+                                                        ref_log_status = LOG_STATUS_FAIL;
+                                                        log_message = format!("could not retrieve result using index `{s}`");
+                                                        verified = false;
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            _ => {
+                                                severity = LogType::Warn;
+                                                ref_log_when = LOG_WHEN_PROC;
+                                                ref_log_status = LOG_STATUS_FAIL;
+                                                log_message = format!("could not retrieve parameter using index `{s}`");
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // if the result is still encapsulated in a Value, take it out
+                            while let zvariant::Value::Value(v) = field_value {
+                                field_value = v;
+                            }
+
+                            // now we should be ready for actual testing
+                            match &ck.value {
+                                ParameterCheckValue::Boolean(b) => {
+                                    if ck.operator == ParamCheckOperator::Equal {
+                                        match field_value {
+                                            zvariant::Value::Bool(v) => {
+                                                if *b == *v {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            e => {
+                                                severity = LogType::Warn;
+                                                ref_log_when = LOG_WHEN_PROC;
+                                                ref_log_status = LOG_STATUS_FAIL;
+                                                log_message = format!("mismatched result type: boolean expected (got `{e:?}`)");
+                                                verified = false;
+                                                break;
+                                            }
+                                        }
+                                    } else if ck.operator == ParamCheckOperator::Contains {
+                                        match field_value {
+                                            zvariant::Value::Array(_) => {
+                                                if _contained_in(b, field_value) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            _ => {
+                                                verified = false;
+                                                break;
+                                            }
+                                        }
+                                    } else if ck.operator == ParamCheckOperator::NotContains {
+                                        match field_value {
+                                            zvariant::Value::Array(_) => {
+                                                if !_contained_in(b, field_value) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            // incompatible checks should always yield false
+                                            _ => {
+                                                verified = false;
+                                                break;
+                                            }
+                                        }
+                                    } else {
+                                        severity = LogType::Warn;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_FAIL;
+                                        log_message = String::from("invalid operator for boolean");
+                                        verified = false;
+                                        break;
+                                    }
+                                }
+                                ParameterCheckValue::Integer(i) => {
+                                    match field_value {
+                                        zvariant::Value::U8(v) => {
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::I16(v) => {
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::U16(v) => {
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::I32(v) => {
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::U32(v) => {
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::I64(v) => {
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::U64(v) => {
+                                            // lossy, however bigger numbers will just fail test
+                                            if _oper(&ck.operator, *i, *v as i64) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::Array(_) => {
+                                            if ck.operator == ParamCheckOperator::Contains {
+                                                if _contained_in(i, field_value) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            } else if ck.operator == ParamCheckOperator::NotContains {
+                                                if !_contained_in(i, field_value) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            } else {
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                        e => {
+                                            severity = LogType::Warn;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_FAIL;
+                                            log_message = format!(
+                                                "mismatched result type: {} expected (got `{e:?}`)",
+                                                if ck.operator == ParamCheckOperator::Contains
+                                                    || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                else { "integer" },
+                                            );
+                                            verified = false;
+                                            break 'params;
+                                        }
+                                    }
+                                }
+                                ParameterCheckValue::Float(f) => {
+                                    match field_value {
+                                        zvariant::Value::F64(v) => {
+                                            if _oper(&ck.operator, *f, *v) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::Array(_) => {
+                                            if ck.operator == ParamCheckOperator::Contains {
+                                                if _contained_in(f, field_value) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            } else if ck.operator == ParamCheckOperator::NotContains {
+                                                if !_contained_in(f, field_value) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            } else {
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                        e => {
+                                            severity = LogType::Warn;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_FAIL;
+                                            log_message = format!(
+                                                "mismatched result type: {} expected (got `{e:?}`)",
+                                                if ck.operator == ParamCheckOperator::Contains
+                                                    || ck.operator == ParamCheckOperator::NotContains { "container" }
+                                                else { "float" },
+                                            );
+                                            verified = false;
+                                            break 'params;
+                                        }
+                                    }
+                                }
+                                ParameterCheckValue::String(s) => {
+                                    if ck.operator == ParamCheckOperator::Equal {
+                                        match field_value {
+                                            zvariant::Value::Str(v) => {
+                                                if *s == v.to_string() {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            zvariant::Value::ObjectPath(v) => {
+                                                if *s == v.to_string() {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            e => {
+                                                severity = LogType::Warn;
+                                                ref_log_when = LOG_WHEN_PROC;
+                                                ref_log_status = LOG_STATUS_FAIL;
+                                                log_message = format!("mismatched result type: string expected (got `{e:?}`)");
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                    } else if ck.operator == ParamCheckOperator::NotEqual {
+                                        match field_value {
+                                            zvariant::Value::Str(v) => {
+                                                if *s != v.to_string() {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            zvariant::Value::ObjectPath(v) => {
+                                                if *s != v.to_string() {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            e => {
+                                                severity = LogType::Warn;
+                                                ref_log_when = LOG_WHEN_PROC;
+                                                ref_log_status = LOG_STATUS_FAIL;
+                                                log_message = format!("mismatched result type: string expected (got `{e:?}`)");
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                    } else if ck.operator == ParamCheckOperator::Contains {
+                                        if _contained_in(s, field_value) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    } else if ck.operator == ParamCheckOperator::NotContains {
+                                        if !_contained_in(s, field_value) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    } else {
+                                        severity = LogType::Warn;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_FAIL;
+                                        log_message = String::from("invalid operator for string");
+                                        verified = false;
+                                        break 'params;
+                                    }
+                                }
+                                ParameterCheckValue::Regex(re) => {
+                                    if ck.operator == ParamCheckOperator::Match {
+                                        match field_value {
+                                            zvariant::Value::Str(v) => {
+                                                if re.is_match(v.as_str()) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            zvariant::Value::ObjectPath(v) => {
+                                                if re.is_match(v.as_str()) {
+                                                    verified = true;
+                                                    if !checks_all {
+                                                        break 'params;
+                                                    }
+                                                } else {
+                                                    verified = false;
+                                                    if checks_all {
+                                                        break 'params;
+                                                    }
+                                                }
+                                            }
+                                            e => {
+                                                severity = LogType::Warn;
+                                                ref_log_when = LOG_WHEN_PROC;
+                                                ref_log_status = LOG_STATUS_FAIL;
+                                                log_message = format!("mismatched result type: string expected (got `{e:?}`)");
+                                                verified = false;
+                                                break 'params;
+                                            }
+                                        }
+                                    } else {
+                                        severity = LogType::Warn;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_FAIL;
+                                        log_message = String::from("invalid operator for regular expression");
+                                        verified = false;
+                                        break 'params;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            severity = LogType::Warn;
+                            ref_log_when = LOG_WHEN_PROC;
+                            ref_log_status = LOG_STATUS_FAIL;
+                            log_message = String::from("could not retrieve field index: first index must be integer");
+                            verified = false;
+                            break;
+                        }
+                    }
+
+                } else {
+                    severity = LogType::Warn;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_FAIL;
+                    log_message = String::from("could not retrieve parameter: missing argument number");
+                    verified = false;
+                    break;
+                }
+            }
+        } else {
+            severity = LogType::Warn;
+            ref_log_when = LOG_WHEN_PROC;
+            ref_log_status = LOG_STATUS_FAIL;
+            log_message = String::from("could not retrieve message body");
+        }
+
+        // the return value, including the aforementioned log message
+        (
+            verified,
+            severity,
+            ref_log_when,
+            ref_log_status,
+            log_message,
+        )
+    }
 
 }
-
 
 
 // end.
