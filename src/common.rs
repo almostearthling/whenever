@@ -1708,7 +1708,7 @@ pub mod dbusitem {
         let mut severity: LogType = LogType::Trace;
         let mut ref_log_when: &str = LOG_WHEN_PROC;
         let mut ref_log_status: &str = LOG_STATUS_OK;
-        let mut log_message: String = String::from("no check performed");
+        let mut log_message: String = String::from("message or return parameter check ended");
 
         if let Ok(mbody) = message.body::<zvariant::Structure>() {
             // the label is set to make sure that we can break out from
