@@ -2404,11 +2404,12 @@ pub mod wres {
     // FIXME: enabling the following creates a conflict with other derived
     // error types that are implemented as specific cases
     //
-    // last resort
+    // this should be the last resort impl
     // impl<T: error::Error + Send + Sync + 'static> From<T> for Error {
     //     fn from(e: T) -> Self {
     //         Self {
     //             kind: Kind::Unknown,
+    //             was: Was::Unknown,
     //             message: e.to_string(),
     //         }
     //     }
