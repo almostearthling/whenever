@@ -2327,4 +2327,94 @@ pub mod dbusitem {
 }
 
 
+
+/// A common result type: catching errors from modules used throughout
+/// the entire code. The corresponding error carries some information
+/// about what went wrong.
+#[allow(dead_code)]
+pub mod wres {
+    // use std::{error, fmt, io};
+    use std::{fmt, io};
+
+    #[derive(Debug, Clone)]
+    pub enum Kind {
+        NotSupported,
+        // ...
+        Unknown,
+    }
+
+    impl fmt::Display for Kind {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", match self {
+                Kind::NotSupported => "not supported",
+                Kind::Unknown => "unknown",
+            })
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum Was {
+        StdIo,
+        // ...
+        Unknown,
+    }
+
+    impl fmt::Display for Was {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", match self {
+                Was::StdIo => "I/O",
+                Was::Unknown => "unknown",
+            })
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Error {
+        kind: Kind,
+        was: Was,
+        message: String,    // or &str? a freeform message
+    }
+
+    impl fmt::Display for Error {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f, 
+                "{} ({}): {}",
+                &self.kind,
+                &self.was,
+                &self.message,
+            )
+        }
+    }
+
+    // maybe the most important: From<std::io::Error>
+    impl From<io::Error> for Error {
+        fn from(e: io::Error) -> Self {
+            Self {
+                kind: match e.kind() {
+                    io::ErrorKind::Unsupported => Kind::NotSupported,
+                    _ => Kind::Unknown,
+                },
+                was: Was::StdIo,
+                message: e.to_string(),
+            }
+        }
+    }
+
+    // FIXME: enabling the following creates a conflict with other derived
+    // error types that are implemented as specific cases
+    //
+    // last resort
+    // impl<T: error::Error + Send + Sync + 'static> From<T> for Error {
+    //     fn from(e: T) -> Self {
+    //         Self {
+    //             kind: Kind::Unknown,
+    //             message: e.to_string(),
+    //         }
+    //     }
+    // }
+
+}
+
+
 // end.
