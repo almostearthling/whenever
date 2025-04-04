@@ -28,6 +28,7 @@ use cfgmap::CfgMap;
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -106,7 +107,7 @@ impl TimeSpecification {
 
     /// returns the resulting date and time using the fields of the `now`
     /// parameter for the missing values
-    pub fn as_datetime(&self, now: DateTime<Local>) -> std::io::Result<DateTime<Local>> {
+    pub fn as_datetime(&self, now: DateTime<Local>) -> Result<DateTime<Local>> {
         let year;
         let month;
         let day;
@@ -128,8 +129,8 @@ impl TimeSpecification {
         match dt {
             chrono::offset::LocalResult::Single(_) => { }
             _ => {
-                return Err(
-                    std::io::Error::new(std::io::ErrorKind::InvalidData,
+                return Err(Error::new(
+                    Kind::Invalid,
                     ERR_INVALID_TIMESPEC,
                 ));
             }
@@ -304,11 +305,11 @@ impl TimeCondition {
     }
 
     /// Set tick duration after creation
-    pub fn set_tick_duration(&mut self, seconds: u64) -> std::io::Result<bool> {
+    pub fn set_tick_duration(&mut self, seconds: u64) -> Result<bool> {
         if seconds < 1 || seconds > std::i64::MAX as u64 {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_TICK_SECONDS}: {seconds}")
+            Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_TICK_SECONDS}: {seconds}")
             ))
         } else {
             self.tick_duration = seconds as i64;
@@ -325,60 +326,60 @@ impl TimeCondition {
         minute: Option<u32>,
         second: Option<u32>,
         dow: Option<u32>,
-    ) -> std::io::Result<bool> {
+    ) -> Result<bool> {
         if let Some(n) = year {
             if n < 0 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "year"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "year"))
                 );
             }
         }
         if let Some(n) = month {
             if !(1..=12).contains(&n) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "month"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "month"))
                 );
             }
         }
         if let Some(n) = day {
             if !(1..=31).contains(&n) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "day"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "day"))
                 );
             }
         }
         if let Some(n) = hour {
             if n > 23 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "hour"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "hour"))
                 );
             }
         }
         if let Some(n) = minute {
             if n > 59 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "minute"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "minute"))
                 );
             }
         }
         if let Some(n) = second {
             if n > 59 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "second"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "second"))
                 );
             }
         }
         if let Some(n) = dow {
             if !(1..=7).contains(&n) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "weekday"))
+                return Err(Error::new(
+                    Kind::Invalid,
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "weekday"))
                 );
             }
         }
@@ -393,7 +394,7 @@ impl TimeCondition {
     /// The `IntervalCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `TimeCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<TimeCondition> {
+    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<TimeCondition> {
 
         let check = vec![
             "type",
@@ -644,7 +645,7 @@ impl TimeCondition {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
 
         let check = vec![
             "type",
@@ -866,24 +867,24 @@ impl Condition for TimeCondition {
     fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
     fn startup_time(&self) -> Option<Instant> { self.startup_time }
 
-    fn set_checked(&mut self) -> Result<bool, std::io::Error> {
+    fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
         Ok(true)
     }
 
-    fn set_succeeded(&mut self) -> Result<bool, std::io::Error> {
+    fn set_succeeded(&mut self) -> Result<bool> {
         self.last_succeeded = self.last_tested;
         self.has_succeeded = true;
         Ok(true)
     }
 
-    fn reset_succeeded(&mut self) -> Result<bool, std::io::Error> {
+    fn reset_succeeded(&mut self) -> Result<bool> {
         self.last_succeeded = None;
         self.has_succeeded = false;
         Ok(true)
     }
 
-    fn reset(&mut self) -> Result<bool, std::io::Error> {
+    fn reset(&mut self) -> Result<bool> {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
@@ -908,7 +909,7 @@ impl Condition for TimeCondition {
     }
 
 
-    fn start(&mut self) -> Result<bool, std::io::Error> {
+    fn start(&mut self) -> Result<bool> {
         self.suspended = false;
         self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
@@ -920,7 +921,7 @@ impl Condition for TimeCondition {
         Ok(true)
     }
 
-    fn suspend(&mut self) -> Result<bool, std::io::Error> {
+    fn suspend(&mut self) -> Result<bool> {
         if self.suspended {
             Ok(false)
         } else {
@@ -929,7 +930,7 @@ impl Condition for TimeCondition {
         }
     }
 
-    fn resume(&mut self) -> Result<bool, std::io::Error> {
+    fn resume(&mut self) -> Result<bool> {
         if self.suspended {
             self.suspended = false;
             Ok(true)
@@ -939,7 +940,7 @@ impl Condition for TimeCondition {
     }
 
 
-    fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
+    fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
 
@@ -953,7 +954,7 @@ impl Condition for TimeCondition {
     }
 
 
-    fn _add_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             Ok(false)
@@ -963,7 +964,7 @@ impl Condition for TimeCondition {
         }
     }
 
-    fn _remove_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             self.task_names.remove(
@@ -983,11 +984,11 @@ impl Condition for TimeCondition {
     /// This function actually performs the test: if at least `self.interval`
     /// time has passed since last successful check (which may be the initial
     /// check only if not recurring), the outcome is successful.
-    fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
+    fn _check_condition(&mut self) -> Result<Option<bool>> {
         if self.tick_duration <= 0 {
             return Err(
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
+                Error::new(
+                    Kind::Invalid,
                     ERR_INVALID_TICK_SECONDS,
                 ));
         }

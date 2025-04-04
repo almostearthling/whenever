@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
+// use std::io::{Error, ErrorKind};
 use std::thread;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
@@ -28,6 +28,7 @@ use unique_id::sequence::SequenceGenerator;
 
 use super::base::Event;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
 
@@ -95,7 +96,7 @@ impl EventRegistry {
 
     /// Start the main registry thread, which in turn handles all other
     /// event listener threads.
-    pub fn run_event_service_manager(registry: &'static Self) -> Result<JoinHandle<Result<bool, std::io::Error>>, std::io::Error> {
+    pub fn run_event_service_manager(registry: &'static Self) -> Result<JoinHandle<std::result::Result<bool, std::io::Error>>> {
 
         let registry = Arc::new(Mutex::new(Box::new(registry)));
         let (smtx, mut smrx) = futures::channel::mpsc::channel(10);
@@ -309,7 +310,7 @@ impl EventRegistry {
     }
 
     /// Stop the event service manager thread.
-    pub fn stop_event_service_manager(registry: &'static Self) -> Result<(), std::io::Error> {
+    pub fn stop_event_service_manager(registry: &'static Self) -> Result<()> {
         log(
             LogType::Debug,
             LOG_EMITTER_EVENT_REGISTRY,
@@ -328,8 +329,8 @@ impl EventRegistry {
             });
             Ok(())
         } else {
-            Err(std::io::Error::new(
-                ErrorKind::PermissionDenied,
+            Err(Error::new(
+                Kind::Forbidden,
                 ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR,
             ))
         }
@@ -447,7 +448,7 @@ impl EventRegistry {
     /// # Panics
     ///
     /// May panic if the event registry could not be locked for insertion.
-    pub fn add_event(&self, mut boxed_event: Box<dyn Event>) -> Result<bool, std::io::Error> {
+    pub fn add_event(&self, mut boxed_event: Box<dyn Event>) -> Result<bool> {
         let name = boxed_event.get_name();
         if self.has_event(&name) {
             return Ok(false);
@@ -494,7 +495,7 @@ impl EventRegistry {
     /// May panic if the event registry could not be locked for extraction,
     /// or if an attempt is made to extract an event that is in use (FIXME:
     /// maybe it should return an error in this case?).
-    pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>, std::io::Error> {
+    pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>> {
         if self.has_event(name) {
             if let Some(e) = self.event_list
                 .write()
@@ -506,7 +507,7 @@ impl EventRegistry {
                 let e = Arc::try_unwrap(e);
                 let Ok(event) = e else {
                     return Err(Error::new(
-                        ErrorKind::Unsupported,
+                        Kind::Failed,
                         ERR_EVENTREG_CANNOT_PULL_EVENT,
                     ));
                 };
@@ -517,7 +518,7 @@ impl EventRegistry {
                 Ok(Some(event))
             } else {
                 Err(Error::new(
-                    ErrorKind::Unsupported,
+                    Kind::Failed,
                     ERR_EVENTREG_CANNOT_REMOVE_EVENT,
                 ))
             }
@@ -671,7 +672,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    fn install_event_service(&self, name: &str) -> std::io::Result<Option<JoinHandle<Result<bool, Error>>>> {
+    fn install_event_service(&self, name: &str) -> Result<Option<JoinHandle<std::result::Result<bool, std::io::Error>>>> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows mostly *reads* the registry: the event is retrieved
@@ -720,14 +721,14 @@ impl EventRegistry {
                     LOG_STATUS_FAIL,
                     "cannot initialize communication with event listener",
                 );
-                return Err(std::io::Error::new(
-                    ErrorKind::ResourceBusy,
-                    "communication with event listener not estabilished",
+                return Err(Error::new(
+                    Kind::Failed,
+                    ERR_EVENTREG_LISTENER_NOT_REACHABLE,
                 ));
             }
 
             // the actual service thread
-            let handle = thread::spawn(move || {
+            let handle: JoinHandle<std::result::Result<bool, std::io::Error>> = thread::spawn(move || {
                 let name = event_name.as_str();
 
                 // this implements the listening service in current thread
@@ -798,8 +799,8 @@ impl EventRegistry {
                     LOG_STATUS_FAIL,
                     "event listener not installed",
                 );
-                Err(std::io::Error::new(
-                    ErrorKind::Unsupported,
+                Err(Error::new(
+                    Kind::Failed,
                     ERR_EVENTREG_SERVICE_NOT_INSTALLED,
                 ))
             }
@@ -813,7 +814,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    fn uninstall_event_service(&self, name: &str) -> std::io::Result<()> {
+    fn uninstall_event_service(&self, name: &str) -> Result<()> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows just *reads* the registry: the event is retrieved
@@ -869,8 +870,8 @@ impl EventRegistry {
                     LOG_STATUS_FAIL,
                     "event listener could not be shut down",
                 );
-                Err(std::io::Error::new(
-                    ErrorKind::Unsupported,
+                Err(Error::new(
+                    Kind::Failed,
                     ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
                 ))
             }
@@ -896,8 +897,8 @@ impl EventRegistry {
                     LOG_STATUS_FAIL,
                     "event listener could not be shut down",
                 );
-                Err(std::io::Error::new(
-                    ErrorKind::Unsupported,
+                Err(Error::new(
+                    Kind::Failed,
                     ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
                 ))
             }
@@ -911,7 +912,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn listen_for(&self, name: &str) -> std::io::Result<()> {
+    pub fn listen_for(&self, name: &str) -> Result<()> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         let id = self.event_id(name).unwrap();
@@ -942,8 +943,8 @@ impl EventRegistry {
                 LOG_STATUS_FAIL,
                 "event listener not installed",
             );
-            Err(std::io::Error::new(
-                ErrorKind::PermissionDenied,
+            Err(Error::new(
+                Kind::Failed,
                 ERR_EVENTREG_SERVICE_NOT_INSTALLED,
             ))
         }
@@ -956,7 +957,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn unlisten_for(&self, name: &str) -> std::io::Result<()> {
+    pub fn unlisten_for(&self, name: &str) -> Result<()> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         let id = self.event_id(name).unwrap();
@@ -987,8 +988,8 @@ impl EventRegistry {
                 LOG_STATUS_FAIL,
                 "event listener not installed",
             );
-            Err(std::io::Error::new(
-                ErrorKind::PermissionDenied,
+            Err(Error::new(
+                Kind::Failed,
                 ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
             ))
         }
@@ -1001,7 +1002,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn unlisten_and_remove(&self, name: &str) -> Result<Option<Box<dyn Event>>, std::io::Error> {
+    pub fn unlisten_and_remove(&self, name: &str) -> Result<Option<Box<dyn Event>>> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         self.unlisten_for(name)?;

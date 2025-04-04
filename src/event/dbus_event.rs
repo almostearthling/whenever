@@ -28,6 +28,7 @@ use super::base::Event;
 use crate::condition::registry::ConditionRegistry;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::Result;
 use crate::common::dbusitem::*;
 use crate::{cfg_mandatory, constants::*};
 
@@ -220,7 +221,7 @@ impl DbusMessageEvent {
         cfgmap: &CfgMap,
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
-    ) -> std::io::Result<DbusMessageEvent> {
+    ) -> Result<DbusMessageEvent> {
 
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {
@@ -508,7 +509,7 @@ impl DbusMessageEvent {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
 
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {

@@ -18,6 +18,7 @@ use mlua;
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
 
@@ -277,14 +278,14 @@ impl LuaCondition {
     /// The `LuaCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `LuaCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<LuaCondition> {
+    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<LuaCondition> {
 
-        fn _invalid_cfg(key: &str, value: &str, message: &str) -> std::io::Result<LuaCondition> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
-            ))
-        }
+        // fn _invalid_cfg(key: &str, value: &str, message: &str) -> Result<LuaCondition> {
+        //     Err(Error::new(
+        //         Kind::Invalid,
+        //         &format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
+        //     ))
+        // }
 
         let check = vec![
             "type",
@@ -446,7 +447,7 @@ impl LuaCondition {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
 
         let check = vec![
             "type",
@@ -594,24 +595,24 @@ impl Condition for LuaCondition {
     fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
     fn startup_time(&self) -> Option<Instant> { self.startup_time }
 
-    fn set_checked(&mut self) -> Result<bool, std::io::Error> {
+    fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
         Ok(true)
     }
 
-    fn set_succeeded(&mut self) -> Result<bool, std::io::Error> {
+    fn set_succeeded(&mut self) -> Result<bool> {
         self.last_succeeded = self.last_tested;
         self.has_succeeded = true;
         Ok(true)
     }
 
-    fn reset_succeeded(&mut self) -> Result<bool, std::io::Error> {
+    fn reset_succeeded(&mut self) -> Result<bool> {
         self.last_succeeded = None;
         self.has_succeeded = false;
         Ok(true)
     }
 
-    fn reset(&mut self) -> Result<bool, std::io::Error> {
+    fn reset(&mut self) -> Result<bool> {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
@@ -636,7 +637,7 @@ impl Condition for LuaCondition {
     }
 
 
-    fn start(&mut self) -> Result<bool, std::io::Error> {
+    fn start(&mut self) -> Result<bool> {
         self.suspended = false;
         self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
@@ -648,7 +649,7 @@ impl Condition for LuaCondition {
         Ok(true)
     }
 
-    fn suspend(&mut self) -> Result<bool, std::io::Error> {
+    fn suspend(&mut self) -> Result<bool> {
         if self.suspended {
             Ok(false)
         } else {
@@ -657,7 +658,7 @@ impl Condition for LuaCondition {
         }
     }
 
-    fn resume(&mut self) -> Result<bool, std::io::Error> {
+    fn resume(&mut self) -> Result<bool> {
         if self.suspended {
             self.suspended = false;
             Ok(true)
@@ -667,7 +668,7 @@ impl Condition for LuaCondition {
     }
 
 
-    fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
+    fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
 
@@ -681,7 +682,7 @@ impl Condition for LuaCondition {
     }
 
 
-    fn _add_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             Ok(false)
@@ -691,7 +692,7 @@ impl Condition for LuaCondition {
         }
     }
 
-    fn _remove_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             self.task_names.remove(
@@ -713,7 +714,7 @@ impl Condition for LuaCondition {
     ///
     /// **NOTE**: this is an _almost exact_ copy of the `_run()` method in
     ///           the _Lua_ script based `LuaTask` task structure.
-    fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
+    fn _check_condition(&mut self) -> Result<Option<bool>> {
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
@@ -761,9 +762,9 @@ impl Condition for LuaCondition {
                     e.to_string(),
                 ),
             );
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                format!("cannot start Lua interpreter ({})", e.to_string()),
+            return Err(Error::new(
+                Kind::Failed,
+                &format!("cannot start Lua interpreter ({})", e.to_string()),
             ));
         }
         let lua = lua.unwrap();
@@ -842,19 +843,19 @@ impl Condition for LuaCondition {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: Result<String, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: Result<f64, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: Result<bool, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
@@ -886,19 +887,19 @@ impl Condition for LuaCondition {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: Result<String, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: Result<f64, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: Result<bool, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }

@@ -20,6 +20,7 @@ use mlua;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
 
@@ -179,7 +180,7 @@ impl LuaTask {
     /// The `LuaTask` is initialized according to the values provided in
     /// the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `LuaTask` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap) -> std::io::Result<LuaTask> {
+    pub fn load_cfgmap(cfgmap: &CfgMap) -> Result<LuaTask> {
 
         let check = vec![
             "type",
@@ -285,7 +286,7 @@ impl LuaTask {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap) -> Result<String> {
 
         let check = vec![
             "type",
@@ -426,7 +427,7 @@ impl Task for LuaTask {
     fn _run(
         &mut self,
         trigger_name: &str,
-    ) -> Result<Option<bool>, std::io::Error> {
+    ) -> Result<Option<bool>> {
         let mut failure_reason = FailureReason::NoCheck;
 
         fn inner_log(trigger_name: &str, id: i64, name: &str, severity: LogType, message: &str) {
@@ -453,9 +454,9 @@ impl Task for LuaTask {
                     e.to_string(),
                 ),
             );
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                format!("cannot start Lua interpreter ({})", e.to_string()),
+            return Err(Error::new(
+                Kind::Failed,
+                &format!("cannot start Lua interpreter ({})", e.to_string()),
             ));
         }
         let lua = lua.unwrap();
@@ -543,19 +544,19 @@ impl Task for LuaTask {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: Result<String, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: Result<f64, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: Result<bool, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
@@ -587,19 +588,19 @@ impl Task for LuaTask {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: Result<String, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: Result<f64, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: Result<bool, mlua::Error> = globals.get(varname.as_str());
+                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
                                     if let Ok(r) = r {
                                         Some(r == *v)
                                     } else { None }

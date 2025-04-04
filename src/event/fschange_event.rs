@@ -26,6 +26,7 @@ use super::base::Event;
 use crate::condition::registry::ConditionRegistry;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::Result;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -196,7 +197,7 @@ impl FilesystemChangeEvent {
         cfgmap: &CfgMap,
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
-    ) -> std::io::Result<FilesystemChangeEvent> {
+    ) -> Result<FilesystemChangeEvent> {
 
         let check = vec![
             "type",
@@ -283,7 +284,7 @@ impl FilesystemChangeEvent {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
 
         let check = vec![
             "type",

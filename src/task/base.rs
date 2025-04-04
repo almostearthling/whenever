@@ -11,6 +11,7 @@
 
 
 use crate::common::logging::{log, LogType};
+use crate::common::wres::Result;
 use crate::constants::*;
 
 
@@ -50,7 +51,7 @@ pub trait Task: Send {
     fn _run(
         &mut self,
         trigger_name: &str,
-    ) -> Result<Option<bool>, std::io::Error>;
+    ) -> Result<Option<bool>>;
 
     /// Log a message in the specific `Task` format.
     ///
@@ -104,7 +105,7 @@ pub trait Task: Send {
     fn run(
         &mut self,
         trigger_name: &str,
-    ) -> Result<Option<bool>, std::io::Error> {
+    ) -> Result<Option<bool>> {
         assert!(self.get_id() != 0, "task {} not registered", self.get_name());
 
         self.log(

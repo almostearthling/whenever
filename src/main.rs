@@ -40,6 +40,7 @@ use event::registry::EventRegistry;
 use condition::bucket_cond::ExecutionBucket;
 
 use common::logging::{log, init as log_init, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use config::*;
 use constants::*;
 
@@ -93,10 +94,10 @@ lazy_static! {
 
 
 // check whether an instance is already running, and return an error if so
-fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
+fn check_single_instance(instance: &SingleInstance) -> Result<()> {
     if !instance.is_single() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::AlreadyExists,
+        return Err(Error::new(
+            Kind::Forbidden,
             ERR_ALREADY_RUNNING,
         ));
     }
@@ -111,7 +112,7 @@ fn check_single_instance(instance: &SingleInstance) -> std::io::Result<()> {
 // threads as there are conditions to check, so that the short-running ones can
 // finish and get out of the way to allow execution of subsequent ticks; within
 // the new thread the tick might wait for a random duration,
-fn sched_tick(rand_millis_range: Option<u64>) -> std::io::Result<bool> {
+fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
     // skip if application has been intentionally paused
     if *APPLICATION_IS_PAUSED.read().unwrap() {
         log(
@@ -422,7 +423,7 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
 
 
 // attempt to reconfigure the application using the provided config file name
-fn reconfigure(config_file: &str) -> std::io::Result<()> {
+fn reconfigure(config_file: &str) -> Result<()> {
 
     if let Err(e) = check_configuration(config_file) {
         log(
@@ -501,7 +502,7 @@ fn reconfigure(config_file: &str) -> std::io::Result<()> {
 
 
 // attempt to trigger an event
-fn trigger_event(name: &str) -> std::io::Result<bool> {
+fn trigger_event(name: &str) -> Result<bool> {
     if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
         if triggerable {
             log(
@@ -583,7 +584,7 @@ fn trigger_event(name: &str) -> std::io::Result<bool> {
 // the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
 // from the standard input, therefore no explicit synchronization
-fn interpret_commands() -> std::io::Result<bool> {
+fn interpret_commands() -> Result<bool> {
     let mut buffer = String::new();
     let rest_time = Duration::from_millis(MAIN_STDIN_READ_WAIT_MILLISECONDS);
     let mut handle = STDIN.lock();
@@ -1090,7 +1091,7 @@ fn main() {
     // the event registry must be started, so that all configured event
     // services can be enqueued for startup at the beginning; this could
     // actually take place also after the configuration step
-    let mut _handles: Vec<JoinHandle<Result<bool, std::io::Error>>> = Vec::new();
+    let mut _handles: Vec<JoinHandle<std::result::Result<bool, std::io::Error>>> = Vec::new();
     if let Ok(h) = event::registry::EventRegistry::run_event_service_manager(&EVENT_REGISTRY) {
         _handles.push(h);
     }

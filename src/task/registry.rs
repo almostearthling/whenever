@@ -18,7 +18,6 @@ use std::sync::mpsc::channel;
 use std::thread::JoinHandle;
 use std::thread::spawn;
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
@@ -26,6 +25,7 @@ use unique_id::sequence::SequenceGenerator;
 
 use super::base::Task;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
 
@@ -174,7 +174,7 @@ impl TaskRegistry {
     /// # Panics
     ///
     /// May panic if the task registry could not be locked for insertion.
-    pub fn add_task(&self, mut boxed_task: Box<dyn Task>) -> Result<bool, std::io::Error> {
+    pub fn add_task(&self, mut boxed_task: Box<dyn Task>) -> Result<bool> {
         let name = boxed_task.get_name();
         if self.has_task(&name) {
             return Ok(false);
@@ -191,7 +191,7 @@ impl TaskRegistry {
 
     /// Add or replace an already-boxed `Task` while running: if the registry
     /// is busy running any task all modifications are deferred
-    pub fn dynamic_add_or_replace_task(&self, boxed_task: Box<dyn Task>) -> Result<bool, std::io::Error> {
+    pub fn dynamic_add_or_replace_task(&self, boxed_task: Box<dyn Task>) -> Result<bool> {
         let name = boxed_task.get_name();
         let sessions = self.running_sessions.clone();
         let sessions = sessions.lock().expect("cannot acquire running sessions counter");
@@ -202,13 +202,13 @@ impl TaskRegistry {
                         return Ok(res);
                     } else {
                         return Err(Error::new(
-                            ErrorKind::Unsupported,
+                            Kind::Failed,
                             ERR_TASKREG_TASK_NOT_REPLACED,
                         ));
                     }
                 } else {
                     return Err(Error::new(
-                        ErrorKind::Unsupported,
+                        Kind::Failed,
                         ERR_TASKREG_CANNOT_PULL_TASK,
                     ));
                 }
@@ -217,7 +217,7 @@ impl TaskRegistry {
                     return Ok(res);
                 } else {
                     return Err(Error::new(
-                        ErrorKind::Unsupported,
+                        Kind::Failed,
                         ERR_TASKREG_TASK_NOT_ADDED,
                     ));
                 }
@@ -261,7 +261,7 @@ impl TaskRegistry {
     /// # Panics
     ///
     /// May panic if the task registry could not be locked for extraction.
-    pub fn remove_task(&self, name: &str) -> Result<Option<Box<dyn Task>>, std::io::Error> {
+    pub fn remove_task(&self, name: &str) -> Result<Option<Box<dyn Task>>> {
         if self.has_task(name) {
             if let Some(r) = self.task_list
                 .write()
@@ -277,7 +277,7 @@ impl TaskRegistry {
                 Ok(Some(task))
             } else {
                 Err(Error::new(
-                    ErrorKind::Unsupported,
+                    Kind::Failed,
                     ERR_TASKREG_CANNOT_PULL_TASK,
                 ))
             }
@@ -288,7 +288,7 @@ impl TaskRegistry {
 
     /// Remove a named task from the list operating on a running registry: if any
     /// tasks are running all modifications to the registry are deferred
-    pub fn dynamic_remove_task(&self, name: &str) -> Result<bool, std::io::Error> {
+    pub fn dynamic_remove_task(&self, name: &str) -> Result<bool> {
         if self.has_task(name) {
             let sessions = self.running_sessions.clone();
             let sessions = sessions.lock().expect("cannot acquire running sessions counter");
@@ -392,10 +392,10 @@ impl TaskRegistry {
         names: &Vec<&str>,
         break_failure: bool,
         break_success: bool,
-    ) -> HashMap<String, Result<Option<bool>, std::io::Error>> {
+    ) -> HashMap<String, Result<Option<bool>>> {
         assert!(self.has_all_tasks(names), "some tasks not found in registry for condition `{trigger_name}`");
 
-        let mut res: HashMap<String, Result<Option<bool>, std::io::Error>> = HashMap::new();
+        let mut res: HashMap<String, Result<Option<bool>>> = HashMap::new();
 
         // count the active running sessions: there can be more than a
         // command task session in execution at the moment, and knowing
@@ -598,7 +598,7 @@ impl TaskRegistry {
         &self,
         trigger_name: &str,
         names: &Vec<&str>,
-    ) -> HashMap<String, Result<Option<bool>, std::io::Error>> {
+    ) -> HashMap<String, Result<Option<bool>>> {
         assert!(self.has_all_tasks(names), "some tasks not found in registry for condition `{trigger_name}`");
 
         // count the active running sessions: there can be more than a
@@ -615,7 +615,7 @@ impl TaskRegistry {
 
         // this version of the runner is obviously multithreaded
         let mut handles: Vec<JoinHandle<()>> = Vec::new();
-        let mut res: HashMap<String, Result<Option<bool>, std::io::Error>> = HashMap::new();
+        let mut res: HashMap<String, Result<Option<bool>>> = HashMap::new();
 
         // the channel is used to communicate with spawned task threads
         let (tx, rx) = channel();

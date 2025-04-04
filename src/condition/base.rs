@@ -23,11 +23,13 @@
 
 
 use std::time::Instant;
-use std::io::{Error, ErrorKind};
+
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 
 use crate::constants::*;
 use crate::task::registry::TaskRegistry;
+
 
 
 
@@ -103,16 +105,16 @@ pub trait Condition: Send {
     fn startup_time(&self) -> Option<Instant>;
 
     /// Set the internal _checked_ state to `true`.
-    fn set_checked(&mut self) -> Result<bool, std::io::Error>;
+    fn set_checked(&mut self) -> Result<bool>;
 
     /// Set the internal _succeeded_ state to `true`.
-    fn set_succeeded(&mut self) -> Result<bool, std::io::Error>;
+    fn set_succeeded(&mut self) -> Result<bool>;
 
     /// Set the internal _succeeded_ state to `false`.
-    fn reset_succeeded(&mut self) -> Result<bool, std::io::Error>;
+    fn reset_succeeded(&mut self) -> Result<bool>;
 
     /// Fully reset internal state of the condition.
-    fn reset(&mut self) -> Result<bool, std::io::Error>;
+    fn reset(&mut self) -> Result<bool>;
 
 
     /// Return how many times the tasks can be retried, `None` means forever.
@@ -132,20 +134,20 @@ pub trait Condition: Send {
 
 
     /// Set the startup time to `Instant::now()`.
-    fn start(&mut self) -> Result<bool, std::io::Error>;
+    fn start(&mut self) -> Result<bool>;
 
     /// Set the internal _suspended_ state to `true`.
-    fn suspend(&mut self) -> Result<bool, std::io::Error>;
+    fn suspend(&mut self) -> Result<bool>;
 
     /// Set the internal _suspended_ state to `false`.
-    fn resume(&mut self) -> Result<bool, std::io::Error>;
+    fn resume(&mut self) -> Result<bool>;
 
 
     /// Get a list of task names as owned strings.
-    fn task_names(&self) -> Result<Vec<String>, std::io::Error>;
+    fn task_names(&self) -> Result<Vec<String>>;
 
     /// Check whether or not there are associated tasks.
-    fn has_tasks(&self) -> Result<bool, std::io::Error> {
+    fn has_tasks(&self) -> Result<bool> {
         Ok(!self.task_names()?.is_empty())
     }
 
@@ -164,7 +166,7 @@ pub trait Condition: Send {
     /// This function can be used only once after a check: it resets the
     /// internal _succeeded_ status for next call. May return an error if
     /// it wasn't possible to reset the internal _succeeded_ status.
-    fn verify(&mut self) -> Result<bool, std::io::Error> {
+    fn verify(&mut self) -> Result<bool> {
         if let Some(tc) = self.last_checked() {
             if let Some(ts) = self.last_succeeded() {
                 let res = ts == tc;
@@ -191,14 +193,14 @@ pub trait Condition: Send {
     ///
     /// The different return states are logged accordingly by the trait-defined
     /// `test` function, indirectly invoked by the scheduler.
-    fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error>;
+    fn _check_condition(&mut self) -> Result<Option<bool>>;
 
 
     /// Mandatory to add task names: should return `Ok(true)` on success
-    fn _add_task(&mut self, name: &str) -> Result<bool, std::io::Error>;
+    fn _add_task(&mut self, name: &str) -> Result<bool>;
 
     /// Mandatory to remove task names: should return `Ok(true)` on success
-    fn _remove_task(&mut self, name: &str) -> Result<bool, std::io::Error>;
+    fn _remove_task(&mut self, name: &str) -> Result<bool>;
 
 
     /// Log a message in the specific `Condition` format.
@@ -247,7 +249,7 @@ pub trait Condition: Send {
     /// This method can only be invoked on **registered** conditions, any
     /// attempt to perform a test on an unregistered condition must be
     /// considered a development error.
-    fn test(&mut self) -> Result<Option<bool>, std::io::Error> {
+    fn test(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
         assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
 
@@ -298,7 +300,7 @@ pub trait Condition: Send {
                     "aborting: condition could not reset success status",
                 );
                 return Err(Error::new(
-                    ErrorKind::Unsupported,
+                    Kind::Failed,
                     ERR_COND_CANNOT_RESET,
                 ));
             }
@@ -328,7 +330,7 @@ pub trait Condition: Send {
                                 "aborting: condition could not be set to succeeded",
                             );
                             return Err(Error::new(
-                                ErrorKind::Unsupported,
+                                Kind::Failed,
                                 ERR_COND_CANNOT_SET_SUCCESS,
                             ));
                         }
@@ -358,7 +360,7 @@ pub trait Condition: Send {
                     "aborting: condition could not be set to checked",
                 );
                 return Err(Error::new(
-                    ErrorKind::Unsupported,
+                    Kind::Failed,
                     ERR_COND_CANNOT_SET_CHECKED,
                 ));
             }
@@ -373,7 +375,7 @@ pub trait Condition: Send {
     /// tasks have to be executed sequentially. A `Task` name can only be
     /// appended if it has been registered. Returns `Ok(true)` if the task
     /// could be added, any other return value indicates a failure.
-    fn add_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn add_task(&mut self, name: &str) -> Result<bool> {
         // check that the task is actually in the regstry
         self.log(
             LogType::Trace,
@@ -393,7 +395,7 @@ pub trait Condition: Send {
                         &format!("could not add task {name}: not found in registry"),
                     );
                     return Err(Error::new(
-                        ErrorKind::Unsupported,
+                        Kind::Failed,
                         ERR_COND_TASK_NOT_ADDED,
                     ));
                 }
@@ -406,7 +408,7 @@ pub trait Condition: Send {
                     &format!("could not add task {name}: registry not assigned"),
                 );
                 return Err(Error::new(
-                    ErrorKind::Unsupported,
+                    Kind::Failed,
                     ERR_COND_TASK_NOT_ADDED,
                 ));
             }
@@ -439,7 +441,7 @@ pub trait Condition: Send {
     /// Deassociate a task from the condition: the task name is removed from
     /// the list of associated tasks. Returns `Ok(true)` if the task could be
     /// removed, any other return value indicates a failure.
-    fn remove_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn remove_task(&mut self, name: &str) -> Result<bool> {
         // actually try to remove the task
         let outcome = self._remove_task(name)?;
         if outcome {
@@ -477,7 +479,7 @@ pub trait Condition: Send {
     /// This method can only be invoked on **registered** conditions, any
     /// attempt to run tasks associated to an unregistered condition must be
     /// considered a development error.
-    fn run_tasks(&mut self) -> Result<Option<bool>, std::io::Error> {
+    fn run_tasks(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
         assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
 

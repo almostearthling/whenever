@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
+// use std::io::{Error, ErrorKind};
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
@@ -20,6 +20,7 @@ use unique_id::sequence::SequenceGenerator;
 
 use super::base::Condition;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
 
@@ -187,7 +188,7 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// May panic if the condition registry could not be locked for insertion.
-    pub fn add_condition(&self, mut boxed_condition: Box<dyn Condition>) -> Result<bool, std::io::Error> {
+    pub fn add_condition(&self, mut boxed_condition: Box<dyn Condition>) -> Result<bool> {
         let name = boxed_condition.get_name();
         if self.has_condition(&name) {
             return Ok(false);
@@ -204,7 +205,7 @@ impl ConditionRegistry {
 
     /// Add or replace an already-boxed `Condition` while running: if the
     /// registry is busy running any condition all modifications are deferred
-    pub fn dynamic_add_or_replace_condition(&self, boxed_condition: Box<dyn Condition>) -> Result<bool, std::io::Error> {
+    pub fn dynamic_add_or_replace_condition(&self, boxed_condition: Box<dyn Condition>) -> Result<bool> {
         let name = boxed_condition.get_name();
         let busy = self.conditions_busy.clone();
         let busy = busy.lock().expect("cannot acquire busy conditions counter");
@@ -215,13 +216,13 @@ impl ConditionRegistry {
                         return Ok(res);
                     } else {
                         return Err(Error::new(
-                            ErrorKind::Unsupported,
+                            Kind::Failed,
                             ERR_CONDREG_COND_NOT_REPLACED,
                         ));
                     }
                 } else {
                     return Err(Error::new(
-                        ErrorKind::Unsupported,
+                        Kind::Failed,
                         ERR_CONDREG_CANNOT_PULL_COND,
                     ));
                 }
@@ -230,7 +231,7 @@ impl ConditionRegistry {
                     return Ok(res);
                 } else {
                     return Err(Error::new(
-                        ErrorKind::Unsupported,
+                        Kind::Failed,
                         ERR_CONDREG_COND_NOT_ADDED,
                     ));
                 }
@@ -278,7 +279,7 @@ impl ConditionRegistry {
     /// or if an attempt is made to extract a condition that is in use (FIXME:
     /// maybe it should return an error in this case? for now the scheduler is
     /// suspended while reconfiguring, the only actual case for removal).
-    pub fn remove_condition(&self, name: &str) -> Result<Option<Box<dyn Condition>>, std::io::Error> {
+    pub fn remove_condition(&self, name: &str) -> Result<Option<Box<dyn Condition>>> {
         if self.has_condition(name) {
             let mut cl0 = self.condition_list.write().expect("cannot write to condition registry");
             if let Some(c0) = cl0.remove(name) {
@@ -294,7 +295,7 @@ impl ConditionRegistry {
                 Ok(Some(condition))
             } else {
                 Err(Error::new(
-                    ErrorKind::Unsupported,
+                    Kind::Failed,
                     ERR_CONDREG_CANNOT_PULL_COND,
                 ))
             }
@@ -306,7 +307,7 @@ impl ConditionRegistry {
     /// Remove a named condition from the list operating on a running
     /// registry: if any conditions are busy all modifications to the
     /// registry are deferred
-    pub fn dynamic_remove_condition(&self, name: &str) -> Result<bool, std::io::Error> {
+    pub fn dynamic_remove_condition(&self, name: &str) -> Result<bool> {
         if self.has_condition(name) {
             let busy = self.conditions_busy.clone();
             let busy = busy.lock().expect("cannot acquire busy conditions counter");
@@ -348,12 +349,12 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry
-    pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
+    pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && !self.condition_is_free(name) {
             Err(Error::new(
-                ErrorKind::WouldBlock,
+                Kind::Busy,
                 ERR_CONDREG_COND_RESET_BUSY,
             ))
         } else {
@@ -378,7 +379,7 @@ impl ConditionRegistry {
 
     /// Queue a condition for reset: the current policy is that the
     /// reset status will be set only when there are no busy condiions
-    pub fn queue_reset_condition(&self, name: &str) -> Result<(), std::io::Error> {
+    pub fn queue_reset_condition(&self, name: &str) -> Result<()> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         let mxq0 = self.conditions_to_reset.clone();
@@ -411,12 +412,12 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry
-    pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
+    pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && !self.condition_is_free(name) {
             Err(Error::new(
-                ErrorKind::WouldBlock,
+                Kind::Busy,
                 ERR_CONDREG_COND_SUSPEND_BUSY,
             ))
         } else {
@@ -441,7 +442,7 @@ impl ConditionRegistry {
 
     /// Queue a condition for suspension: the current policy is that the
     /// suspended flag will be set only when there are no busy condiions
-    pub fn queue_suspend_condition(&self, name: &str) -> Result<(), std::io::Error> {
+    pub fn queue_suspend_condition(&self, name: &str) -> Result<()> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         let mxq0 = self.conditions_to_suspend.clone();
@@ -474,7 +475,7 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry
-    pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool, std::io::Error> {
+    pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
@@ -486,7 +487,7 @@ impl ConditionRegistry {
         // a busy condition is certainly not suspended
         if !wait && !self.condition_is_free(name) {
             Err(Error::new(
-                ErrorKind::WouldBlock,
+                Kind::Busy,
                 ERR_CONDREG_COND_RESUME_BUSY,
             ))
         } else {
@@ -626,7 +627,7 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// May panic if the busy condition count could not be locked.
-    pub fn conditions_busy(&self) -> Result<Option<u64>, std::io::Error> {
+    pub fn conditions_busy(&self) -> Result<Option<u64>> {
         let res: u64 = *self.conditions_busy
             .clone()
             .lock()
@@ -652,7 +653,7 @@ impl ConditionRegistry {
     /// May panic if the condition registry could not be locked for extraction
     /// and if the provided name is not found in the registry: in no way the
     /// `tick` function should be invoked with unknown conditions.
-    pub fn tick(&self, name: &str) -> Result<Option<bool>, std::io::Error> {
+    pub fn tick(&self, name: &str) -> Result<Option<bool>> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved

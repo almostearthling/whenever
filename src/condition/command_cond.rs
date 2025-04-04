@@ -31,6 +31,7 @@ use cfgmap::CfgMap;
 use super::base::Condition;
 use crate::task::registry::TaskRegistry;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::Result;
 use crate::common::cmditem::*;
 use crate::{cfg_mandatory, constants::*};
 
@@ -459,7 +460,7 @@ impl CommandCondition {
     /// The `CommandCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `CommandCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> std::io::Result<CommandCondition> {
+    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<CommandCondition> {
 
         let check = vec![
             "type",
@@ -665,7 +666,7 @@ impl CommandCondition {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
 
         let check = vec![
             "type",
@@ -853,24 +854,24 @@ impl Condition for CommandCondition {
     fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
     fn startup_time(&self) -> Option<Instant> { self.startup_time }
 
-    fn set_checked(&mut self) -> Result<bool, std::io::Error> {
+    fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
         Ok(true)
     }
 
-    fn set_succeeded(&mut self) -> Result<bool, std::io::Error> {
+    fn set_succeeded(&mut self) -> Result<bool> {
         self.last_succeeded = self.last_tested;
         self.has_succeeded = true;
         Ok(true)
     }
 
-    fn reset_succeeded(&mut self) -> Result<bool, std::io::Error> {
+    fn reset_succeeded(&mut self) -> Result<bool> {
         self.last_succeeded = None;
         self.has_succeeded = false;
         Ok(true)
     }
 
-    fn reset(&mut self) -> Result<bool, std::io::Error> {
+    fn reset(&mut self) -> Result<bool> {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
@@ -895,7 +896,7 @@ impl Condition for CommandCondition {
     }
 
 
-    fn start(&mut self) -> Result<bool, std::io::Error> {
+    fn start(&mut self) -> Result<bool> {
         self.suspended = false;
         self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
@@ -907,7 +908,7 @@ impl Condition for CommandCondition {
         Ok(true)
     }
 
-    fn suspend(&mut self) -> Result<bool, std::io::Error> {
+    fn suspend(&mut self) -> Result<bool> {
         if self.suspended {
             Ok(false)
         } else {
@@ -916,7 +917,7 @@ impl Condition for CommandCondition {
         }
     }
 
-    fn resume(&mut self) -> Result<bool, std::io::Error> {
+    fn resume(&mut self) -> Result<bool> {
         if self.suspended {
             self.suspended = false;
             Ok(true)
@@ -926,7 +927,7 @@ impl Condition for CommandCondition {
     }
 
 
-    fn task_names(&self) -> Result<Vec<String>, std::io::Error> {
+    fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
 
@@ -940,7 +941,7 @@ impl Condition for CommandCondition {
     }
 
 
-    fn _add_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             Ok(false)
@@ -950,7 +951,7 @@ impl Condition for CommandCondition {
         }
     }
 
-    fn _remove_task(&mut self, name: &str) -> Result<bool, std::io::Error> {
+    fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             self.task_names.remove(
@@ -972,7 +973,7 @@ impl Condition for CommandCondition {
     ///
     /// **NOTE**: this is an _almost exact_ copy of the `_run()` method in
     ///           the command based `CommandTask` task structure.
-    fn _check_condition(&mut self) -> Result<Option<bool>, std::io::Error> {
+    fn _check_condition(&mut self) -> Result<Option<bool>> {
 
         self.log(
             LogType::Debug,

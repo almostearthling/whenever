@@ -2333,12 +2333,17 @@ pub mod dbusitem {
 /// about what went wrong.
 #[allow(dead_code)]
 pub mod wres {
-    // use std::{error, fmt, io};
-    use std::{fmt, io};
+    // use std::{error, fmt, self};
+    use std::{self, fmt};
 
+    /// Types of specific errors
     #[derive(Debug, Clone)]
     pub enum Kind {
-        NotSupported,
+        Forbidden,
+        Unsupported,
+        Busy,
+        Invalid,
+        Failed,
         // ...
         Unknown,
     }
@@ -2346,14 +2351,22 @@ pub mod wres {
     impl fmt::Display for Kind {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "{}", match self {
-                Kind::NotSupported => "not supported",
+                Kind::Forbidden => "not permitted",
+                Kind::Unsupported => "not supported",
+                Kind::Busy => "resource busy",
+                Kind::Invalid => "invalid",
+                Kind::Failed => "failed",
                 Kind::Unknown => "unknown",
             })
         }
     }
 
+    /// Describes the origin of the error: if `Native` the error was originated
+    /// natively, otherwise the field is set by another error that is converted
+    /// into `Error` via a dedicated `From` trait implementation.
     #[derive(Debug, Clone)]
     pub enum Was {
+        Native,
         StdIo,
         // ...
         Unknown,
@@ -2362,12 +2375,16 @@ pub mod wres {
     impl fmt::Display for Was {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "{}", match self {
-                Was::StdIo => "I/O",
+                Was::Native => "self",
+                Was::StdIo => "io",
                 Was::Unknown => "unknown",
             })
         }
     }
 
+    /// The error type that is used throughout the application: implementations
+    /// of the `From` trait are used to implicitly convert from other error
+    /// types, which in turn set the `was` property.
     #[derive(Debug, Clone)]
     pub struct Error {
         kind: Kind,
@@ -2388,11 +2405,14 @@ pub mod wres {
     }
 
     // maybe the most important: From<std::io::Error>
-    impl From<io::Error> for Error {
-        fn from(e: io::Error) -> Self {
+    impl From<std::io::Error> for Error {
+        fn from(e: std::io::Error) -> Self {
             Self {
                 kind: match e.kind() {
-                    io::ErrorKind::Unsupported => Kind::NotSupported,
+                    std::io::ErrorKind::Unsupported => Kind::Unsupported,
+                    std::io::ErrorKind::PermissionDenied => Kind::Forbidden,
+                    std::io::ErrorKind::InvalidData => Kind::Invalid,
+                    std::io::ErrorKind::InvalidInput => Kind::Invalid,
                     _ => Kind::Unknown,
                 },
                 was: Was::StdIo,
@@ -2400,6 +2420,45 @@ pub mod wres {
             }
         }
     }
+
+    // implements `Error` and provides access to properties
+    impl Error {
+
+        // the `create` constructor should actually never be used
+        // pub fn create(kind: Kind, was: Was, message: &str) -> Self {
+        //     Self {
+        //         kind,
+        //         was,
+        //         message: message.to_string(),
+        //     }
+        // }
+
+        // this is used only to natively create an instance of `Error`: only
+        // conversions set the `was` property to something different
+        pub fn new(kind: Kind, message: &str) -> Self {
+            Self {
+                kind,
+                was: Was::Native,
+                message: message.to_string(),
+            }
+        }
+
+        // property access
+        pub fn kind(&self) -> &Kind {
+            &self.kind
+        }
+
+        pub fn was(&self) -> &Was {
+            &self.was
+        }
+
+        pub fn message(&self) -> &str {
+            &self.message
+        }
+    }
+
+    /// Specific `Result` type that assumes `wres::Error` as its Err variant
+    pub type Result<T> = std::result::Result<T, Error>;
 
     // FIXME: enabling the following creates a conflict with other derived
     // error types that are implemented as specific cases

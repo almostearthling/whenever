@@ -6,6 +6,7 @@ use std::fs;
 use cfgmap::{CfgValue, CfgMap};
 
 use crate::common::logging::{log, LogType};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::constants::*;
 
@@ -25,7 +26,7 @@ use crate::cfghelp::*;
 
 
 /// Check the configuration from a string
-pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
+pub fn check_configuration(config_file: &str) -> Result<()> {
 
     let config_map: CfgMap;     // to be initialized below
 
@@ -34,8 +35,8 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
             config_map = CfgMap::from_toml(toml_text);
         }
         _ => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_CONFIG_FILE,
             ));
         }
@@ -49,15 +50,15 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
     let mut task_list: Vec<String> = Vec::new();
     if let Some(item_map) = config_map.get("task") {
         if !item_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_TASK_CONFIG,
             ));
         } else {
             for entry in item_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_TASK_CONFIG,
                     ));
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
@@ -73,16 +74,16 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_TASK_TYPE,
                             ));
                         }
                     };
                     task_list.push(name);
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_TASK_CONFIG,
                     ));
                 }
@@ -94,15 +95,15 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
     let mut condition_list: Vec<String> = Vec::new();
     if let Some(task_map) = config_map.get("condition") {
         if !task_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_COND_CONFIG,
             ));
         } else {
             for entry in task_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_COND_CONFIG,
                     ));
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
@@ -141,16 +142,16 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_COND_TYPE,
                             ));
                         }
                     };
                     condition_list.push(name);
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_COND_CONFIG,
                     ));
                 }
@@ -162,15 +163,15 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
     let mut event_list: Vec<String> = Vec::new();
     if let Some(item_map) = config_map.get("event") {
         if !item_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_EVENT_CONFIG,
             ));
         } else {
             for entry in item_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
@@ -193,16 +194,16 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_EVENT_TYPE,
                             ));
                         }
                     };
                     event_list.push(name);
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
                 }
@@ -215,7 +216,7 @@ pub fn check_configuration(config_file: &str) -> std::io::Result<()> {
 
 
 /// Read the configuration from a string and retrieve globals
-pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
+pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
 
     let mut config_map: CfgMap;     // to be initialized below
 
@@ -224,8 +225,8 @@ pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
             config_map = CfgMap::from_toml(toml_text);
         }
         _ => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_CONFIG_FILE,
             ));
         }
@@ -235,16 +236,16 @@ pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
     let mut scheduler_tick_seconds = DEFAULT_SCHEDULER_TICK_SECONDS;
     if let Some(item) = config_map.get(cur_key) {
         if !item.is_int() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         scheduler_tick_seconds = *item.as_int().unwrap();
         if scheduler_tick_seconds < 1 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
     }
@@ -253,9 +254,9 @@ pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
     let mut randomize_checks_within_ticks = DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS;
     if let Some(item) = config_map.get(cur_key) {
         if !item.is_bool() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         randomize_checks_within_ticks = *item.as_bool().unwrap();
@@ -274,7 +275,7 @@ pub fn configure_globals(config_file: &str) -> std::io::Result<CfgMap> {
 
 
 /// Read the configuration from a string and retrieve globals
-pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
+pub fn reconfigure_globals(config_file: &str) -> Result<CfgMap> {
 
     let mut config_map: CfgMap;     // to be initialized below
 
@@ -283,8 +284,8 @@ pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
             config_map = CfgMap::from_toml(toml_text);
         }
         _ => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_CONFIG_FILE,
             ));
         }
@@ -294,16 +295,16 @@ pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
     let mut scheduler_tick_seconds = DEFAULT_SCHEDULER_TICK_SECONDS;
     if let Some(item) = config_map.get(cur_key) {
         if !item.is_int() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         scheduler_tick_seconds = *item.as_int().unwrap();
         if scheduler_tick_seconds < 1 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
     }
@@ -312,9 +313,9 @@ pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
     let mut randomize_checks_within_ticks = DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS;
     if let Some(item) = config_map.get(cur_key) {
         if !item.is_bool() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: entry `{cur_key}`"),
             ));
         }
         randomize_checks_within_ticks = *item.as_bool().unwrap();
@@ -337,18 +338,18 @@ pub fn reconfigure_globals(config_file: &str) -> std::io::Result<CfgMap> {
 fn configure_tasks(
     cfgmap: &CfgMap,
     task_registry: &'static TaskRegistry,
-) -> std::io::Result<()> {
+) -> Result<()> {
     if let Some(task_map) = cfgmap.get("task") {
         if !task_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_TASK_CONFIG,
             ));
         } else {
             for entry in task_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_TASK_CONFIG,
                     ));
                 } else if let Some(task_type) = entry.as_map().unwrap().get("type") {
@@ -358,8 +359,8 @@ fn configure_tasks(
                             let task = task::command_task::CommandTask::load_cfgmap(
                                 entry.as_map().unwrap())?;
                             if !task_registry.add_task(Box::new(task))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_TASKREG_TASK_NOT_ADDED,
                                 ));
                             }
@@ -368,8 +369,8 @@ fn configure_tasks(
                             let task = task::lua_task::LuaTask::load_cfgmap(
                                 entry.as_map().unwrap())?;
                             if !task_registry.add_task(Box::new(task))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_TASKREG_TASK_NOT_ADDED,
                                 ));
                             }
@@ -377,15 +378,15 @@ fn configure_tasks(
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_TASK_TYPE,
                             ));
                         }
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_TASK_CONFIG,
                     ));
                 }
@@ -400,7 +401,7 @@ fn configure_tasks(
 fn reconfigure_tasks(
     cfgmap: &CfgMap,
     task_registry: &'static TaskRegistry,
-) -> std::io::Result<()> {
+) -> Result<()> {
 
     let mut to_remove: Vec<String> = Vec::new();
     let e = task_registry.task_names();
@@ -410,15 +411,15 @@ fn reconfigure_tasks(
 
     if let Some(task_map) = cfgmap.get("task") {
         if !task_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_TASK_CONFIG,
             ));
         } else {
             for entry in task_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_TASK_CONFIG,
                     ));
                 } else if let Some(task_type) = entry.as_map().unwrap().get("type") {
@@ -430,8 +431,8 @@ fn reconfigure_tasks(
                             let task_name = task.get_name();
                             if !task_registry.has_task(&task_name) || !task_registry.has_task_eq(&task) {
                                 if !task_registry.dynamic_add_or_replace_task(Box::new(task))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_TASKREG_TASK_NOT_ADDED,
                                     ));
                                 }
@@ -465,8 +466,8 @@ fn reconfigure_tasks(
                             let task_name = task.get_name();
                             if !task_registry.has_task(&task_name) || !task_registry.has_task_eq(&task) {
                                 if !task_registry.dynamic_add_or_replace_task(Box::new(task))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_TASKREG_TASK_NOT_ADDED,
                                     ));
                                 }
@@ -497,15 +498,15 @@ fn reconfigure_tasks(
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_TASK_TYPE,
                             ));
                         }
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_TASK_CONFIG,
                     ));
                 }
@@ -539,18 +540,18 @@ fn configure_conditions(
     task_registry: &'static TaskRegistry,
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
-) -> std::io::Result<()> {
+) -> Result<()> {
     if let Some(condition_map) = cfgmap.get("condition") {
         if !condition_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_COND_CONFIG,
             ));
         } else {
             for entry in condition_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_COND_CONFIG,
                     ));
                 } else if let Some(condition_type) = entry.as_map().unwrap().get("type") {
@@ -560,8 +561,8 @@ fn configure_conditions(
                             let condition = condition::interval_cond::IntervalCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -570,8 +571,8 @@ fn configure_conditions(
                             let condition = condition::idle_cond::IdleCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -582,8 +583,8 @@ fn configure_conditions(
                                 entry.as_map().unwrap(), task_registry)?;
                             let _ = condition.set_tick_duration(tick_secs)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -592,8 +593,8 @@ fn configure_conditions(
                             let condition = condition::command_cond::CommandCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -602,8 +603,8 @@ fn configure_conditions(
                             let condition = condition::lua_cond::LuaCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -612,8 +613,8 @@ fn configure_conditions(
                             let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
                                 entry.as_map().unwrap(), task_registry)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -624,8 +625,8 @@ fn configure_conditions(
                                 entry.as_map().unwrap(), task_registry)?;
                             let _ = condition.set_execution_bucket(bucket)?;
                             if !cond_registry.add_condition(Box::new(condition))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_CONDREG_COND_NOT_ADDED,
                                 ));
                             }
@@ -633,15 +634,15 @@ fn configure_conditions(
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_COND_TYPE,
                             ));
                         }
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_COND_CONFIG,
                     ));
                 }
@@ -659,7 +660,7 @@ fn reconfigure_conditions(
     task_registry: &'static TaskRegistry,
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
-) -> std::io::Result<()> {
+) -> Result<()> {
 
     let mut to_remove: Vec<String> = Vec::new();
     let e = cond_registry.condition_names();
@@ -669,15 +670,15 @@ fn reconfigure_conditions(
 
     if let Some(condition_map) = cfgmap.get("condition") {
         if !condition_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_COND_CONFIG,
             ));
         } else {
             for entry in condition_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_COND_CONFIG,
                     ));
                 } else if let Some(condition_type) = entry.as_map().unwrap().get("type") {
@@ -689,8 +690,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -724,8 +725,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -761,8 +762,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -796,8 +797,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -831,8 +832,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -866,8 +867,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -903,8 +904,8 @@ fn reconfigure_conditions(
                             let cond_name = condition.get_name();
                             if !cond_registry.has_condition(&cond_name) || !cond_registry.has_condition_eq(&condition) {
                                 if !cond_registry.dynamic_add_or_replace_condition(Box::new(condition))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_CONDREG_COND_NOT_ADDED,
                                     ));
                                 }
@@ -935,15 +936,15 @@ fn reconfigure_conditions(
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_COND_TYPE,
                             ));
                         }
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_COND_CONFIG,
                     ));
                 }
@@ -976,19 +977,19 @@ fn configure_events(
     event_registry: &'static EventRegistry,
     cond_registry: &'static ConditionRegistry,
     bucket: &'static ExecutionBucket,
-) -> std::io::Result<()> {
+) -> Result<()> {
 
     if let Some(event_map) = cfgmap.get("event") {
         if !event_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_EVENT_CONFIG,
             ));
         } else {
             for entry in event_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
                 } else if let Some(event_type) = entry.as_map().unwrap().get("type") {
@@ -999,8 +1000,8 @@ fn configure_events(
                                 entry.as_map().unwrap(), cond_registry, bucket)?;
                             let event_name = event.get_name();
                             if !event_registry.add_event(Box::new(event))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             } else if let Ok(_) = event_registry.listen_for(&event_name) {
@@ -1014,8 +1015,8 @@ fn configure_events(
                                     &format!("service installed for event {event_name} (dedicated thread)"),
                                 )
                             } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             }
@@ -1025,8 +1026,8 @@ fn configure_events(
                                 entry.as_map().unwrap(), cond_registry, bucket)?;
                             let event_name = event.get_name();
                             if !event_registry.add_event(Box::new(event))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             } else if let Ok(_) = event_registry.listen_for(&event_name) {
@@ -1040,8 +1041,8 @@ fn configure_events(
                                     &format!("service installed for event {event_name} (dedicated thread)"),
                                 )
                             } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             }
@@ -1051,8 +1052,8 @@ fn configure_events(
                                 entry.as_map().unwrap(), cond_registry, bucket)?;
                             let event_name = event.get_name();
                             if !event_registry.add_event(Box::new(event))? {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             } else if let Ok(_) = event_registry.listen_for(&event_name) {
@@ -1066,8 +1067,8 @@ fn configure_events(
                                         &format!("service installed for event {event_name} (dedicated thread)"),
                                     )
                             } else {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
+                                return Err(Error::new(
+                                    Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
                             }
@@ -1075,15 +1076,15 @@ fn configure_events(
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_EVENT_TYPE,
                             ));
                         }
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
                 }
@@ -1101,7 +1102,7 @@ fn reconfigure_events(
     event_registry: &'static EventRegistry,
     cond_registry: &'static ConditionRegistry,
     bucket: &'static ExecutionBucket,
-) -> std::io::Result<()> {
+) -> Result<()> {
 
     let mut to_remove: Vec<String> = Vec::new();
     let e = event_registry.event_names();
@@ -1111,15 +1112,15 @@ fn reconfigure_events(
 
     if let Some(event_map) = cfgmap.get("event") {
         if !event_map.is_list() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(Error::new(
+                Kind::Invalid,
                 ERR_INVALID_EVENT_CONFIG,
             ));
         } else {
             for entry in event_map.as_list().unwrap() {
                 if !entry.is_map() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
                 } else if let Some(event_type) = entry.as_map().unwrap().get("type") {
@@ -1144,8 +1145,8 @@ fn reconfigure_events(
                                     }
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 } else if event_registry.listen_for(&event_name).is_ok() {
@@ -1159,8 +1160,8 @@ fn reconfigure_events(
                                         &format!("service installed for event {event_name} (dedicated thread)"),
                                     );
                                 } else {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 }
@@ -1207,8 +1208,8 @@ fn reconfigure_events(
                                     }
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 } else if event_registry.listen_for(&event_name).is_ok() {
@@ -1222,8 +1223,8 @@ fn reconfigure_events(
                                         &format!("service installed for event {event_name} (dedicated thread)"),
                                     );
                                 } else {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 }
@@ -1270,8 +1271,8 @@ fn reconfigure_events(
                                     }
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 } else if event_registry.listen_for(&event_name).is_ok() {
@@ -1285,8 +1286,8 @@ fn reconfigure_events(
                                         &format!("service installed for event {event_name}"),
                                     );
                                 } else {
-                                    return Err(std::io::Error::new(
-                                        std::io::ErrorKind::InvalidData,
+                                    return Err(Error::new(
+                                        Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
                                     ));
                                 }
@@ -1317,15 +1318,15 @@ fn reconfigure_events(
                         // ...
 
                         _ => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
+                            return Err(Error::new(
+                                Kind::Invalid,
                                 ERR_INVALID_EVENT_TYPE,
                             ));
                         }
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
+                    return Err(Error::new(
+                        Kind::Invalid,
                         ERR_INVALID_EVENT_CONFIG,
                     ));
                 }
@@ -1373,7 +1374,7 @@ pub fn configure_items(
     event_registry: &'static EventRegistry,
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
-) -> std::io::Result<()> {
+) -> Result<()> {
     configure_tasks(cfgmap, task_registry)?;
     configure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
     configure_events(cfgmap, event_registry, cond_registry, bucket)?;
@@ -1388,7 +1389,7 @@ pub fn reconfigure_items(
     event_registry: &'static EventRegistry,
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
-) -> std::io::Result<()> {
+) -> Result<()> {
     reconfigure_tasks(cfgmap, task_registry)?;
     reconfigure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
     reconfigure_events(cfgmap, event_registry, cond_registry, bucket)?;

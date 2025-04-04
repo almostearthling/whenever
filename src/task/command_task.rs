@@ -40,6 +40,7 @@ use cfgmap::CfgMap;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{log, LogType};
+use crate::common::wres::Result;
 use crate::common::cmditem::*;
 use crate::{cfg_mandatory, constants::*};
 
@@ -375,7 +376,7 @@ impl CommandTask {
     /// The `CommandTask` is initialized according to the values provided in
     /// the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `CommandTask` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap) -> std::io::Result<CommandTask> {
+    pub fn load_cfgmap(cfgmap: &CfgMap) -> Result<CommandTask> {
 
         let check = vec![
             "type",
@@ -523,7 +524,7 @@ impl CommandTask {
     /// as in `load_cfgmap`, the only difference is that no actual item is
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
-    pub fn check_cfgmap(cfgmap: &CfgMap) -> std::io::Result<String> {
+    pub fn check_cfgmap(cfgmap: &CfgMap) -> Result<String> {
 
         let check = vec![
             "type",
@@ -673,7 +674,7 @@ impl Task for CommandTask {
     fn _run(
         &mut self,
         trigger_name: &str,
-    ) -> Result<Option<bool>, std::io::Error> {
+    ) -> Result<Option<bool>> {
 
         // build the environment: least priority settings come first; it is
         // created as a hashmap in order to avoid duplicates, but it is
