@@ -17,6 +17,7 @@
 use std::sync::mpsc;
 
 use crate::common::logging::{log, LogType};
+use crate::common::wres::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
@@ -185,7 +186,7 @@ pub trait Event: Send + Sync {
     ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
-    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
         // in this case the service exits immediately without errors
         assert!(qrx.is_none(), "quit signal channel provided for event without listener");
         Ok(true)

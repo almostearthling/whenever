@@ -383,7 +383,7 @@ impl Event for FilesystemChangeEvent {
     }
 
 
-    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
 
         assert!(qrx.is_some(), "quit signal channel receiver must be provided");
         assert!(self.quit_tx.is_some(), "quit signal channel transmitter not initialized");
@@ -442,15 +442,7 @@ impl Event for FilesystemChangeEvent {
 
         // and now build the watcher, passing a clone of the transmitting end
         // of the channel to the constructor
-        let mut watcher;
-        if let Ok(w) = _build_watcher(notify_cfg, async_tx.clone()) {
-            watcher = w;
-        } else {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "cannot initialize fschange notification service",
-            ));
-        }
+        let mut watcher = _build_watcher(notify_cfg, async_tx.clone())?;
 
         // add locations to the watcher
         if let Some(wl) = self.watched_locations.clone() {

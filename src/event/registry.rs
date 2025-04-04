@@ -672,7 +672,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    fn install_event_service(&self, name: &str) -> Result<Option<JoinHandle<std::result::Result<bool, std::io::Error>>>> {
+    fn install_event_service(&self, name: &str) -> Result<Option<JoinHandle<Result<bool>>>> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows mostly *reads* the registry: the event is retrieved
@@ -728,7 +728,7 @@ impl EventRegistry {
             }
 
             // the actual service thread
-            let handle: JoinHandle<std::result::Result<bool, std::io::Error>> = thread::spawn(move || {
+            let handle: JoinHandle<Result<bool>> = thread::spawn(move || {
                 let name = event_name.as_str();
 
                 // this implements the listening service in current thread

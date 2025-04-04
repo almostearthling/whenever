@@ -56,9 +56,9 @@ pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
 pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";
 pub const ERR_COND_CANNOT_SET_CHECKED: &str = "condition could not set checked status";
 pub const ERR_COND_TASK_NOT_ADDED: &str = "condition could not add task";
-pub const ERR_COND_CANNOT_CONNECT_TO: &str = "could not estabilish connection to";
+// pub const ERR_COND_CANNOT_CONNECT_TO: &str = "could not estabilish connection to";
 
-pub const ERR_EVENT_INVALID_MATCH_RULE: &str = "invalid event match rule";
+// pub const ERR_EVENT_INVALID_MATCH_RULE: &str = "invalid event match rule";
 pub const ERR_EVENT_INVALID_COND_TYPE: &str = "invalid condition type for assignment to event";
 
 pub const ERR_TIMEOUT_REACHED: &str = "timeout reached";

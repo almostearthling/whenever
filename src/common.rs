@@ -2335,6 +2335,8 @@ pub mod dbusitem {
 pub mod wres {
     // use std::{error, fmt, self};
     use std::{self, fmt};
+    use zbus;
+    use notify;
 
     /// Types of specific errors
     #[derive(Debug, Clone)]
@@ -2368,7 +2370,10 @@ pub mod wres {
     pub enum Was {
         Native,
         StdIo,
+        DBus,
+        Notify,
         // ...
+        
         Unknown,
     }
 
@@ -2377,6 +2382,10 @@ pub mod wres {
             write!(f, "{}", match self {
                 Was::Native => "self",
                 Was::StdIo => "io",
+                Was::DBus => "dbus",
+                Was::Notify => "fschange",
+                // ...
+
                 Was::Unknown => "unknown",
             })
         }
@@ -2421,17 +2430,30 @@ pub mod wres {
         }
     }
 
+    // zbus errors
+    impl From<zbus::Error> for Error {
+        fn from(e: zbus::Error) -> Self {
+            Self {
+                kind: Kind::Failed,
+                was: Was::DBus,
+                message: e.to_string(),
+            }
+        }
+    }
+
+    // notify (fschange) errors
+    impl From<notify::Error> for Error {
+        fn from(e: notify::Error) -> Self {
+            Self {
+                kind: Kind::Failed,
+                was: Was::Notify,
+                message: e.to_string(),
+            }
+        }
+    }
+
     // implements `Error` and provides access to properties
     impl Error {
-
-        // the `create` constructor should actually never be used
-        // pub fn create(kind: Kind, was: Was, message: &str) -> Self {
-        //     Self {
-        //         kind,
-        //         was,
-        //         message: message.to_string(),
-        //     }
-        // }
 
         // this is used only to natively create an instance of `Error`: only
         // conversions set the `was` property to something different

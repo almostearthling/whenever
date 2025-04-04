@@ -792,7 +792,7 @@ impl Event for DbusMessageEvent {
     }
 
 
-    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> std::io::Result<bool> {
+    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
 
         assert!(qrx.is_some(), "quit signal channel receiver must be provided");
         assert!(self.quit_tx.is_some(), "quit signal channel transmitter not initialized");
@@ -863,14 +863,7 @@ impl Event for DbusMessageEvent {
             .clone()
             .expect("attempt to start service with uninitialized match rule");
 
-        let rule = zbus::MatchRule::try_from(rule_str.as_str());
-        if let Err(e) = rule {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{ERR_EVENT_INVALID_MATCH_RULE}: {e}"),
-            ));
-        }
-        let rule = rule.unwrap();
+        let rule = zbus::MatchRule::try_from(rule_str.as_str())?;
 
         let conn = task::block_on(async {
             self.log(
@@ -880,17 +873,7 @@ impl Event for DbusMessageEvent {
                 &format!("opening connection to bus `{bus}`"),
             );
             _get_connection(&bus).await
-        });
-        if conn.is_err() {
-            self.log(
-                LogType::Warn,
-                LOG_WHEN_START,
-                LOG_STATUS_FAIL,
-                &format!("could not establish connection on bus `{bus}`"),
-            );
-            return Ok(false);
-        }
-        let conn = conn.unwrap();
+        })?;
 
         let dbus_stream = task::block_on(async{
             self.log(
