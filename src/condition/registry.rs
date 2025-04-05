@@ -390,7 +390,7 @@ impl ConditionRegistry {
         if !queue.contains(&s) {
             queue.push(s);
         }
-        
+
         Ok(())
     }
 
@@ -680,7 +680,7 @@ impl ConditionRegistry {
                 LOG_STATUS_MSG,
                 &format!("test and run for condition {name}"),
             );
-            
+
             // increment number of busy conditions by one: this can be done
             // without *self being mut because conditions_busy is an Arc;
             // we explicitly control the scope of the busy connection counter
@@ -691,7 +691,7 @@ impl ConditionRegistry {
             *bcount += 1;
             drop(bcount);
             drop(cb0);
-            
+
             // the heart of all: test the condition and run tasks if verified
             let res = match cond.test() {
                 Ok(o) => {
@@ -716,10 +716,10 @@ impl ConditionRegistry {
             *bcount -= 1;
             drop(bcount);
             drop(cb0);
-            
+
             // this cloned string is useful to look into queues
             let sname = String::from(name);
-            
+
             // after this, check whether this condition is in one of the queues
             // of conditions to be suspended, or reset (or maybe removed? for
             // the moment, removal is still treated as a special case, similar
@@ -785,7 +785,7 @@ impl ConditionRegistry {
             }
             drop(queue);
             drop(mxq0);
-            
+
             // this is the right time to operate on the registry if there are
             // no busy conditions remaining, thus in this order:
             //

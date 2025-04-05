@@ -2366,50 +2366,59 @@ pub mod wres {
     /// Describes the origin of the error: if `Native` the error was originated
     /// natively, otherwise the field is set by another error that is converted
     /// into `Error` via a dedicated `From` trait implementation.
-    #[derive(Debug, Clone)]
-    pub enum Was {
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Origin {
         Native,
         StdIo,
         DBus,
         Notify,
         // ...
-        
+
         Unknown,
     }
 
-    impl fmt::Display for Was {
+    impl fmt::Display for Origin {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "{}", match self {
-                Was::Native => "self",
-                Was::StdIo => "io",
-                Was::DBus => "dbus",
-                Was::Notify => "fschange",
+                Origin::Native => "self",
+                Origin::StdIo => "io",
+                Origin::DBus => "dbus",
+                Origin::Notify => "fschange",
                 // ...
 
-                Was::Unknown => "unknown",
+                Origin::Unknown => "unknown",
             })
         }
     }
 
     /// The error type that is used throughout the application: implementations
     /// of the `From` trait are used to implicitly convert from other error
-    /// types, which in turn set the `was` property.
+    /// types, which in turn set the `origin` property.
     #[derive(Debug, Clone)]
     pub struct Error {
         kind: Kind,
-        was: Was,
-        message: String,    // or &str? a freeform message
+        origin: Origin,
+        message: String,    // freeform message: owned in order to avoid lifetime management
     }
 
     impl fmt::Display for Error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(
-                f, 
-                "{} ({}): {}",
-                &self.kind,
-                &self.was,
-                &self.message,
-            )
+            if self.origin != Origin::Native {
+                write!(
+                    f,
+                    "{} ({}): {}",
+                    &self.kind,
+                    &self.origin,
+                    &self.message,
+                )
+            } else {
+                write!(
+                    f,
+                    "{}: {}",
+                    &self.kind,
+                    &self.message,
+                )
+            }
         }
     }
 
@@ -2424,7 +2433,7 @@ pub mod wres {
                     std::io::ErrorKind::InvalidInput => Kind::Invalid,
                     _ => Kind::Unknown,
                 },
-                was: Was::StdIo,
+                origin: Origin::StdIo,
                 message: e.to_string(),
             }
         }
@@ -2435,7 +2444,7 @@ pub mod wres {
         fn from(e: zbus::Error) -> Self {
             Self {
                 kind: Kind::Failed,
-                was: Was::DBus,
+                origin: Origin::DBus,
                 message: e.to_string(),
             }
         }
@@ -2446,7 +2455,7 @@ pub mod wres {
         fn from(e: notify::Error) -> Self {
             Self {
                 kind: Kind::Failed,
-                was: Was::Notify,
+                origin: Origin::Notify,
                 message: e.to_string(),
             }
         }
@@ -2456,11 +2465,11 @@ pub mod wres {
     impl Error {
 
         // this is used only to natively create an instance of `Error`: only
-        // conversions set the `was` property to something different
+        // conversions set the `origin` property to something different
         pub fn new(kind: Kind, message: &str) -> Self {
             Self {
                 kind,
-                was: Was::Native,
+                origin: Origin::Native,
                 message: message.to_string(),
             }
         }
@@ -2470,8 +2479,8 @@ pub mod wres {
             &self.kind
         }
 
-        pub fn was(&self) -> &Was {
-            &self.was
+        pub fn origin(&self) -> &Origin {
+            &self.origin
         }
 
         pub fn message(&self) -> &str {
