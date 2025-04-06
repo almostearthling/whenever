@@ -20,7 +20,7 @@ use std::str::FromStr;
 
 use super::base::Condition;
 use crate::common::dbusitem::*;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -1362,7 +1362,11 @@ impl Condition for DbusMethodCondition {
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 &format!("parameter checks specified: {} checks must be verified", {
-                    if self.param_checks_all { "all" } else { "some" }
+                    if self.param_checks_all {
+                        "all"
+                    } else {
+                        "some"
+                    }
                 },),
             );
 

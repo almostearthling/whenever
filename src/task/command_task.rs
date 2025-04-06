@@ -38,7 +38,7 @@ use cfgmap::CfgMap;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::cmditem::*;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::Result;
 use crate::{cfg_mandatory, constants::*};
 

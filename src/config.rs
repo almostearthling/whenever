@@ -5,7 +5,7 @@
 use cfgmap::{CfgMap, CfgValue};
 use std::fs;
 
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::constants::*;
@@ -1112,7 +1112,9 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
-                                if event_registry.has_event(&event_name) && event_registry.unlisten_and_remove(&event_name).is_err() {
+                                if event_registry.has_event(&event_name)
+                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
@@ -1120,9 +1122,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!(
-                                            "service for event {event_name} still listening",
-                                        ),
+                                        &format!("service for event {event_name} still listening",),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
@@ -1186,7 +1186,9 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
-                                if event_registry.has_event(&event_name) && event_registry.unlisten_and_remove(&event_name).is_err() {
+                                if event_registry.has_event(&event_name)
+                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
@@ -1194,9 +1196,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!(
-                                            "service for event {event_name} still listening",
-                                        ),
+                                        &format!("service for event {event_name} still listening",),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
@@ -1260,7 +1260,9 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
-                                if event_registry.has_event(&event_name) && event_registry.unlisten_and_remove(&event_name).is_err() {
+                                if event_registry.has_event(&event_name)
+                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
@@ -1268,9 +1270,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!(
-                                            "service for event {event_name} still listening",
-                                        ),
+                                        &format!("service for event {event_name} still listening",),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {

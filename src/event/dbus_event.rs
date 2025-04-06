@@ -6,10 +6,10 @@
 
 use regex::Regex;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{Arc, RwLock, mpsc};
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
 
-use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, select};
+use futures::{channel::mpsc::channel, pin_mut, select, FutureExt, SinkExt, StreamExt};
 
 use cfgmap::{CfgMap, CfgValue};
 
@@ -21,7 +21,7 @@ use std::str::FromStr;
 
 use super::base::Event;
 use crate::common::dbusitem::*;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
@@ -916,23 +916,26 @@ impl Event for DbusMessageEvent {
         // as it catches a signal
         let mut aq_tx_clone = aquit_tx.clone();
         let _quit_handle = thread::spawn(move || {
-            if let Ok(_) = qrx.unwrap().recv() {
-                // send a quit message over the async channel
-                task::block_on({
-                    async move {
-                        aq_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap();
-                    }
-                });
-            } else {
-                // in case of error, send just the error option of the enum
-                task::block_on({
-                    async move {
-                        aq_tx_clone
-                            .send(TargetOrQuitEvent::QuitError)
-                            .await
-                            .unwrap();
-                    }
-                });
+            match qrx.unwrap().recv() {
+                Ok(_) => {
+                    // send a quit message over the async channel
+                    task::block_on({
+                        async move {
+                            aq_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap();
+                        }
+                    });
+                }
+                _ => {
+                    // in case of error, send just the error option of the enum
+                    task::block_on({
+                        async move {
+                            aq_tx_clone
+                                .send(TargetOrQuitEvent::QuitError)
+                                .await
+                                .unwrap();
+                        }
+                    });
+                }
             };
         });
 
@@ -1002,7 +1005,11 @@ impl Event for DbusMessageEvent {
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
                             &format!("parameter checks specified: {} checks must be verified", {
-                                if self.param_checks_all { "all" } else { "some" }
+                                if self.param_checks_all {
+                                    "all"
+                                } else {
+                                    "some"
+                                }
                             },),
                         );
 
@@ -1087,59 +1094,61 @@ impl Event for DbusMessageEvent {
     }
 
     fn stop_service(&self) -> std::io::Result<bool> {
-        if let Ok(running) = self.thread_running.read() {
-            if *running {
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_END,
-                    LOG_STATUS_OK,
-                    "the listener has been requested to stop",
-                );
-                // send the quit signal
-                let quit_tx = self.quit_tx.clone();
-                if let Some(tx) = quit_tx {
-                    tx.clone().send(()).unwrap();
-                    Ok(true)
-                } else {
+        match self.thread_running.read() {
+            Ok(running) => {
+                if *running {
                     self.log(
-                        LogType::Warn,
+                        LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_OK,
-                        "impossible to contact the listener: stop request dropped",
+                        "the listener has been requested to stop",
+                    );
+                    // send the quit signal
+                    let quit_tx = self.quit_tx.clone();
+                    if let Some(tx) = quit_tx {
+                        tx.clone().send(()).unwrap();
+                        Ok(true)
+                    } else {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_END,
+                            LOG_STATUS_OK,
+                            "impossible to contact the listener: stop request dropped",
+                        );
+                        Ok(false)
+                    }
+                } else {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        "the service is not running: stop request dropped",
                     );
                     Ok(false)
                 }
-            } else {
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_END,
-                    LOG_STATUS_OK,
-                    "the service is not running: stop request dropped",
-                );
-                Ok(false)
             }
-        } else {
-            self.log(
-                LogType::Error,
-                LOG_WHEN_END,
-                LOG_STATUS_ERR,
-                "could not determine whether the service is running",
-            );
-            Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running",
-            ))
+            _ => {
+                self.log(
+                    LogType::Error,
+                    LOG_WHEN_END,
+                    LOG_STATUS_ERR,
+                    "could not determine whether the service is running",
+                );
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "could not determine whether the service is running",
+                ))
+            }
         }
     }
 
     fn thread_running(&self) -> std::io::Result<bool> {
-        if let Ok(running) = self.thread_running.read() {
-            Ok(*running)
-        } else {
-            Err(std::io::Error::new(
+        match self.thread_running.read() {
+            Ok(running) => Ok(*running),
+            _ => Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
                 "could not determine whether the service is running",
-            ))
+            )),
         }
     }
 }

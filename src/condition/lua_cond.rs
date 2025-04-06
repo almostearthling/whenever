@@ -15,7 +15,7 @@ use cfgmap::CfgMap;
 use mlua;
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::luaitem::*;
 use crate::common::wres::{Error, Kind, Result};
 use crate::task::registry::TaskRegistry;
@@ -246,7 +246,13 @@ impl LuaCondition {
     // helper to build a representation of checks for logging
     fn repr_checks(&self) -> String {
         let mut res = String::new();
-        let sep = { if self.expect_all { "and" } else { "or" } };
+        let sep = {
+            if self.expect_all {
+                "and"
+            } else {
+                "or"
+            }
+        };
         for (k, v) in self.expected.iter() {
             let rval = match v {
                 LuaValue::LuaString(v) => format!("\"{v}\""),
@@ -787,7 +793,8 @@ impl Condition for LuaCondition {
             lua.create_function(move |_, s: String| {
                 inner_log(id, &name, LogType::Debug, &s);
                 Ok(())
-            }).unwrap(),
+            })
+            .unwrap(),
         );
 
         let id = self.get_id();
@@ -797,7 +804,8 @@ impl Condition for LuaCondition {
             lua.create_function(move |_, s: String| {
                 inner_log(id, &name, LogType::Trace, &s);
                 Ok(())
-            }).unwrap(),
+            })
+            .unwrap(),
         );
 
         let id = self.get_id();
@@ -807,7 +815,8 @@ impl Condition for LuaCondition {
             lua.create_function(move |_, s: String| {
                 inner_log(id, &name, LogType::Info, &s);
                 Ok(())
-            }).unwrap(),
+            })
+            .unwrap(),
         );
 
         let id = self.get_id();
@@ -817,7 +826,8 @@ impl Condition for LuaCondition {
             lua.create_function(move |_, s: String| {
                 inner_log(id, &name, LogType::Warn, &s);
                 Ok(())
-            }).unwrap(),
+            })
+            .unwrap(),
         );
 
         let id = self.get_id();
@@ -827,7 +837,8 @@ impl Condition for LuaCondition {
             lua.create_function(move |_, s: String| {
                 inner_log(id, &name, LogType::Error, &s);
                 Ok(())
-            }).unwrap(),
+            })
+            .unwrap(),
         );
 
         let _ = globals.set("log", logftab);
@@ -856,17 +867,29 @@ impl Condition for LuaCondition {
                                 LuaValue::LuaString(v) => {
                                     let r: std::result::Result<String, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
+                                    if let Ok(r) = r {
+                                        Some(r == *v)
+                                    } else {
+                                        None
+                                    }
                                 }
                                 LuaValue::LuaNumber(v) => {
                                     let r: std::result::Result<f64, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
+                                    if let Ok(r) = r {
+                                        Some(r == *v)
+                                    } else {
+                                        None
+                                    }
                                 }
                                 LuaValue::LuaBoolean(v) => {
                                     let r: std::result::Result<bool, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
+                                    if let Ok(r) = r {
+                                        Some(r == *v)
+                                    } else {
+                                        None
+                                    }
                                 }
                             } {
                                 if !res {
@@ -897,17 +920,29 @@ impl Condition for LuaCondition {
                                 LuaValue::LuaString(v) => {
                                     let r: std::result::Result<String, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
+                                    if let Ok(r) = r {
+                                        Some(r == *v)
+                                    } else {
+                                        None
+                                    }
                                 }
                                 LuaValue::LuaNumber(v) => {
                                     let r: std::result::Result<f64, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
+                                    if let Ok(r) = r {
+                                        Some(r == *v)
+                                    } else {
+                                        None
+                                    }
                                 }
                                 LuaValue::LuaBoolean(v) => {
                                     let r: std::result::Result<bool, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
+                                    if let Ok(r) = r {
+                                        Some(r == *v)
+                                    } else {
+                                        None
+                                    }
                                 }
                             } {
                                 if res {

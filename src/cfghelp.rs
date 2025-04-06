@@ -276,9 +276,7 @@ pub fn cfg_string_check_within_nocase(
     for x in check {
         new_check.push(x.to_uppercase());
     }
-    cfg_string_check(cfgmap, key, |x| {
-        new_check.contains(&x.to_uppercase())
-    })
+    cfg_string_check(cfgmap, key, |x| new_check.contains(&x.to_uppercase()))
 }
 
 /// get a string checking it against a regular expression
@@ -560,9 +558,7 @@ pub fn cfg_vec_string_check_within_nocase(
     for x in check {
         new_check.push(x.to_uppercase());
     }
-    cfg_vec_string_check(cfgmap, key, |x| {
-        new_check.contains(&x.to_uppercase())
-    })
+    cfg_vec_string_check(cfgmap, key, |x| new_check.contains(&x.to_uppercase()))
 }
 
 /// get a list of strings checking all of them against a regular expression

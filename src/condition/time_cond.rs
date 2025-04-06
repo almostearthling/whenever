@@ -25,7 +25,7 @@ use cfgmap::CfgMap;
 use chrono::prelude::*;
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::{Error, Kind, Result};
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};

@@ -22,11 +22,11 @@ use futures;
 use futures::SinkExt;
 
 use lazy_static::lazy_static;
-use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
+use unique_id::Generator;
 
 use super::base::Event;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -34,7 +34,7 @@ use crate::constants::*;
 lazy_static! {
     // the main event ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
-        
+
         SequenceGenerator
     };
 }
@@ -483,24 +483,25 @@ impl EventRegistry {
     /// maybe it should return an error in this case?).
     pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>> {
         if self.has_event(name) {
-            if let Some(e) = self
+            match self
                 .event_list
                 .write()
                 .expect("cannot write to event registry")
                 .remove(name)
             {
-                // in this case if the event cannot be extracted from the list
-                // no reference to the event is returned, but an error instead
-                // WARNING: the reference is dropped in that case!
-                let e = Arc::try_unwrap(e);
-                let Ok(event) = e else {
-                    return Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_PULL_EVENT));
-                };
-                let mut event = event.into_inner().expect("cannot extract locked event");
-                event.set_id(0);
-                Ok(Some(event))
-            } else {
-                Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_REMOVE_EVENT))
+                Some(e) => {
+                    // in this case if the event cannot be extracted from the list
+                    // no reference to the event is returned, but an error instead
+                    // WARNING: the reference is dropped in that case!
+                    let e = Arc::try_unwrap(e);
+                    let Ok(event) = e else {
+                        return Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_PULL_EVENT));
+                    };
+                    let mut event = event.into_inner().expect("cannot extract locked event");
+                    event.set_id(0);
+                    Ok(Some(event))
+                }
+                _ => Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_REMOVE_EVENT)),
             }
         } else {
             Ok(None)
@@ -526,7 +527,11 @@ impl EventRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() { None } else { Some(res) }
+        if res.is_empty() {
+            None
+        } else {
+            Some(res)
+        }
     }
 
     /// Return the id of the specified event.
@@ -680,22 +685,25 @@ impl EventRegistry {
             // WARNING: the following is the only place where the event is
             // modified in order to listen for a potential `quit` signal:
             // it should be safe as the operation is quick in any case
-            if let Ok(mut event) = event.clone().write() {
-                event.assign_quit_sender(tx.clone());
-            } else {
-                log(
-                    LogType::Warn,
-                    LOG_EMITTER_EVENT_REGISTRY,
-                    LOG_ACTION_INSTALL,
-                    Some((name, id)),
-                    LOG_WHEN_START,
-                    LOG_STATUS_FAIL,
-                    "cannot initialize communication with event listener",
-                );
-                return Err(Error::new(
-                    Kind::Failed,
-                    ERR_EVENTREG_LISTENER_NOT_REACHABLE,
-                ));
+            match event.clone().write() {
+                Ok(mut event) => {
+                    event.assign_quit_sender(tx.clone());
+                }
+                _ => {
+                    log(
+                        LogType::Warn,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_INSTALL,
+                        Some((name, id)),
+                        LOG_WHEN_START,
+                        LOG_STATUS_FAIL,
+                        "cannot initialize communication with event listener",
+                    );
+                    return Err(Error::new(
+                        Kind::Failed,
+                        ERR_EVENTREG_LISTENER_NOT_REACHABLE,
+                    ));
+                }
             }
 
             // the actual service thread

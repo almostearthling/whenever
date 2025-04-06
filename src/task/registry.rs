@@ -11,19 +11,19 @@
 //! functions.
 
 use std::collections::HashMap;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-use std::sync::mpsc::channel;
-use std::thread::JoinHandle;
 use std::thread::spawn;
+use std::thread::JoinHandle;
 
 use lazy_static::lazy_static;
-use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
+use unique_id::Generator;
 
 use super::base::Task;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -31,7 +31,7 @@ use crate::constants::*;
 lazy_static! {
     // the main task ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
-        
+
         SequenceGenerator
     };
 }
@@ -188,14 +188,17 @@ impl TaskRegistry {
             .expect("cannot acquire running sessions counter");
         if *sessions == 0 {
             if self.has_task(&name) {
-                if let Ok(_) = self.remove_task(&name) {
-                    if let Ok(res) = self.add_task(boxed_task) {
-                        return Ok(res);
-                    } else {
-                        return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_REPLACED));
+                match self.remove_task(&name) {
+                    Ok(_) => {
+                        if let Ok(res) = self.add_task(boxed_task) {
+                            return Ok(res);
+                        } else {
+                            return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_REPLACED));
+                        }
                     }
-                } else {
-                    return Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK));
+                    _ => {
+                        return Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK));
+                    }
                 }
             } else if let Ok(res) = self.add_task(boxed_task) {
                 return Ok(res);
@@ -242,20 +245,21 @@ impl TaskRegistry {
     /// May panic if the task registry could not be locked for extraction.
     pub fn remove_task(&self, name: &str) -> Result<Option<Box<dyn Task>>> {
         if self.has_task(name) {
-            if let Some(r) = self
+            match self
                 .task_list
                 .write()
                 .expect("cannot write to task registry")
                 .remove(name)
             {
-                let Ok(mx) = Arc::try_unwrap(r) else {
-                    panic!("attempt to extract referenced task {name}")
-                };
-                let mut task = mx.into_inner().expect("cannot extract locked task");
-                task.set_id(0);
-                Ok(Some(task))
-            } else {
-                Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK))
+                Some(r) => {
+                    let Ok(mx) = Arc::try_unwrap(r) else {
+                        panic!("attempt to extract referenced task {name}")
+                    };
+                    let mut task = mx.into_inner().expect("cannot extract locked task");
+                    task.set_id(0);
+                    Ok(Some(task))
+                }
+                _ => Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK)),
             }
         } else {
             Ok(None)
@@ -311,7 +315,11 @@ impl TaskRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() { None } else { Some(res) }
+        if res.is_empty() {
+            None
+        } else {
+            Some(res)
+        }
     }
 
     /// Return the id of the specified task
@@ -402,7 +410,7 @@ impl TaskRegistry {
                 .expect("cannot retrieve task for running")
                 .clone();
             drop(tl0);
-            
+
             let mut t0 = task.lock().expect("cannot lock task while extracting");
             let cur_res = t0.run(trigger_name);
             log(
@@ -438,7 +446,11 @@ impl TaskRegistry {
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
                     &format!("breaking on {}", {
-                        if task_success { "success" } else { "failure" }
+                        if task_success {
+                            "success"
+                        } else {
+                            "failure"
+                        }
                     }),
                 );
                 break;

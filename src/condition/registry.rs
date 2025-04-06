@@ -14,11 +14,11 @@ use std::sync::RwLock;
 // use std::io::{Error, ErrorKind};
 
 use lazy_static::lazy_static;
-use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
+use unique_id::Generator;
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -26,7 +26,7 @@ use crate::constants::*;
 lazy_static! {
     // the main condition ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
-        
+
         SequenceGenerator
     };
 }
@@ -130,15 +130,17 @@ impl ConditionRegistry {
     /// May panic if the condition registry could not be locked for enquiry.
     pub fn condition_type(&self, name: &str) -> Option<String> {
         if self.has_condition(name) {
-            self
-                .condition_list
+            self.condition_list
                 .read()
                 .expect("cannot read condition registry")
-                .get(name).map(|r| r.clone()
+                .get(name)
+                .map(|r| {
+                    r.clone()
                         .lock()
                         .expect("cannot lock condition to retrieve type")
                         .get_type()
-                        .to_string())
+                        .to_string()
+                })
         } else {
             None
         }
@@ -200,14 +202,17 @@ impl ConditionRegistry {
         let busy = busy.lock().expect("cannot acquire busy conditions counter");
         if *busy == 0 {
             if self.has_condition(&name) {
-                if let Ok(_) = self.remove_condition(&name) {
-                    if let Ok(res) = self.add_condition(boxed_condition) {
-                        return Ok(res);
-                    } else {
-                        return Err(Error::new(Kind::Failed, ERR_CONDREG_COND_NOT_REPLACED));
+                match self.remove_condition(&name) {
+                    Ok(_) => {
+                        if let Ok(res) = self.add_condition(boxed_condition) {
+                            return Ok(res);
+                        } else {
+                            return Err(Error::new(Kind::Failed, ERR_CONDREG_COND_NOT_REPLACED));
+                        }
                     }
-                } else {
-                    return Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND));
+                    _ => {
+                        return Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND));
+                    }
                 }
             } else if let Ok(res) = self.add_condition(boxed_condition) {
                 return Ok(res);
@@ -264,17 +269,18 @@ impl ConditionRegistry {
                 .condition_list
                 .write()
                 .expect("cannot write to condition registry");
-            if let Some(c0) = cl0.remove(name) {
-                drop(cl0);
-                let Ok(mxc0) = Arc::try_unwrap(c0) else {
-                    panic!("cannot extract referenced condition {name}")
-                };
+            match cl0.remove(name) {
+                Some(c0) => {
+                    drop(cl0);
+                    let Ok(mxc0) = Arc::try_unwrap(c0) else {
+                        panic!("cannot extract referenced condition {name}")
+                    };
 
-                let mut condition = mxc0.into_inner().expect("cannot extract locked condition"); // <- may have to fix this
-                condition.set_id(0);
-                Ok(Some(condition))
-            } else {
-                Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND))
+                    let mut condition = mxc0.into_inner().expect("cannot extract locked condition"); // <- may have to fix this
+                    condition.set_id(0);
+                    Ok(Some(condition))
+                }
+                _ => Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND)),
             }
         } else {
             Ok(None)
@@ -495,7 +501,11 @@ impl ConditionRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() { None } else { Some(res) }
+        if res.is_empty() {
+            None
+        } else {
+            Some(res)
+        }
     }
 
     /// Return the id of the specified condition
@@ -661,7 +671,11 @@ impl ConditionRegistry {
             let res = match cond.test() {
                 Ok(o) => {
                     if let Some(outcome) = o {
-                        if outcome { cond.run_tasks() } else { Ok(None) }
+                        if outcome {
+                            cond.run_tasks()
+                        } else {
+                            Ok(None)
+                        }
                     } else {
                         Ok(None)
                     }

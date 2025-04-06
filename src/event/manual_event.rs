@@ -10,7 +10,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use cfgmap::CfgMap;
 
 use super::base::Event;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;

@@ -12,7 +12,7 @@ use cfgmap::CfgMap;
 use user_idle::UserIdle;
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -490,7 +490,13 @@ impl Condition for IdleCondition {
                 LOG_STATUS_MSG,
                 &format!(
                     "checking idle time based condition{} (test: {}<{}?)",
-                    { if self.idle_verified { " [idle]" } else { "" } },
+                    {
+                        if self.idle_verified {
+                            " [idle]"
+                        } else {
+                            ""
+                        }
+                    },
                     idle.as_seconds(),
                     self.idle_seconds.as_secs(),
                 ),

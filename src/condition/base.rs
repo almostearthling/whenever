@@ -23,7 +23,7 @@
 
 use std::time::Instant;
 
-use crate::common::logging::{LogType, log};
+use crate::common::logging::{log, LogType};
 use crate::common::wres::{Error, Kind, Result};
 
 use crate::constants::*;
@@ -515,7 +515,11 @@ pub trait Condition: Send {
                             LOG_WHEN_END,
                             LOG_STATUS_MSG,
                             &format!("task {name} completed: outcome is {}", {
-                                if *outcome { "success" } else { "failure" }
+                                if *outcome {
+                                    "success"
+                                } else {
+                                    "failure"
+                                }
                             },),
                         );
                     } else {
