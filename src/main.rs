@@ -580,7 +580,7 @@ fn interpret_commands() -> Result<bool> {
         // note that `split_whitespace()` already trims its argument
         let buffer_save = String::from(&buffer);
         let v: Vec<&str> = buffer.split_whitespace().collect();
-        if v.len() > 0 {
+        if !v.is_empty() {
             let cmd = v[0];
             let args = &v[1..]; // should not panic, but there might be a cleaner way
             match cmd {

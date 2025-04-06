@@ -1065,7 +1065,7 @@ impl Event for DbusMessageEvent {
                         &format!("no messages on bus `{bus_name}`: exiting"),
                     );
                     // close the stream before shutting down
-                    let _ = task::block_on(async { dbus_stream.async_drop().await });
+                    task::block_on(async { dbus_stream.async_drop().await });
                     break;
                 }
             }

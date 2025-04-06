@@ -1392,7 +1392,7 @@ impl Condition for DbusMethodCondition {
                 LogType::Debug,
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
-                &format!("persistent success status: waiting for failure to recur"),
+                &"persistent success status: waiting for failure to recur".to_string(),
             );
         }
 

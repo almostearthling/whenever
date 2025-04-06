@@ -226,7 +226,7 @@ impl LuaTask {
                         if !RE_VAR_NAME.is_match(name) {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         } else if let Some(value) = map.get(name) {
@@ -252,7 +252,7 @@ impl LuaTask {
                         } else {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         }
@@ -324,7 +324,7 @@ impl LuaTask {
                         if !RE_VAR_NAME.is_match(name) {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         } else if let Some(value) = map.get(name) {
@@ -350,7 +350,7 @@ impl LuaTask {
                         } else {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         }
@@ -433,12 +433,12 @@ impl Task for LuaTask {
                 LOG_STATUS_FAIL,
                 &format!(
                     "(trigger: {trigger_name}) cannot start Lua interpreter ({})",
-                    e.to_string(),
+                    e,
                 ),
             );
             return Err(Error::new(
                 Kind::Failed,
-                &format!("cannot start Lua interpreter ({})", e.to_string()),
+                &format!("cannot start Lua interpreter ({})", e),
             ));
         }
         let lua = lua.unwrap();
@@ -470,7 +470,8 @@ impl Task for LuaTask {
         let _ = logftab.set(
             "debug",
             lua.create_function(move |_, s: String| {
-                Ok(inner_log(&trigger, id, &name, LogType::Debug, &s))
+                inner_log(&trigger, id, &name, LogType::Debug, &s);
+                Ok(())
             })
             .unwrap(),
         );
@@ -481,7 +482,8 @@ impl Task for LuaTask {
         let _ = logftab.set(
             "trace",
             lua.create_function(move |_, s: String| {
-                Ok(inner_log(&trigger, id, &name, LogType::Trace, &s))
+                inner_log(&trigger, id, &name, LogType::Trace, &s);
+                Ok(())
             })
             .unwrap(),
         );
@@ -492,7 +494,8 @@ impl Task for LuaTask {
         let _ = logftab.set(
             "info",
             lua.create_function(move |_, s: String| {
-                Ok(inner_log(&trigger, id, &name, LogType::Info, &s))
+                inner_log(&trigger, id, &name, LogType::Info, &s);
+                Ok(())
             })
             .unwrap(),
         );
@@ -503,7 +506,8 @@ impl Task for LuaTask {
         let _ = logftab.set(
             "warn",
             lua.create_function(move |_, s: String| {
-                Ok(inner_log(&trigger, id, &name, LogType::Warn, &s))
+                inner_log(&trigger, id, &name, LogType::Warn, &s);
+                Ok(())
             })
             .unwrap(),
         );
@@ -514,14 +518,15 @@ impl Task for LuaTask {
         let _ = logftab.set(
             "error",
             lua.create_function(move |_, s: String| {
-                Ok(inner_log(&trigger, id, &name, LogType::Error, &s))
+                inner_log(&trigger, id, &name, LogType::Error, &s);
+                Ok(())
             })
             .unwrap(),
         );
 
         let _ = globals.set("log", logftab);
 
-        match lua.load(&self.script.clone()).exec() {
+        match lua.load(self.script.clone()).exec() {
             // if the script executed without error, iterate over the provided
             // names and values to check that the results match expectations;
             // obviously if no varnames/values are provided, no iteration will

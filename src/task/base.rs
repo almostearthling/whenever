@@ -141,7 +141,7 @@ pub trait Task: Send {
                     LogType::Trace,
                     LOG_WHEN_HISTORY,
                     LOG_STATUS_HIST_END,
-                    &format!("ERR/trigger:{trigger_name} error: {}", e.to_string()),
+                    &format!("ERR/trigger:{trigger_name} error: {}", e),
                 );
             }
         }

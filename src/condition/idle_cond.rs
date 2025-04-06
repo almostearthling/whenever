@@ -113,7 +113,7 @@ impl IdleCondition {
 
             // specific members initialization
             // parameters
-            idle_seconds: interval.clone(),
+            idle_seconds: *interval,
 
             // specific members initialization
             idle_verified: false,

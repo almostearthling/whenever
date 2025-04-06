@@ -304,7 +304,7 @@ impl LuaCondition {
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
-        let script = String::from(cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap());
+        let script = cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap();
 
         // initialize the structure
         let mut new_condition = LuaCondition::new(&name, &script);
@@ -381,7 +381,7 @@ impl LuaCondition {
                         if !RE_VAR_NAME.is_match(name) {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         } else if let Some(value) = map.get(name) {
@@ -407,7 +407,7 @@ impl LuaCondition {
                         } else {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         }
@@ -508,7 +508,7 @@ impl LuaCondition {
                         if !RE_VAR_NAME.is_match(name) {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         } else if let Some(value) = map.get(name) {
@@ -526,7 +526,7 @@ impl LuaCondition {
                         } else {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                &name,
+                                name,
                                 ERR_INVALID_VAR_NAME,
                             ));
                         }
@@ -751,11 +751,11 @@ impl Condition for LuaCondition {
                 LogType::Debug,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
-                &format!("cannot start Lua interpreter ({})", e.to_string(),),
+                &format!("cannot start Lua interpreter ({})", e),
             );
             return Err(Error::new(
                 Kind::Failed,
-                &format!("cannot start Lua interpreter ({})", e.to_string()),
+                &format!("cannot start Lua interpreter ({})", e),
             ));
         }
         let lua = lua.unwrap();
@@ -784,45 +784,55 @@ impl Condition for LuaCondition {
         let name = self.get_name();
         let _ = logftab.set(
             "debug",
-            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Debug, &s)))
-                .unwrap(),
+            lua.create_function(move |_, s: String| {
+                inner_log(id, &name, LogType::Debug, &s);
+                Ok(())
+            }).unwrap(),
         );
 
         let id = self.get_id();
         let name = self.get_name();
         let _ = logftab.set(
             "trace",
-            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Trace, &s)))
-                .unwrap(),
+            lua.create_function(move |_, s: String| {
+                inner_log(id, &name, LogType::Trace, &s);
+                Ok(())
+            }).unwrap(),
         );
 
         let id = self.get_id();
         let name = self.get_name();
         let _ = logftab.set(
             "info",
-            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Info, &s)))
-                .unwrap(),
+            lua.create_function(move |_, s: String| {
+                inner_log(id, &name, LogType::Info, &s);
+                Ok(())
+            }).unwrap(),
         );
 
         let id = self.get_id();
         let name = self.get_name();
         let _ = logftab.set(
             "warn",
-            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Warn, &s)))
-                .unwrap(),
+            lua.create_function(move |_, s: String| {
+                inner_log(id, &name, LogType::Warn, &s);
+                Ok(())
+            }).unwrap(),
         );
 
         let id = self.get_id();
         let name = self.get_name();
         let _ = logftab.set(
             "error",
-            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Error, &s)))
-                .unwrap(),
+            lua.create_function(move |_, s: String| {
+                inner_log(id, &name, LogType::Error, &s);
+                Ok(())
+            }).unwrap(),
         );
 
         let _ = globals.set("log", logftab);
 
-        match lua.load(&self.script.clone()).exec() {
+        match lua.load(self.script.clone()).exec() {
             // if the script executed without error, iterate over the provided
             // names and values to check that the results match expectations;
             // obviously if no varnames/values are provided, no iteration will
@@ -959,7 +969,7 @@ impl Condition for LuaCondition {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &format!("persistent success status: waiting for failure to recur",),
+                        &"persistent success status: waiting for failure to recur".to_string(),
                     );
                     Ok(Some(false))
                 }

@@ -34,8 +34,8 @@ use crate::constants::*;
 lazy_static! {
     // the main event ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
-        let mut _uidgen = SequenceGenerator;
-        _uidgen
+        
+        SequenceGenerator
     };
 }
 
@@ -249,7 +249,7 @@ impl EventRegistry {
                 .event_service_active_listeners
                 .clone();
             let s0 = managed_services.lock().unwrap();
-            let items: Vec<String> = s0.iter().map(|x| String::from(x)).collect();
+            let items: Vec<String> = s0.iter().map(String::from).collect();
             drop(s0);
             for name in items {
                 let r0 = managed_registry.clone();
@@ -711,7 +711,7 @@ impl EventRegistry {
                                 LogType::Debug,
                                 LOG_EMITTER_EVENT_REGISTRY,
                                 LOG_ACTION_UNINSTALL,
-                                Some((&name, id)),
+                                Some((name, id)),
                                 LOG_WHEN_END,
                                 LOG_STATUS_OK,
                                 "event listener terminated successfully",
@@ -722,7 +722,7 @@ impl EventRegistry {
                                 LogType::Error,
                                 LOG_EMITTER_EVENT_REGISTRY,
                                 LOG_ACTION_UNINSTALL,
-                                Some((&name, id)),
+                                Some((name, id)),
                                 LOG_WHEN_END,
                                 LOG_STATUS_FAIL,
                                 "event listener terminated unsuccessfully",
@@ -735,7 +735,7 @@ impl EventRegistry {
                             LogType::Error,
                             LOG_EMITTER_EVENT_REGISTRY,
                             LOG_ACTION_UNINSTALL,
-                            Some((&name, id)),
+                            Some((name, id)),
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
                             &format!("event listener exited with error: {e}"),
@@ -837,33 +837,31 @@ impl EventRegistry {
                     ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
                 ))
             }
+        } else if event.stop_service()? {
+            log(
+                LogType::Debug,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_UNINSTALL,
+                Some((name, id)),
+                LOG_WHEN_END,
+                LOG_STATUS_OK,
+                "event listener shut down",
+            );
+            Ok(())
         } else {
-            if event.stop_service()? {
-                log(
-                    LogType::Debug,
-                    LOG_EMITTER_EVENT_REGISTRY,
-                    LOG_ACTION_UNINSTALL,
-                    Some((name, id)),
-                    LOG_WHEN_END,
-                    LOG_STATUS_OK,
-                    "event listener shut down",
-                );
-                Ok(())
-            } else {
-                log(
-                    LogType::Warn,
-                    LOG_EMITTER_EVENT_REGISTRY,
-                    LOG_ACTION_UNINSTALL,
-                    Some((name, id)),
-                    LOG_WHEN_END,
-                    LOG_STATUS_FAIL,
-                    "event listener could not be shut down",
-                );
-                Err(Error::new(
-                    Kind::Failed,
-                    ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
-                ))
-            }
+            log(
+                LogType::Warn,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_UNINSTALL,
+                Some((name, id)),
+                LOG_WHEN_END,
+                LOG_STATUS_FAIL,
+                "event listener could not be shut down",
+            );
+            Err(Error::new(
+                Kind::Failed,
+                ERR_EVENTREG_SERVICE_NOT_UNINSTALLED,
+            ))
         }
     }
 

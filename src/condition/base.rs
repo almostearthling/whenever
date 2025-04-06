@@ -463,7 +463,7 @@ pub trait Condition: Send {
                 if !s_task_names.is_empty() {
                     s_task_names = format!("{s_task_names} {name}");
                 } else {
-                    s_task_names = format!("{name}");
+                    s_task_names = name.to_string();
                 }
             }
         } else {
@@ -570,7 +570,7 @@ pub trait Condition: Send {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
-                        &format!("some tasks failed: no retries left, will stop checking"),
+                        &"some tasks failed: no retries left, will stop checking".to_string(),
                     );
                 }
             } else {
@@ -578,7 +578,7 @@ pub trait Condition: Send {
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
-                    &format!("some tasks failed: will retry until all succeed"),
+                    &"some tasks failed: will retry until all succeed".to_string(),
                 );
             }
         }

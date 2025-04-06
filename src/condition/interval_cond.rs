@@ -113,7 +113,7 @@ impl IntervalCondition {
 
             // specific members initialization
             // parameters
-            interval: interval.clone(),
+            interval: *interval,
 
             // specific members initialization
             checked: t,

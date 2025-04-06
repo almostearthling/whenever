@@ -22,7 +22,7 @@ macro_rules! cfg_mandatory {
         if let Some(v) = $func_name($cfgmap, $key)? {
             Ok(Some(v))
         } else {
-            Err(crate::cfghelp::cfg_err_invalid_config(
+            Err($crate::cfghelp::cfg_err_invalid_config(
                 $key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER,
@@ -274,10 +274,10 @@ pub fn cfg_string_check_within_nocase(
     // TODO: there is probably a less expensive way to do it
     let mut new_check: Vec<String> = Vec::new();
     for x in check {
-        new_check.push(String::from(x.to_uppercase()));
+        new_check.push(x.to_uppercase());
     }
     cfg_string_check(cfgmap, key, |x| {
-        new_check.contains(&String::from(x.to_uppercase()))
+        new_check.contains(&x.to_uppercase())
     })
 }
 
@@ -511,7 +511,7 @@ pub fn cfg_vec_string_check<F: Fn(&str) -> bool>(
             if !check(elem.as_str()) {
                 return Err(cfg_err_invalid_config(
                     key,
-                    &format!("{elem}"),
+                    &elem.to_string(),
                     ERR_INVALID_VALUE_FOR_LIST_ENTRY,
                 ));
             }
@@ -558,10 +558,10 @@ pub fn cfg_vec_string_check_within_nocase(
     // TODO: there is probably a less expensive way to do it
     let mut new_check: Vec<String> = Vec::new();
     for x in check {
-        new_check.push(String::from(x.to_uppercase()));
+        new_check.push(x.to_uppercase());
     }
     cfg_vec_string_check(cfgmap, key, |x| {
-        new_check.contains(&String::from(x.to_uppercase()))
+        new_check.contains(&x.to_uppercase())
     })
 }
 

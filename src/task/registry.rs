@@ -31,8 +31,8 @@ use crate::constants::*;
 lazy_static! {
     // the main task ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
-        let mut _uidgen = SequenceGenerator;
-        _uidgen
+        
+        SequenceGenerator
     };
 }
 
@@ -197,12 +197,10 @@ impl TaskRegistry {
                 } else {
                     return Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK));
                 }
+            } else if let Ok(res) = self.add_task(boxed_task) {
+                return Ok(res);
             } else {
-                if let Ok(res) = self.add_task(boxed_task) {
-                    return Ok(res);
-                } else {
-                    return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_ADDED));
-                }
+                return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_ADDED));
             }
         } else {
             let queue = self.items_to_add.clone();
@@ -288,7 +286,7 @@ impl TaskRegistry {
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
                     &format!(
-                        "registry busy: task {name} set to be removed when no tasks are running"
+                        "registry busy: task {name} set to be removed when no tasks are running",
                     ),
                 );
             }
@@ -404,9 +402,9 @@ impl TaskRegistry {
                 .expect("cannot retrieve task for running")
                 .clone();
             drop(tl0);
-            let cur_res;
+            
             let mut t0 = task.lock().expect("cannot lock task while extracting");
-            cur_res = t0.run(trigger_name);
+            let cur_res = t0.run(trigger_name);
             log(
                 LogType::Trace,
                 LOG_EMITTER_TASK_REGISTRY,

@@ -292,8 +292,7 @@ impl BucketCondition {
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER,
-                )
-                .into()); // TODO: instead of forcing this, the `cfg_err_invalid_config` should be changed to use wres::Error
+                )); // TODO: instead of forcing this, the `cfg_err_invalid_config` should be changed to use wres::Error
             }
         }
 

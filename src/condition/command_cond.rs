@@ -582,7 +582,7 @@ impl CommandCondition {
                     if !RE_ENVVAR_NAME.is_match(name) {
                         return Err(cfg_err_invalid_config(
                             cur_key,
-                            &name,
+                            name,
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
@@ -756,7 +756,7 @@ impl CommandCondition {
                     if !RE_VAR_NAME.is_match(name) {
                         return Err(cfg_err_invalid_config(
                             cur_key,
-                            &name,
+                            name,
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
@@ -1201,7 +1201,7 @@ impl Condition for CommandCondition {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &format!("persistent success status: waiting for failure to recur",),
+                        &"persistent success status: waiting for failure to recur".to_string(),
                     );
                     Ok(Some(false))
                 }

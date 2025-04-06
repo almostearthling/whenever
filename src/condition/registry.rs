@@ -26,8 +26,8 @@ use crate::constants::*;
 lazy_static! {
     // the main condition ID generator
     static ref UID_GENERATOR: SequenceGenerator = {
-        let mut _uidgen = SequenceGenerator;
-        _uidgen
+        
+        SequenceGenerator
     };
 }
 
@@ -130,22 +130,15 @@ impl ConditionRegistry {
     /// May panic if the condition registry could not be locked for enquiry.
     pub fn condition_type(&self, name: &str) -> Option<String> {
         if self.has_condition(name) {
-            if let Some(r) = self
+            self
                 .condition_list
                 .read()
                 .expect("cannot read condition registry")
-                .get(name)
-            {
-                Some(
-                    r.clone()
+                .get(name).map(|r| r.clone()
                         .lock()
                         .expect("cannot lock condition to retrieve type")
                         .get_type()
-                        .to_string(),
-                )
-            } else {
-                None
-            }
+                        .to_string())
         } else {
             None
         }
@@ -216,12 +209,10 @@ impl ConditionRegistry {
                 } else {
                     return Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND));
                 }
+            } else if let Ok(res) = self.add_condition(boxed_condition) {
+                return Ok(res);
             } else {
-                if let Ok(res) = self.add_condition(boxed_condition) {
-                    return Ok(res);
-                } else {
-                    return Err(Error::new(Kind::Failed, ERR_CONDREG_COND_NOT_ADDED));
-                }
+                return Err(Error::new(Kind::Failed, ERR_CONDREG_COND_NOT_ADDED));
             }
         } else {
             let queue = self.items_to_add.clone();
@@ -235,7 +226,7 @@ impl ConditionRegistry {
                 LOG_WHEN_PROC,
                 LOG_STATUS_OK,
                 &format!(
-                    "registry busy: condition {name} set to be added when no conditions are busy"
+                    "registry busy: condition {name} set to be added when no conditions are busy",
                 ),
             );
         }
@@ -313,7 +304,7 @@ impl ConditionRegistry {
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
                     &format!(
-                        "registry busy: condition {name} set to be removed when no conditions are busy"
+                        "registry busy: condition {name} set to be removed when no conditions are busy",
                     ),
                 );
             }

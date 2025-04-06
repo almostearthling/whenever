@@ -56,11 +56,11 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                     match item_type.as_str() {
                         "command" => {
                             name = task::command_task::CommandTask::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                             )?;
                         }
                         "lua" => {
-                            name = task::lua_task::LuaTask::check_cfgmap(&entry.as_map().unwrap())?;
+                            name = task::lua_task::LuaTask::check_cfgmap(entry.as_map().unwrap())?;
                         }
                         // ...
                         _ => {
@@ -91,43 +91,43 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                     match item_type.as_str() {
                         "interval" => {
                             name = condition::interval_cond::IntervalCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
                         "idle" => {
                             name = condition::idle_cond::IdleCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
                         "time" => {
                             name = condition::time_cond::TimeCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
                         "command" => {
                             name = condition::command_cond::CommandCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
                         "lua" => {
                             name = condition::lua_cond::LuaCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
                         "dbus" => {
                             name = condition::dbus_cond::DbusMethodCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
                         "bucket" | "event" => {
                             name = condition::bucket_cond::BucketCondition::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &task_list,
                             )?;
                         }
@@ -160,19 +160,19 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                     match item_type.as_str() {
                         "fschange" => {
                             name = event::fschange_event::FilesystemChangeEvent::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &condition_list,
                             )?;
                         }
                         "dbus" => {
                             name = event::dbus_event::DbusMessageEvent::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &condition_list,
                             )?;
                         }
                         "cli" => {
                             name = event::manual_event::ManualCommandEvent::check_cfgmap(
-                                &entry.as_map().unwrap(),
+                                entry.as_map().unwrap(),
                                 &condition_list,
                             )?;
                         }
@@ -399,7 +399,7 @@ fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> R
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring task {task_name}: no change detected"
+                                        "not reconfiguring task {task_name}: no change detected",
                                     ),
                                 );
                             }
@@ -440,7 +440,7 @@ fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> R
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring task {task_name}: no change detected"
+                                        "not reconfiguring task {task_name}: no change detected",
                                     ),
                                 );
                             }
@@ -640,7 +640,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 );
                             }
@@ -685,7 +685,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 );
                             }
@@ -732,7 +732,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 );
                             }
@@ -777,7 +777,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 );
                             }
@@ -822,7 +822,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 )
                             }
@@ -867,7 +867,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 )
                             }
@@ -915,7 +915,7 @@ fn reconfigure_conditions(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring condition {cond_name}: no change detected"
+                                        "not reconfiguring condition {cond_name}: no change detected",
                                     ),
                                 )
                             }
@@ -983,7 +983,7 @@ fn configure_events(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
-                            } else if let Ok(_) = event_registry.listen_for(&event_name) {
+                            } else if event_registry.listen_for(&event_name).is_ok() {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -992,7 +992,7 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)"
+                                        "service installed for event {event_name} (dedicated thread)",
                                     ),
                                 )
                             } else {
@@ -1014,7 +1014,7 @@ fn configure_events(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
-                            } else if let Ok(_) = event_registry.listen_for(&event_name) {
+                            } else if event_registry.listen_for(&event_name).is_ok() {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1023,7 +1023,7 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)"
+                                        "service installed for event {event_name} (dedicated thread)",
                                     ),
                                 )
                             } else {
@@ -1045,7 +1045,7 @@ fn configure_events(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
                                 ));
-                            } else if let Ok(_) = event_registry.listen_for(&event_name) {
+                            } else if event_registry.listen_for(&event_name).is_ok() {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1054,7 +1054,7 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)"
+                                        "service installed for event {event_name} (dedicated thread)",
                                     ),
                                 )
                             } else {
@@ -1112,20 +1112,18 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
-                                if event_registry.has_event(&event_name) {
-                                    if event_registry.unlisten_and_remove(&event_name).is_err() {
-                                        log(
-                                            LogType::Trace,
-                                            LOG_EMITTER_CONFIGURATION,
-                                            LOG_ACTION_MAIN_LISTENER,
-                                            None,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_FAIL,
-                                            &format!(
-                                                "service for event {event_name} still listening"
-                                            ),
-                                        );
-                                    }
+                                if event_registry.has_event(&event_name) && event_registry.unlisten_and_remove(&event_name).is_err() {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!(
+                                            "service for event {event_name} still listening",
+                                        ),
+                                    );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1141,7 +1139,7 @@ fn reconfigure_events(
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_MSG,
                                         &format!(
-                                            "service installed for event {event_name} (dedicated thread)"
+                                            "service installed for event {event_name} (dedicated thread)",
                                         ),
                                     );
                                 } else {
@@ -1168,7 +1166,7 @@ fn reconfigure_events(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring event {event_name}: no change detected"
+                                        "not reconfiguring event {event_name}: no change detected",
                                     ),
                                 );
                             }
@@ -1188,20 +1186,18 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
-                                if event_registry.has_event(&event_name) {
-                                    if event_registry.unlisten_and_remove(&event_name).is_err() {
-                                        log(
-                                            LogType::Trace,
-                                            LOG_EMITTER_CONFIGURATION,
-                                            LOG_ACTION_MAIN_LISTENER,
-                                            None,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_FAIL,
-                                            &format!(
-                                                "service for event {event_name} still listening"
-                                            ),
-                                        );
-                                    }
+                                if event_registry.has_event(&event_name) && event_registry.unlisten_and_remove(&event_name).is_err() {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!(
+                                            "service for event {event_name} still listening",
+                                        ),
+                                    );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1217,7 +1213,7 @@ fn reconfigure_events(
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_MSG,
                                         &format!(
-                                            "service installed for event {event_name} (dedicated thread)"
+                                            "service installed for event {event_name} (dedicated thread)",
                                         ),
                                     );
                                 } else {
@@ -1244,7 +1240,7 @@ fn reconfigure_events(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring event {event_name}: no change detected"
+                                        "not reconfiguring event {event_name}: no change detected",
                                     ),
                                 );
                             }
@@ -1264,20 +1260,18 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
-                                if event_registry.has_event(&event_name) {
-                                    if event_registry.unlisten_and_remove(&event_name).is_err() {
-                                        log(
-                                            LogType::Trace,
-                                            LOG_EMITTER_CONFIGURATION,
-                                            LOG_ACTION_MAIN_LISTENER,
-                                            None,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_FAIL,
-                                            &format!(
-                                                "service for event {event_name} still listening"
-                                            ),
-                                        );
-                                    }
+                                if event_registry.has_event(&event_name) && event_registry.unlisten_and_remove(&event_name).is_err() {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!(
+                                            "service for event {event_name} still listening",
+                                        ),
+                                    );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1318,7 +1312,7 @@ fn reconfigure_events(
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "not reconfiguring event {event_name}: no change detected"
+                                        "not reconfiguring event {event_name}: no change detected",
                                     ),
                                 );
                             }

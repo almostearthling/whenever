@@ -451,7 +451,7 @@ impl CommandTask {
                     if !RE_VAR_NAME.is_match(name) {
                         return Err(cfg_err_invalid_config(
                             cur_key,
-                            &name,
+                            name,
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
@@ -587,7 +587,7 @@ impl CommandTask {
                     if !RE_VAR_NAME.is_match(name) {
                         return Err(cfg_err_invalid_config(
                             cur_key,
-                            &name,
+                            name,
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
