@@ -21,32 +21,28 @@
 //! and the name of the condition that triggered it, for commands (for example
 //! scripts) that could be aware of being invoked by a task.
 
-
-
 use std::collections::HashMap;
 use std::env;
-use std::io::ErrorKind;
-use std::time::{SystemTime, Duration};
-use std::path::PathBuf;
 use std::ffi::OsString;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::ErrorKind;
+use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 
 use itertools::Itertools;
 
-use subprocess::{Popen, PopenConfig, Redirection, PopenError};
+use subprocess::{Popen, PopenConfig, PopenError, Redirection};
 
 use cfgmap::CfgMap;
 
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
 use crate::common::cmditem::*;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::Result;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// Command Based Task
 ///
@@ -83,7 +79,6 @@ pub struct CommandTask {
     _process_failed: bool,
     _process_duration: Duration,
 }
-
 
 // implement the hash protocol
 impl Hash for CommandTask {
@@ -144,7 +139,6 @@ impl Hash for CommandTask {
     }
 }
 
-
 // /// In case of failure, the reason will be one of the provided values
 // #[derive(Debug, PartialEq)]
 // pub enum FailureReason {
@@ -155,11 +149,8 @@ impl Hash for CommandTask {
 //     Other,
 // }
 
-
-
 #[allow(dead_code)]
 impl CommandTask {
-
     /// Create a new command based task
     ///
     /// The only parameters that have to be set mandatorily upon creation of a
@@ -179,12 +170,7 @@ impl CommandTask {
     /// FIXME:
     ///     1. use a `Vec<&str>` instead of a `Vec<String>` for arguments
     ///     2. use `Path` for `command` and `startup_dir`.
-    pub fn new(
-        name: &str,
-        command: &PathBuf,
-        args: &Vec<String>,
-        startup_dir: &PathBuf,
-    ) -> Self {
+    pub fn new(name: &str, command: &PathBuf, args: &Vec<String>, startup_dir: &PathBuf) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_TASK_COMMAND,
@@ -230,7 +216,6 @@ impl CommandTask {
         }
     }
 
-
     // build the full command line, only for logging purposes
     fn command_line(&self) -> String {
         let mut s = String::from(self.command.to_string_lossy());
@@ -244,7 +229,6 @@ impl CommandTask {
         s
     }
 
-
     /// Set a variable in the custom environment that the command base task
     /// provides to the spawned process.
     ///
@@ -253,7 +237,8 @@ impl CommandTask {
     /// * `var` - the variable name
     /// * `value` - the value assigned to the named variable
     pub fn set_variable(&mut self, var: &str, value: &str) -> Option<String> {
-        self.environment_vars.insert(String::from(var), String::from(value))
+        self.environment_vars
+            .insert(String::from(var), String::from(value))
     }
 
     /// Unset a variable in the custom environment that the command base task
@@ -265,7 +250,6 @@ impl CommandTask {
     pub fn unset_variable(&mut self, var: &str) -> Option<String> {
         self.environment_vars.remove(var)
     }
-
 
     /// Constructor modifier to include or exclude existing environment: if
     /// the parameter is set to `false`, the original environment is not passed
@@ -377,7 +361,6 @@ impl CommandTask {
     /// the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `CommandTask` an error is raised.
     pub fn load_cfgmap(cfgmap: &CfgMap) -> Result<CommandTask> {
-
         let check = vec![
             "type",
             "name",
@@ -408,7 +391,8 @@ impl CommandTask {
         // specific mandatory parameter retrieval
         let command = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "command"))?.unwrap());
         let args = cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?.unwrap();
-        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        let startup_path =
+            PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
         if !startup_path.is_dir() {
             return Err(cfg_err_invalid_config(
                 "startup_path",
@@ -418,12 +402,7 @@ impl CommandTask {
         };
 
         // initialize the structure
-        let mut new_task = CommandTask::new(
-            &name,
-            &command,
-            &args,
-            &startup_path,
-        );
+        let mut new_task = CommandTask::new(&name, &command, &args, &startup_path);
 
         // common optional parameter initialization
 
@@ -476,7 +455,11 @@ impl CommandTask {
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
-                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                        if value.is_str()
+                            || value.is_int()
+                            || value.is_float()
+                            || value.is_datetime()
+                        {
                             vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
                             return Err(cfg_err_invalid_config(
@@ -499,13 +482,15 @@ impl CommandTask {
 
         new_task.success_stdout = cfg_string(cfgmap, "success_stdout")?;
         new_task.success_stderr = cfg_string(cfgmap, "success_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)? {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?
+        {
             new_task.success_status = Some(v as u32);
         }
 
         new_task.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
         new_task.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)? {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?
+        {
             new_task.failure_status = Some(v as u32);
         }
 
@@ -525,7 +510,6 @@ impl CommandTask {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -558,7 +542,8 @@ impl CommandTask {
         // specific mandatory parameter check
         cfg_mandatory!(cfg_string(cfgmap, "command"))?;
         cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?;
-        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        let startup_path =
+            PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
         if !startup_path.is_dir() {
             return Err(cfg_err_invalid_config(
                 "startup_path",
@@ -606,7 +591,11 @@ impl CommandTask {
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
-                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                        if value.is_str()
+                            || value.is_int()
+                            || value.is_float()
+                            || value.is_datetime()
+                        {
                             vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
                             return Err(cfg_err_invalid_config(
@@ -640,14 +629,17 @@ impl CommandTask {
     }
 }
 
-
-
 // implement the Task trait
 impl Task for CommandTask {
-
-    fn set_id(&mut self, id: i64) { self.task_id = id; }
-    fn get_name(&self) -> String { self.task_name.clone() }
-    fn get_id(&self) -> i64 { self.task_id }
+    fn set_id(&mut self, id: i64) {
+        self.task_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.task_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.task_id
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -671,11 +663,7 @@ impl Task for CommandTask {
     /// reported by the process itself result in values that are checked
     /// against values provided upon construction in the `expects`/`rejects`
     /// modifiers.
-    fn _run(
-        &mut self,
-        trigger_name: &str,
-    ) -> Result<Option<bool>> {
-
+    fn _run(&mut self, trigger_name: &str) -> Result<Option<bool>> {
         // build the environment: least priority settings come first; it is
         // created as a hashmap in order to avoid duplicates, but it is
         // converted to Vec<&OsString, &OsString> in order to be passed to
@@ -731,7 +719,10 @@ impl Task for CommandTask {
             LogType::Debug,
             LOG_WHEN_START,
             LOG_STATUS_MSG,
-            &format!("(trigger: {trigger_name}) running command: `{}`", self.command_line()),
+            &format!(
+                "(trigger: {trigger_name}) running command: `{}`",
+                self.command_line()
+            ),
         );
 
         // run the process and capture possible errors
@@ -748,36 +739,37 @@ impl Task for CommandTask {
 
             match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
                 Ok((exit_status, out, err)) => {
-                    if let Some(o) = out { self._process_stdout = o; }
-                    if let Some(e) = err { self._process_stderr = e; }
+                    if let Some(o) = out {
+                        self._process_stdout = o;
+                    }
+                    if let Some(e) = err {
+                        self._process_stderr = e;
+                    }
                     proc_exit = Ok(exit_status);
                 }
-                Err(e) => {
-                    match e.kind() {
-                        std::io::ErrorKind::TimedOut => {
-                            self.log(
-                                LogType::Debug,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("timeout reached running command `{}`", self.command_line()),
-                            );
-                            proc_exit = Err(PopenError::from(std::io::Error::new(
-                                ErrorKind::TimedOut,
-                                ERR_TIMEOUT_REACHED,
-                            )));
-                        }
-                        k => {
-                            self.log(
-                                LogType::Warn,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("error running command `{}`", self.command_line()),
-                            );
-                            proc_exit = Err(PopenError::from(
-                                std::io::Error::new(k, e.to_string())));
-                        }
+                Err(e) => match e.kind() {
+                    std::io::ErrorKind::TimedOut => {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("timeout reached running command `{}`", self.command_line()),
+                        );
+                        proc_exit = Err(PopenError::from(std::io::Error::new(
+                            ErrorKind::TimedOut,
+                            ERR_TIMEOUT_REACHED,
+                        )));
                     }
-                }
+                    k => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("error running command `{}`", self.command_line()),
+                        );
+                        proc_exit = Err(PopenError::from(std::io::Error::new(k, e.to_string())));
+                    }
+                },
             }
 
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
@@ -822,7 +814,7 @@ impl Task for CommandTask {
                         log_severity,
                         log_when,
                         log_status,
-                        &format!("(trigger: {trigger_name}) {log_message}")
+                        &format!("(trigger: {trigger_name}) {log_message}"),
                     );
                 }
                 // the command could not be executed thus an error is reported
@@ -849,7 +841,9 @@ impl Task for CommandTask {
                     LOG_STATUS_FAIL,
                     &format!(
                         "(trigger: {trigger_name}) could not start command: `{}` (reason: {e})",
-                        self.command_line()));
+                        self.command_line()
+                    ),
+                );
             } else {
                 self._process_failed = true;
                 self.log(
@@ -858,7 +852,9 @@ impl Task for CommandTask {
                     LOG_STATUS_FAIL,
                     &format!(
                         "(trigger: {trigger_name}) could not start command: `{}` (reason: unknown)",
-                        self.command_line()));
+                        self.command_line()
+                    ),
+                );
             }
             failure_reason = FailureReason::Other;
         }
@@ -872,8 +868,9 @@ impl Task for CommandTask {
                     LOG_STATUS_OK,
                     &format!(
                         "(trigger: {trigger_name}) task exited successfully in {:.2}s",
-                        self._process_duration.as_secs_f64()),
-                    );
+                        self._process_duration.as_secs_f64()
+                    ),
+                );
                 Ok(Some(true))
             }
             FailureReason::StdOut => {
@@ -920,14 +917,13 @@ impl Task for CommandTask {
                     LOG_STATUS_FAIL,
                     &format!(
                         "(trigger: {trigger_name}) command ended unexpectedly in {:.2}s",
-                        self._process_duration.as_secs_f64()),
-                    );
+                        self._process_duration.as_secs_f64()
+                    ),
+                );
                 Ok(Some(false))
             }
         }
     }
-
 }
-
 
 // end.

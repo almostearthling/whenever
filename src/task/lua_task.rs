@@ -5,28 +5,23 @@
 //! and reports success or failure accordingly. An error in the script always
 //! results as a failure.
 
-
-
 use std::collections::HashMap;
-use std::time::SystemTime;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::SystemTime;
 
 use itertools::Itertools;
 
 use cfgmap::CfgMap;
 use mlua;
 
-
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::{Error, Kind, Result};
+use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
+use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// _Lua_ script Based Task
 ///
@@ -44,7 +39,6 @@ pub struct LuaTask {
     expected: HashMap<String, LuaValue>,
     expect_all: bool,
 }
-
 
 // implement the hash protocol
 impl Hash for LuaTask {
@@ -67,10 +61,8 @@ impl Hash for LuaTask {
     }
 }
 
-
 #[allow(dead_code)]
 impl LuaTask {
-
     /// Create a new _Lua_ script based task
     ///
     /// The only parameters that have to be set mandatorily upon creation of a
@@ -93,10 +85,7 @@ impl LuaTask {
     /// respectively denoting success or failure are returned.
     ///
     /// Errors in the script will _always_ be considered a failure.
-    pub fn new(
-        name: &str,
-        script: &str,
-    ) -> Self {
+    pub fn new(name: &str, script: &str) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_TASK_LUA,
@@ -104,7 +93,7 @@ impl LuaTask {
             Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
-            &format!("TASK {name}: creating a new Lua script based task")
+            &format!("TASK {name}: creating a new Lua script based task"),
         );
         LuaTask {
             task_id: 0,
@@ -118,22 +107,24 @@ impl LuaTask {
         }
     }
 
-
     /// Add a variable to check for a string value
     pub fn add_check_string(mut self, varname: &str, value: &str) -> Self {
-        self.expected.insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
+        self.expected
+            .insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
         self
     }
 
     /// Add a variable to check for a number (f64) value
     pub fn add_check_number(mut self, varname: &str, value: f64) -> Self {
-        self.expected.insert(varname.to_string(), LuaValue::LuaNumber(value));
+        self.expected
+            .insert(varname.to_string(), LuaValue::LuaNumber(value));
         self
     }
 
     /// Add a variable to check for a boolean value
     pub fn add_check_bool(mut self, varname: &str, value: bool) -> Self {
-        self.expected.insert(varname.to_string(), LuaValue::LuaBoolean(value));
+        self.expected
+            .insert(varname.to_string(), LuaValue::LuaBoolean(value));
         self
     }
 
@@ -145,7 +136,6 @@ impl LuaTask {
         self
     }
 
-
     /// Constructor modifier to specify that the task should not set the
     /// context variables that specify the task name and the condition that
     /// triggered the task, when set to `false`. The default behaviour is to
@@ -154,7 +144,6 @@ impl LuaTask {
         self.set_vars = yes;
         self
     }
-
 
     // helper to build a representation of checks for logging
     fn repr_checks(&self) -> String {
@@ -181,7 +170,6 @@ impl LuaTask {
     /// the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `LuaTask` an error is raised.
     pub fn load_cfgmap(cfgmap: &CfgMap) -> Result<LuaTask> {
-
         let check = vec![
             "type",
             "name",
@@ -200,10 +188,7 @@ impl LuaTask {
         let script = cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap();
 
         // initialize the structure
-        let mut new_task = LuaTask::new(
-            &name,
-            &script,
-        );
+        let mut new_task = LuaTask::new(&name, &script);
 
         // common optional parameter initialization
 
@@ -287,7 +272,6 @@ impl LuaTask {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -377,18 +361,19 @@ impl LuaTask {
 
         Ok(name)
     }
-
 }
-
-
 
 // implement the Task trait
 impl Task for LuaTask {
-
-    fn set_id(&mut self, id: i64) { self.task_id = id; }
-    fn get_name(&self) -> String { self.task_name.clone() }
-    fn get_id(&self) -> i64 { self.task_id }
-
+    fn set_id(&mut self, id: i64) {
+        self.task_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.task_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.task_id
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -424,10 +409,7 @@ impl Task for LuaTask {
     /// with appropriate severity: in case a certain severity level is
     /// configured for the log, only messages above that severity level are
     /// logged.
-    fn _run(
-        &mut self,
-        trigger_name: &str,
-    ) -> Result<Option<bool>> {
+    fn _run(&mut self, trigger_name: &str) -> Result<Option<bool>> {
         let mut failure_reason = FailureReason::NoCheck;
 
         fn inner_log(trigger_name: &str, id: i64, name: &str, severity: LogType, message: &str) {
@@ -485,37 +467,57 @@ impl Task for LuaTask {
         let id = self.get_id();
         let name = self.get_name();
         let trigger = String::from(trigger_name);
-        let _ = logftab.set("debug", lua.create_function(move
-            |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Debug, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "debug",
+            lua.create_function(move |_, s: String| {
+                Ok(inner_log(&trigger, id, &name, LogType::Debug, &s))
+            })
+            .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
         let trigger = String::from(trigger_name);
-        let _ = logftab.set("trace", lua.create_function(move
-            |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Trace, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "trace",
+            lua.create_function(move |_, s: String| {
+                Ok(inner_log(&trigger, id, &name, LogType::Trace, &s))
+            })
+            .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
         let trigger = String::from(trigger_name);
-        let _ = logftab.set("info", lua.create_function(move
-            |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Info, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "info",
+            lua.create_function(move |_, s: String| {
+                Ok(inner_log(&trigger, id, &name, LogType::Info, &s))
+            })
+            .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
         let trigger = String::from(trigger_name);
-        let _ = logftab.set("warn", lua.create_function(move
-            |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Warn, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "warn",
+            lua.create_function(move |_, s: String| {
+                Ok(inner_log(&trigger, id, &name, LogType::Warn, &s))
+            })
+            .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
         let trigger = String::from(trigger_name);
-        let _ = logftab.set("error", lua.create_function(move
-            |_, s: String| Ok(inner_log(&trigger, id, &name, LogType::Error, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "error",
+            lua.create_function(move |_, s: String| {
+                Ok(inner_log(&trigger, id, &name, LogType::Error, &s))
+            })
+            .unwrap(),
+        );
 
         let _ = globals.set("log", logftab);
 
@@ -544,22 +546,19 @@ impl Task for LuaTask {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<String, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<f64, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<bool, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if !res {
@@ -588,22 +587,19 @@ impl Task for LuaTask {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<String, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<f64, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<bool, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if res {
@@ -653,7 +649,9 @@ impl Task for LuaTask {
                     LOG_STATUS_OK,
                     &format!(
                         "(trigger: {trigger_name}) task exited successfully in {:.2}s",
-                        duration.as_secs_f64()));
+                        duration.as_secs_f64()
+                    ),
+                );
                 Ok(Some(true))
             }
             FailureReason::NoCheck => {
@@ -663,7 +661,9 @@ impl Task for LuaTask {
                     LOG_STATUS_OK,
                     &format!(
                         "(trigger: {trigger_name}) task exited with no outcome in {:.2}s",
-                        duration.as_secs_f64()));
+                        duration.as_secs_f64()
+                    ),
+                );
                 Ok(None)
             }
             FailureReason::VariableMatch => {
@@ -688,6 +688,5 @@ impl Task for LuaTask {
         }
     }
 }
-
 
 // end.

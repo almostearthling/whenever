@@ -5,37 +5,33 @@
 //! event puts an associated condition into the execution bucket each time
 //! it happens.
 
-
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
+use std::sync::{RwLock, mpsc};
 use std::thread;
 use std::time::Duration;
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{RwLock, mpsc};
 
 use async_std::task;
 use futures::{
-    channel::mpsc::{channel, Sender},
     SinkExt, StreamExt,
+    channel::mpsc::{Sender, channel},
 };
 
-use notify::{self, Watcher};
 use cfgmap::CfgMap;
+use notify::{self, Watcher};
 
 use super::base::Event;
 
-use crate::condition::registry::ConditionRegistry;
-use crate::condition::bucket_cond::ExecutionBucket;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
+use crate::condition::bucket_cond::ExecutionBucket;
+use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-
 // default seconds to wayt between active polls: generally ignored
 const DEFAULT_FSCHANGE_POLL_SECONDS: u64 = 2;
-
-
 
 /// Filesystem Change Based Event
 ///
@@ -115,8 +111,6 @@ impl Clone for FilesystemChangeEvent {
     }
 }
 
-
-
 #[allow(dead_code)]
 impl FilesystemChangeEvent {
     pub fn new(name: &str) -> Self {
@@ -161,7 +155,10 @@ impl FilesystemChangeEvent {
                 LogType::Debug,
                 LOG_WHEN_INIT,
                 LOG_STATUS_OK,
-                &format!("found valid item to watch: `{}`", p.as_os_str().to_string_lossy()),
+                &format!(
+                    "found valid item to watch: `{}`",
+                    p.as_os_str().to_string_lossy()
+                ),
             );
             if self.watched_locations.is_none() {
                 self.watched_locations = Some(Vec::new());
@@ -174,7 +171,10 @@ impl FilesystemChangeEvent {
                 LogType::Warn,
                 LOG_WHEN_INIT,
                 LOG_STATUS_FAIL,
-                &format!("refusing non-existent item: `{}`", p.as_os_str().to_string_lossy()),
+                &format!(
+                    "refusing non-existent item: `{}`",
+                    p.as_os_str().to_string_lossy()
+                ),
             );
             return Ok(false);
         }
@@ -183,9 +183,12 @@ impl FilesystemChangeEvent {
     }
 
     /// State whether watching is recursive (on directories).
-    pub fn set_recursive(&mut self, yes: bool) { self.recursive = yes; }
-    pub fn recursive(&self) -> bool { self.recursive }
-
+    pub fn set_recursive(&mut self, yes: bool) {
+        self.recursive = yes;
+    }
+    pub fn recursive(&self) -> bool {
+        self.recursive
+    }
 
     /// Load a `FilesystemChangeEvent` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
@@ -198,15 +201,7 @@ impl FilesystemChangeEvent {
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
     ) -> Result<FilesystemChangeEvent> {
-
-        let check = vec![
-            "type",
-            "name",
-            "tags",
-            "condition",
-            "watch",
-            "recursive",
-        ];
+        let check = vec!["type", "name", "tags", "condition", "watch", "recursive"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -215,16 +210,13 @@ impl FilesystemChangeEvent {
         cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "fschange"))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
 
-
         // initialize the structure
         // NOTE: the value of "event" for the condition type, which is
         //       completely functionally equivalent to "bucket", can only
         //       be set from the configuration file; programmatically built
         //       conditions of this type will only report "bucket" as their
         //       type, and "event" is only left for configuration readability
-        let mut new_event = FilesystemChangeEvent::new(
-            &name,
-        );
+        let mut new_event = FilesystemChangeEvent::new(&name);
         new_event.condition_registry = Some(cond_registry);
         new_event.condition_bucket = Some(bucket);
 
@@ -285,15 +277,7 @@ impl FilesystemChangeEvent {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
-
-        let check = vec![
-            "type",
-            "name",
-            "tags",
-            "condition",
-            "watch",
-            "recursive",
-        ];
+        let check = vec!["type", "name", "tags", "condition", "watch", "recursive"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -328,21 +312,24 @@ impl FilesystemChangeEvent {
         }
 
         // specific optional parameter check
-        cfg_vec_string(cfgmap, "watch")?;   // see above: we do not check for correctness
+        cfg_vec_string(cfgmap, "watch")?; // see above: we do not check for correctness
         cfg_bool(cfgmap, "recursive")?;
         cfg_int_check_above_eq(cfgmap, "poll_seconds", 0)?;
 
         Ok(name)
     }
-
 }
 
-
 impl Event for FilesystemChangeEvent {
-
-    fn set_id(&mut self, id: i64) { self.event_id = id; }
-    fn get_name(&self) -> String { self.event_name.clone() }
-    fn get_id(&self) -> i64 { self.event_id }
+    fn set_id(&mut self, id: i64) {
+        self.event_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.event_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.event_id
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -351,10 +338,13 @@ impl Event for FilesystemChangeEvent {
         s.finish()
     }
 
+    fn requires_thread(&self) -> bool {
+        true
+    } // maybe false, let's see
 
-    fn requires_thread(&self) -> bool { true }  // maybe false, let's see
-
-    fn get_condition(&self) -> Option<String> { self.condition_name.clone() }
+    fn get_condition(&self) -> Option<String> {
+        self.condition_name.clone()
+    }
 
     fn set_condition_registry(&mut self, reg: &'static ConditionRegistry) {
         self.condition_registry = Some(reg);
@@ -378,15 +368,23 @@ impl Event for FilesystemChangeEvent {
     }
 
     fn assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
-        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        assert!(
+            self.get_id() != 0,
+            "event {} not registered",
+            self.get_name()
+        );
         self.quit_tx = Some(sr);
     }
 
-
     fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
-
-        assert!(qrx.is_some(), "quit signal channel receiver must be provided");
-        assert!(self.quit_tx.is_some(), "quit signal channel transmitter not initialized");
+        assert!(
+            qrx.is_some(),
+            "quit signal channel receiver must be provided"
+        );
+        assert!(
+            self.quit_tx.is_some(),
+            "quit signal channel transmitter not initialized"
+        );
 
         // unified event type that will be sent over an async channel by
         // either a `quit` command or the watcher: the `Target` option
@@ -401,7 +399,10 @@ impl Event for FilesystemChangeEvent {
         // with the difference that this wraps the result in a `TargetOrQuitEvent`
         // and that the transmitting part of the channel must be provided by
         // the caller, therefore it only returns the watcher
-        fn _build_watcher(cfg: notify::Config, mut atx: Sender<TargetOrQuitEvent>) -> notify::Result<notify::RecommendedWatcher> {
+        fn _build_watcher(
+            cfg: notify::Config,
+            mut atx: Sender<TargetOrQuitEvent>,
+        ) -> notify::Result<notify::RecommendedWatcher> {
             let watcher = notify::RecommendedWatcher::new(
                 move |res| {
                     futures::executor::block_on(async {
@@ -437,8 +438,8 @@ impl Event for FilesystemChangeEvent {
         let (async_tx, mut async_rx) = channel(10);
 
         // build a configuration
-        let notify_cfg = notify::Config::default()
-            .with_poll_interval(Duration::from_secs(self.poll_seconds));
+        let notify_cfg =
+            notify::Config::default().with_poll_interval(Duration::from_secs(self.poll_seconds));
 
         // and now build the watcher, passing a clone of the transmitting end
         // of the channel to the constructor
@@ -453,7 +454,10 @@ impl Event for FilesystemChangeEvent {
                             LogType::Debug,
                             LOG_WHEN_START,
                             LOG_STATUS_OK,
-                            &format!("successfully added `{}` to watched paths", p.as_os_str().to_string_lossy()),
+                            &format!(
+                                "successfully added `{}` to watched paths",
+                                p.as_os_str().to_string_lossy()
+                            ),
                         );
                     }
                     Err(e) => {
@@ -461,7 +465,10 @@ impl Event for FilesystemChangeEvent {
                             LogType::Warn,
                             LOG_WHEN_START,
                             LOG_STATUS_FAIL,
-                            &format!("could not add `{}` to watched paths: {e}", p.as_os_str().to_string_lossy()),
+                            &format!(
+                                "could not add `{}` to watched paths: {e}",
+                                p.as_os_str().to_string_lossy()
+                            ),
                         );
                     }
                 }
@@ -491,12 +498,19 @@ impl Event for FilesystemChangeEvent {
             if let Ok(_) = qrx.unwrap().recv() {
                 // send a quit message over the async channel
                 task::block_on({
-                    async move { async_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap(); }
+                    async move {
+                        async_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap();
+                    }
                 });
             } else {
                 // in case of error, send just the error option of the enum
                 task::block_on({
-                    async move { async_tx_clone.send(TargetOrQuitEvent::QuitError).await.unwrap(); }
+                    async move {
+                        async_tx_clone
+                            .send(TargetOrQuitEvent::QuitError)
+                            .await
+                            .unwrap();
+                    }
                 });
             };
         });
@@ -513,12 +527,19 @@ impl Event for FilesystemChangeEvent {
                         match r_evt {
                             Ok(evt) => {
                                 let evt_s = {
-                                    if evt.kind.is_access() { "ACCESS" }
-                                    else if evt.kind.is_create() { "CREATE" }
-                                    else if evt.kind.is_modify() { "MODIFY" }
-                                    else if evt.kind.is_remove() { "REMOVE" }
-                                    else if evt.kind.is_other() { "OTHER" }
-                                    else { "UNKNOWN" }
+                                    if evt.kind.is_access() {
+                                        "ACCESS"
+                                    } else if evt.kind.is_create() {
+                                        "CREATE"
+                                    } else if evt.kind.is_modify() {
+                                        "MODIFY"
+                                    } else if evt.kind.is_remove() {
+                                        "REMOVE"
+                                    } else if evt.kind.is_other() {
+                                        "OTHER"
+                                    } else {
+                                        "UNKNOWN"
+                                    }
                                 };
                                 // ignore access events
                                 if !evt.kind.is_access() {
@@ -585,7 +606,7 @@ impl Event for FilesystemChangeEvent {
                     }
                 }
             }
-        });     // futures::executor::block_on(...)
+        }); // futures::executor::block_on(...)
 
         // as said above this should be ininfluent
         let _ = _quit_handle.join();
@@ -644,7 +665,7 @@ impl Event for FilesystemChangeEvent {
             );
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the listener is running"
+                "could not determine whether the listener is running",
             ))
         }
     }
@@ -655,12 +676,10 @@ impl Event for FilesystemChangeEvent {
         } else {
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the listener is running"
+                "could not determine whether the listener is running",
             ))
         }
     }
-
 }
-
 
 // end.

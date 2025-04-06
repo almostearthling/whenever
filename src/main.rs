@@ -6,44 +6,41 @@
 //! It is intended as a 100% Rust successor to the core part of the Python
 //! based [When](https://github.com/almostearthling/when-command) utility.
 
-
-use std::io::{stdin, Stdin, BufRead};
-use std::thread;
+use std::io::{BufRead, Stdin, stdin};
 use std::sync::RwLock;
-use std::time::Duration;
+use std::thread;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use lazy_static::lazy_static;
 
-use clokwerk::{Scheduler, TimeUnits};
 use cfgmap::CfgValue;
-use rand::{thread_rng, RngCore};
-use whoami::username;
+use clokwerk::{Scheduler, TimeUnits};
+use rand::{RngCore, thread_rng};
 use single_instance::SingleInstance;
+use whoami::username;
 
 // the modules defined and used in this application
-mod task;
 mod condition;
 mod event;
+mod task;
 
-mod common;
-mod constants;
-mod config;
 mod cfghelp;
-
+mod common;
+mod config;
+mod constants;
 
 // bring the registries in scope
-use task::registry::TaskRegistry;
 use condition::registry::ConditionRegistry;
 use event::registry::EventRegistry;
+use task::registry::TaskRegistry;
 
 use condition::bucket_cond::ExecutionBucket;
 
-use common::logging::{log, init as log_init, LogType};
 use crate::common::wres::{Error, Kind, Result};
+use common::logging::{LogType, init as log_init, log};
 use config::*;
 use constants::*;
-
 
 lazy_static! {
     // the global task registry: all conditions will be associated to this
@@ -92,20 +89,14 @@ lazy_static! {
 
 }
 
-
 // check whether an instance is already running, and return an error if so
 fn check_single_instance(instance: &SingleInstance) -> Result<()> {
     if !instance.is_single() {
-        return Err(Error::new(
-            Kind::Forbidden,
-            ERR_ALREADY_RUNNING,
-        ));
+        return Err(Error::new(Kind::Forbidden, ERR_ALREADY_RUNNING));
     }
 
     Ok(())
 }
-
-
 
 // execute a (very basic but working) scheduler tick: the call to this function
 // is executed in a separate thread; the function itself will spawn as many
@@ -152,7 +143,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
                 LOG_STATUS_MSG,
                 &format!("condition {name} is busy: tick skipped"),
             );
-            continue
+            continue;
         }
         // else...
 
@@ -212,8 +203,6 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
     Ok(true)
 }
 
-
-
 // this is similar to my usual exiterror
 macro_rules! exit_if_fails {
     ( $quiet:expr, $might_fail:expr ) => {
@@ -228,16 +217,13 @@ macro_rules! exit_if_fails {
                 }
                 std::process::exit(2);
             }
-            Ok(value) => value
+            Ok(value) => value,
         }
-    }
+    };
 }
-
-
 
 // reset the conditions whose names are provided in a vector of &str
 fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
-
     for name in names {
         if !CONDITION_REGISTRY.has_condition(name) {
             log(
@@ -301,10 +287,8 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
     Ok(true)
 }
 
-
 // set the suspended state for a condition identified by its name
 fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool> {
-
     if !CONDITION_REGISTRY.has_condition(name) {
         log(
             LogType::Error,
@@ -378,7 +362,11 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
                         // message is only here for consistency
                         let info;
                         if let Ok(res_rst) = CONDITION_REGISTRY.reset_condition(name, true) {
-                            info = if res_rst { "resumed and reset" } else { "resumed" };
+                            info = if res_rst {
+                                "resumed and reset"
+                            } else {
+                                "resumed"
+                            };
                         } else {
                             info = "resumed";
                         }
@@ -421,10 +409,8 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
     Ok(true)
 }
 
-
 // attempt to reconfigure the application using the provided config file name
 fn reconfigure(config_file: &str) -> Result<()> {
-
     if let Err(e) = check_configuration(config_file) {
         log(
             LogType::Error,
@@ -447,7 +433,8 @@ fn reconfigure(config_file: &str) -> Result<()> {
                 .get("scheduler_tick_seconds")
                 .unwrap_or(&CfgValue::from(DEFAULT_SCHEDULER_TICK_SECONDS))
                 .as_int()
-                .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS) as u64;
+                .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS)
+                as u64;
             *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
             let res = reconfigure_items(
                 &config,
@@ -455,7 +442,8 @@ fn reconfigure(config_file: &str) -> Result<()> {
                 &CONDITION_REGISTRY,
                 &EVENT_REGISTRY,
                 &EXECUTION_BUCKET,
-                scheduler_tick_seconds);
+                scheduler_tick_seconds,
+            );
             *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
             match res {
                 Ok(_) => {
@@ -500,7 +488,6 @@ fn reconfigure(config_file: &str) -> Result<()> {
     Ok(())
 }
 
-
 // attempt to trigger an event
 fn trigger_event(name: &str) -> Result<bool> {
     if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
@@ -535,7 +522,9 @@ fn trigger_event(name: &str) -> Result<bool> {
                             None,
                             LOG_WHEN_END,
                             LOG_STATUS_ERR,
-                            &format!("event {name} could not be triggered or condition cannot fire"),
+                            &format!(
+                                "event {name} could not be triggered or condition cannot fire"
+                            ),
                         );
                         Ok(false)
                     }
@@ -577,9 +566,7 @@ fn trigger_event(name: &str) -> Result<bool> {
         );
         Ok(false)
     }
-
 }
-
 
 // the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
@@ -595,7 +582,7 @@ fn interpret_commands() -> Result<bool> {
         let v: Vec<&str> = buffer.split_whitespace().collect();
         if v.len() > 0 {
             let cmd = v[0];
-            let args = &v[1..];  // should not panic, but there might be a cleaner way
+            let args = &v[1..]; // should not panic, but there might be a cleaner way
             match cmd {
                 "exit" | "quit" => {
                     if !args.is_empty() {
@@ -788,7 +775,9 @@ fn interpret_commands() -> Result<bool> {
                         // main thread, so it never ends unless the main thread
                         // is forcibly terminated - in which case all the spawned
                         // threads are terminated abruptly as well
-                        thread::spawn(move || { let _ = reset_conditions(v.as_slice()); });
+                        thread::spawn(move || {
+                            let _ = reset_conditions(v.as_slice());
+                        });
                     }
                 }
                 "suspend_condition" => {
@@ -814,7 +803,9 @@ fn interpret_commands() -> Result<bool> {
                         );
                         // same considerations as above
                         let arg = args[0].to_string();
-                        thread::spawn(move || { let _ = set_suspended_condition(&arg, true); });
+                        thread::spawn(move || {
+                            let _ = set_suspended_condition(&arg, true);
+                        });
                     }
                 }
                 "resume_condition" => {
@@ -841,7 +832,9 @@ fn interpret_commands() -> Result<bool> {
                         // same considerations as above
                         // condition is freed and the command can be executed
                         let arg = args[0].to_string();
-                        thread::spawn(move || { let _ = set_suspended_condition(&arg, false); });
+                        thread::spawn(move || {
+                            let _ = set_suspended_condition(&arg, false);
+                        });
                     }
                 }
                 "configure" => {
@@ -859,10 +852,15 @@ fn interpret_commands() -> Result<bool> {
                         None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
-                        &format!("attempting to reconfigure using configuration file `{}`", fname),
+                        &format!(
+                            "attempting to reconfigure using configuration file `{}`",
+                            fname
+                        ),
                     );
                     // same considerations as above
-                    thread::spawn(move || { let _ = reconfigure(&fname); });
+                    thread::spawn(move || {
+                        let _ = reconfigure(&fname);
+                    });
                 }
                 "trigger" => {
                     if args.len() != 1 {
@@ -887,11 +885,12 @@ fn interpret_commands() -> Result<bool> {
                         );
                         // same considerations as above
                         let arg = args[0].to_string();
-                        thread::spawn(move || { let _ = trigger_event(&arg); });
+                        thread::spawn(move || {
+                            let _ = trigger_event(&arg);
+                        });
                     }
                 }
                 // ...
-
                 "" => { /* do nothing here */ }
                 t => {
                     log(
@@ -915,10 +914,8 @@ fn interpret_commands() -> Result<bool> {
     Ok(true)
 }
 
-
 // argument parsing and command execution: doc comments are used by clap
 use clap::{Parser, ValueEnum};
-
 
 /// A lightweight task scheduler and automation tool
 #[derive(Parser)]
@@ -972,7 +969,6 @@ struct Args {
     config: Option<String>,
 }
 
-
 // this is redundant but necessary for clap (the `type` alias does not work)
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 enum LogLevel {
@@ -982,8 +978,6 @@ enum LogLevel {
     Warn,
     Error,
 }
-
-
 
 // entry point
 fn main() {
@@ -1033,7 +1027,8 @@ fn main() {
         LogLevel::Error => LogType::Error,
     };
     let log_file_name = args.log;
-    exit_if_fails!(args.quiet,
+    exit_if_fails!(
+        args.quiet,
         log_init(
             level,
             log_file_name,
@@ -1041,21 +1036,25 @@ fn main() {
             args.log_color,
             args.log_plain,
             args.log_json,
-        ));
+        )
+    );
 
     // configure CTRL-C handler to just log and exit without error
-    exit_if_fails!(args.quiet, ctrlc::set_handler(move || {
-        log(
-            LogType::Warn,
-            LOG_EMITTER_MAIN,
-            LOG_ACTION_MAIN_EXIT,
-            None,
-            LOG_WHEN_END,
-            LOG_STATUS_MSG,
-            "caught interruption request: terminating application",
-        );
-        *APPLICATION_MUST_EXIT.write().unwrap() = true;
-    }));
+    exit_if_fails!(
+        args.quiet,
+        ctrlc::set_handler(move || {
+            log(
+                LogType::Warn,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_MAIN_EXIT,
+                None,
+                LOG_WHEN_END,
+                LOG_STATUS_MSG,
+                "caught interruption request: terminating application",
+            );
+            *APPLICATION_MUST_EXIT.write().unwrap() = true;
+        })
+    );
 
     // write a banner to the log file, stating app name and version
     log(
@@ -1097,14 +1096,17 @@ fn main() {
     }
 
     // configure items given the parsed configuration map
-    exit_if_fails!(args.quiet, configure_items(
-        &configuration,
-        &TASK_REGISTRY,
-        &CONDITION_REGISTRY,
-        &EVENT_REGISTRY,
-        &EXECUTION_BUCKET,
-        scheduler_tick_seconds,
-    ));
+    exit_if_fails!(
+        args.quiet,
+        configure_items(
+            &configuration,
+            &TASK_REGISTRY,
+            &CONDITION_REGISTRY,
+            &EVENT_REGISTRY,
+            &EXECUTION_BUCKET,
+            scheduler_tick_seconds,
+        )
+    );
 
     // first of all check whether the application is started in paused mode
     // and if so check the appropriate flag and emit an info log message
@@ -1128,7 +1130,9 @@ fn main() {
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
-        std::thread::spawn(move || { let _ = sched_tick(rand_millis_range); });
+        std::thread::spawn(move || {
+            let _ = sched_tick(rand_millis_range);
+        });
     }
 
     // set up a very minimal scheduler, and pass the option to randomize
@@ -1142,9 +1146,11 @@ fn main() {
             None
         }
     };
-    sched.every((scheduler_tick_seconds as u32).seconds()).run(
-        move || { spawn_tick(rand_millis_range); }
-    );
+    sched
+        .every((scheduler_tick_seconds as u32).seconds())
+        .run(move || {
+            spawn_tick(rand_millis_range);
+        });
 
     // free_pending must be a fraction of scheduler tick interval (say 1/10)
     let free_pending = Duration::from_millis(scheduler_tick_seconds * 100);
@@ -1188,7 +1194,9 @@ fn main() {
                     }
                 }
                 // stop the event service manager
-                if let Err(e) = event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY) {
+                if let Err(e) =
+                    event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY)
+                {
                     log(
                         LogType::Debug,
                         LOG_EMITTER_MAIN,
@@ -1219,6 +1227,5 @@ fn main() {
     );
     std::process::exit(0);
 }
-
 
 // end.

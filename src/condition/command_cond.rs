@@ -13,31 +13,28 @@
 //! its name, so that commands or scripts that are aware of being invoked by
 //! the application can have further info about the context.
 
-
 use std::collections::HashMap;
 use std::env;
-use std::io::ErrorKind;
-use std::time::{Instant, SystemTime, Duration};
-use std::path::PathBuf;
 use std::ffi::OsString;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::ErrorKind;
+use std::path::PathBuf;
+use std::time::{Duration, Instant, SystemTime};
 
 use itertools::Itertools;
 
-use subprocess::{Popen, PopenConfig, Redirection, PopenError};
+use subprocess::{Popen, PopenConfig, PopenError, Redirection};
 
 use cfgmap::CfgMap;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
 use crate::common::cmditem::*;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::Result;
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 // /// In case of failure, the reason will be one of the provided values
 // #[derive(Debug, PartialEq)]
@@ -48,8 +45,6 @@ use crate::cfghelp::*;
 //     Status,
 //     Other,
 // }
-
-
 
 /// Command Based Condition
 ///
@@ -111,7 +106,6 @@ pub struct CommandCondition {
     // be true, as a persistent success may not let the condition succeed
     last_check_failed: bool,
 }
-
 
 // implement the hash protocol
 impl Hash for CommandCondition {
@@ -185,18 +179,10 @@ impl Hash for CommandCondition {
     }
 }
 
-
-
 #[allow(dead_code)]
 impl CommandCondition {
-
     /// Create a new external command based condition with the given parameters
-    pub fn new(
-        name: &str,
-        command: &PathBuf,
-        args: &Vec<String>,
-        startup_dir: &PathBuf,
-    ) -> Self {
+    pub fn new(name: &str, command: &PathBuf, args: &Vec<String>, startup_dir: &PathBuf) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_COMMAND,
@@ -263,7 +249,6 @@ impl CommandCondition {
         }
     }
 
-
     // build the full command line, only for logging purposes
     fn command_line(&self) -> String {
         let mut s = String::from(self.command.to_string_lossy());
@@ -276,7 +261,6 @@ impl CommandCondition {
         }
         s
     }
-
 
     // constructor modifiers
     /// Set the command execution to sequence or parallel
@@ -328,7 +312,8 @@ impl CommandCondition {
     /// * `var` - the variable name
     /// * `value` - the value assigned to the named variable
     pub fn set_variable(&mut self, var: &str, value: &str) -> Option<String> {
-        self.environment_vars.insert(String::from(var), String::from(value))
+        self.environment_vars
+            .insert(String::from(var), String::from(value))
     }
 
     /// Unset a variable in the custom environment that the command base task
@@ -340,7 +325,6 @@ impl CommandCondition {
     pub fn unset_variable(&mut self, var: &str) -> Option<String> {
         self.environment_vars.remove(var)
     }
-
 
     /// Constructor modifier to include or exclude existing environment: if
     /// the parameter is set to `false`, the original environment is not passed
@@ -454,14 +438,15 @@ impl CommandCondition {
         self
     }
 
-
     /// Load a `CommandCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
     /// The `CommandCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `CommandCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<CommandCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<CommandCondition> {
         let check = vec![
             "type",
             "name",
@@ -501,7 +486,8 @@ impl CommandCondition {
         // specific mandatory parameter retrieval
         let command = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "command"))?.unwrap());
         let args = cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?.unwrap();
-        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        let startup_path =
+            PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
         if !startup_path.is_dir() {
             return Err(cfg_err_invalid_config(
                 "startup_path",
@@ -511,12 +497,7 @@ impl CommandCondition {
         };
 
         // initialize the structure
-        let mut new_condition = CommandCondition::new(
-            &name,
-            &command,
-            &args,
-            &startup_path,
-        );
+        let mut new_condition = CommandCondition::new(&name, &command, &args, &startup_path);
         new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
@@ -541,11 +522,7 @@ impl CommandCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -609,7 +586,11 @@ impl CommandCondition {
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
-                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                        if value.is_str()
+                            || value.is_int()
+                            || value.is_float()
+                            || value.is_datetime()
+                        {
                             vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
                             return Err(cfg_err_invalid_config(
@@ -636,13 +617,15 @@ impl CommandCondition {
 
         new_condition.success_stdout = cfg_string(cfgmap, "success_stdout")?;
         new_condition.success_stderr = cfg_string(cfgmap, "success_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)? {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?
+        {
             new_condition.success_status = Some(v as u32);
         }
 
         new_condition.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
         new_condition.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)? {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?
+        {
             new_condition.failure_status = Some(v as u32);
         }
 
@@ -667,7 +650,6 @@ impl CommandCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -709,7 +691,8 @@ impl CommandCondition {
         // specific mandatory parameter check
         cfg_mandatory!(cfg_string(cfgmap, "command"))?;
         cfg_mandatory!(cfg_vec_string(cfgmap, "command_arguments"))?;
-        let startup_path = PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
+        let startup_path =
+            PathBuf::from(cfg_mandatory!(cfg_string(cfgmap, "startup_path"))?.unwrap());
         if !startup_path.is_dir() {
             return Err(cfg_err_invalid_config(
                 "startup_path",
@@ -717,7 +700,6 @@ impl CommandCondition {
                 ERR_INVALID_STARTUP_PATH,
             ));
         };
-
 
         // also for optional parameters just check and throw away the result
 
@@ -737,11 +719,7 @@ impl CommandCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -782,7 +760,11 @@ impl CommandCondition {
                             ERR_INVALID_ENVVAR_NAME,
                         ));
                     } else if let Some(value) = map.get(name) {
-                        if value.is_str() || value.is_int() || value.is_float() || value.is_datetime() {
+                        if value.is_str()
+                            || value.is_int()
+                            || value.is_float()
+                            || value.is_datetime()
+                        {
                             vars.insert(name.to_string(), value.as_str().unwrap().to_string());
                         } else {
                             return Err(cfg_err_invalid_config(
@@ -814,16 +796,21 @@ impl CommandCondition {
 
         Ok(name)
     }
-
 }
 
-
 impl Condition for CommandCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { "command" }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        "command"
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -831,7 +818,6 @@ impl Condition for CommandCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -841,18 +827,35 @@ impl Condition for CommandCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -880,7 +883,6 @@ impl Condition for CommandCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -894,7 +896,6 @@ impl Condition for CommandCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -926,11 +927,9 @@ impl Condition for CommandCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -939,7 +938,6 @@ impl Condition for CommandCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -954,17 +952,13 @@ impl Condition for CommandCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
-
 
     /// Mandatory check function.
     ///
@@ -974,7 +968,6 @@ impl Condition for CommandCondition {
     /// **NOTE**: this is an _almost exact_ copy of the `_run()` method in
     ///           the command based `CommandTask` task structure.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
@@ -1066,42 +1059,42 @@ impl Condition for CommandCondition {
 
             match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
                 Ok((exit_status, out, err)) => {
-                    if let Some(o) = out { self._process_stdout = o; }
-                    if let Some(e) = err { self._process_stderr = e; }
+                    if let Some(o) = out {
+                        self._process_stdout = o;
+                    }
+                    if let Some(e) = err {
+                        self._process_stderr = e;
+                    }
                     proc_exit = Ok(exit_status);
                 }
-                Err(e) => {
-                    match e.kind() {
-                        std::io::ErrorKind::TimedOut => {
-                            self.log(
-                                LogType::Debug,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("timeout reached running command `{}`",self.command_line()),
-                            );
-                            proc_exit = Err(PopenError::from(std::io::Error::new(
-                                ErrorKind::TimedOut,
-                                ERR_TIMEOUT_REACHED,
-                            )));
-                        }
-                        k => {
-                            self.log(
-                                LogType::Warn,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("error running command `{}`", self.command_line()),
-                            );
-                            proc_exit = Err(PopenError::from(
-                                std::io::Error::new(k, e.to_string())));
-                        }
+                Err(e) => match e.kind() {
+                    std::io::ErrorKind::TimedOut => {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("timeout reached running command `{}`", self.command_line()),
+                        );
+                        proc_exit = Err(PopenError::from(std::io::Error::new(
+                            ErrorKind::TimedOut,
+                            ERR_TIMEOUT_REACHED,
+                        )));
                     }
-                }
+                    k => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("error running command `{}`", self.command_line()),
+                        );
+                        proc_exit = Err(PopenError::from(std::io::Error::new(k, e.to_string())));
+                    }
+                },
             }
 
             self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
             match proc_exit {
                 Ok(exit_status) => {
-
                     let ck_process_status;
                     let ck_process_failed;
                     let ck_failure_reason;
@@ -1137,12 +1130,7 @@ impl Condition for CommandCondition {
                     self._process_failed = ck_process_failed;
                     failure_reason = ck_failure_reason;
 
-                    self.log(
-                        log_severity,
-                        log_when,
-                        log_status,
-                        &log_message,
-                    );
+                    self.log(log_severity, log_when, log_status, &log_message);
                 }
                 // the command could not be executed thus an error is reported
                 Err(e) => {
@@ -1213,9 +1201,7 @@ impl Condition for CommandCondition {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &format!(
-                            "persistent success status: waiting for failure to recur",
-                        ),
+                        &format!("persistent success status: waiting for failure to recur",),
                     );
                     Ok(Some(false))
                 }
@@ -1278,9 +1264,6 @@ impl Condition for CommandCondition {
             }
         }
     }
-
 }
 
-
 // end.
-

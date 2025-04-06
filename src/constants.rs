@@ -4,17 +4,13 @@
 //! messages or other kinds of hints. Also, expose some regular expressions
 //! that are used to identify various items, to all modules.
 
-
-
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::time::Duration;
 
-
 // The application name
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 
 // The application GUID in order to force a single instance: different GUIDs
 // are used in order to be able to launch a DEBUG instance when a release
@@ -25,7 +21,6 @@ pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440_DEBUG";
 
 #[cfg(not(debug_assertions))]
 pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440";
-
 
 #[allow(dead_code)]
 // error messages
@@ -47,10 +42,12 @@ pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition whil
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
 pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
 pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
-pub const ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR: &str = "could not request the event service manager to shut down";
+pub const ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR: &str =
+    "could not request the event service manager to shut down";
 pub const ERR_EVENTREG_SERVICE_NOT_INSTALLED: &str = "event listening service not installed";
 pub const ERR_EVENTREG_SERVICE_NOT_UNINSTALLED: &str = "event listening service not uninstalled";
-pub const ERR_EVENTREG_LISTENER_NOT_REACHABLE: &str = "communication with event listener not estabilished";
+pub const ERR_EVENTREG_LISTENER_NOT_REACHABLE: &str =
+    "communication with event listener not estabilished";
 
 pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
 pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";
@@ -88,7 +85,6 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
-
 
 // logging constants
 pub const LOG_WHEN_INIT: &str = "INIT";
@@ -156,9 +152,8 @@ pub const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;
 pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 // operational values
-pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100;         // default: 100
-pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100;     // default: 100
-
+pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100; // default: 100
+pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100; // default: 100
 
 // crate-wide values
 lazy_static! {
@@ -196,6 +191,5 @@ lazy_static! {
     pub static ref DUR_SPAWNED_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 }
-
 
 // end.

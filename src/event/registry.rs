@@ -7,14 +7,13 @@
 //! are instanced and have a lifetime that lasts for the whole time in which
 //! the main program is running.
 
-
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-use std::collections::HashMap;
 // use std::io::{Error, ErrorKind};
-use std::thread;
 use std::sync::mpsc;
+use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -27,10 +26,9 @@ use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
 use super::base::Event;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
-
 
 // module-wide values
 lazy_static! {
@@ -47,15 +45,12 @@ fn generate_event_id() -> i64 {
     UID_GENERATOR.next_id()
 }
 
-
-
 /// Messages that can be sent to the event service manager
 enum ServiceManagerMessage {
-    Start(String),  // start listener for event whose name is the payload
-    Stop(String),   // stop listener for event whose name is the payload
-    Quit,           // terminate all listeners and the service manager
+    Start(String), // start listener for event whose name is the payload
+    Stop(String),  // stop listener for event whose name is the payload
+    Quit,          // terminate all listeners and the service manager
 }
-
 
 /// The event registry: there must be one and only one event registry in each
 /// instance of the process, and should have `'static` lifetime. It may be
@@ -73,16 +68,15 @@ pub struct EventRegistry {
 
     // the queues of events whose services need to be installed/removed
     // communication channel serving the event service mnager
-    event_service_manager_messenger: Arc<Mutex<Option<futures::channel::mpsc::Sender<ServiceManagerMessage>>>>,
+    event_service_manager_messenger:
+        Arc<Mutex<Option<futures::channel::mpsc::Sender<ServiceManagerMessage>>>>,
 
     // the list of currently managed listeners
     event_service_active_listeners: Arc<Mutex<Vec<String>>>,
 }
 
-
 #[allow(dead_code)]
 impl EventRegistry {
-
     /// Create a new, empty `EventRegistry`.
     pub fn new() -> Self {
         EventRegistry {
@@ -93,11 +87,11 @@ impl EventRegistry {
         }
     }
 
-
     /// Start the main registry thread, which in turn handles all other
     /// event listener threads.
-    pub fn run_event_service_manager(registry: &'static Self) -> Result<JoinHandle<std::result::Result<bool, std::io::Error>>> {
-
+    pub fn run_event_service_manager(
+        registry: &'static Self,
+    ) -> Result<JoinHandle<std::result::Result<bool, std::io::Error>>> {
         let registry = Arc::new(Mutex::new(Box::new(registry)));
         let (smtx, mut smrx) = futures::channel::mpsc::channel(10);
 
@@ -105,7 +99,8 @@ impl EventRegistry {
         let m0 = r0
             .lock()
             .expect("cannot access communication channel")
-            .event_service_manager_messenger.clone();
+            .event_service_manager_messenger
+            .clone();
         let mut messenger = m0.lock().unwrap();
         *messenger = Some(smtx);
         drop(messenger);
@@ -115,7 +110,8 @@ impl EventRegistry {
         let managed_services = registry
             .lock()
             .expect("cannot access managed services")
-            .event_service_active_listeners.clone();
+            .event_service_active_listeners
+            .clone();
         let managed_registry = registry.clone();
 
         let handle = thread::spawn(move || {
@@ -247,7 +243,11 @@ impl EventRegistry {
 
             // terminating: all event listeners must be shut down
             let managed_registry = registry.clone();
-            let managed_services = registry.lock().unwrap().event_service_active_listeners.clone();
+            let managed_services = registry
+                .lock()
+                .unwrap()
+                .event_service_active_listeners
+                .clone();
             let s0 = managed_services.lock().unwrap();
             let items: Vec<String> = s0.iter().map(|x| String::from(x)).collect();
             drop(s0);
@@ -336,7 +336,6 @@ impl EventRegistry {
         }
     }
 
-
     /// Check whether or not an event with the provided name is in the
     /// registry.
     ///
@@ -367,18 +366,10 @@ impl EventRegistry {
     pub fn has_event_eq(&self, event: &dyn Event) -> bool {
         let name = event.get_name();
         if self.has_event(name.as_str()) {
-            let el0 = self.event_list
-                .read()
-                .expect("cannot read event registry");
-            let found_event = el0
-                .get(name.as_str())
-                .unwrap()
-                .clone();
+            let el0 = self.event_list.read().expect("cannot read event registry");
+            let found_event = el0.get(name.as_str()).unwrap().clone();
             drop(el0);
-            let equals = found_event
-                .read()
-                .expect("cannot read event")
-                .eq(event);
+            let equals = found_event.read().expect("cannot read event").eq(event);
             return equals;
         }
 
@@ -398,26 +389,21 @@ impl EventRegistry {
     /// or the contained event cannot be locked for comparison.
     pub fn service_running_for(&self, name: &str) -> bool {
         if self.has_event(name) {
-            let el0 = self.event_list
-                .read()
-                .expect("cannot read event registry");
-            let found_event = el0
-                .get(name)
-                .unwrap()
-                .clone();
+            let el0 = self.event_list.read().expect("cannot read event registry");
+            let found_event = el0.get(name).unwrap().clone();
             drop(el0);
             let Ok(running) = found_event
                 .read()
                 .expect("cannot read event")
-                .thread_running() else {
-                return false
+                .thread_running()
+            else {
+                return false;
             };
             running
         } else {
             false
         }
     }
-
 
     /// Add an already-boxed `Event` if its name is not present in the
     /// registry.
@@ -497,36 +483,29 @@ impl EventRegistry {
     /// maybe it should return an error in this case?).
     pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>> {
         if self.has_event(name) {
-            if let Some(e) = self.event_list
+            if let Some(e) = self
+                .event_list
                 .write()
                 .expect("cannot write to event registry")
-                .remove(name) {
+                .remove(name)
+            {
                 // in this case if the event cannot be extracted from the list
                 // no reference to the event is returned, but an error instead
                 // WARNING: the reference is dropped in that case!
                 let e = Arc::try_unwrap(e);
                 let Ok(event) = e else {
-                    return Err(Error::new(
-                        Kind::Failed,
-                        ERR_EVENTREG_CANNOT_PULL_EVENT,
-                    ));
+                    return Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_PULL_EVENT));
                 };
-                let mut event = event
-                    .into_inner()
-                    .expect("cannot extract locked event");
+                let mut event = event.into_inner().expect("cannot extract locked event");
                 event.set_id(0);
                 Ok(Some(event))
             } else {
-                Err(Error::new(
-                    Kind::Failed,
-                    ERR_EVENTREG_CANNOT_REMOVE_EVENT,
-                ))
+                Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_REMOVE_EVENT))
             }
         } else {
             Ok(None)
         }
     }
-
 
     /// Return the list of event names as owned strings.
     ///
@@ -539,29 +518,22 @@ impl EventRegistry {
     pub fn event_names(&self) -> Option<Vec<String>> {
         let mut res = Vec::new();
 
-        for name in self.event_list
+        for name in self
+            .event_list
             .read()
             .expect("cannot read event registry")
-            .keys() {
+            .keys()
+        {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified event.
     pub fn event_id(&self, name: &str) -> Option<i64> {
         if self.has_event(name) {
-            let el0 = self.event_list
-                .read()
-                .expect("cannot read event registry");
-            let event = el0
-                .get(name)
-                .expect("cannot retrieve event")
-                .clone();
+            let el0 = self.event_list.read().expect("cannot read event registry");
+            let event = el0.get(name).expect("cannot retrieve event").clone();
             drop(el0);
             let id = event.read().expect("cannot read event").get_id();
             Some(id)
@@ -573,7 +545,8 @@ impl EventRegistry {
     /// Tell whether or not an event is triggerable, `None` if event not found.
     pub fn event_triggerable(&self, name: &str) -> Option<bool> {
         if self.has_event(name) {
-            let triggerable = *self.triggerable_event_list
+            let triggerable = *self
+                .triggerable_event_list
                 .read()
                 .expect("cannot read triggerable event registry")
                 .get(name)
@@ -583,7 +556,6 @@ impl EventRegistry {
             None
         }
     }
-
 
     /// Trigger an event.
     ///
@@ -597,21 +569,22 @@ impl EventRegistry {
     /// should be called for unregistered events.
     pub fn trigger_event(&self, name: &str) -> std::io::Result<bool> {
         assert!(self.has_event(name), "event {name} not in registry");
-        assert!(self.event_triggerable(name).unwrap(), "event {name} cannot be manually triggered");
+        assert!(
+            self.event_triggerable(name).unwrap(),
+            "event {name} cannot be manually triggered"
+        );
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let el0 = self.event_list
-            .read()
-            .expect("cannot read event registry");
-        let e0 = el0.get(name)
+        let el0 = self.event_list.read().expect("cannot read event registry");
+        let e0 = el0
+            .get(name)
             .expect("cannot retrieve event for triggering")
             .clone();
 
-        let event = e0.read()
-            .expect("cannot read event for triggering");
+        let event = e0.read().expect("cannot read event for triggering");
 
         log(
             LogType::Debug,
@@ -647,7 +620,7 @@ impl EventRegistry {
                 }
                 Ok(res)
             }
-            Err(e) =>  {
+            Err(e) => {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_EVENT_REGISTRY,
@@ -661,7 +634,6 @@ impl EventRegistry {
             }
         }
     }
-
 
     /// Install the listening service for an event.
     ///
@@ -679,10 +651,9 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let el0 = self.event_list
-            .read()
-            .expect("cannot read event registry");
-        let event = el0.get(name)
+        let el0 = self.event_list.read().expect("cannot read event registry");
+        let event = el0
+            .get(name)
             .expect("cannot retrieve event for service setup")
             .clone();
 
@@ -775,9 +746,7 @@ impl EventRegistry {
             });
             Ok(Some(handle))
         } else {
-            let e = event
-                .read()
-                .expect("cannot read event for service setup");
+            let e = event.read().expect("cannot read event for service setup");
             if e.run_service(None)? {
                 log(
                     LogType::Debug,
@@ -799,14 +768,10 @@ impl EventRegistry {
                     LOG_STATUS_FAIL,
                     "event listener not installed",
                 );
-                Err(Error::new(
-                    Kind::Failed,
-                    ERR_EVENTREG_SERVICE_NOT_INSTALLED,
-                ))
+                Err(Error::new(Kind::Failed, ERR_EVENTREG_SERVICE_NOT_INSTALLED))
             }
         }
     }
-
 
     /// Remove the installed service for an event.
     ///
@@ -821,16 +786,13 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let el0 = self.event_list
-            .read()
-            .expect("cannot read event registry");
-        let e0 = el0.get(name)
+        let el0 = self.event_list.read().expect("cannot read event registry");
+        let e0 = el0
+            .get(name)
             .expect("cannot retrieve event for service removal")
             .clone();
 
-        let event = e0
-            .read()
-            .expect("cannot read event for service removal");
+        let event = e0.read().expect("cannot read event for service removal");
 
         if event.requires_thread() {
             log(
@@ -905,7 +867,6 @@ impl EventRegistry {
         }
     }
 
-
     /// Start listening for an event.
     ///
     /// # Panics
@@ -921,7 +882,10 @@ impl EventRegistry {
         if m1.is_some() {
             let messenger = m1.as_mut().unwrap();
             futures::executor::block_on(async move {
-                messenger.send(ServiceManagerMessage::Start(String::from(name))).await.unwrap();
+                messenger
+                    .send(ServiceManagerMessage::Start(String::from(name)))
+                    .await
+                    .unwrap();
             });
             log(
                 LogType::Debug,
@@ -943,13 +907,9 @@ impl EventRegistry {
                 LOG_STATUS_FAIL,
                 "event listener not installed",
             );
-            Err(Error::new(
-                Kind::Failed,
-                ERR_EVENTREG_SERVICE_NOT_INSTALLED,
-            ))
+            Err(Error::new(Kind::Failed, ERR_EVENTREG_SERVICE_NOT_INSTALLED))
         }
     }
-
 
     /// Stop listening for an event.
     ///
@@ -966,7 +926,10 @@ impl EventRegistry {
         if m1.is_some() {
             let messenger = m1.as_mut().unwrap();
             futures::executor::block_on(async move {
-                messenger.send(ServiceManagerMessage::Stop(String::from(name))).await.unwrap();
+                messenger
+                    .send(ServiceManagerMessage::Stop(String::from(name)))
+                    .await
+                    .unwrap();
             });
             log(
                 LogType::Debug,
@@ -1009,7 +972,6 @@ impl EventRegistry {
         self.remove_event(name)
     }
 
-
     /// Fire the condition associated to the named event.
     ///
     /// This version calls in turn the events `fire_condition()` method, but
@@ -1027,15 +989,13 @@ impl EventRegistry {
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
-        let el0 = self.event_list
-            .read()
-            .expect("cannot read event registry");
-        let e0 = el0.get(name)
+        let el0 = self.event_list.read().expect("cannot read event registry");
+        let e0 = el0
+            .get(name)
             .expect("cannot retrieve event for activation")
             .clone();
 
-        let event = e0.read()
-            .expect("cannot read event for activation");
+        let event = e0.read().expect("cannot read event for activation");
         if let Ok(res) = event.fire_condition() {
             if res {
                 log(
@@ -1070,8 +1030,6 @@ impl EventRegistry {
             );
         }
     }
-
 }
-
 
 // end.

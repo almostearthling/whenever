@@ -4,41 +4,33 @@
 //! to expect from that channel. The event listens on a new thread and pushes
 //! the related condition in the execution bucket when all constraints are met.
 
-
 use regex::Regex;
-use std::thread;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{mpsc, Arc, RwLock};
+use std::sync::{Arc, RwLock, mpsc};
+use std::thread;
 
-use futures::{
-    channel::mpsc::channel,
-    SinkExt, StreamExt, FutureExt,
-    select, pin_mut,
-};
+use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, select};
 
 use cfgmap::{CfgMap, CfgValue};
 
 use async_std::task;
 use zbus::{self, AsyncDrop, Message, MessageStream};
 
-use std::str::FromStr;
 use serde_json::value::Value;
+use std::str::FromStr;
 
 use super::base::Event;
-use crate::condition::registry::ConditionRegistry;
-use crate::condition::bucket_cond::ExecutionBucket;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
 use crate::common::dbusitem::*;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::Result;
+use crate::condition::bucket_cond::ExecutionBucket;
+use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-
 // see the DBus specification
 const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
-
-
 
 /// DBus Based Event
 ///
@@ -101,7 +93,6 @@ impl Hash for DbusMessageEvent {
         }
         self.param_checks_all.hash(state);
     }
-
 }
 
 // implement cloning
@@ -143,10 +134,8 @@ impl Clone for DbusMessageEvent {
     }
 }
 
-
 #[allow(dead_code)]
 impl DbusMessageEvent {
-
     /// Create a new `DbusMessageEvent` with the provided name
     pub fn new(name: &str) -> Self {
         log(
@@ -183,7 +172,6 @@ impl DbusMessageEvent {
         }
     }
 
-
     /// Set the bus name to the provided value (checks for validity)
     pub fn set_bus(&mut self, name: &str) -> bool {
         if RE_DBUS_BUS_NAME.is_match(name) {
@@ -194,7 +182,9 @@ impl DbusMessageEvent {
     }
 
     /// Return an owned copy of the bus name
-    pub fn bus(&self) -> Option<String> { self.bus.clone() }
+    pub fn bus(&self) -> Option<String> {
+        self.bus.clone()
+    }
 
     /// Set the match rule to the provided value (will check upon installation)
     pub fn set_match_rule(&mut self, rule: &str) -> bool {
@@ -203,8 +193,9 @@ impl DbusMessageEvent {
     }
 
     /// Return an owned copy of the signal name
-    pub fn match_rule(&self) -> Option<String> { self.match_rule.clone() }
-
+    pub fn match_rule(&self) -> Option<String> {
+        self.match_rule.clone()
+    }
 
     /// Load a `DbusMessageEvent` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
@@ -222,7 +213,6 @@ impl DbusMessageEvent {
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
     ) -> Result<DbusMessageEvent> {
-
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
@@ -258,7 +248,8 @@ impl DbusMessageEvent {
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
 
         // specific mandatory parameter initialization
-        let bus = cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?.unwrap();
+        let bus =
+            cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?.unwrap();
         let rule = cfg_mandatory!(cfg_string(cfgmap, "rule"))?.unwrap();
 
         // initialize the structure
@@ -267,9 +258,7 @@ impl DbusMessageEvent {
         //       be set from the configuration file; programmatically built
         //       conditions of this type will only report "bucket" as their
         //       type, and "event" is only left for configuration readability
-        let mut new_event = DbusMessageEvent::new(
-            &name,
-        );
+        let mut new_event = DbusMessageEvent::new(&name);
         new_event.condition_registry = Some(cond_registry);
         new_event.condition_bucket = Some(bucket);
         new_event.bus = Some(bus);
@@ -311,11 +300,7 @@ impl DbusMessageEvent {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
-        let check = [
-            "index",
-            "operator",
-            "value",
-        ];
+        let check = ["index", "operator", "value"];
 
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
@@ -330,9 +315,7 @@ impl DbusMessageEvent {
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
-            let json = Value::from_str(
-                &format!("{{\"0\": {}}}", item.as_str().unwrap())
-            );
+            let json = Value::from_str(&format!("{{\"0\": {}}}", item.as_str().unwrap()));
             if json.is_err() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -483,7 +466,11 @@ impl DbusMessageEvent {
                     ));
                 }
                 // now that we have the full triple, we can add it to criteria
-                param_checks.push(ParameterCheckTest { index: index_list, operator, value });
+                param_checks.push(ParameterCheckTest {
+                    index: index_list,
+                    operator,
+                    value,
+                });
             }
             // finally the parameter checks become `Some` and makes its way
             // into the new event structure: the list is formally correct, but
@@ -497,7 +484,6 @@ impl DbusMessageEvent {
             if let Some(v) = cfg_bool(cfgmap, "parameter_check_all")? {
                 new_event.param_checks_all = v;
             }
-
         }
 
         Ok(new_event)
@@ -510,7 +496,6 @@ impl DbusMessageEvent {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
-
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
@@ -572,11 +557,7 @@ impl DbusMessageEvent {
 
         // specific optional parameter check
 
-        let check = [
-            "index",
-            "operator",
-            "value",
-        ];
+        let check = ["index", "operator", "value"];
 
         // see above for the reason why the check/configuration step is
         // performed like this: of course here no structure is created
@@ -592,9 +573,7 @@ impl DbusMessageEvent {
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
-            let json = Value::from_str(
-                &format!("{{\"0\": {}}}", item.as_str().unwrap())
-            );
+            let json = Value::from_str(&format!("{{\"0\": {}}}", item.as_str().unwrap()));
             if json.is_err() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -742,16 +721,18 @@ impl DbusMessageEvent {
 
         Ok(name)
     }
-
 }
 
-
 impl Event for DbusMessageEvent {
-
-    fn set_id(&mut self, id: i64) { self.event_id = id; }
-    fn get_name(&self) -> String { self.event_name.clone() }
-    fn get_id(&self) -> i64 { self.event_id }
-
+    fn set_id(&mut self, id: i64) {
+        self.event_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.event_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.event_id
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -760,10 +741,13 @@ impl Event for DbusMessageEvent {
         s.finish()
     }
 
+    fn requires_thread(&self) -> bool {
+        true
+    }
 
-    fn requires_thread(&self) -> bool { true }
-
-    fn get_condition(&self) -> Option<String> { self.condition_name.clone() }
+    fn get_condition(&self) -> Option<String> {
+        self.condition_name.clone()
+    }
 
     fn set_condition_registry(&mut self, reg: &'static ConditionRegistry) {
         self.condition_registry = Some(reg);
@@ -787,15 +771,23 @@ impl Event for DbusMessageEvent {
     }
 
     fn assign_quit_sender(&mut self, sr: mpsc::Sender<()>) {
-        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        assert!(
+            self.get_id() != 0,
+            "event {} not registered",
+            self.get_name()
+        );
         self.quit_tx = Some(sr);
     }
 
-
     fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
-
-        assert!(qrx.is_some(), "quit signal channel receiver must be provided");
-        assert!(self.quit_tx.is_some(), "quit signal channel transmitter not initialized");
+        assert!(
+            qrx.is_some(),
+            "quit signal channel receiver must be provided"
+        );
+        assert!(
+            self.quit_tx.is_some(),
+            "quit signal channel transmitter not initialized"
+        );
 
         // unified event type that will be sent over an async channel by
         // either a `quit` command or the watcher: the `Target` option
@@ -827,7 +819,10 @@ impl Event for DbusMessageEvent {
 
         // provide the mesage stream we subscribed to through the filter; note
         // that the rule is moved here since this will be the only consumer
-        async fn _get_stream(rule: zbus::MatchRule<'_>, conn: zbus::Connection) -> zbus::Result<zbus::MessageStream> {
+        async fn _get_stream(
+            rule: zbus::MatchRule<'_>,
+            conn: zbus::Connection,
+        ) -> zbus::Result<zbus::MessageStream> {
             zbus::MessageStream::for_match_rule(rule, &conn, None).await
         }
 
@@ -847,7 +842,9 @@ impl Event for DbusMessageEvent {
 
         // this function is built only for symmetry, in order to make clear
         // what is selected in the `select!` block within the async loop
-        async fn _get_quit_message(rx: &mut futures::channel::mpsc::Receiver<TargetOrQuitEvent>) -> Option<TargetOrQuitEvent> {
+        async fn _get_quit_message(
+            rx: &mut futures::channel::mpsc::Receiver<TargetOrQuitEvent>,
+        ) -> Option<TargetOrQuitEvent> {
             rx.next().await
         }
 
@@ -855,11 +852,13 @@ impl Event for DbusMessageEvent {
         // this panics if any of the data is uninitialized because all the
         // mandatory parameters must be set, and any missing value would
         // indicate that there is a mistake in the program flow
-        let bus = self.bus
+        let bus = self
+            .bus
             .clone()
             .expect("attempt to start service with uninitialized bus");
 
-        let rule_str = self.match_rule
+        let rule_str = self
+            .match_rule
             .clone()
             .expect("attempt to start service with uninitialized match rule");
 
@@ -875,7 +874,7 @@ impl Event for DbusMessageEvent {
             _get_connection(&bus).await
         })?;
 
-        let dbus_stream = task::block_on(async{
+        let dbus_stream = task::block_on(async {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_START,
@@ -920,12 +919,19 @@ impl Event for DbusMessageEvent {
             if let Ok(_) = qrx.unwrap().recv() {
                 // send a quit message over the async channel
                 task::block_on({
-                    async move { aq_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap(); }
+                    async move {
+                        aq_tx_clone.send(TargetOrQuitEvent::Quit).await.unwrap();
+                    }
                 });
             } else {
                 // in case of error, send just the error option of the enum
                 task::block_on({
-                    async move { aq_tx_clone.send(TargetOrQuitEvent::QuitError).await.unwrap(); }
+                    async move {
+                        aq_tx_clone
+                            .send(TargetOrQuitEvent::QuitError)
+                            .await
+                            .unwrap();
+                    }
                 });
             };
         });
@@ -938,140 +944,132 @@ impl Event for DbusMessageEvent {
         let mut dbus_stream_clone = dbus_stream.clone();
 
         // this should run in the local pool
-        futures::executor::block_on(async move { 'outer: loop {
+        futures::executor::block_on(async move {
+            'outer: loop {
+                // wait on either one of the two possible messages
+                let fdbus = _get_dbus_message(&mut dbus_stream_clone).fuse();
+                let fquit = _get_quit_message(&mut aquit_rx).fuse();
+                pin_mut!(fdbus, fquit);
+                let nextmessage = select! {
+                    md = fdbus => md,
+                    mq = fquit => mq,
+                };
 
-            // wait on either one of the two possible messages
-            let fdbus = _get_dbus_message(&mut dbus_stream_clone).fuse();
-            let fquit = _get_quit_message(&mut aquit_rx).fuse();
-            pin_mut!(fdbus, fquit);
-            let nextmessage = select! {
-                md = fdbus => md,
-                mq = fquit => mq,
-            };
-
-            // first resolve the message into something that can be checked
-            // or, alternatively, break out if the message instructs to quit;
-            // actually, `msg` should never remain `None`
-            let mut msg = None;
-            if let Some(toq) = nextmessage {
-                match toq {
-                    TargetOrQuitEvent::Target(m) => {
-                        msg = Some(m);
-                    }
-                    TargetOrQuitEvent::QuitError => {
-                        self.log(
-                            LogType::Warn,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_FAIL,
-                            "request to quit generated an error: exiting anyway",
-                        );
-                        break 'outer;
-                    }
-                    TargetOrQuitEvent::Quit => {
-                        self.log(
-                            LogType::Debug,
-                            LOG_WHEN_END,
-                            LOG_STATUS_OK,
-                            "event listener termination request caught",
-                        );
-                        break 'outer;
-                    }
-                }
-            }
-
-            // if we reached this point, the message has to be interpreted
-            if let Some(message) = msg {
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_OK,
-                    &format!("subscribed message received on bus `{bus_name}`"),
-                );
-
-                // check message parameters against provided criteria
-                let verified;
-                if let Some(checks) = &self.param_checks {
-                    self.log(
-                        LogType::Debug,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
-                        &format!(
-                            "parameter checks specified: {} checks must be verified",
-                            { if self.param_checks_all { "all" } else { "some" } },
-                        ),
-                    );
-
-                    let severity;
-                    let log_when;
-                    let log_status;
-                    let log_message;
-
-                    (
-                        verified,
-                        severity,
-                        log_when,
-                        log_status,
-                        log_message,
-                    ) = dbus_check_message(&message, checks, self.param_checks_all);
-                    self.log(severity, log_when, log_status, &log_message);
-
-                } else {
-                    // otherwise no parameters have been specified in
-                    // the configuration file, check always positive
-                    verified = true;
-                }
-
-                if verified {
-                    match self.fire_condition() {
-                        Ok(res) => {
-                            if res {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    "condition fired successfully",
-                                );
-                            } else {
-                                self.log(
-                                    LogType::Trace,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_MSG,
-                                    "condition already fired: further schedule skipped",
-                                );
-                            }
+                // first resolve the message into something that can be checked
+                // or, alternatively, break out if the message instructs to quit;
+                // actually, `msg` should never remain `None`
+                let mut msg = None;
+                if let Some(toq) = nextmessage {
+                    match toq {
+                        TargetOrQuitEvent::Target(m) => {
+                            msg = Some(m);
                         }
-                        Err(e) => {
+                        TargetOrQuitEvent::QuitError => {
                             self.log(
                                 LogType::Warn,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
-                                &format!("error firing condition: {e}"),
+                                "request to quit generated an error: exiting anyway",
                             );
+                            break 'outer;
+                        }
+                        TargetOrQuitEvent::Quit => {
+                            self.log(
+                                LogType::Debug,
+                                LOG_WHEN_END,
+                                LOG_STATUS_OK,
+                                "event listener termination request caught",
+                            );
+                            break 'outer;
                         }
                     }
+                }
+
+                // if we reached this point, the message has to be interpreted
+                if let Some(message) = msg {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        &format!("subscribed message received on bus `{bus_name}`"),
+                    );
+
+                    // check message parameters against provided criteria
+                    let verified;
+                    if let Some(checks) = &self.param_checks {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!("parameter checks specified: {} checks must be verified", {
+                                if self.param_checks_all { "all" } else { "some" }
+                            },),
+                        );
+
+                        let severity;
+                        let log_when;
+                        let log_status;
+                        let log_message;
+
+                        (verified, severity, log_when, log_status, log_message) =
+                            dbus_check_message(&message, checks, self.param_checks_all);
+                        self.log(severity, log_when, log_status, &log_message);
+                    } else {
+                        // otherwise no parameters have been specified in
+                        // the configuration file, check always positive
+                        verified = true;
+                    }
+
+                    if verified {
+                        match self.fire_condition() {
+                            Ok(res) => {
+                                if res {
+                                    self.log(
+                                        LogType::Debug,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        "condition fired successfully",
+                                    );
+                                } else {
+                                    self.log(
+                                        LogType::Trace,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_MSG,
+                                        "condition already fired: further schedule skipped",
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                self.log(
+                                    LogType::Warn,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_FAIL,
+                                    &format!("error firing condition: {e}"),
+                                );
+                            }
+                        }
+                    } else {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            "parameter check failed: condition not fired",
+                        );
+                    }
                 } else {
+                    // in normal conditions this is `unreachable!`
                     self.log(
                         LogType::Debug,
                         LOG_WHEN_PROC,
                         LOG_STATUS_MSG,
-                        "parameter check failed: condition not fired",
+                        &format!("no messages on bus `{bus_name}`: exiting"),
                     );
+                    // close the stream before shutting down
+                    let _ = task::block_on(async { dbus_stream.async_drop().await });
+                    break;
                 }
-            } else {
-                // in normal conditions this is `unreachable!`
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_MSG,
-                    &format!("no messages on bus `{bus_name}`: exiting"),
-                );
-                // close the stream before shutting down
-                let _ = task::block_on(async {
-                    dbus_stream.async_drop().await
-                });
-                break;
             }
-        }});    // futures::executor::block_on(...)
+        }); // futures::executor::block_on(...)
 
         // as said above this should be ininfluent
         let _ = _quit_handle.join();
@@ -1129,7 +1127,7 @@ impl Event for DbusMessageEvent {
             );
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running"
+                "could not determine whether the service is running",
             ))
         }
     }
@@ -1140,12 +1138,10 @@ impl Event for DbusMessageEvent {
         } else {
             Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running"
+                "could not determine whether the service is running",
             ))
         }
     }
-
 }
-
 
 // end.

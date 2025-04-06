@@ -5,21 +5,18 @@
 //! by the event name. The event has no associated listening service, as the
 //! main program acts as its service instead.
 
-
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use cfgmap::CfgMap;
 
 use super::base::Event;
-use crate::condition::registry::ConditionRegistry;
-use crate::condition::bucket_cond::ExecutionBucket;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
+use crate::condition::bucket_cond::ExecutionBucket;
+use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// Manual Command Based Event
 ///
@@ -35,7 +32,6 @@ pub struct ManualCommandEvent {
     // internal values
     condition_registry: Option<&'static ConditionRegistry>,
     condition_bucket: Option<&'static ExecutionBucket>,
-
     // specific members
     // parameters
     // (none here)
@@ -76,7 +72,6 @@ impl Clone for ManualCommandEvent {
     }
 }
 
-
 #[allow(dead_code)]
 impl ManualCommandEvent {
     pub fn new(name: &str) -> Self {
@@ -100,15 +95,12 @@ impl ManualCommandEvent {
             // internal values
             condition_registry: None,
             condition_bucket: None,
-
             // specific members initialization
             // parameters
 
             // internal values
         }
     }
-
-
 
     /// Load a `CommandLineEvent` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
@@ -121,13 +113,7 @@ impl ManualCommandEvent {
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
     ) -> Result<ManualCommandEvent> {
-
-        let check = vec![
-            "type",
-            "name",
-            "tags",
-            "condition",
-        ];
+        let check = vec!["type", "name", "tags", "condition"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -142,9 +128,7 @@ impl ManualCommandEvent {
         //       be set from the configuration file; programmatically built
         //       conditions of this type will only report "bucket" as their
         //       type, and "event" is only left for configuration readability
-        let mut new_event = ManualCommandEvent::new(
-            &name,
-        );
+        let mut new_event = ManualCommandEvent::new(&name);
         new_event.condition_registry = Some(cond_registry);
         new_event.condition_bucket = Some(bucket);
 
@@ -186,13 +170,7 @@ impl ManualCommandEvent {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
-
-        let check = vec![
-            "type",
-            "name",
-            "tags",
-            "condition",
-        ];
+        let check = vec!["type", "name", "tags", "condition"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -228,15 +206,18 @@ impl ManualCommandEvent {
 
         Ok(name)
     }
-
 }
 
-
 impl Event for ManualCommandEvent {
-
-    fn set_id(&mut self, id: i64) { self.event_id = id; }
-    fn get_name(&self) -> String { self.event_name.clone() }
-    fn get_id(&self) -> i64 { self.event_id }
+    fn set_id(&mut self, id: i64) {
+        self.event_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.event_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.event_id
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -245,12 +226,17 @@ impl Event for ManualCommandEvent {
         s.finish()
     }
 
+    fn requires_thread(&self) -> bool {
+        false
+    }
 
-    fn requires_thread(&self) -> bool { false }
+    fn triggerable(&self) -> bool {
+        true
+    } // this is the only one
 
-    fn triggerable(&self) -> bool { true }      // this is the only one
-
-    fn get_condition(&self) -> Option<String> { self.condition_name.clone() }
+    fn get_condition(&self) -> Option<String> {
+        self.condition_name.clone()
+    }
 
     fn set_condition_registry(&mut self, reg: &'static ConditionRegistry) {
         self.condition_registry = Some(reg);
@@ -272,8 +258,6 @@ impl Event for ManualCommandEvent {
         // correctness has already been checked by the caller
         self.condition_name = Some(String::from(cond_name));
     }
-
 }
-
 
 // end.

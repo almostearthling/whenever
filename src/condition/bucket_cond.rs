@@ -10,25 +10,22 @@
 //! checked, and all conditions (of this kind) are verified. Therefore, after
 //! each tick, the execution bucket will be empty again.
 
-
+use std::collections::HashSet;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
-use std::collections::HashSet;
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 use cfgmap::CfgMap;
 use regex::Regex;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// Execution Bucket
 ///
@@ -36,22 +33,23 @@ use crate::cfghelp::*;
 /// tick. A name can be present only once, so multiple insertions are
 /// automatically rejected (or _debounced_).
 pub struct ExecutionBucket {
-    execution_list: Arc<Mutex<HashSet<String>>>
+    execution_list: Arc<Mutex<HashSet<String>>>,
 }
 
 #[allow(dead_code)]
 impl ExecutionBucket {
-
     /// Create a new empty condition `ExecutionBucket`
     pub fn new() -> Self {
         ExecutionBucket {
-            execution_list: Arc::new(Mutex::new(HashSet::new()))
+            execution_list: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 
     /// Return `true` if the condition name is in the bucket
     pub fn has_condition(&self, name: &str) -> bool {
-        self.execution_list.clone().lock()
+        self.execution_list
+            .clone()
+            .lock()
             .unwrap()
             .contains(&String::from(name))
     }
@@ -60,7 +58,11 @@ impl ExecutionBucket {
     /// is already present, in which case the condition is not inserted
     pub fn insert_condition(&self, name: &str) -> bool {
         if !self.has_condition(name) {
-            self.execution_list.clone().lock().unwrap().insert(String::from(name))
+            self.execution_list
+                .clone()
+                .lock()
+                .unwrap()
+                .insert(String::from(name))
         } else {
             false
         }
@@ -69,7 +71,11 @@ impl ExecutionBucket {
     /// Remove a condition if present and return `true`, `false` if not present
     pub fn remove_condition(&self, name: &str) -> bool {
         if self.has_condition(name) {
-            self.execution_list.clone().lock().unwrap().remove(&String::from(name))
+            self.execution_list
+                .clone()
+                .lock()
+                .unwrap()
+                .remove(&String::from(name))
         } else {
             false
         }
@@ -85,8 +91,6 @@ impl ExecutionBucket {
         }
     }
 }
-
-
 
 /// Execution Bucket Based Condition
 ///
@@ -123,7 +127,6 @@ pub struct BucketCondition {
     execution_bucket: Option<&'static ExecutionBucket>,
 }
 
-
 // implement the hash protocol
 impl Hash for BucketCondition {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -144,14 +147,10 @@ impl Hash for BucketCondition {
     }
 }
 
-
 #[allow(dead_code)]
 impl BucketCondition {
-
     /// Create a new bucket/event condition with the provided name
-    pub fn new(
-        name: &str,
-    ) -> Self {
+    pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_BUCKET,
@@ -237,8 +236,10 @@ impl BucketCondition {
     /// The `BucketCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `BucketCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<BucketCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<BucketCondition> {
         let check = vec![
             "type",
             "name",
@@ -256,7 +257,12 @@ impl BucketCondition {
         // common mandatory parameter retrieval
 
         // type and name are both mandatory but type is only checked
-        let cond_type = cfg_mandatory!(cfg_string_check_regex(cfgmap, "type", &Regex::new(r"^event|bucket$").unwrap()))?.unwrap();
+        let cond_type = cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "type",
+            &Regex::new(r"^event|bucket$").unwrap()
+        ))?
+        .unwrap();
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
@@ -268,9 +274,7 @@ impl BucketCondition {
         //       be set from the configuration file; programmatically built
         //       conditions of this type will only report "bucket" as their
         //       type, and "event" is only left for configuration readability
-        let mut new_condition = BucketCondition::new(
-            &name,
-        );
+        let mut new_condition = BucketCondition::new(&name);
         new_condition.task_registry = Some(task_registry);
         new_condition.declared_type = cond_type;
 
@@ -288,7 +292,8 @@ impl BucketCondition {
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER,
-                ).into());  // TODO: instead of forcing this, the `cfg_err_invalid_config` should be changed to use wres::Error
+                )
+                .into()); // TODO: instead of forcing this, the `cfg_err_invalid_config` should be changed to use wres::Error
             }
         }
 
@@ -296,11 +301,7 @@ impl BucketCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -342,7 +343,6 @@ impl BucketCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -360,7 +360,11 @@ impl BucketCondition {
         // common mandatory parameter check
 
         // type and name are both mandatory: type is checked and name is kept
-        cfg_mandatory!(cfg_string_check_regex(cfgmap, "type", &Regex::new(r"^event|bucket$").unwrap()))?;
+        cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "type",
+            &Regex::new(r"^event|bucket$").unwrap()
+        ))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
 
         // also for optional parameters just check and throw away the result
@@ -381,11 +385,7 @@ impl BucketCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -399,17 +399,21 @@ impl BucketCondition {
 
         Ok(name)
     }
-
 }
 
-
-
 impl Condition for BucketCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { self.declared_type.as_str() }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        self.declared_type.as_str()
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -417,7 +421,6 @@ impl Condition for BucketCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -427,18 +430,35 @@ impl Condition for BucketCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -466,7 +486,6 @@ impl Condition for BucketCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -480,7 +499,6 @@ impl Condition for BucketCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -512,11 +530,9 @@ impl Condition for BucketCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -525,7 +541,6 @@ impl Condition for BucketCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -540,18 +555,13 @@ impl Condition for BucketCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
-
-
 
     /// Mandatory check function.
     ///
@@ -560,7 +570,6 @@ impl Condition for BucketCondition {
     /// name is removed to avoid subsequents executions (unless externally
     /// rescheduled), and the verification is successful
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-
         // last_tested has already been set by trait to Instant::now()
         self.log(
             LogType::Debug,
@@ -590,6 +599,5 @@ impl Condition for BucketCondition {
         }
     }
 }
-
 
 // end.

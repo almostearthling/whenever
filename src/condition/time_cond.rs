@@ -18,35 +18,31 @@
 //! are both considered the beginning of the hour. All other values, if not
 //! provided, are considered to be always verified.
 
-
-use std::time::Instant;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::Instant;
 
-use chrono::prelude::*;
 use cfgmap::CfgMap;
+use chrono::prelude::*;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-
-
 // the constructor only allows to specify all values on invocation, so this
 // structure remainss private
 struct TimeSpecification {
-    year: Option<i32>,          // e.g. 2023
-    month: Option<u32>,         // January=1, ..., December=12
-    day: Option<u32>,           // 0, ..., 31
-    dow: Option<u32>,           // Sunday=1, ..., Saturday=7
-    hour: Option<u32>,          // 0, ..., 23
-    minute: Option<u32>,        // 0, ..., 59
-    second: Option<u32>,        // 0, ..., 59
+    year: Option<i32>,   // e.g. 2023
+    month: Option<u32>,  // January=1, ..., December=12
+    day: Option<u32>,    // 0, ..., 31
+    dow: Option<u32>,    // Sunday=1, ..., Saturday=7
+    hour: Option<u32>,   // 0, ..., 23
+    minute: Option<u32>, // 0, ..., 59
+    second: Option<u32>, // 0, ..., 59
 }
-
 
 // here it's easier to implement the hash protocol for a timespec
 impl Hash for TimeSpecification {
@@ -89,9 +85,7 @@ impl Hash for TimeSpecification {
     }
 }
 
-
 impl TimeSpecification {
-
     /// Create a new time specification with the provided optional values
     pub fn new(
         year: Option<i32>,
@@ -102,7 +96,15 @@ impl TimeSpecification {
         minute: Option<u32>,
         second: Option<u32>,
     ) -> TimeSpecification {
-        TimeSpecification { year, month, day, dow, hour, minute, second }
+        TimeSpecification {
+            year,
+            month,
+            day,
+            dow,
+            hour,
+            minute,
+            second,
+        }
     }
 
     /// returns the resulting date and time using the fields of the `now`
@@ -115,24 +117,45 @@ impl TimeSpecification {
         let hour;
         let minute;
         let second;
-        if let Some(v) = self.year { year = v; } else { year = now.year(); }
-        if let Some(v) = self.month { month = v; } else { month = now.month(); }
-        if let Some(v) = self.day { day = v; } else { day = now.day(); }
+        if let Some(v) = self.year {
+            year = v;
+        } else {
+            year = now.year();
+        }
+        if let Some(v) = self.month {
+            month = v;
+        } else {
+            month = now.month();
+        }
+        if let Some(v) = self.day {
+            day = v;
+        } else {
+            day = now.day();
+        }
         // if let Some(v) = self.dow { dow = v; } else { dow = now.weekday().number_from_sunday(); }
-        if let Some(v) = self.hour { hour = v; } else { hour = now.hour(); }
+        if let Some(v) = self.hour {
+            hour = v;
+        } else {
+            hour = now.hour();
+        }
         // if let Some(v) = self.minute { minute = v; } else { minute = now.minute(); }
         // if let Some(v) = self.second { second = v; } else { second = now.second(); }
-        if let Some(v) = self.minute { minute = v; } else { minute = 0; }
-        if let Some(v) = self.second { second = v; } else { second = 0; }
+        if let Some(v) = self.minute {
+            minute = v;
+        } else {
+            minute = 0;
+        }
+        if let Some(v) = self.second {
+            second = v;
+        } else {
+            second = 0;
+        }
 
         let dt = Local.with_ymd_and_hms(year, month, day, hour, minute, second);
         match dt {
-            chrono::offset::LocalResult::Single(_) => { }
+            chrono::offset::LocalResult::Single(_) => {}
             _ => {
-                return Err(Error::new(
-                    Kind::Invalid,
-                    ERR_INVALID_TIMESPEC,
-                ));
+                return Err(Error::new(Kind::Invalid, ERR_INVALID_TIMESPEC));
             }
         }
 
@@ -142,12 +165,48 @@ impl TimeSpecification {
     pub fn as_str(&self) -> String {
         format!(
             "{}-{}-{}T{}:{}:{} [{}]",
-            { if let Some(n) = self.year { format!("{:04}", n) } else { String::from("____") } },
-            { if let Some(n) = self.month { format!("{:02}", n) } else { String::from("__") } },
-            { if let Some(n) = self.day { format!("{:02}", n) } else { String::from("__") } },
-            { if let Some(n) = self.hour { format!("{:02}", n) } else { String::from("__") } },
-            { if let Some(n) = self.minute { format!("{:02}", n) } else { String::from("__") } },
-            { if let Some(n) = self.second { format!("{:02}", n) } else { String::from("__") } },
+            {
+                if let Some(n) = self.year {
+                    format!("{:04}", n)
+                } else {
+                    String::from("____")
+                }
+            },
+            {
+                if let Some(n) = self.month {
+                    format!("{:02}", n)
+                } else {
+                    String::from("__")
+                }
+            },
+            {
+                if let Some(n) = self.day {
+                    format!("{:02}", n)
+                } else {
+                    String::from("__")
+                }
+            },
+            {
+                if let Some(n) = self.hour {
+                    format!("{:02}", n)
+                } else {
+                    String::from("__")
+                }
+            },
+            {
+                if let Some(n) = self.minute {
+                    format!("{:02}", n)
+                } else {
+                    String::from("__")
+                }
+            },
+            {
+                if let Some(n) = self.second {
+                    format!("{:02}", n)
+                } else {
+                    String::from("__")
+                }
+            },
             {
                 if let Some(dow) = self.dow {
                     match dow {
@@ -160,13 +219,13 @@ impl TimeSpecification {
                         7 => "Sat",
                         _ => "???",
                     }
-                } else { "___" }
+                } else {
+                    "___"
+                }
             }
         )
     }
 }
-
-
 
 /// Time Interval Based Condition
 ///
@@ -200,7 +259,6 @@ pub struct TimeCondition {
     tick_duration: i64,
 }
 
-
 // implement the hash protocol
 impl Hash for TimeCondition {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -224,14 +282,10 @@ impl Hash for TimeCondition {
     }
 }
 
-
 #[allow(dead_code)]
 impl TimeCondition {
-
     /// Create a new time based condition with the given name
-    pub fn new(
-        name: &str,
-    ) -> Self {
+    pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
             "TIME_CONDITION",
@@ -309,7 +363,7 @@ impl TimeCondition {
         if seconds < 1 || seconds > std::i64::MAX as u64 {
             Err(Error::new(
                 Kind::Invalid,
-                &format!("{ERR_INVALID_TICK_SECONDS}: {seconds}")
+                &format!("{ERR_INVALID_TICK_SECONDS}: {seconds}"),
             ))
         } else {
             self.tick_duration = seconds as i64;
@@ -331,60 +385,61 @@ impl TimeCondition {
             if n < 0 {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "year"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "year"),
+                ));
             }
         }
         if let Some(n) = month {
             if !(1..=12).contains(&n) {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "month"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "month"),
+                ));
             }
         }
         if let Some(n) = day {
             if !(1..=31).contains(&n) {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "day"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "day"),
+                ));
             }
         }
         if let Some(n) = hour {
             if n > 23 {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "hour"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "hour"),
+                ));
             }
         }
         if let Some(n) = minute {
             if n > 59 {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "minute"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "minute"),
+                ));
             }
         }
         if let Some(n) = second {
             if n > 59 {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "second"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "second"),
+                ));
             }
         }
         if let Some(n) = dow {
             if !(1..=7).contains(&n) {
                 return Err(Error::new(
                     Kind::Invalid,
-                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "weekday"))
-                );
+                    &format!("{ERR_INVALID_VALUE_FOR} `{}`: {n}", "weekday"),
+                ));
             }
         }
-        self.time_specifications.push(
-            TimeSpecification::new(year, month, day, dow, hour, minute, second));
+        self.time_specifications.push(TimeSpecification::new(
+            year, month, day, dow, hour, minute, second,
+        ));
 
         Ok(true)
     }
@@ -394,8 +449,10 @@ impl TimeCondition {
     /// The `IntervalCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `TimeCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<TimeCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<TimeCondition> {
         let check = vec![
             "type",
             "name",
@@ -419,9 +476,7 @@ impl TimeCondition {
         // (none here)
 
         // initialize the structure
-        let mut new_condition = TimeCondition::new(
-            &name,
-        );
+        let mut new_condition = TimeCondition::new(&name);
         new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
@@ -446,11 +501,7 @@ impl TimeCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -612,14 +663,14 @@ impl TimeCondition {
                                             STR_UNKNOWN_VALUE,
                                             ERR_INVALID_TIMESPEC,
                                         ));
-                                    },
+                                    }
                                 })
                             }
                         } else {
                             dow = None;
                         }
-                        let _ = new_condition.add_time_specification(
-                            year, month, day, hour, minute, second, dow)?;
+                        let _ = new_condition
+                            .add_time_specification(year, month, day, hour, minute, second, dow)?;
                     }
                 }
             }
@@ -646,7 +697,6 @@ impl TimeCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -686,11 +736,7 @@ impl TimeCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -809,7 +855,7 @@ impl TimeCondition {
                                             STR_UNKNOWN_VALUE,
                                             ERR_INVALID_TIMESPEC,
                                         ));
-                                    },
+                                    }
                                 });
                             }
                         }
@@ -826,17 +872,21 @@ impl TimeCondition {
 
         Ok(name)
     }
-
 }
 
-
-
 impl Condition for TimeCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { "time" }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        "time"
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -844,7 +894,6 @@ impl Condition for TimeCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -854,18 +903,35 @@ impl Condition for TimeCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -893,7 +959,6 @@ impl Condition for TimeCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -907,7 +972,6 @@ impl Condition for TimeCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -939,11 +1003,9 @@ impl Condition for TimeCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -952,7 +1014,6 @@ impl Condition for TimeCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -967,17 +1028,13 @@ impl Condition for TimeCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
-
 
     /// Mandatory check function.
     ///
@@ -986,11 +1043,7 @@ impl Condition for TimeCondition {
     /// check only if not recurring), the outcome is successful.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
         if self.tick_duration <= 0 {
-            return Err(
-                Error::new(
-                    Kind::Invalid,
-                    ERR_INVALID_TICK_SECONDS,
-                ));
+            return Err(Error::new(Kind::Invalid, ERR_INVALID_TICK_SECONDS));
         }
 
         let dt = Local::now();
@@ -1000,7 +1053,8 @@ impl Condition for TimeCondition {
             LOG_STATUS_MSG,
             &format!(
                 "checking time based condition (at: {})",
-                dt.format("%Y-%m-%dT%H:%M:%S [%a]")),
+                dt.format("%Y-%m-%dT%H:%M:%S [%a]")
+            ),
         );
 
         for tspec in self.time_specifications.iter() {
@@ -1011,7 +1065,8 @@ impl Condition for TimeCondition {
                 LOG_STATUS_MSG,
                 &format!(
                     "checking time specification ({}) against current time",
-                    tspec.as_str()),
+                    tspec.as_str()
+                ),
             );
             // check that the required time has passed for less time than the
             // tick duration (which must be exactly the same as the scheduler
@@ -1031,8 +1086,6 @@ impl Condition for TimeCondition {
         }
         Ok(Some(false))
     }
-
 }
-
 
 // end.

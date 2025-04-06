@@ -13,19 +13,16 @@
 //! and so on. The purpose of the trait is to provide a common interface that
 //! is independent from the particular implementation of the waiting service.
 
-
 use std::sync::mpsc;
 
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
 
-
 #[allow(dead_code)]
 pub trait Event: Send + Sync {
-
     /// Mandatory ID setter for registration.
     fn set_id(&mut self, id: i64);
 
@@ -50,7 +47,9 @@ pub trait Event: Send + Sync {
     /// Must return `false` if the event cannot be manually triggered:
     /// this is the default, and only manually triggerable events should
     /// override this function.
-    fn triggerable(&self) -> bool { false }
+    fn triggerable(&self) -> bool {
+        false
+    }
 
     /// Assign the condition bucket to put verified conditions into.
     fn set_condition_bucket(&mut self, bucket: &'static ExecutionBucket);
@@ -72,7 +71,6 @@ pub trait Event: Send + Sync {
     /// is costly in terms of time and possibly CPU, but it is supposed to
     /// take place very seldomly, near to almost never
     fn _hash(&self) -> u64;
-
 
     /// Assign a condition to the event
     ///
@@ -112,9 +110,12 @@ pub trait Event: Send + Sync {
     ///
     /// Panics if the event has not been registered.
     fn assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) {
-        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        assert!(
+            self.get_id() != 0,
+            "event {} not registered",
+            self.get_name()
+        );
     }
-
 
     /// Fire the assigned condition by tossing it into the execution bucket
     ///
@@ -127,9 +128,16 @@ pub trait Event: Send + Sync {
     /// has not been set: each would indicate an error in the program flow.
     /// Also panics if the event has not been registered.
     fn fire_condition(&self) -> std::io::Result<bool> {
-        assert!(self.get_id() != 0, "event {} not registered", self.get_name());
+        assert!(
+            self.get_id() != 0,
+            "event {} not registered",
+            self.get_name()
+        );
         assert!(self.get_condition().is_some(), "no condition assigned");
-        assert!(self.condition_bucket().is_some(), "execution bucket not set");
+        assert!(
+            self.condition_bucket().is_some(),
+            "execution bucket not set"
+        );
 
         let cond_name = self.get_condition().unwrap();
         let bucket = self.condition_bucket().unwrap();
@@ -141,7 +149,6 @@ pub trait Event: Send + Sync {
         );
         Ok(bucket.insert_condition(&cond_name))
     }
-
 
     /// Log a message in the specific `Event` format.
     ///
@@ -168,7 +175,6 @@ pub trait Event: Send + Sync {
         );
     }
 
-
     /// The worker function for the event service: might require a separate
     /// thread (see above) or not; in the former case the service installer
     /// spawns the thread and returns a handle to join, and in the latter
@@ -188,7 +194,10 @@ pub trait Event: Send + Sync {
     /// require a listener, all other event type must reimplement it.
     fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
         // in this case the service exits immediately without errors
-        assert!(qrx.is_none(), "quit signal channel provided for event without listener");
+        assert!(
+            qrx.is_none(),
+            "quit signal channel provided for event without listener"
+        );
         Ok(true)
     }
 
@@ -211,8 +220,6 @@ pub trait Event: Send + Sync {
 
     /// Internal condition assignment function.
     fn _assign_condition(&mut self, cond_name: &str);
-
 }
-
 
 // end.

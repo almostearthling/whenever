@@ -5,22 +5,19 @@
 //! the user has been active and then idle again for the same amount of seconds
 //! (if its recurring state is set to `true`).
 
-
-use std::time::{Instant, Duration};
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::{Duration, Instant};
 
 use cfgmap::CfgMap;
 use user_idle::UserIdle;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// Time Interval Based Condition
 ///
@@ -56,7 +53,6 @@ pub struct IdleCondition {
     idle_verified: bool,
 }
 
-
 // implement the hash protocol
 impl Hash for IdleCondition {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -77,16 +73,11 @@ impl Hash for IdleCondition {
     }
 }
 
-
 #[allow(dead_code)]
 impl IdleCondition {
-
     /// Create a new idle time based condition with the given name and idle
     /// time duration
-    pub fn new(
-        name: &str,
-        interval: &Duration,
-    ) -> Self {
+    pub fn new(name: &str, interval: &Duration) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_IDLE,
@@ -166,8 +157,10 @@ impl IdleCondition {
     /// The `IntervalCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `IdleCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<IdleCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<IdleCondition> {
         let check = vec![
             "type",
             "name",
@@ -190,13 +183,12 @@ impl IdleCondition {
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
-        let idle_seconds = Duration::from_secs(cfg_mandatory!(cfg_int_check_above_eq(cfgmap, "idle_seconds", 0))?.unwrap() as u64);
+        let idle_seconds = Duration::from_secs(
+            cfg_mandatory!(cfg_int_check_above_eq(cfgmap, "idle_seconds", 0))?.unwrap() as u64,
+        );
 
         // initialize the structure
-        let mut new_condition = IdleCondition::new(
-            &name,
-            &idle_seconds,
-        );
+        let mut new_condition = IdleCondition::new(&name, &idle_seconds);
         new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
@@ -221,11 +213,7 @@ impl IdleCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -267,7 +255,6 @@ impl IdleCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -309,11 +296,7 @@ impl IdleCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -327,17 +310,21 @@ impl IdleCondition {
 
         Ok(name)
     }
-
 }
 
-
-
 impl Condition for IdleCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { "idle" }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        "idle"
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -345,7 +332,6 @@ impl Condition for IdleCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -355,18 +341,35 @@ impl Condition for IdleCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -394,7 +397,6 @@ impl Condition for IdleCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -408,7 +410,6 @@ impl Condition for IdleCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -440,11 +441,9 @@ impl Condition for IdleCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -453,7 +452,6 @@ impl Condition for IdleCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -468,18 +466,13 @@ impl Condition for IdleCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
-
-
 
     /// Mandatory check function.
     ///
@@ -489,7 +482,6 @@ impl Condition for IdleCondition {
     /// below the configured interval. In that case reset the internal state
     /// to start over checking (if _recurring_).
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-
         if let Ok(idle) = UserIdle::get_time() {
             // last_tested has already been set by trait to Instant::now()
             self.log(
@@ -501,7 +493,7 @@ impl Condition for IdleCondition {
                     { if self.idle_verified { " [idle]" } else { "" } },
                     idle.as_seconds(),
                     self.idle_seconds.as_secs(),
-                )
+                ),
             );
             if !self.idle_verified {
                 if idle.duration() > self.idle_seconds {
@@ -522,8 +514,6 @@ impl Condition for IdleCondition {
             Ok(Some(false))
         }
     }
-
 }
-
 
 // end.

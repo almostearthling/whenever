@@ -9,11 +9,9 @@
 //! and read/write access to its ID in the form of an unsigned integer. A zero
 //! ID is used for _inactive_ tasks.
 
-
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::constants::*;
-
 
 /// Define the interface for `Task` objects.
 ///
@@ -22,7 +20,6 @@ use crate::constants::*;
 ///           by the trait object users.
 #[allow(dead_code)]
 pub trait Task: Send {
-
     /// Mandatory ID setter for registration.
     fn set_id(&mut self, id: i64);
 
@@ -48,10 +45,7 @@ pub trait Task: Send {
     fn _hash(&self) -> u64;
 
     /// Internally called to actually execute the `Task`.
-    fn _run(
-        &mut self,
-        trigger_name: &str,
-    ) -> Result<Option<bool>>;
+    fn _run(&mut self, trigger_name: &str) -> Result<Option<bool>>;
 
     /// Log a message in the specific `Task` format.
     ///
@@ -78,7 +72,6 @@ pub trait Task: Send {
         );
     }
 
-
     /// Execute this `Task`.
     ///
     /// Executes the main `Task` function, returning an outcome. The outcome
@@ -102,11 +95,12 @@ pub trait Task: Send {
     /// This function panics if the task is not **registered**: any call to an
     /// unregistered task must be considered a development error. Tasks can
     /// actually only be started via the registry.
-    fn run(
-        &mut self,
-        trigger_name: &str,
-    ) -> Result<Option<bool>> {
-        assert!(self.get_id() != 0, "task {} not registered", self.get_name());
+    fn run(&mut self, trigger_name: &str) -> Result<Option<bool>> {
+        assert!(
+            self.get_id() != 0,
+            "task {} not registered",
+            self.get_name()
+        );
 
         self.log(
             LogType::Trace,
@@ -153,8 +147,6 @@ pub trait Task: Send {
         }
         res
     }
-
 }
-
 
 // end.

@@ -5,21 +5,18 @@
 //! recurring it is verified every time that the same amount of time has passed
 //! since the last positive verification.
 
-
-use std::time::{Instant, Duration};
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::{Duration, Instant};
 
 use cfgmap::CfgMap;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// Time Interval Based Condition
 ///
@@ -55,7 +52,6 @@ pub struct IntervalCondition {
     checked: Instant,
 }
 
-
 // implement the hash protocol
 impl Hash for IntervalCondition {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -76,16 +72,11 @@ impl Hash for IntervalCondition {
     }
 }
 
-
 #[allow(dead_code)]
 impl IntervalCondition {
-
     /// Create a new time interval based condition with the given name and
     /// interval time duration
-    pub fn new(
-        name: &str,
-        interval: &Duration,
-    ) -> Self {
+    pub fn new(name: &str, interval: &Duration) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_INTERVAL,
@@ -166,8 +157,10 @@ impl IntervalCondition {
     /// The `IntervalCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `IntervalCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<IntervalCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<IntervalCondition> {
         let check = vec![
             "type",
             "name",
@@ -189,15 +182,13 @@ impl IntervalCondition {
         cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "interval"))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
-
         // specific mandatory parameter retrieval
-        let interval = Duration::from_secs(cfg_mandatory!(cfg_int_check_above_eq(cfgmap, "interval_seconds", 0))?.unwrap() as u64);
+        let interval = Duration::from_secs(
+            cfg_mandatory!(cfg_int_check_above_eq(cfgmap, "interval_seconds", 0))?.unwrap() as u64,
+        );
 
         // initialize the structure
-        let mut new_condition = IntervalCondition::new(
-            &name,
-            &interval,
-        );
+        let mut new_condition = IntervalCondition::new(&name, &interval);
         new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
@@ -222,11 +213,7 @@ impl IntervalCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -268,7 +255,6 @@ impl IntervalCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -310,11 +296,7 @@ impl IntervalCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -328,17 +310,21 @@ impl IntervalCondition {
 
         Ok(name)
     }
-
 }
 
-
-
 impl Condition for IntervalCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { "interval" }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        "interval"
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -346,7 +332,6 @@ impl Condition for IntervalCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -356,18 +341,35 @@ impl Condition for IntervalCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -395,7 +397,6 @@ impl Condition for IntervalCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -409,7 +410,6 @@ impl Condition for IntervalCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -441,11 +441,9 @@ impl Condition for IntervalCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -454,7 +452,6 @@ impl Condition for IntervalCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -469,18 +466,13 @@ impl Condition for IntervalCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
-
-
 
     /// Mandatory check function.
     ///
@@ -503,8 +495,6 @@ impl Condition for IntervalCondition {
             Ok(Some(false))
         }
     }
-
 }
-
 
 // end.

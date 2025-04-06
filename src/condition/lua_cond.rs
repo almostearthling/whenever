@@ -5,10 +5,9 @@
 //! result and states success or failure accordingly. An error in the script
 //! always results as a failure.
 
-
 use std::collections::HashMap;
-use std::time::{Instant, SystemTime, Duration};
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::{Duration, Instant, SystemTime};
 
 use itertools::Itertools;
 
@@ -16,15 +15,13 @@ use cfgmap::CfgMap;
 use mlua;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::{Error, Kind, Result};
+use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
+use crate::common::wres::{Error, Kind, Result};
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-
 
 /// _Lua_ script Based Condition
 ///
@@ -70,7 +67,6 @@ pub struct LuaCondition {
     last_check_failed: bool,
 }
 
-
 // implement the hash protocol
 impl Hash for LuaCondition {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -105,16 +101,11 @@ impl Hash for LuaCondition {
     }
 }
 
-
 #[allow(dead_code)]
 impl LuaCondition {
-
     /// Create a new _Lua_ script based condition with the given name and
     /// the specified _Lua_ script provided as a string
-    pub fn new(
-        name: &str,
-        script: &str,
-    ) -> Self {
+    pub fn new(name: &str, script: &str) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_LUA,
@@ -164,7 +155,6 @@ impl LuaCondition {
         }
     }
 
-
     // constructor modifiers
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
@@ -199,19 +189,22 @@ impl LuaCondition {
 
     /// Add a variable to check for a string value
     pub fn add_check_string(mut self, varname: &str, value: &str) -> Self {
-        self.expected.insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
+        self.expected
+            .insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
         self
     }
 
     /// Add a variable to check for a number (f64) value
     pub fn add_check_number(mut self, varname: &str, value: f64) -> Self {
-        self.expected.insert(varname.to_string(), LuaValue::LuaNumber(value));
+        self.expected
+            .insert(varname.to_string(), LuaValue::LuaNumber(value));
         self
     }
 
     /// Add a variable to check for a boolean value
     pub fn add_check_bool(mut self, varname: &str, value: bool) -> Self {
-        self.expected.insert(varname.to_string(), LuaValue::LuaBoolean(value));
+        self.expected
+            .insert(varname.to_string(), LuaValue::LuaBoolean(value));
         self
     }
 
@@ -223,7 +216,6 @@ impl LuaCondition {
         self
     }
 
-
     /// Constructor modifier to specify that the condition should not set the
     /// context variables that specify the task name and the condition that
     /// triggered the task, when set to `false`. The default behaviour is to
@@ -233,7 +225,6 @@ impl LuaCondition {
         self
     }
 
-
     /// Constructor modifier to specify that the condition is verified on
     /// check success only if there has been at least one failure after the
     /// last successful test
@@ -241,7 +232,6 @@ impl LuaCondition {
         self.recur_after_failed_check = yes;
         self
     }
-
 
     /// State that the first check and possible following tests are to be
     /// performed after a certain amount of time. This option is present in
@@ -252,7 +242,6 @@ impl LuaCondition {
         self.check_after = Some(delta);
         self
     }
-
 
     // helper to build a representation of checks for logging
     fn repr_checks(&self) -> String {
@@ -278,8 +267,10 @@ impl LuaCondition {
     /// The `LuaCondition` is initialized according to the values provided
     /// in the `CfgMap` argument. If the `CfgMap` format does not comply with
     /// the requirements of a `LuaCondition` an error is raised.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<LuaCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<LuaCondition> {
         // fn _invalid_cfg(key: &str, value: &str, message: &str) -> Result<LuaCondition> {
         //     Err(Error::new(
         //         Kind::Invalid,
@@ -316,10 +307,7 @@ impl LuaCondition {
         let script = String::from(cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap());
 
         // initialize the structure
-        let mut new_condition = LuaCondition::new(
-            &name,
-            &script,
-        );
+        let mut new_condition = LuaCondition::new(&name, &script);
         new_condition.task_registry = Some(task_registry);
 
         // by default make condition active if loaded from configuration: if
@@ -344,11 +332,7 @@ impl LuaCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -448,7 +432,6 @@ impl LuaCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         let check = vec![
             "type",
             "name",
@@ -492,11 +475,7 @@ impl LuaCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -533,7 +512,11 @@ impl LuaCondition {
                                 ERR_INVALID_VAR_NAME,
                             ));
                         } else if let Some(value) = map.get(name) {
-                            if !(value.is_bool() || value.is_int() || value.is_float() || value.is_str()) {
+                            if !(value.is_bool()
+                                || value.is_int()
+                                || value.is_float()
+                                || value.is_str())
+                            {
                                 return Err(cfg_err_invalid_config(
                                     cur_key,
                                     STR_UNKNOWN_VALUE,
@@ -554,17 +537,21 @@ impl LuaCondition {
 
         Ok(name)
     }
-
 }
 
-
-
 impl Condition for LuaCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { "lua" }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        "lua"
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -572,7 +559,6 @@ impl Condition for LuaCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -582,18 +568,35 @@ impl Condition for LuaCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -621,7 +624,6 @@ impl Condition for LuaCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -635,7 +637,6 @@ impl Condition for LuaCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -667,11 +668,9 @@ impl Condition for LuaCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -680,7 +679,6 @@ impl Condition for LuaCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -695,17 +693,13 @@ impl Condition for LuaCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
-
 
     /// Mandatory check function.
     ///
@@ -757,10 +751,7 @@ impl Condition for LuaCondition {
                 LogType::Debug,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
-                &format!(
-                    "cannot start Lua interpreter ({})",
-                    e.to_string(),
-                ),
+                &format!("cannot start Lua interpreter ({})", e.to_string(),),
             );
             return Err(Error::new(
                 Kind::Failed,
@@ -791,33 +782,43 @@ impl Condition for LuaCondition {
 
         let id = self.get_id();
         let name = self.get_name();
-        let _ = logftab.set("debug", lua.create_function(move
-            |_, s: String| Ok(inner_log(id, &name, LogType::Debug, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "debug",
+            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Debug, &s)))
+                .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
-        let _ = logftab.set("trace", lua.create_function(move
-            |_, s: String| Ok(inner_log(id, &name, LogType::Trace, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "trace",
+            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Trace, &s)))
+                .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
-        let _ = logftab.set("info", lua.create_function(move
-            |_, s: String| Ok(inner_log(id, &name, LogType::Info, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "info",
+            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Info, &s)))
+                .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
-        let _ = logftab.set("warn", lua.create_function(move
-            |_, s: String| Ok(inner_log(id, &name, LogType::Warn, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "warn",
+            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Warn, &s)))
+                .unwrap(),
+        );
 
         let id = self.get_id();
         let name = self.get_name();
-        let _ = logftab.set("error", lua.create_function(move
-            |_, s: String| Ok(inner_log(id, &name, LogType::Error, &s)))
-            .unwrap());
+        let _ = logftab.set(
+            "error",
+            lua.create_function(move |_, s: String| Ok(inner_log(id, &name, LogType::Error, &s)))
+                .unwrap(),
+        );
 
         let _ = globals.set("log", logftab);
 
@@ -843,22 +844,19 @@ impl Condition for LuaCondition {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<String, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<f64, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<bool, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if !res {
@@ -887,22 +885,19 @@ impl Condition for LuaCondition {
                         for (varname, value) in self.expected.iter() {
                             if let Some(res) = match value {
                                 LuaValue::LuaString(v) => {
-                                    let r: std::result::Result<String, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<String, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
-                                    let r: std::result::Result<f64, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<f64, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
-                                    let r: std::result::Result<bool, mlua::Error> = globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else { None }
+                                    let r: std::result::Result<bool, mlua::Error> =
+                                        globals.get(varname.as_str());
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if res {
@@ -964,9 +959,7 @@ impl Condition for LuaCondition {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &format!(
-                            "persistent success status: waiting for failure to recur",
-                        ),
+                        &format!("persistent success status: waiting for failure to recur",),
                     );
                     Ok(Some(false))
                 }
@@ -1011,10 +1004,7 @@ impl Condition for LuaCondition {
                 Ok(Some(false))
             }
         }
-
     }
-
 }
-
 
 // end.

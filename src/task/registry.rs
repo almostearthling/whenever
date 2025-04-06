@@ -10,24 +10,22 @@
 //! other tasks, respectively using the `run_tasks_seq` and `run_tasks_par`
 //! functions.
 
-
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
 use std::sync::mpsc::channel;
 use std::thread::JoinHandle;
 use std::thread::spawn;
-use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
 use super::base::Task;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
-
 
 // module-wide values
 lazy_static! {
@@ -43,8 +41,6 @@ lazy_static! {
 fn generate_task_id() -> i64 {
     UID_GENERATOR.next_id()
 }
-
-
 
 /// The task registry: there must be one and only one task registry in each
 /// instance of the process, and should have `'static` lifetime. It may be
@@ -64,10 +60,8 @@ pub struct TaskRegistry {
     items_to_add: Arc<Mutex<Vec<Box<dyn Task>>>>,
 }
 
-
 #[allow(dead_code)]
 impl TaskRegistry {
-
     /// Create a new, empty `TaskRegistry`.
     pub fn new() -> Self {
         TaskRegistry {
@@ -108,22 +102,15 @@ impl TaskRegistry {
     pub fn has_task_eq(&self, task: &dyn Task) -> bool {
         let name = task.get_name();
         if self.has_task(name.as_str()) {
-            let tasks = self.task_list
-                .read()
-                .expect("cannot read event registry");
-            let found_task = tasks
-                .get(name.as_str())
-                .unwrap();
+            let tasks = self.task_list.read().expect("cannot read event registry");
+            let found_task = tasks.get(name.as_str()).unwrap();
             let t0 = found_task.clone();
-            let locked_task = t0
-                .lock()
-                .expect("cannot check event for comparison");
-            return locked_task.eq(task)
+            let locked_task = t0.lock().expect("cannot check event for comparison");
+            return locked_task.eq(task);
         }
 
         false
     }
-
 
     /// Check whether all tasks in a list are in the registry (**Note**: this
     /// function is mostly used internally for verification), returns `true`
@@ -138,10 +125,12 @@ impl TaskRegistry {
     /// May panic if the task registry could not be locked for enquiry.
     pub fn has_all_tasks(&self, names: &Vec<&str>) -> bool {
         for name in names {
-            if !self.task_list
+            if !self
+                .task_list
                 .read()
                 .expect("cannot read task registry")
-                .contains_key(*name) {
+                .contains_key(*name)
+            {
                 return false;
             }
         }
@@ -194,32 +183,25 @@ impl TaskRegistry {
     pub fn dynamic_add_or_replace_task(&self, boxed_task: Box<dyn Task>) -> Result<bool> {
         let name = boxed_task.get_name();
         let sessions = self.running_sessions.clone();
-        let sessions = sessions.lock().expect("cannot acquire running sessions counter");
+        let sessions = sessions
+            .lock()
+            .expect("cannot acquire running sessions counter");
         if *sessions == 0 {
             if self.has_task(&name) {
                 if let Ok(_) = self.remove_task(&name) {
                     if let Ok(res) = self.add_task(boxed_task) {
                         return Ok(res);
                     } else {
-                        return Err(Error::new(
-                            Kind::Failed,
-                            ERR_TASKREG_TASK_NOT_REPLACED,
-                        ));
+                        return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_REPLACED));
                     }
                 } else {
-                    return Err(Error::new(
-                        Kind::Failed,
-                        ERR_TASKREG_CANNOT_PULL_TASK,
-                    ));
+                    return Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK));
                 }
             } else {
                 if let Ok(res) = self.add_task(boxed_task) {
                     return Ok(res);
                 } else {
-                    return Err(Error::new(
-                        Kind::Failed,
-                        ERR_TASKREG_TASK_NOT_ADDED,
-                    ));
+                    return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_ADDED));
                 }
             }
         } else {
@@ -239,7 +221,6 @@ impl TaskRegistry {
 
         Ok(true)
     }
-
 
     /// Remove a named task from the list and give it back stored in a Box.
     ///
@@ -263,23 +244,20 @@ impl TaskRegistry {
     /// May panic if the task registry could not be locked for extraction.
     pub fn remove_task(&self, name: &str) -> Result<Option<Box<dyn Task>>> {
         if self.has_task(name) {
-            if let Some(r) = self.task_list
+            if let Some(r) = self
+                .task_list
                 .write()
                 .expect("cannot write to task registry")
-                .remove(name) {
+                .remove(name)
+            {
                 let Ok(mx) = Arc::try_unwrap(r) else {
                     panic!("attempt to extract referenced task {name}")
                 };
-                let mut task = mx
-                    .into_inner()
-                    .expect("cannot extract locked task");
+                let mut task = mx.into_inner().expect("cannot extract locked task");
                 task.set_id(0);
                 Ok(Some(task))
             } else {
-                Err(Error::new(
-                    Kind::Failed,
-                    ERR_TASKREG_CANNOT_PULL_TASK,
-                ))
+                Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK))
             }
         } else {
             Ok(None)
@@ -291,12 +269,16 @@ impl TaskRegistry {
     pub fn dynamic_remove_task(&self, name: &str) -> Result<bool> {
         if self.has_task(name) {
             let sessions = self.running_sessions.clone();
-            let sessions = sessions.lock().expect("cannot acquire running sessions counter");
+            let sessions = sessions
+                .lock()
+                .expect("cannot acquire running sessions counter");
             if *sessions == 0 {
                 self.remove_task(name)?;
             } else {
                 let queue = self.items_to_remove.clone();
-                let mut queue = queue.lock().expect("cannot acquire list of items to remove");
+                let mut queue = queue
+                    .lock()
+                    .expect("cannot acquire list of items to remove");
                 queue.push(String::from(name));
                 log(
                     LogType::Debug,
@@ -305,7 +287,9 @@ impl TaskRegistry {
                     None,
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
-                    &format!("registry busy: task {name} set to be removed when no tasks are running"),
+                    &format!(
+                        "registry busy: task {name} set to be removed when no tasks are running"
+                    ),
                 );
             }
             Ok(true)
@@ -321,29 +305,22 @@ impl TaskRegistry {
     pub fn task_names(&self) -> Option<Vec<String>> {
         let mut res = Vec::new();
 
-        for name in self.task_list
+        for name in self
+            .task_list
             .read()
             .expect("cannot read task registry")
-            .keys() {
+            .keys()
+        {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified task
     pub fn task_id(&self, name: &str) -> Option<i64> {
         if self.has_task(name) {
-            let tl0 = self.task_list
-                .read()
-                .expect("cannot read task registry");
-            let task = tl0
-                .get(name)
-                .expect("cannot retrieve task")
-                .clone();
+            let tl0 = self.task_list.read().expect("cannot read task registry");
+            let task = tl0.get(name).expect("cannot retrieve task").clone();
             drop(tl0);
             let id = task.lock().expect("cannot lock task").get_id();
             Some(id)
@@ -351,7 +328,6 @@ impl TaskRegistry {
             None
         }
     }
-
 
     /// Run a list of tasks sequentially.
     ///
@@ -393,7 +369,10 @@ impl TaskRegistry {
         break_failure: bool,
         break_success: bool,
     ) -> HashMap<String, Result<Option<bool>>> {
-        assert!(self.has_all_tasks(names), "some tasks not found in registry for condition `{trigger_name}`");
+        assert!(
+            self.has_all_tasks(names),
+            "some tasks not found in registry for condition `{trigger_name}`"
+        );
 
         let mut res: HashMap<String, Result<Option<bool>>> = HashMap::new();
 
@@ -405,7 +384,9 @@ impl TaskRegistry {
 
         // increase the number of running sessions before running tasks
         {
-            let mut sessions = sessions.lock().expect("cannot acquire running sessions counter");
+            let mut sessions = sessions
+                .lock()
+                .expect("cannot acquire running sessions counter");
             *sessions += 1;
         }
 
@@ -417,18 +398,14 @@ impl TaskRegistry {
             let id = self.task_id(name).unwrap();
             let mut breaks = false;
             let task;
-            let tl0 = self.task_list
-                .read()
-                .expect("cannot lock task registry");
+            let tl0 = self.task_list.read().expect("cannot lock task registry");
             task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();
             drop(tl0);
             let cur_res;
-            let mut t0 = task
-                .lock()
-                .expect("cannot lock task while extracting");
+            let mut t0 = task.lock().expect("cannot lock task while extracting");
             cur_res = t0.run(trigger_name);
             log(
                 LogType::Trace,
@@ -448,7 +425,8 @@ impl TaskRegistry {
                     if (success && break_success) || (!success && break_failure) {
                         breaks = true;
                     }
-                } else if break_failure {   // error is considered a failure
+                } else if break_failure {
+                    // error is considered a failure
                     breaks = true;
                 }
             }
@@ -461,7 +439,9 @@ impl TaskRegistry {
                     Some((name, id)),
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
-                    &format!("breaking on {}", { if task_success { "success" } else { "failure" } }),
+                    &format!("breaking on {}", {
+                        if task_success { "success" } else { "failure" }
+                    }),
                 );
                 break;
             }
@@ -473,13 +453,17 @@ impl TaskRegistry {
         // note that since the counter is locked, no other sessions can be run
         // in other possible threads
         {
-            let mut sessions = sessions.lock().expect("cannot acquire running sessions counter");
+            let mut sessions = sessions
+                .lock()
+                .expect("cannot acquire running sessions counter");
             *sessions -= 1;
 
             if *sessions == 0 {
                 let rm_queue = self.items_to_remove.clone();
                 {
-                    let queue = rm_queue.lock().expect("cannot acquire list of items to remove");
+                    let queue = rm_queue
+                        .lock()
+                        .expect("cannot acquire list of items to remove");
                     for name in queue.iter() {
                         if let Ok(item) = self.remove_task(name) {
                             if let Some(item) = item {
@@ -509,7 +493,9 @@ impl TaskRegistry {
                 }
                 let add_queue = self.items_to_add.clone();
                 {
-                    let mut queue = add_queue.lock().expect("cannot acquire list of items to add");
+                    let mut queue = add_queue
+                        .lock()
+                        .expect("cannot acquire list of items to add");
                     while !queue.is_empty() {
                         if let Some(boxed_item) = queue.pop() {
                             let name = boxed_item.get_name();
@@ -599,7 +585,10 @@ impl TaskRegistry {
         trigger_name: &str,
         names: &Vec<&str>,
     ) -> HashMap<String, Result<Option<bool>>> {
-        assert!(self.has_all_tasks(names), "some tasks not found in registry for condition `{trigger_name}`");
+        assert!(
+            self.has_all_tasks(names),
+            "some tasks not found in registry for condition `{trigger_name}`"
+        );
 
         // count the active running sessions: there can be more than a
         // command task session in execution at the moment, and knowing
@@ -609,7 +598,9 @@ impl TaskRegistry {
 
         // increase the number of running sessions before running tasks
         {
-            let mut sessions = sessions.lock().expect("cannot acquire running sessions counter");
+            let mut sessions = sessions
+                .lock()
+                .expect("cannot acquire running sessions counter");
             *sessions += 1;
         }
 
@@ -631,9 +622,7 @@ impl TaskRegistry {
         for name in names.iter() {
             // the task list is only *read*: this greatly simplifies handling of
             // strings used as indexes, in this case the task name
-            let tl0 = self.task_list
-                .read()
-                .expect("cannot lock task registry");
+            let tl0 = self.task_list.read().expect("cannot lock task registry");
             let task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
@@ -695,13 +684,17 @@ impl TaskRegistry {
         // then perform the item add/removal routine while the session counter
         // is locked, so that no one else can modify the current items list
         {
-            let mut sessions = sessions.lock().expect("cannot acquire running sessions counter");
+            let mut sessions = sessions
+                .lock()
+                .expect("cannot acquire running sessions counter");
             *sessions -= 1;
 
             if *sessions == 0 {
                 let rm_queue = self.items_to_remove.clone();
                 {
-                    let queue = rm_queue.lock().expect("cannot acquire list of items to remove");
+                    let queue = rm_queue
+                        .lock()
+                        .expect("cannot acquire list of items to remove");
                     for name in queue.iter() {
                         if let Ok(item) = self.remove_task(name) {
                             if let Some(item) = item {
@@ -731,7 +724,9 @@ impl TaskRegistry {
                 }
                 let add_queue = self.items_to_add.clone();
                 {
-                    let mut queue = add_queue.lock().expect("cannot acquire list of items to add");
+                    let mut queue = add_queue
+                        .lock()
+                        .expect("cannot acquire list of items to add");
                     while !queue.is_empty() {
                         if let Some(boxed_item) = queue.pop() {
                             let name = boxed_item.get_name();
@@ -777,8 +772,6 @@ impl TaskRegistry {
 
         res
     }
-
 }
-
 
 // end.

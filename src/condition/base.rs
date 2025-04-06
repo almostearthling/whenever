@@ -21,17 +21,13 @@
 //! _suspended_ condition will not be tested even if it is registered (and thus
 //! _active_).
 
-
 use std::time::Instant;
 
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 
 use crate::constants::*;
 use crate::task::registry::TaskRegistry;
-
-
-
 
 /// Define the interface for `Condition` objects.
 ///
@@ -40,7 +36,6 @@ use crate::task::registry::TaskRegistry;
 ///           by the trait object users.
 #[allow(dead_code)]
 pub trait Condition: Send {
-
     /// Mandatory ID setter for registration.
     fn set_id(&mut self, id: i64);
 
@@ -74,7 +69,6 @@ pub trait Condition: Send {
     /// take place very seldomly, near to almost never
     fn _hash(&self) -> u64;
 
-
     /// Return `true` if the condition is _suspended_.
     fn suspended(&self) -> bool;
 
@@ -84,7 +78,6 @@ pub trait Condition: Send {
     /// Return `true` if the condition succeeded the last time it was tested.
     fn has_succeeded(&self) -> bool;
 
-
     /// Return `true` if associated tasks should run sequentially.
     fn exec_sequence(&self) -> bool;
 
@@ -93,7 +86,6 @@ pub trait Condition: Send {
 
     /// Return `true` if associated task sequence should break on first failure.
     fn break_on_failure(&self) -> bool;
-
 
     /// Return last test time (if any).
     fn last_checked(&self) -> Option<Instant>;
@@ -116,7 +108,6 @@ pub trait Condition: Send {
     /// Fully reset internal state of the condition.
     fn reset(&mut self) -> Result<bool>;
 
-
     /// Return how many times the tasks can be retried, `None` means forever.
     fn left_retries(&self) -> Option<i64>;
 
@@ -132,7 +123,6 @@ pub trait Condition: Send {
         }
     }
 
-
     /// Set the startup time to `Instant::now()`.
     fn start(&mut self) -> Result<bool>;
 
@@ -142,7 +132,6 @@ pub trait Condition: Send {
     /// Set the internal _suspended_ state to `false`.
     fn resume(&mut self) -> Result<bool>;
 
-
     /// Get a list of task names as owned strings.
     fn task_names(&self) -> Result<Vec<String>>;
 
@@ -151,13 +140,11 @@ pub trait Condition: Send {
         Ok(!self.task_names()?.is_empty())
     }
 
-
     /// Check whether any tasks failed in the last run.
     fn any_tasks_failed(&self) -> bool;
 
     /// Inform the condition that some tasks failed or that all succeeded.
     fn set_tasks_failed(&mut self, failed: bool);
-
 
     /// Verify last outcome after checking the `Condition`.
     ///
@@ -177,7 +164,6 @@ pub trait Condition: Send {
         Ok(false)
     }
 
-
     /// Mandatory check function.
     ///
     /// This function, in objects implementing the `Condition` trait, actually
@@ -195,13 +181,11 @@ pub trait Condition: Send {
     /// `test` function, indirectly invoked by the scheduler.
     fn _check_condition(&mut self) -> Result<Option<bool>>;
 
-
     /// Mandatory to add task names: should return `Ok(true)` on success
     fn _add_task(&mut self, name: &str) -> Result<bool>;
 
     /// Mandatory to remove task names: should return `Ok(true)` on success
     fn _remove_task(&mut self, name: &str) -> Result<bool>;
-
 
     /// Log a message in the specific `Condition` format.
     ///
@@ -228,7 +212,6 @@ pub trait Condition: Send {
         );
     }
 
-
     /// Interface to condition checks.
     ///
     /// This method calls the provided check function (`_check_condition`) and
@@ -251,7 +234,11 @@ pub trait Condition: Send {
     /// considered a development error.
     fn test(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
-        assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
+        assert!(
+            self.get_id() != 0,
+            "condition {} not registered",
+            self.get_name()
+        );
 
         // bail out if the condition has no associated tasks, if it
         // is suspended, or if it has been successful once and is not
@@ -264,8 +251,7 @@ pub trait Condition: Send {
                 "skipping check: condition has no associated tasks",
             );
             Ok(None)
-        }
-        else if self.suspended() {
+        } else if self.suspended() {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
@@ -299,10 +285,7 @@ pub trait Condition: Send {
                     LOG_STATUS_FAIL,
                     "aborting: condition could not reset success status",
                 );
-                return Err(Error::new(
-                    Kind::Failed,
-                    ERR_COND_CANNOT_RESET,
-                ));
+                return Err(Error::new(Kind::Failed, ERR_COND_CANNOT_RESET));
             }
             self.log(
                 LogType::Trace,
@@ -329,10 +312,7 @@ pub trait Condition: Send {
                                 LOG_STATUS_FAIL,
                                 "aborting: condition could not be set to succeeded",
                             );
-                            return Err(Error::new(
-                                Kind::Failed,
-                                ERR_COND_CANNOT_SET_SUCCESS,
-                            ));
+                            return Err(Error::new(Kind::Failed, ERR_COND_CANNOT_SET_SUCCESS));
                         }
                     } else {
                         self.log(
@@ -359,14 +339,10 @@ pub trait Condition: Send {
                     LOG_STATUS_FAIL,
                     "aborting: condition could not be set to checked",
                 );
-                return Err(Error::new(
-                    Kind::Failed,
-                    ERR_COND_CANNOT_SET_CHECKED,
-                ));
+                return Err(Error::new(Kind::Failed, ERR_COND_CANNOT_SET_CHECKED));
             }
         }
     }
-
 
     /// Add a task to this `Condition`.
     ///
@@ -394,10 +370,7 @@ pub trait Condition: Send {
                         LOG_STATUS_FAIL,
                         &format!("could not add task {name}: not found in registry"),
                     );
-                    return Err(Error::new(
-                        Kind::Failed,
-                        ERR_COND_TASK_NOT_ADDED,
-                    ));
+                    return Err(Error::new(Kind::Failed, ERR_COND_TASK_NOT_ADDED));
                 }
             }
             None => {
@@ -407,10 +380,7 @@ pub trait Condition: Send {
                     LOG_STATUS_FAIL,
                     &format!("could not add task {name}: registry not assigned"),
                 );
-                return Err(Error::new(
-                    Kind::Failed,
-                    ERR_COND_TASK_NOT_ADDED,
-                ));
+                return Err(Error::new(Kind::Failed, ERR_COND_TASK_NOT_ADDED));
             }
         }
 
@@ -423,7 +393,6 @@ pub trait Condition: Send {
                 LOG_STATUS_OK,
                 &format!("task {name} successfully added to condition"),
             );
-
         } else {
             self.log(
                 LogType::Error,
@@ -451,7 +420,6 @@ pub trait Condition: Send {
                 LOG_STATUS_OK,
                 &format!("task {name} successfully removed from condition"),
             );
-
         } else {
             self.log(
                 LogType::Error,
@@ -463,7 +431,6 @@ pub trait Condition: Send {
 
         Ok(outcome)
     }
-
 
     /// Run the associated tasks.
     ///
@@ -481,7 +448,11 @@ pub trait Condition: Send {
     /// considered a development error.
     fn run_tasks(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
-        assert!(self.get_id() != 0, "condition {} not registered", self.get_name());
+        assert!(
+            self.get_id() != 0,
+            "condition {} not registered",
+            self.get_name()
+        );
 
         let registry = self.task_registry().unwrap();
         let mut s_task_names = String::new();
@@ -543,10 +514,9 @@ pub trait Condition: Send {
                             LogType::Info,
                             LOG_WHEN_END,
                             LOG_STATUS_MSG,
-                            &format!(
-                                "task {name} completed: outcome is {}",
-                                { if *outcome {"success"} else {"failure"} },
-                            )
+                            &format!("task {name} completed: outcome is {}", {
+                                if *outcome { "success" } else { "failure" }
+                            },),
                         );
                     } else {
                         self.log(
@@ -592,7 +562,7 @@ pub trait Condition: Send {
                         LOG_STATUS_MSG,
                         &format!(
                             "some tasks failed: will retry {left} more time{}",
-                            if left == 1 { "" } else { "s" },   // too much?
+                            if left == 1 { "" } else { "s" }, // too much?
                         ),
                     );
                 } else {
@@ -615,8 +585,6 @@ pub trait Condition: Send {
 
         Ok(Some(true))
     }
-
 }
-
 
 // end.

@@ -56,9 +56,8 @@
 //! in order to avoid behaviour discrepancies, and possibly to save some
 //! memory by avoiding unnecessary duplications.
 
-use std::sync::RwLock;
 use lazy_static::lazy_static;
-
+use std::sync::RwLock;
 
 // the following global flag is exposed here because it looks like there is
 // no actual way to pass anything but a string as payload to the logger, so
@@ -67,7 +66,6 @@ use lazy_static::lazy_static;
 lazy_static! {
     static ref LOGGER_EMITS_JSON: RwLock<bool> = RwLock::new(false);
 }
-
 
 #[allow(dead_code)]
 /// Module for logging
@@ -79,13 +77,13 @@ lazy_static! {
 /// * the logging levels: _trace_ < _debug_ < _info_ < _warn_ < _error_,
 ///   provided as the `LogType` enumeration
 pub mod logging {
-    use std::path::PathBuf;
-    use log::{debug, error, info, warn, trace};
-    use flexi_logger::{Logger, FileSpec, DeferredNow, style};
-    use nu_ansi_term::Style;
-    use log::Record;
-    use serde_json::json;
     use crate::constants::{APP_NAME, ERR_LOGGER_NOT_INITIALIZED};
+    use flexi_logger::{DeferredNow, FileSpec, Logger, style};
+    use log::Record;
+    use log::{debug, error, info, trace, warn};
+    use nu_ansi_term::Style;
+    use serde_json::json;
+    use std::path::PathBuf;
 
     use super::LOGGER_EMITS_JSON;
 
@@ -117,7 +115,8 @@ pub mod logging {
             "application": APP_NAME,
             "time": now.format(NOW_FMT_FULL).to_string(),
             "level": record.level().to_string(),
-        }).to_string();
+        })
+        .to_string();
         let payload = record.args().to_string();
         write!(w, "{{\"header\":{header},\"contents\":{payload}}}")
     }
@@ -140,7 +139,6 @@ pub mod logging {
         )
     }
 
-
     /// Log levels (from most verbose to least)
     pub enum LogType {
         Trace,
@@ -150,7 +148,6 @@ pub mod logging {
         Error,
     }
 
-
     /// Logger initialization: if `filename` is not given, the log will be
     /// sent to stdout and use color (and the `append` parameter will be
     /// ignored); otherwise `filename` will be used as path for the log file:
@@ -159,9 +156,9 @@ pub mod logging {
         level: LogType,
         filename: Option<String>,
         append: bool,
-        logcolor: bool,     // these three values are mutually
-        logplain: bool,     // exclusive by construction of the
-        logjson: bool,      // main `clap` parser
+        logcolor: bool, // these three values are mutually
+        logplain: bool, // exclusive by construction of the
+        logjson: bool,  // main `clap` parser
     ) -> std::io::Result<bool> {
         let level = match level {
             LogType::Trace => "trace",
@@ -199,7 +196,8 @@ pub mod logging {
                     };
                     let mut pb = PathBuf::from(&fname);
                     if pb.parent().is_none()
-                    || pb.parent().unwrap().to_str().unwrap_or("").is_empty() {
+                        || pb.parent().unwrap().to_str().unwrap_or("").is_empty()
+                    {
                         pb = {
                             let mut dir = PathBuf::from(".");
                             dir.push(pb);
@@ -207,16 +205,11 @@ pub mod logging {
                         }
                     }
                     let fspec = FileSpec::try_from(&pb).unwrap();
-                    logger = Ok(l
-                        .log_to_file(fspec)
-                        .format_for_files(log_format)
-                        // .write_mode(WriteMode::BufferAndFlush)
+                    logger = Ok(
+                        l.log_to_file(fspec).format_for_files(log_format), // .write_mode(WriteMode::BufferAndFlush)
                     );
                     if append {
-                        logger = Ok(logger
-                            .unwrap()
-                            .append()
-                        );
+                        logger = Ok(logger.unwrap().append());
                     }
                 } else {
                     let log_format = {
@@ -240,13 +233,9 @@ pub mod logging {
                             .format_for_stdout(log_format)
                             .write_mode(flexi_logger::WriteMode::Direct)
                             .error_channel(flexi_logger::ErrorChannel::DevNull)
-                            .log_to_stdout()
-                        );
+                            .log_to_stdout());
                     } else {
-                        logger = Ok(l
-                            .format_for_stdout(log_format)
-                            .log_to_stdout()
-                        );
+                        logger = Ok(l.format_for_stdout(log_format).log_to_stdout());
                     }
                 }
             }
@@ -266,7 +255,6 @@ pub mod logging {
 
         Ok(true)
     }
-
 
     /// Common log function. The parameters are granular in order to achieve
     /// two benefits: the first is that for most of them a constant can be
@@ -322,7 +310,8 @@ pub mod logging {
                 "context": context,
                 "message_type": message_type,
                 "message": message,
-            }).to_string();
+            })
+            .to_string();
         } else {
             let item_repr = if let Some((name, id)) = item {
                 format!(" {name}/{id}")
@@ -332,27 +321,33 @@ pub mod logging {
             payload = format!("{emitter} {action}{item_repr}: [{when}/{status}] {message}");
         }
         match severity {
-            LogType::Trace => { trace!("{payload}") }
-            LogType::Debug => { debug!("{payload}") }
-            LogType::Info => { info!("{payload}") }
-            LogType::Warn => { warn!("{payload}") }
-            LogType::Error => { error!("{payload}") }
+            LogType::Trace => {
+                trace!("{payload}")
+            }
+            LogType::Debug => {
+                debug!("{payload}")
+            }
+            LogType::Info => {
+                info!("{payload}")
+            }
+            LogType::Warn => {
+                warn!("{payload}")
+            }
+            LogType::Error => {
+                error!("{payload}")
+            }
         }
     }
-
 }
-
-
 
 #[allow(dead_code)]
 /// This module helps command based items perform common activities
 pub mod cmditem {
-    use subprocess::{Popen, ExitStatus};
-    use std::time::{SystemTime, Duration};
+    use std::time::{Duration, SystemTime};
+    use subprocess::{ExitStatus, Popen};
 
-    use crate::constants::*;
     use crate::LogType;
-
+    use crate::constants::*;
 
     /// In case of failure, the reason will be one of the provided values
     #[derive(Debug, PartialEq)]
@@ -363,7 +358,6 @@ pub mod cmditem {
         Status,
         Other,
     }
-
 
     /// Helper to start a process (in the same thread), read stdout/stderr
     /// continuously (thus freeing its buffers), optionally terminate it after
@@ -426,8 +420,12 @@ pub mod cmditem {
                 (out, err) = cres.unwrap();
             }
 
-            if let Some(ref o) = out { stdout.push_str(o.as_str()); }
-            if let Some(ref e) = err { stderr.push_str(e.as_str()); }
+            if let Some(ref o) = out {
+                stdout.push_str(o.as_str());
+            }
+            if let Some(ref e) = err {
+                stderr.push_str(e.as_str());
+            }
             exit_status = proc.poll();
             if exit_status.is_none() {
                 if let Some(t) = timeout {
@@ -474,13 +472,29 @@ pub mod cmditem {
         } else {
             (out, err) = cres.unwrap();
         }
-        if let Some(ref o) = out { stdout.push_str(o); }
-        if let Some(ref e) = err { stderr.push_str(e); }
+        if let Some(ref o) = out {
+            stdout.push_str(o);
+        }
+        if let Some(ref e) = err {
+            stderr.push_str(e);
+        }
         if let Some(exit_status) = exit_status {
             Ok((
                 exit_status,
-                { if !stdout.is_empty() { Some(stdout) } else { None } },
-                { if !stderr.is_empty() { Some(stderr) } else { None } },
+                {
+                    if !stdout.is_empty() {
+                        Some(stdout)
+                    } else {
+                        None
+                    }
+                },
+                {
+                    if !stderr.is_empty() {
+                        Some(stderr)
+                    } else {
+                        None
+                    }
+                },
             ))
         } else {
             Err(std::io::Error::new(
@@ -489,7 +503,6 @@ pub mod cmditem {
             ))
         }
     }
-
 
     /// Check process outcome for items that spawn processes (that is: command
     /// based tasks and command based conditions), by taking refeence to most
@@ -539,15 +552,14 @@ pub mod cmditem {
         failure_stdout: &Option<String>,
         failure_stderr: &Option<String>,
         failure_status: &Option<u32>,
-
     ) -> (
-        u32,                // process_status
-        bool,               // process_failed
-        FailureReason,      // failure_reason
-        LogType,            // the log severity
-        &'static str,       // log/when (LOG_WHEN_...)
-        &'static str,       // log/status (LOG_STATUS_...)
-        String,             // log message
+        u32,           // process_status
+        bool,          // process_failed
+        FailureReason, // failure_reason
+        LogType,       // the log severity
+        &'static str,  // log/when (LOG_WHEN_...)
+        &'static str,  // log/status (LOG_STATUS_...)
+        String,        // log message
     ) {
         let mut process_status: u32 = 0;
         let mut process_failed: bool = false;
@@ -564,16 +576,21 @@ pub mod cmditem {
             // to Status (for now); note that also the case of exit code 0
             // considered as a failure status is taken into account here
             statusmsg = String::from("OK/0");
-                severity = LogType::Debug;
-                ref_log_when = LOG_WHEN_PROC;
-                ref_log_status = LOG_STATUS_OK;
-                log_message = String::from(format!("command: `{}` exited with SUCCESS status {statusmsg}", command_line));
+            severity = LogType::Debug;
+            ref_log_when = LOG_WHEN_PROC;
+            ref_log_status = LOG_STATUS_OK;
+            log_message = String::from(format!(
+                "command: `{}` exited with SUCCESS status {statusmsg}",
+                command_line
+            ));
             if let Some(expected) = success_status {
                 if *expected != 0 {
                     severity = LogType::Debug;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
-                    log_message = String::from(format!("condition expected success exit code NOT matched: {expected}"));
+                    log_message = String::from(format!(
+                        "condition expected success exit code NOT matched: {expected}"
+                    ));
                     failure_reason = FailureReason::Status;
                 }
             } else if let Some(expectedf) = failure_status {
@@ -581,7 +598,9 @@ pub mod cmditem {
                     severity = LogType::Debug;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
-                    log_message = String::from(format!("condition expected failure exit code matched: {expectedf}"));
+                    log_message = String::from(format!(
+                        "condition expected failure exit code matched: {expectedf}"
+                    ));
                     failure_reason = FailureReason::Status;
                 }
             }
@@ -599,44 +618,59 @@ pub mod cmditem {
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
                     process_status = *v;
-                    log_message = String::from(format!("command: `{}` exited with FAILURE status {statusmsg}", command_line));
+                    log_message = String::from(format!(
+                        "command: `{}` exited with FAILURE status {statusmsg}",
+                        command_line
+                    ));
                     if let Some(expectedf) = failure_status {
                         if v == expectedf {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
-                            log_message = String::from(format!("condition expected failure exit code {expectedf} matched"));
+                            log_message = String::from(format!(
+                                "condition expected failure exit code {expectedf} matched"
+                            ));
                             failure_reason = FailureReason::Status;
                         } else if let Some(expected) = success_status {
                             if v == expected {
                                 severity = LogType::Debug;
                                 ref_log_when = LOG_WHEN_PROC;
                                 ref_log_status = LOG_STATUS_OK;
-                                log_message = String::from(format!("condition expected success exit code {expected} matched"));
+                                log_message = String::from(format!(
+                                    "condition expected success exit code {expected} matched"
+                                ));
                             } else {
                                 severity = LogType::Debug;
                                 ref_log_when = LOG_WHEN_PROC;
                                 ref_log_status = LOG_STATUS_OK;
-                                log_message = String::from(format!("condition expected success exit code {expected} NOT matched: {v}"));
+                                log_message = String::from(format!(
+                                    "condition expected success exit code {expected} NOT matched: {v}"
+                                ));
                                 failure_reason = FailureReason::Status;
                             }
                         } else {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
-                            log_message = String::from(format!("condition expected failure exit code {expectedf} NOT matched"));
+                            log_message = String::from(format!(
+                                "condition expected failure exit code {expectedf} NOT matched"
+                            ));
                         }
                     } else if let Some(expected) = success_status {
                         if v == expected {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
-                            log_message = String::from(format!("condition expected success exit code {expected} matched"));
+                            log_message = String::from(format!(
+                                "condition expected success exit code {expected} matched"
+                            ));
                         } else {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
-                            log_message = String::from(format!("condition expected success exit code {expected} NOT matched: {v}"));
+                            log_message = String::from(format!(
+                                "condition expected success exit code {expected} NOT matched: {v}"
+                            ));
                             failure_reason = FailureReason::Status;
                         }
                     }
@@ -651,7 +685,10 @@ pub mod cmditem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message = String::from(format!("command: `{}` ended for reason {statusmsg}", command_line));
+                    log_message = String::from(format!(
+                        "command: `{}` ended for reason {statusmsg}",
+                        command_line
+                    ));
                     failure_reason = FailureReason::Other;
                 }
                 ExitStatus::Other(v) => {
@@ -659,7 +696,10 @@ pub mod cmditem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message = String::from(format!("command: `{}` ended for reason {statusmsg}", command_line));
+                    log_message = String::from(format!(
+                        "command: `{}` ended for reason {statusmsg}",
+                        command_line
+                    ));
                     failure_reason = FailureReason::Other;
                 }
                 ExitStatus::Undetermined => {
@@ -667,7 +707,10 @@ pub mod cmditem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message = String::from(format!("command: `{}` ended for reason {statusmsg}", command_line));
+                    log_message = String::from(format!(
+                        "command: `{}` ended for reason {statusmsg}",
+                        command_line
+                    ));
                     failure_reason = FailureReason::Other;
                 }
             }
@@ -704,160 +747,212 @@ pub mod cmditem {
                 if match_regexp {
                     // A.1 regex success stdout check
                     if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &success_stdout { if !p.is_empty() {
-                            if let Ok(re) = regex::RegexBuilder::new(p)
-                                .case_insensitive(!case_sensitive)
-                                .build() {
-                                if match_exact {
-                                    if re.is_match(process_stdout) {
+                        if let Some(p) = &success_stdout {
+                            if !p.is_empty() {
+                                if let Ok(re) = regex::RegexBuilder::new(p)
+                                    .case_insensitive(!case_sensitive)
+                                    .build()
+                                {
+                                    if match_exact {
+                                        if re.is_match(process_stdout) {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stdout (regex) {p:?} matched"
+                                            ));
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stdout (regex) {p:?} NOT matched"
+                                            ));
+                                            failure_reason = FailureReason::StdOut;
+                                        }
+                                    } else if re.find(process_stdout).is_some() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stdout (regex) {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stdout (regex) {p:?} found"
+                                        ));
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stdout (regex) {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stdout (regex) {p:?} NOT found"
+                                        ));
                                         failure_reason = FailureReason::StdOut;
                                     }
-                                } else if re.find(process_stdout).is_some() {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stdout (regex) {p:?} found"));
                                 } else {
-                                    severity = LogType::Debug;
+                                    severity = LogType::Error;
                                     ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stdout (regex) {p:?} NOT found"));
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = String::from(format!(
+                                        "provided INVALID stdout regex {p:?} NOT found/matched"
+                                    ));
                                     failure_reason = FailureReason::StdOut;
                                 }
-                            } else {
-                                severity = LogType::Error;
-                                ref_log_when = LOG_WHEN_PROC;
-                                ref_log_status = LOG_STATUS_FAIL;
-                                log_message = String::from(format!("provided INVALID stdout regex {p:?} NOT found/matched"));
-                                failure_reason = FailureReason::StdOut;
-                            }}
+                            }
                         }
                     }
                     // A.2 regex success stderr check
                     if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &success_stderr { if !p.is_empty() {
-                            if let Ok(re) = regex::RegexBuilder::new(p)
-                                .case_insensitive(!case_sensitive)
-                                .build() {
-                                if match_exact {
-                                    if re.is_match(process_stderr) {
+                        if let Some(p) = &success_stderr {
+                            if !p.is_empty() {
+                                if let Ok(re) = regex::RegexBuilder::new(p)
+                                    .case_insensitive(!case_sensitive)
+                                    .build()
+                                {
+                                    if match_exact {
+                                        if re.is_match(process_stderr) {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr (regex) {p:?} matched"
+                                            ));
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr (regex) {p:?} NOT matched"
+                                            ));
+                                            failure_reason = FailureReason::StdErr;
+                                        }
+                                    } else if re.find(process_stderr).is_some() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr (regex) {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr (regex) {p:?} found"
+                                        ));
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr (regex) {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr (regex) {p:?} NOT found"
+                                        ));
                                         failure_reason = FailureReason::StdErr;
                                     }
-                                } else if re.find(process_stderr).is_some() {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr (regex) {p:?} found"));
                                 } else {
-                                    severity = LogType::Debug;
+                                    severity = LogType::Error;
                                     ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr (regex) {p:?} NOT found"));
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = String::from(format!(
+                                        "provided INVALID stderr regex {p:?} NOT found/matched"
+                                    ));
                                     failure_reason = FailureReason::StdErr;
                                 }
-                            } else {
-                                severity = LogType::Error;
-                                ref_log_when = LOG_WHEN_PROC;
-                                ref_log_status = LOG_STATUS_FAIL;
-                                log_message = String::from(format!("provided INVALID stderr regex {p:?} NOT found/matched"));
-                                failure_reason = FailureReason::StdErr;
-                            }}
+                            }
                         }
                     }
                     // A.3 regex failure stdout check
                     if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &failure_stdout { if !p.is_empty() {
-                            if let Ok(re) = regex::RegexBuilder::new(p)
-                                .case_insensitive(!case_sensitive)
-                                .build() {
-                                if match_exact {
-                                    if re.is_match(process_stdout) {
+                        if let Some(p) = &failure_stdout {
+                            if !p.is_empty() {
+                                if let Ok(re) = regex::RegexBuilder::new(p)
+                                    .case_insensitive(!case_sensitive)
+                                    .build()
+                                {
+                                    if match_exact {
+                                        if re.is_match(process_stdout) {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stdout (regex) {p:?} matched"
+                                            ));
+                                            failure_reason = FailureReason::StdOut;
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stdout (regex) {p:?} NOT matched"
+                                            ));
+                                        }
+                                    } else if re.find(process_stdout).is_some() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stdout (regex) {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stdout (regex) {p:?} found"
+                                        ));
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stdout (regex) {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stdout (regex) {p:?} NOT found"
+                                        ));
                                     }
-                                } else if re.find(process_stdout).is_some() {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stdout (regex) {p:?} found"));
-                                    failure_reason = FailureReason::StdOut;
                                 } else {
-                                    severity = LogType::Debug;
+                                    severity = LogType::Error;
                                     ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stdout (regex) {p:?} NOT found"));
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = String::from(format!(
+                                        "provided INVALID failure stdout regex {p:?} NOT found/matched"
+                                    ));
                                 }
-                            } else {
-                                severity = LogType::Error;
-                                ref_log_when = LOG_WHEN_PROC;
-                                ref_log_status = LOG_STATUS_FAIL;
-                                log_message = String::from(format!("provided INVALID failure stdout regex {p:?} NOT found/matched"));
-                            }}
+                            }
                         }
                     }
                     // A.4 regex failure stderr check
                     if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &failure_stderr { if !p.is_empty() {
-                            if let Ok(re) = regex::RegexBuilder::new(p)
-                                .case_insensitive(!case_sensitive)
-                                .build() {
-                                if match_exact {
-                                    if re.is_match(process_stderr) {
+                        if let Some(p) = &failure_stderr {
+                            if !p.is_empty() {
+                                if let Ok(re) = regex::RegexBuilder::new(p)
+                                    .case_insensitive(!case_sensitive)
+                                    .build()
+                                {
+                                    if match_exact {
+                                        if re.is_match(process_stderr) {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr (regex) {p:?} matched"
+                                            ));
+                                            failure_reason = FailureReason::StdErr;
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr (regex) {p:?} NOT matched"
+                                            ));
+                                        }
+                                    } else if re.find(process_stderr).is_some() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr (regex) {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr (regex) {p:?} found"
+                                        ));
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr (regex) {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr (regex) {p:?} NOT found"
+                                        ));
                                     }
-                                } else if re.find(process_stderr).is_some() {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr (regex) {p:?} found"));
-                                    failure_reason = FailureReason::StdErr;
                                 } else {
-                                    severity = LogType::Debug;
+                                    severity = LogType::Error;
                                     ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr (regex) {p:?} NOT found"));
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = String::from(format!(
+                                        "provided INVALID stderr regex {p:?} NOT found/matched"
+                                    ));
                                 }
-                            } else {
-                                severity = LogType::Error;
-                                ref_log_when = LOG_WHEN_PROC;
-                                ref_log_status = LOG_STATUS_FAIL;
-                                log_message = String::from(format!("provided INVALID stderr regex {p:?} NOT found/matched"));
-                            }}
+                            }
                         }
                     }
                 } else {
@@ -867,244 +962,336 @@ pub mod cmditem {
                     if case_sensitive {
                         // B.1a CS text success stdout check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stdout { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stdout == *p {
+                            if let Some(p) = success_stdout {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stdout == *p {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stdout {p:?} matched"
+                                            ));
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stdout {p:?} NOT matched"
+                                            ));
+                                            failure_reason = FailureReason::StdOut;
+                                        }
+                                    } else if process_stdout.contains(p) {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stdout {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stdout {p:?} found"
+                                        ));
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stdout {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stdout {p:?} NOT found"
+                                        ));
                                         failure_reason = FailureReason::StdOut;
                                     }
-                                } else if process_stdout.contains(p) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stdout {p:?} found"));
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stdout {p:?} NOT found"));
-                                    failure_reason = FailureReason::StdOut;
                                 }
-                            }}
+                            }
                         }
                         // B.2a CS text success stderr check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stderr { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stderr == *p {
+                            if let Some(p) = success_stderr {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stderr == *p {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr {p:?} matched"
+                                            ));
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr {p:?} NOT matched"
+                                            ));
+                                            failure_reason = FailureReason::StdErr;
+                                        }
+                                    } else if process_stderr.contains(p) {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr {p:?} found"
+                                        ));
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr {p:?} NOT found"
+                                        ));
                                         failure_reason = FailureReason::StdErr;
                                     }
-                                } else if process_stderr.contains(p) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr {p:?} found"));
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr {p:?} NOT found"));
-                                    failure_reason = FailureReason::StdErr;
                                 }
-                            }}
+                            }
                         }
                         // B.3a CS text failure stdout check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stdout { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stdout == *p {
+                            if let Some(p) = failure_stdout {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stdout == *p {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stdout {p:?} matched"
+                                            ));
+                                            failure_reason = FailureReason::StdOut;
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stdout {p:?} NOT matched"
+                                            ));
+                                        }
+                                    } else if process_stdout.contains(p) {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stdout {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stdout {p:?} found"
+                                        ));
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stdout {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stdout {p:?} NOT found"
+                                        ));
                                     }
-                                } else if process_stdout.contains(p) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stdout {p:?} found"));
-                                    failure_reason = FailureReason::StdOut;
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stdout {p:?} NOT found"));
                                 }
-                            }}
+                            }
                         }
                         // B.4a CS text failure stderr check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stderr { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stderr == *p {
+                            if let Some(p) = failure_stderr {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stderr == *p {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stderr {p:?} matched"
+                                            ));
+                                            failure_reason = FailureReason::StdErr;
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stderr {p:?} NOT matched"
+                                            ));
+                                        }
+                                    } else if process_stderr.contains(p) {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stderr {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stderr {p:?} found"
+                                        ));
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stderr {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stderr {p:?} NOT found"
+                                        ));
                                     }
-                                } else if process_stderr.contains(p) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stderr {p:?} found"));
-                                    failure_reason = FailureReason::StdErr;
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stderr {p:?} NOT found"));
                                 }
-                            }}
+                            }
                         }
                     } else {
                         // B.1b CI text success stdout check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stdout { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stdout.to_uppercase() == p.to_uppercase() {
+                            if let Some(p) = success_stdout {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stdout.to_uppercase() == p.to_uppercase() {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stdout {p:?} matched"
+                                            ));
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stdout {p:?} NOT matched"
+                                            ));
+                                            failure_reason = FailureReason::StdOut;
+                                        }
+                                    } else if process_stdout
+                                        .to_uppercase()
+                                        .contains(&p.to_uppercase())
+                                    {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stdout {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stdout {p:?} found"
+                                        ));
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stdout {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stdout {p:?} NOT found"
+                                        ));
                                         failure_reason = FailureReason::StdOut;
                                     }
-                                } else if process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stdout {p:?} found"));
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stdout {p:?} NOT found"));
-                                    failure_reason = FailureReason::StdOut;
                                 }
-                            }}
+                            }
                         }
                         // B.2b CI text success stderr check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stderr { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stderr.to_uppercase() == p.to_uppercase() {
+                            if let Some(p) = success_stderr {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stderr.to_uppercase() == p.to_uppercase() {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr {p:?} matched"
+                                            ));
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition success stderr {p:?} NOT matched"
+                                            ));
+                                            failure_reason = FailureReason::StdErr;
+                                        }
+                                    } else if process_stderr
+                                        .to_uppercase()
+                                        .contains(&p.to_uppercase())
+                                    {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr {p:?} found"
+                                        ));
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition success stderr {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition success stderr {p:?} NOT found"
+                                        ));
                                         failure_reason = FailureReason::StdErr;
                                     }
-                                } else if process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr {p:?} found"));
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition success stderr {p:?} NOT found"));
-                                    failure_reason = FailureReason::StdErr;
                                 }
-                            }}
+                            }
                         }
                         // B.3b CI text failure stdout check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stdout { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stdout.to_uppercase() == p.to_uppercase() {
+                            if let Some(p) = failure_stdout {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stdout.to_uppercase() == p.to_uppercase() {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stdout {p:?} matched"
+                                            ));
+                                            failure_reason = FailureReason::StdOut;
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stdout {p:?} NOT matched"
+                                            ));
+                                        }
+                                    } else if process_stdout
+                                        .to_uppercase()
+                                        .contains(&p.to_uppercase())
+                                    {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stdout {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stdout {p:?} found"
+                                        ));
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stdout {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stdout {p:?} NOT found"
+                                        ));
                                     }
-                                } else if process_stdout.to_uppercase().contains(&p.to_uppercase()) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stdout {p:?} found"));
-                                    failure_reason = FailureReason::StdOut;
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stdout {p:?} NOT found"));
                                 }
-                            }}
+                            }
                         }
                         // B.4b CI text failure stderr check
                         if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stderr { if !p.is_empty() {
-                                if match_exact {
-                                    if process_stderr.to_uppercase() == p.to_uppercase() {
+                            if let Some(p) = failure_stderr {
+                                if !p.is_empty() {
+                                    if match_exact {
+                                        if process_stderr.to_uppercase() == p.to_uppercase() {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stderr {p:?} matched"
+                                            ));
+                                            failure_reason = FailureReason::StdErr;
+                                        } else {
+                                            severity = LogType::Debug;
+                                            ref_log_when = LOG_WHEN_PROC;
+                                            ref_log_status = LOG_STATUS_OK;
+                                            log_message = String::from(format!(
+                                                "condition failure stderr {p:?} NOT matched"
+                                            ));
+                                        }
+                                    } else if process_stderr
+                                        .to_uppercase()
+                                        .contains(&p.to_uppercase())
+                                    {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stderr {p:?} matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stderr {p:?} found"
+                                        ));
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
-                                        log_message = String::from(format!("condition failure stderr {p:?} NOT matched"));
+                                        log_message = String::from(format!(
+                                            "condition failure stderr {p:?} NOT found"
+                                        ));
                                     }
-                                } else if process_stderr.to_uppercase().contains(&p.to_uppercase()) {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stderr {p:?} found"));
-                                    failure_reason = FailureReason::StdErr;
-                                } else {
-                                    severity = LogType::Debug;
-                                    ref_log_when = LOG_WHEN_PROC;
-                                    ref_log_status = LOG_STATUS_OK;
-                                    log_message = String::from(format!("condition failure stderr {p:?} NOT found"));
                                 }
-                            }}
+                            }
                         }
                     }
                 }
@@ -1126,10 +1313,7 @@ pub mod cmditem {
             log_message,
         )
     }
-
 }
-
-
 
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
@@ -1152,19 +1336,17 @@ pub mod luaitem {
     }
 }
 
-
-
 #[allow(dead_code)]
 pub mod dbusitem {
+    use crate::LogType;
+    use crate::constants::*;
+    use cfgmap::CfgValue;
     use regex::Regex;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
-    use cfgmap::CfgValue;
     use zbus;
     use zbus::Message;
     use zbus::zvariant;
-    use crate::LogType;
-    use crate::constants::*;
 
     // this helper is just to avoid ugly code since the implementation of
     // zbus used here still does not implement the `key_signature` method
@@ -1173,19 +1355,18 @@ pub mod dbusitem {
         String::from(d.signature().as_str().chars().nth(2).unwrap())
     }
 
-
     /// an enum to store the operators for checking signal parameters
     #[derive(PartialEq, Hash, Clone)]
     pub enum ParamCheckOperator {
-        Equal,              // "eq"
-        NotEqual,           // "neq"
-        Greater,            // "gt"
-        GreaterEqual,       // "ge"
-        Less,               // "lt"
-        LessEqual,          // "le"
-        Match,              // "match"
-        Contains,           // "contains"
-        NotContains,        // "ncontains"
+        Equal,        // "eq"
+        NotEqual,     // "neq"
+        Greater,      // "gt"
+        GreaterEqual, // "ge"
+        Less,         // "lt"
+        LessEqual,    // "le"
+        Match,        // "match"
+        Contains,     // "contains"
+        NotContains,  // "ncontains"
     }
 
     /// an enum containing the value that the parameter should be checked
@@ -1277,10 +1458,8 @@ pub mod dbusitem {
     impl Containable for bool {
         fn is_contained_in(&self, v: &zvariant::Value) -> bool {
             match v {
-                zvariant::Value::Array(a) => {
-                    a.contains(&zvariant::Value::from(self))
-                }
-                _ => false
+                zvariant::Value::Array(a) => a.contains(&zvariant::Value::from(self)),
+                _ => false,
             }
         }
     }
@@ -1295,82 +1474,112 @@ pub mod dbusitem {
                     // which is never matched
                     let testv: Vec<Option<i64>>;
                     match a.element_signature().as_str() {
-                        "y" => {    // BYTE
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::U8(z) = x {
-                                    Some(i64::from(*z))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                        "y" => {
+                            // BYTE
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::U8(z) = x {
+                                        Some(i64::from(*z))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
                         }
-                        "n" => {    // INT16
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::I16(z) = x {
-                                    Some(i64::from(*z))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                        "n" => {
+                            // INT16
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::I16(z) = x {
+                                        Some(i64::from(*z))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
                         }
-                        "q" => {    // UINT16
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::I16(z) = x {
-                                    Some(i64::from(*z))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                        "q" => {
+                            // UINT16
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::I16(z) = x {
+                                        Some(i64::from(*z))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
                         }
-                        "i" => {    // INT32
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::I32(z) = x {
-                                    Some(i64::from(*z))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                        "i" => {
+                            // INT32
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::I32(z) = x {
+                                        Some(i64::from(*z))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
                         }
-                        "u" => {    // UINT32
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::U32(z) = x {
-                                    Some(i64::from(*z))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                        "u" => {
+                            // UINT32
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::U32(z) = x {
+                                        Some(i64::from(*z))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
                         }
-                        "x" => {    // INT64
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::I64(z) = x {
-                                    Some(i64::from(*z))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                        "x" => {
+                            // INT64
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::I64(z) = x {
+                                        Some(i64::from(*z))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
                         }
-                        "t" => {    // UINT64
+                        "t" => {
+                            // UINT64
                             // this is the tricky one, but since we know that big
                             // unsigned integer surely do not match the provided
                             // value, we just convert them to `None` here, which
                             // will never match
-                            testv = a.iter().map(|x| {
-                                if let zvariant::Value::U64(z) = x {
-                                    if *z <= i64::MAX as u64 {
-                                        Some(*z as i64)
+                            testv = a
+                                .iter()
+                                .map(|x| {
+                                    if let zvariant::Value::U64(z) = x {
+                                        if *z <= i64::MAX as u64 {
+                                            Some(*z as i64)
+                                        } else {
+                                            None
+                                        }
                                     } else {
                                         None
                                     }
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                                })
+                                .collect();
                         }
-                        _ => { return false; }
+                        _ => {
+                            return false;
+                        }
                     }
                     testv.contains(&Some(*self))
                 }
-                _ => false
+                _ => false,
             }
         }
     }
@@ -1378,10 +1587,8 @@ pub mod dbusitem {
     impl Containable for f64 {
         fn is_contained_in(&self, v: &zvariant::Value) -> bool {
             match v {
-                zvariant::Value::Array(a) => {
-                    a.contains(&zvariant::Value::from(*self))
-                }
-                _ => false
+                zvariant::Value::Array(a) => a.contains(&zvariant::Value::from(*self)),
+                _ => false,
             }
         }
     }
@@ -1392,67 +1599,50 @@ pub mod dbusitem {
     impl Containable for String {
         fn is_contained_in(&self, v: &zvariant::Value) -> bool {
             match v {
-                zvariant::Value::Str(s) => {
-                    s.as_str().contains(self.as_str())
-                }
-                zvariant::Value::ObjectPath(s) => {
-                    s.as_str().contains(self.as_str())
-                }
-                zvariant::Value::Array(a) => {
-                    match a.element_signature().as_str() {
-                        "s" => {
-                            a.contains(&zvariant::Value::from(self))
+                zvariant::Value::Str(s) => s.as_str().contains(self.as_str()),
+                zvariant::Value::ObjectPath(s) => s.as_str().contains(self.as_str()),
+                zvariant::Value::Array(a) => match a.element_signature().as_str() {
+                    "s" => a.contains(&zvariant::Value::from(self)),
+                    "o" => {
+                        let o = zvariant::ObjectPath::try_from(self.as_str());
+                        if let Ok(o) = o {
+                            a.contains(&zvariant::Value::from(o))
+                        } else {
+                            false
                         }
-                        "o" => {
-                            let o = zvariant::ObjectPath::try_from(self.as_str());
-                            if let Ok(o) = o {
-                                a.contains(&zvariant::Value::from(o))
-                            } else {
-                                false
-                            }
-                        }
-                        _ => false
                     }
-                }
+                    _ => false,
+                },
                 // currently used version of Dict (the one in zbus 3.x) does not
                 // allow to search the keys as set or list, thus the easiest test
                 // that can be made is retrieving a value and checking for errors
                 // and that the result is something
-                zvariant::Value::Dict(d) => {
-                    match key_signature(d).as_str() {
-                        "s" => {
-                            let k = zvariant::Str::from(self.as_str());
-                            let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
-                            if let Ok(res) = res {
-                                if res.is_some() {
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
+                zvariant::Value::Dict(d) => match key_signature(d).as_str() {
+                    "s" => {
+                        let k = zvariant::Str::from(self.as_str());
+                        let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
+                        if let Ok(res) = res {
+                            if res.is_some() { true } else { false }
+                        } else {
+                            false
                         }
-                        "o" => {
-                            let k = zvariant::ObjectPath::try_from(self.as_str());
-                            if k.is_err() {
-                                return false
-                            }
-                            let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k.unwrap());
-                            if let Ok(res) = res {
-                                if res.is_some() {
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
-                        }
-                        _ => false
                     }
-                }
-                _ => false
+                    "o" => {
+                        let k = zvariant::ObjectPath::try_from(self.as_str());
+                        if k.is_err() {
+                            return false;
+                        }
+                        let res: Result<Option<&zvariant::Value>, zvariant::Error> =
+                            d.get(&k.unwrap());
+                        if let Ok(res) = res {
+                            if res.is_some() { true } else { false }
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false,
+                },
+                _ => false,
             }
         }
     }
@@ -1472,7 +1662,7 @@ pub mod dbusitem {
                     }
                     false
                 }
-                _ => false
+                _ => false,
             }
         }
     }
@@ -1568,7 +1758,8 @@ pub mod dbusitem {
                     // here we check it, having the RE at hand
                     if RE_DBUS_OBJECT_PATH.is_match(&rest) {
                         Some(zvariant::Value::new(
-                            zvariant::ObjectPath::try_from(rest.clone()).unwrap()))
+                            zvariant::ObjectPath::try_from(rest.clone()).unwrap(),
+                        ))
                     } else {
                         None
                     }
@@ -1584,7 +1775,9 @@ pub mod dbusitem {
     }
 
     impl<T> ToVariant for Vec<T>
-    where T: ToVariant {
+    where
+        T: ToVariant,
+    {
         fn to_variant(&self) -> Option<zvariant::Value> {
             let mut a: Vec<zvariant::Value> = Vec::new();
             for item in self.iter() {
@@ -1600,7 +1793,9 @@ pub mod dbusitem {
 
     // we only support maps where the key is a string
     impl<T> ToVariant for HashMap<String, T>
-    where T: ToVariant {
+    where
+        T: ToVariant,
+    {
         fn to_variant(&self) -> Option<zvariant::Value> {
             let mut d: HashMap<String, zvariant::Value> = HashMap::new();
             for (key, item) in self.iter() {
@@ -1663,7 +1858,7 @@ pub mod dbusitem {
     // admits 'match' for regular expressions; the `Contains` operator also
     // evaluates to `false` here since this function only compares args
     // that are `PartialOrd+PartialEq`, and arrays are not
-    fn _oper<T: PartialOrd+PartialEq>(op: &ParamCheckOperator, o1: T, o2: T) -> bool {
+    fn _oper<T: PartialOrd + PartialEq>(op: &ParamCheckOperator, o1: T, o2: T) -> bool {
         match op {
             ParamCheckOperator::Equal => o1 == o2,
             ParamCheckOperator::NotEqual => o1 != o2,
@@ -1682,7 +1877,6 @@ pub mod dbusitem {
         v.is_contained_in(a)
     }
 
-
     /// This is the heart of DBus message/parameter checks:it takes references
     /// to the message and to the list of checks that has been configured, and
     /// performs the checks (all or some depends on the value of `checks_all`)
@@ -1694,15 +1888,15 @@ pub mod dbusitem {
     /// message, suitable for being issued by the specialized logging function
     /// defined by the item.
     pub fn dbus_check_message(
-        message: &Message,                  // the dbus message
-        checks: &Vec<ParameterCheckTest>,   // item.param_checks
-        checks_all: bool,                    // item.checks_all
+        message: &Message,                // the dbus message
+        checks: &Vec<ParameterCheckTest>, // item.param_checks
+        checks_all: bool,                 // item.checks_all
     ) -> (
-        bool,               // verified
-        LogType,            // the log severity
-        &'static str,       // log/when (LOG_WHEN_...)
-        &'static str,       // log/status (LOG_STATUS_...)
-        String,             // log message
+        bool,         // verified
+        LogType,      // the log severity
+        &'static str, // log/when (LOG_WHEN_...)
+        &'static str, // log/status (LOG_STATUS_...)
+        String,       // log message
     ) {
         let mut verified: bool = checks_all;
         let mut severity: LogType = LogType::Trace;
@@ -1725,12 +1919,13 @@ pub mod dbusitem {
                                 severity = LogType::Warn;
                                 ref_log_when = LOG_WHEN_PROC;
                                 ref_log_status = LOG_STATUS_FAIL;
-                                log_message = format!("could not retrieve result: index {x} out of range");
+                                log_message =
+                                    format!("could not retrieve result: index {x} out of range");
                                 verified = false;
                                 break 'params;
                             }
                             let mut field_value = mbody.fields().get(*x as usize).unwrap();
-                            for x in 1 .. ck.index.len() {
+                            for x in 1..ck.index.len() {
                                 match ck.index.get(x).unwrap() {
                                     ParameterIndex::Integer(i) => {
                                         let i = *i as usize;
@@ -1740,7 +1935,9 @@ pub mod dbusitem {
                                                     severity = LogType::Warn;
                                                     ref_log_when = LOG_WHEN_PROC;
                                                     ref_log_status = LOG_STATUS_FAIL;
-                                                    log_message = format!("could not retrieve result: index {i} out of range");
+                                                    log_message = format!(
+                                                        "could not retrieve result: index {i} out of range"
+                                                    );
                                                 }
                                                 // if something is wrong here, either the test
                                                 // or the next "parameter shift" will go berserk
@@ -1752,7 +1949,9 @@ pub mod dbusitem {
                                                     severity = LogType::Warn;
                                                     ref_log_when = LOG_WHEN_PROC;
                                                     ref_log_status = LOG_STATUS_FAIL;
-                                                    log_message = format!("could not retrieve result: index {i} out of range");
+                                                    log_message = format!(
+                                                        "could not retrieve result: index {i} out of range"
+                                                    );
                                                 }
                                                 if let Some(v) = f.get(i) {
                                                     field_value = &v;
@@ -1760,14 +1959,18 @@ pub mod dbusitem {
                                                     severity = LogType::Warn;
                                                     ref_log_when = LOG_WHEN_PROC;
                                                     ref_log_status = LOG_STATUS_FAIL;
-                                                    log_message = format!("could not retrieve result: index {i} provided no value");
+                                                    log_message = format!(
+                                                        "could not retrieve result: index {i} provided no value"
+                                                    );
                                                 }
                                             }
                                             _ => {
                                                 severity = LogType::Warn;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_FAIL;
-                                                log_message = format!("could not retrieve result using index {i}");
+                                                log_message = format!(
+                                                    "could not retrieve result using index {i}"
+                                                );
                                                 verified = false;
                                                 break 'params;
                                             }
@@ -1786,7 +1989,7 @@ pub mod dbusitem {
                                         match field_value {
                                             zvariant::Value::Dict(f) => {
                                                 // in order to match either strings or object paths, match key signature
-                                                let m= match key_signature(f).as_str() {
+                                                let m = match key_signature(f).as_str() {
                                                     "s" => {
                                                         let k = zvariant::Str::from(s);
                                                         f.get(&k)
@@ -1797,7 +2000,9 @@ pub mod dbusitem {
                                                             severity = LogType::Warn;
                                                             ref_log_when = LOG_WHEN_PROC;
                                                             ref_log_status = LOG_STATUS_FAIL;
-                                                            log_message = format!("could not retrieve result: index `{s}` should be an object path");
+                                                            log_message = format!(
+                                                                "could not retrieve result: index `{s}` should be an object path"
+                                                            );
                                                             verified = false;
                                                             break 'params;
                                                         } else {
@@ -1805,11 +2010,13 @@ pub mod dbusitem {
                                                             f.get(&k)
                                                         }
                                                     }
-                                                    _ =>{
+                                                    _ => {
                                                         severity = LogType::Warn;
                                                         ref_log_when = LOG_WHEN_PROC;
                                                         ref_log_status = LOG_STATUS_FAIL;
-                                                        log_message = format!("could not retrieve result: index `{s}` not matching dictionary key type");
+                                                        log_message = format!(
+                                                            "could not retrieve result: index `{s}` not matching dictionary key type"
+                                                        );
                                                         verified = false;
                                                         break 'params;
                                                     }
@@ -1822,16 +2029,20 @@ pub mod dbusitem {
                                                             severity = LogType::Warn;
                                                             ref_log_when = LOG_WHEN_PROC;
                                                             ref_log_status = LOG_STATUS_FAIL;
-                                                            log_message = format!("could not retrieve result: index `{s}` invalid");
+                                                            log_message = format!(
+                                                                "could not retrieve result: index `{s}` invalid"
+                                                            );
                                                             verified = false;
                                                             break 'params;
                                                         }
-                                                    },
+                                                    }
                                                     Err(_) => {
                                                         severity = LogType::Warn;
                                                         ref_log_when = LOG_WHEN_PROC;
                                                         ref_log_status = LOG_STATUS_FAIL;
-                                                        log_message = format!("could not retrieve result using index `{s}`");
+                                                        log_message = format!(
+                                                            "could not retrieve result using index `{s}`"
+                                                        );
                                                         verified = false;
                                                         break 'params;
                                                     }
@@ -1841,7 +2052,9 @@ pub mod dbusitem {
                                                 severity = LogType::Warn;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_FAIL;
-                                                log_message = format!("could not retrieve parameter using index `{s}`");
+                                                log_message = format!(
+                                                    "could not retrieve parameter using index `{s}`"
+                                                );
                                                 verified = false;
                                                 break 'params;
                                             }
@@ -1877,7 +2090,9 @@ pub mod dbusitem {
                                                 severity = LogType::Warn;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_FAIL;
-                                                log_message = format!("mismatched result type: boolean expected (got `{e:?}`)");
+                                                log_message = format!(
+                                                    "mismatched result type: boolean expected (got `{e:?}`)"
+                                                );
                                                 verified = false;
                                                 break;
                                             }
@@ -2039,7 +2254,8 @@ pub mod dbusitem {
                                                         break 'params;
                                                     }
                                                 }
-                                            } else if ck.operator == ParamCheckOperator::NotContains {
+                                            } else if ck.operator == ParamCheckOperator::NotContains
+                                            {
                                                 if !_contained_in(i, field_value) {
                                                     verified = true;
                                                     if !checks_all {
@@ -2063,18 +2279,36 @@ pub mod dbusitem {
                                             log_message = format!(
                                                 "mismatched result type: {} expected (got `{e:?}`)",
                                                 if ck.operator == ParamCheckOperator::Contains
-                                                    || ck.operator == ParamCheckOperator::NotContains { "container" }
-                                                else { "integer" },
+                                                    || ck.operator
+                                                        == ParamCheckOperator::NotContains
+                                                {
+                                                    "container"
+                                                } else {
+                                                    "integer"
+                                                },
                                             );
                                             verified = false;
                                             break 'params;
                                         }
                                     }
                                 }
-                                ParameterCheckValue::Float(f) => {
-                                    match field_value {
-                                        zvariant::Value::F64(v) => {
-                                            if _oper(&ck.operator, *f, *v) {
+                                ParameterCheckValue::Float(f) => match field_value {
+                                    zvariant::Value::F64(v) => {
+                                        if _oper(&ck.operator, *f, *v) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::Array(_) => {
+                                        if ck.operator == ParamCheckOperator::Contains {
+                                            if _contained_in(f, field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2085,52 +2319,41 @@ pub mod dbusitem {
                                                     break 'params;
                                                 }
                                             }
-                                        }
-                                        zvariant::Value::Array(_) => {
-                                            if ck.operator == ParamCheckOperator::Contains {
-                                                if _contained_in(f, field_value) {
-                                                    verified = true;
-                                                    if !checks_all {
-                                                        break 'params;
-                                                    }
-                                                } else {
-                                                    verified = false;
-                                                    if checks_all {
-                                                        break 'params;
-                                                    }
-                                                }
-                                            } else if ck.operator == ParamCheckOperator::NotContains {
-                                                if !_contained_in(f, field_value) {
-                                                    verified = true;
-                                                    if !checks_all {
-                                                        break 'params;
-                                                    }
-                                                } else {
-                                                    verified = false;
-                                                    if checks_all {
-                                                        break 'params;
-                                                    }
+                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                            if !_contained_in(f, field_value) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
                                                 }
                                             } else {
                                                 verified = false;
-                                                break 'params;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
                                             }
-                                        }
-                                        e => {
-                                            severity = LogType::Warn;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_FAIL;
-                                            log_message = format!(
-                                                "mismatched result type: {} expected (got `{e:?}`)",
-                                                if ck.operator == ParamCheckOperator::Contains
-                                                    || ck.operator == ParamCheckOperator::NotContains { "container" }
-                                                else { "float" },
-                                            );
+                                        } else {
                                             verified = false;
                                             break 'params;
                                         }
                                     }
-                                }
+                                    e => {
+                                        severity = LogType::Warn;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_FAIL;
+                                        log_message = format!(
+                                            "mismatched result type: {} expected (got `{e:?}`)",
+                                            if ck.operator == ParamCheckOperator::Contains
+                                                || ck.operator == ParamCheckOperator::NotContains
+                                            {
+                                                "container"
+                                            } else {
+                                                "float"
+                                            },
+                                        );
+                                        verified = false;
+                                        break 'params;
+                                    }
+                                },
                                 ParameterCheckValue::String(s) => {
                                     if ck.operator == ParamCheckOperator::Equal {
                                         match field_value {
@@ -2164,7 +2387,9 @@ pub mod dbusitem {
                                                 severity = LogType::Warn;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_FAIL;
-                                                log_message = format!("mismatched result type: string expected (got `{e:?}`)");
+                                                log_message = format!(
+                                                    "mismatched result type: string expected (got `{e:?}`)"
+                                                );
                                                 verified = false;
                                                 break 'params;
                                             }
@@ -2201,7 +2426,9 @@ pub mod dbusitem {
                                                 severity = LogType::Warn;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_FAIL;
-                                                log_message = format!("mismatched result type: string expected (got `{e:?}`)");
+                                                log_message = format!(
+                                                    "mismatched result type: string expected (got `{e:?}`)"
+                                                );
                                                 verified = false;
                                                 break 'params;
                                             }
@@ -2272,7 +2499,9 @@ pub mod dbusitem {
                                                 severity = LogType::Warn;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_FAIL;
-                                                log_message = format!("mismatched result type: string expected (got `{e:?}`)");
+                                                log_message = format!(
+                                                    "mismatched result type: string expected (got `{e:?}`)"
+                                                );
                                                 verified = false;
                                                 break 'params;
                                             }
@@ -2281,7 +2510,8 @@ pub mod dbusitem {
                                         severity = LogType::Warn;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_FAIL;
-                                        log_message = String::from("invalid operator for regular expression");
+                                        log_message =
+                                            String::from("invalid operator for regular expression");
                                         verified = false;
                                         break 'params;
                                     }
@@ -2292,17 +2522,19 @@ pub mod dbusitem {
                             severity = LogType::Warn;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_FAIL;
-                            log_message = String::from("could not retrieve field index: first index must be integer");
+                            log_message = String::from(
+                                "could not retrieve field index: first index must be integer",
+                            );
                             verified = false;
                             break;
                         }
                     }
-
                 } else {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message = String::from("could not retrieve parameter: missing argument number");
+                    log_message =
+                        String::from("could not retrieve parameter: missing argument number");
                     verified = false;
                     break;
                 }
@@ -2323,10 +2555,7 @@ pub mod dbusitem {
             log_message,
         )
     }
-
 }
-
-
 
 /// A common result type: catching errors from modules used throughout
 /// the entire code. The corresponding error carries some information
@@ -2334,9 +2563,9 @@ pub mod dbusitem {
 #[allow(dead_code)]
 pub mod wres {
     // use std::{error, fmt, self};
+    use notify;
     use std::{self, fmt};
     use zbus;
-    use notify;
 
     /// Types of specific errors
     #[derive(Debug, Clone)]
@@ -2352,14 +2581,18 @@ pub mod wres {
 
     impl fmt::Display for Kind {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", match self {
-                Kind::Forbidden => "not permitted",
-                Kind::Unsupported => "not supported",
-                Kind::Busy => "resource busy",
-                Kind::Invalid => "invalid",
-                Kind::Failed => "failed",
-                Kind::Unknown => "unknown",
-            })
+            write!(
+                f,
+                "{}",
+                match self {
+                    Kind::Forbidden => "not permitted",
+                    Kind::Unsupported => "not supported",
+                    Kind::Busy => "resource busy",
+                    Kind::Invalid => "invalid",
+                    Kind::Failed => "failed",
+                    Kind::Unknown => "unknown",
+                }
+            )
         }
     }
 
@@ -2373,21 +2606,23 @@ pub mod wres {
         DBus,
         Notify,
         // ...
-
         Unknown,
     }
 
     impl fmt::Display for Origin {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", match self {
-                Origin::Native => "self",
-                Origin::StdIo => "io",
-                Origin::DBus => "dbus",
-                Origin::Notify => "fschange",
-                // ...
-
-                Origin::Unknown => "unknown",
-            })
+            write!(
+                f,
+                "{}",
+                match self {
+                    Origin::Native => "self",
+                    Origin::StdIo => "io",
+                    Origin::DBus => "dbus",
+                    Origin::Notify => "fschange",
+                    // ...
+                    Origin::Unknown => "unknown",
+                }
+            )
         }
     }
 
@@ -2398,26 +2633,15 @@ pub mod wres {
     pub struct Error {
         kind: Kind,
         origin: Origin,
-        message: String,    // freeform message: owned in order to avoid lifetime management
+        message: String, // freeform message: owned in order to avoid lifetime management
     }
 
     impl fmt::Display for Error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             if self.origin != Origin::Native {
-                write!(
-                    f,
-                    "{} ({}): {}",
-                    &self.kind,
-                    &self.origin,
-                    &self.message,
-                )
+                write!(f, "{} ({}): {}", &self.kind, &self.origin, &self.message,)
             } else {
-                write!(
-                    f,
-                    "{}: {}",
-                    &self.kind,
-                    &self.message,
-                )
+                write!(f, "{}: {}", &self.kind, &self.message,)
             }
         }
     }
@@ -2463,7 +2687,6 @@ pub mod wres {
 
     // implements `Error` and provides access to properties
     impl Error {
-
         // this is used only to natively create an instance of `Error`: only
         // conversions set the `origin` property to something different
         pub fn new(kind: Kind, message: &str) -> Self {
@@ -2504,8 +2727,6 @@ pub mod wres {
     //         }
     //     }
     // }
-
 }
-
 
 // end.

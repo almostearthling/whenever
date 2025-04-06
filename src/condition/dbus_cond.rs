@@ -5,9 +5,8 @@
 //! configuration. The difference with the event based process consists in
 //! the condition actively requesting DBus for a result.
 
-
-use std::time::{Instant, Duration};
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::{Duration, Instant};
 
 use cfgmap::{CfgMap, CfgValue};
 use regex::Regex;
@@ -16,23 +15,20 @@ use async_std::task;
 use zbus;
 use zbus::zvariant;
 
-use std::str::FromStr;
 use serde_json::value::Value;
+use std::str::FromStr;
 
 use super::base::Condition;
-use crate::task::registry::TaskRegistry;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
 use crate::common::dbusitem::*;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::Result;
+use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-
 // see the DBus specification
 const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
-
-
 
 /// DBus Method Based Condition
 ///
@@ -82,7 +78,6 @@ pub struct DbusMethodCondition {
     last_check_failed: bool,
 }
 
-
 // implement the hash protocol
 impl Hash for DbusMethodCondition {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -131,7 +126,7 @@ impl Hash for DbusMethodCondition {
 
         // let's hope that to_string is a correct representation of the
         if let Some(x) = &self.param_call {
-            for elem in x{
+            for elem in x {
                 elem.to_string().hash(state);
             }
         } else {
@@ -145,15 +140,11 @@ impl Hash for DbusMethodCondition {
     }
 }
 
-
 #[allow(dead_code)]
 impl DbusMethodCondition {
-
     /// Create a new DBus method invocation based condition with the given
     /// name and interval duration
-    pub fn new(
-        name: &str,
-    ) -> Self {
+    pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_DBUS,
@@ -256,10 +247,10 @@ impl DbusMethodCondition {
         self
     }
 
-
     /// Return an owned copy of the bus name
-    pub fn bus(&self) -> Option<String> { self.bus.clone() }
-
+    pub fn bus(&self) -> Option<String> {
+        self.bus.clone()
+    }
 
     /// Set the service name to the provided value (checks for validity)
     pub fn set_service(&mut self, name: &str) -> bool {
@@ -271,8 +262,9 @@ impl DbusMethodCondition {
     }
 
     /// Return an owned copy of the service name
-    pub fn service(&self) -> Option<String> { self.service.clone() }
-
+    pub fn service(&self) -> Option<String> {
+        self.service.clone()
+    }
 
     /// Set the object path to the provided value (checks for validity)
     pub fn set_object_path(&mut self, name: &str) -> bool {
@@ -284,8 +276,9 @@ impl DbusMethodCondition {
     }
 
     /// Return an owned copy of the object path
-    pub fn object_path(&self) -> Option<String> { self.object_path.clone() }
-
+    pub fn object_path(&self) -> Option<String> {
+        self.object_path.clone()
+    }
 
     /// Set the interface name to the provided value (checks for validity)
     pub fn set_interface(&mut self, name: &str) -> bool {
@@ -297,8 +290,9 @@ impl DbusMethodCondition {
     }
 
     /// Return an owned copy of the interface name
-    pub fn interface(&self) -> Option<String> { self.interface.clone() }
-
+    pub fn interface(&self) -> Option<String> {
+        self.interface.clone()
+    }
 
     /// Load a `DbusMethodCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
@@ -312,8 +306,10 @@ impl DbusMethodCondition {
     /// limited to accepting only lists of elements of the same type, and in
     /// our case we need to mix types both as arguments to a call and as index
     /// sequences.
-    pub fn load_cfgmap(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<DbusMethodCondition> {
-
+    pub fn load_cfgmap(
+        cfgmap: &CfgMap,
+        task_registry: &'static TaskRegistry,
+    ) -> Result<DbusMethodCondition> {
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
@@ -361,16 +357,35 @@ impl DbusMethodCondition {
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter retrieval
-        let bus = cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?.unwrap();
-        let service = cfg_mandatory!(cfg_string_check_regex(cfgmap, "service", &RE_DBUS_SERVICE_NAME))?.unwrap();
-        let object_path = cfg_mandatory!(cfg_string_check_regex(cfgmap, "object_path", &RE_DBUS_OBJECT_PATH))?.unwrap();
-        let interface = cfg_mandatory!(cfg_string_check_regex(cfgmap, "interface", &RE_DBUS_INTERFACE_NAME))?.unwrap();
-        let method = cfg_mandatory!(cfg_string_check_regex(cfgmap, "method", &RE_DBUS_MEMBER_NAME))?.unwrap();
+        let bus =
+            cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?.unwrap();
+        let service = cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "service",
+            &RE_DBUS_SERVICE_NAME
+        ))?
+        .unwrap();
+        let object_path = cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "object_path",
+            &RE_DBUS_OBJECT_PATH
+        ))?
+        .unwrap();
+        let interface = cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "interface",
+            &RE_DBUS_INTERFACE_NAME
+        ))?
+        .unwrap();
+        let method = cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "method",
+            &RE_DBUS_MEMBER_NAME
+        ))?
+        .unwrap();
 
         // initialize the structure
-        let mut new_condition = DbusMethodCondition::new(
-            &name,
-        );
+        let mut new_condition = DbusMethodCondition::new(&name);
         new_condition.task_registry = Some(task_registry);
         new_condition.bus = Some(bus);
         new_condition.service = Some(service);
@@ -400,11 +415,7 @@ impl DbusMethodCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -445,11 +456,7 @@ impl DbusMethodCondition {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
-        let check = [
-            "index",
-            "operator",
-            "value",
-        ];
+        let check = ["index", "operator", "value"];
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
@@ -463,9 +470,7 @@ impl DbusMethodCondition {
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
-            let json = Value::from_str(
-                &format!("{{\"0\": {}}}", item.as_str().unwrap())
-            );
+            let json = Value::from_str(&format!("{{\"0\": {}}}", item.as_str().unwrap()));
             if json.is_err() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -616,7 +621,11 @@ impl DbusMethodCondition {
                     ));
                 }
                 // now that we have the full triple, we can add it to criteria
-                param_checks.push(ParameterCheckTest { index: index_list, operator, value });
+                param_checks.push(ParameterCheckTest {
+                    index: index_list,
+                    operator,
+                    value,
+                });
             }
             // finally the parameter checks become `Some` and makes its way
             // into the new condition structure: the list is formally correct,
@@ -652,9 +661,7 @@ impl DbusMethodCondition {
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
-            let json = Value::from_str(
-                &format!("{{\"0\": {}}}", item.as_str().unwrap())
-            );
+            let json = Value::from_str(&format!("{{\"0\": {}}}", item.as_str().unwrap()));
             if json.is_err() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -707,7 +714,6 @@ impl DbusMethodCondition {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_tasks: &Vec<&str>) -> Result<String> {
-
         fn _check_dbus_param_index(index: &CfgValue) -> Option<ParameterIndex> {
             if index.is_int() {
                 let i = *index.as_int().unwrap();
@@ -756,10 +762,26 @@ impl DbusMethodCondition {
 
         // specific mandatory parameter check
         cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?;
-        cfg_mandatory!(cfg_string_check_regex(cfgmap, "service", &RE_DBUS_SERVICE_NAME))?;
-        cfg_mandatory!(cfg_string_check_regex(cfgmap, "object_path", &RE_DBUS_OBJECT_PATH))?;
-        cfg_mandatory!(cfg_string_check_regex(cfgmap, "interface", &RE_DBUS_INTERFACE_NAME))?;
-        cfg_mandatory!(cfg_string_check_regex(cfgmap, "method", &RE_DBUS_MEMBER_NAME))?;
+        cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "service",
+            &RE_DBUS_SERVICE_NAME
+        ))?;
+        cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "object_path",
+            &RE_DBUS_OBJECT_PATH
+        ))?;
+        cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "interface",
+            &RE_DBUS_INTERFACE_NAME
+        ))?;
+        cfg_mandatory!(cfg_string_check_regex(
+            cfgmap,
+            "method",
+            &RE_DBUS_MEMBER_NAME
+        ))?;
 
         // also for optional parameters just check and throw away the result
 
@@ -779,11 +801,7 @@ impl DbusMethodCondition {
         if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        &s,
-                        ERR_INVALID_TASK,
-                    ));
+                    return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
                 }
             }
         }
@@ -807,11 +825,7 @@ impl DbusMethodCondition {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
-        let check = [
-            "index",
-            "operator",
-            "value",
-        ];
+        let check = ["index", "operator", "value"];
 
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
@@ -825,9 +839,7 @@ impl DbusMethodCondition {
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
-            let json = Value::from_str(
-                &format!("{{\"0\": {}}}", item.as_str().unwrap())
-            );
+            let json = Value::from_str(&format!("{{\"0\": {}}}", item.as_str().unwrap()));
             if json.is_err() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -992,9 +1004,7 @@ impl DbusMethodCondition {
             }
             // since CfgMap only accepts maps as input, and we expect a list
             // instead, we build a map with a single element labeled '0':
-            let json = Value::from_str(
-                &format!("{{\"0\": {}}}", item.as_str().unwrap())
-            );
+            let json = Value::from_str(&format!("{{\"0\": {}}}", item.as_str().unwrap()));
             if json.is_err() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -1030,17 +1040,21 @@ impl DbusMethodCondition {
 
         Ok(name)
     }
-
 }
 
-
-
 impl Condition for DbusMethodCondition {
-
-    fn set_id(&mut self, id: i64) { self.cond_id = id; }
-    fn get_name(&self) -> String { self.cond_name.clone() }
-    fn get_id(&self) -> i64 { self.cond_id }
-    fn get_type(&self) -> &str { "interval" }
+    fn set_id(&mut self, id: i64) {
+        self.cond_id = id;
+    }
+    fn get_name(&self) -> String {
+        self.cond_name.clone()
+    }
+    fn get_id(&self) -> i64 {
+        self.cond_id
+    }
+    fn get_type(&self) -> &str {
+        "interval"
+    }
 
     /// Return a hash of this item for comparison
     fn _hash(&self) -> u64 {
@@ -1048,7 +1062,6 @@ impl Condition for DbusMethodCondition {
         self.hash(&mut s);
         s.finish()
     }
-
 
     fn set_task_registry(&mut self, reg: &'static TaskRegistry) {
         self.task_registry = Some(reg);
@@ -1058,18 +1071,35 @@ impl Condition for DbusMethodCondition {
         self.task_registry
     }
 
+    fn suspended(&self) -> bool {
+        self.suspended
+    }
+    fn recurring(&self) -> bool {
+        self.recurring
+    }
+    fn has_succeeded(&self) -> bool {
+        self.has_succeeded
+    }
 
-    fn suspended(&self) -> bool { self.suspended }
-    fn recurring(&self) -> bool { self.recurring }
-    fn has_succeeded(&self) -> bool { self.has_succeeded }
+    fn exec_sequence(&self) -> bool {
+        self.exec_sequence
+    }
+    fn break_on_success(&self) -> bool {
+        self.break_on_success
+    }
+    fn break_on_failure(&self) -> bool {
+        self.break_on_failure
+    }
 
-    fn exec_sequence(&self) -> bool { self.exec_sequence }
-    fn break_on_success(&self) -> bool { self.break_on_success }
-    fn break_on_failure(&self) -> bool { self.break_on_failure }
-
-    fn last_checked(&self) -> Option<Instant> { self.last_tested }
-    fn last_succeeded(&self) -> Option<Instant> { self.last_succeeded }
-    fn startup_time(&self) -> Option<Instant> { self.startup_time }
+    fn last_checked(&self) -> Option<Instant> {
+        self.last_tested
+    }
+    fn last_succeeded(&self) -> Option<Instant> {
+        self.last_succeeded
+    }
+    fn startup_time(&self) -> Option<Instant> {
+        self.startup_time
+    }
 
     fn set_checked(&mut self) -> Result<bool> {
         self.last_tested = Some(Instant::now());
@@ -1097,7 +1127,6 @@ impl Condition for DbusMethodCondition {
         Ok(true)
     }
 
-
     fn left_retries(&self) -> Option<i64> {
         if self.max_retries == -1 {
             None
@@ -1111,7 +1140,6 @@ impl Condition for DbusMethodCondition {
             self.left_retries -= 1;
         }
     }
-
 
     fn start(&mut self) -> Result<bool> {
         self.suspended = false;
@@ -1143,11 +1171,9 @@ impl Condition for DbusMethodCondition {
         }
     }
 
-
     fn task_names(&self) -> Result<Vec<String>> {
         Ok(self.task_names.clone())
     }
-
 
     fn any_tasks_failed(&self) -> bool {
         self.tasks_failed
@@ -1156,7 +1182,6 @@ impl Condition for DbusMethodCondition {
     fn set_tasks_failed(&mut self, failed: bool) {
         self.tasks_failed = failed;
     }
-
 
     fn _add_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
@@ -1171,23 +1196,18 @@ impl Condition for DbusMethodCondition {
     fn _remove_task(&mut self, name: &str) -> Result<bool> {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            self.task_names.remove(
-                self.task_names
-                .iter()
-                .position(|x| x == &name)
-                .unwrap());
+            self.task_names
+                .remove(self.task_names.iter().position(|x| x == &name).unwrap());
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-
     /// Mandatory check function.
     ///
     /// This function actually performs the test.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-
         // NOTE: the following helpers are async here, but since this check
         //       runs in a dedicated thread, we will just block on every step;
         //       the zbus::blocking option might be considered for further
@@ -1228,28 +1248,32 @@ impl Condition for DbusMethodCondition {
             }
         }
 
-
         // first unwrap all data needed to install the listening service:
         // this panics if any of the data is uninitialized because all the
         // mandatory parameters must be set, and any missing value would
         // indicate that there is a mistake in the program flow
-        let bus = self.bus
+        let bus = self
+            .bus
             .clone()
             .expect("attempt to check condition with uninitialized bus");
 
-        let service = self.service
+        let service = self
+            .service
             .clone()
             .expect("attempt to check condition with uninitialized service");
 
-        let object_path = self.object_path
+        let object_path = self
+            .object_path
             .clone()
             .expect("attempt to check condition with uninitialized object path");
 
-        let interface = self.interface
+        let interface = self
+            .interface
             .clone()
             .expect("attempt to check condition with uninitialized interface");
 
-        let method = self.method
+        let method = self
+            .method
             .clone()
             .expect("attempt to check condition with uninitialized method");
 
@@ -1260,9 +1284,7 @@ impl Condition for DbusMethodCondition {
             LOG_STATUS_MSG,
             &format!("opening connection to bus `{bus}`"),
         );
-        let conn = task::block_on(async {
-            _get_connection(&bus).await
-        })?;
+        let conn = task::block_on(async { _get_connection(&bus).await })?;
         // if conn.is_err() {
         //     return Err(Error::new(
         //         Kind::Failed,
@@ -1286,22 +1308,40 @@ impl Condition for DbusMethodCondition {
             }
             message = task::block_on(async {
                 conn.call_method(
-                    if service.is_empty() { None } else { Some(service.as_str()) },
+                    if service.is_empty() {
+                        None
+                    } else {
+                        Some(service.as_str())
+                    },
                     object_path.as_str(),
-                    if interface.is_empty() { None } else { Some(interface.as_str()) },
+                    if interface.is_empty() {
+                        None
+                    } else {
+                        Some(interface.as_str())
+                    },
                     method.as_str(),
                     &arg.build(),
-                ).await
+                )
+                .await
             });
         } else {
             message = task::block_on(async {
                 conn.call_method(
-                    if service.is_empty() { None } else { Some(service.as_str()) },
+                    if service.is_empty() {
+                        None
+                    } else {
+                        Some(service.as_str())
+                    },
                     object_path.as_str(),
-                    if interface.is_empty() { None } else { Some(interface.as_str()) },
+                    if interface.is_empty() {
+                        None
+                    } else {
+                        Some(interface.as_str())
+                    },
                     method.as_str(),
                     &(),
-                ).await
+                )
+                .await
             });
         }
         if let Err(e) = message {
@@ -1321,10 +1361,9 @@ impl Condition for DbusMethodCondition {
                 LogType::Debug,
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
-                &format!(
-                    "parameter checks specified: {} checks must be verified",
-                    { if self.param_checks_all { "all" } else { "some" } },
-                ),
+                &format!("parameter checks specified: {} checks must be verified", {
+                    if self.param_checks_all { "all" } else { "some" }
+                },),
             );
 
             let severity;
@@ -1332,15 +1371,9 @@ impl Condition for DbusMethodCondition {
             let log_status;
             let log_message;
 
-            (
-                verified,
-                severity,
-                log_when,
-                log_status,
-                log_message,
-            ) = dbus_check_message(&message.unwrap(), checks, self.param_checks_all);
+            (verified, severity, log_when, log_status, log_message) =
+                dbus_check_message(&message.unwrap(), checks, self.param_checks_all);
             self.log(severity, log_when, log_status, &log_message);
-
         } else {
             panic!("attempt to verify condition without initializing tests")
         }
@@ -1365,8 +1398,6 @@ impl Condition for DbusMethodCondition {
 
         Ok(Some(verified && can_succeed))
     }
-
 }
-
 
 // end.
