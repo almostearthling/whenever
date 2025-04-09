@@ -871,6 +871,7 @@ As mentioned above, just after the _context_, in the message _payload_, a string
   * `PROC` when the message is issued in the middle of something, for instance while executing a check
   * `END` when the message is emitted at the end of something, before returning control
   * `HIST` when the message is intended for some receiver (generally a wrapper) that keeps track of the history: in this case the _outcome_ is either `START` or `END`
+  * `BUSY` when the message is intended for a receiver (generally a wrapper) that might show whether the scheduler is busy[^11] or not: _outcome_ is here `YES` or `NO`
 
 * _STATUS_ holds the _outcome_ of the current activity, and is one of the following:
   * `OK` for expected behaviours
@@ -879,6 +880,7 @@ As mentioned above, just after the _context_, in the message _payload_, a string
   * `MSG` when the message is merely informational
   * `ERR` when an operation fails with an error
   * `START`/`END` are pseudo-outcomes that only occur when the _nature_ is `HIST`, to mark the beginning or the end of an activity
+  * `YES`/`NO` are pseudo-outcomes that only occur when the _nature_ is `BUSY`, to state that the scheduler is respectively busy or not
 
 This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
 
@@ -1005,3 +1007,4 @@ This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future):
 [^8]: In fact, in the original _When_ the DBus based conditions and events were considered an advanced feature: even the dialog box that allowed the configuration of user-defined DBus events was only available through a specific invocation using the command line.
 [^9]: See the [DBus Specification](https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types) for the complete list of supported types, and the ASCII character that identifies each of them.
 [^10]: in DBus, strings and object paths are considered different types.
+[^11]: that is, checking one or more conditions and/or running their related tasks.
