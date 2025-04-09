@@ -31,6 +31,10 @@
 //!          in this case _MSG_ is sent at the beginning of task execution, and
 //!          _OK_, _FAIL_ or _IND_ are sent at the end (resp. on success,
 //!          failure or _indeterminate_ outcome)
+//! * _BUSY_ is also a _trace level only_ message emitted to allow a GUI to
+//!          show the application status (for instance using an icon in the
+//!          tray area): when there are one or more conditions busy, the second
+//!          element is _YES_, otherwise _NO_
 //!
 //! while the second can be one of:
 //!
@@ -39,7 +43,9 @@
 //! * _IND_ for indeterminate outcomes
 //! * _MSG_ if the human-readable part is exclusively informational
 //! * _ERR_ (may be followed by a dash `-` and a code) for errors to be
-//!   notified.
+//!   notified
+//! * _YES_ (only occurs for _BUSY_ indicator) means: application is busy
+//! * _NO_ (only occurs for _BUSY_ indicator) means: application is _not_ busy
 //!
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to

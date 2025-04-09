@@ -104,6 +104,33 @@ fn check_single_instance(instance: &SingleInstance) -> Result<()> {
 // finish and get out of the way to allow execution of subsequent ticks; within
 // the new thread the tick might wait for a random duration,
 fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
+    // log whether or not there are any busy conditions
+    let busy_conds = CONDITION_REGISTRY.conditions_busy().unwrap();
+    if busy_conds.is_some() {
+        let busy_conds = busy_conds.unwrap();
+        if busy_conds > 0 {
+            log(
+                LogType::Trace,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_SCHEDULER_TICK,
+                None,
+                LOG_WHEN_BUSY,
+                LOG_STATUS_YES,
+                &format!("busy conditions reported (total: {busy_conds})"),
+            );
+        } else {
+            log(
+                LogType::Trace,
+                LOG_EMITTER_MAIN,
+                LOG_ACTION_SCHEDULER_TICK,
+                None,
+                LOG_WHEN_BUSY,
+                LOG_STATUS_NO,
+                "no busy conditions present (total: 0)",
+            );
+        }
+    }
+
     // skip if application has been intentionally paused
     if *APPLICATION_IS_PAUSED.read().unwrap() {
         log(

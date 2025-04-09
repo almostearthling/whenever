@@ -92,6 +92,7 @@ pub const LOG_WHEN_START: &str = "START";
 pub const LOG_WHEN_END: &str = "END";
 pub const LOG_WHEN_PROC: &str = "PROC";
 pub const LOG_WHEN_HISTORY: &str = "HIST";
+pub const LOG_WHEN_BUSY: &str = "BUSY";
 
 pub const LOG_STATUS_OK: &str = "OK";
 pub const LOG_STATUS_FAIL: &str = "FAIL";
@@ -99,6 +100,8 @@ pub const LOG_STATUS_MSG: &str = "MSG";
 pub const LOG_STATUS_ERR: &str = "ERR";
 pub const LOG_STATUS_HIST_START: &str = "START";
 pub const LOG_STATUS_HIST_END: &str = "END";
+pub const LOG_STATUS_YES: &str = "YES";
+pub const LOG_STATUS_NO: &str = "NO";
 
 pub const LOG_EMITTER_TASK: &str = "TASK";
 pub const LOG_EMITTER_TASK_REGISTRY: &str = "TASK_REGISTRY";
