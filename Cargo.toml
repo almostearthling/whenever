@@ -9,8 +9,9 @@ repository = "https://github.com/almostearthling/whenever/"
 edition = "2024"
 
 [features]
-default = ["dbus"]
+default = ["dbus", "wmi"]
 dbus = []
+wmi = []
 
 [dependencies]
 time = "0.3.17"
@@ -37,6 +38,7 @@ notify = "6.0.0"
 async-std = "1.12.0"
 # zbus = "5.5.0"    # too many changes: part of the dbus modules will have to be redesigned
 zbus = "3.15.2"
+wmi = "0.15.2"
 whoami = "1.4.1"
 itertools = "0.8.2"
 futures = "0.3"
