@@ -5,6 +5,9 @@
 //! configuration. The difference with the event based process consists in
 //! the condition actively requesting DBus for a result.
 
+// this is only available when the "dbus" feature is enabled
+#![cfg(feature = "dbus")]
+
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::{Duration, Instant};
 

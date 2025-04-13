@@ -4,6 +4,9 @@
 //! to expect from that channel. The event listens on a new thread and pushes
 //! the related condition in the execution bucket when all constraints are met.
 
+// this is only available when the "dbus" feature is enabled
+#![cfg(feature = "dbus")]
+
 use regex::Regex;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::{mpsc, Arc, RwLock};

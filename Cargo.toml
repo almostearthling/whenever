@@ -3,10 +3,14 @@ name = "whenever"
 description = "Lightweight task scheduler and automation tool"
 readme = "README.md"
 license = "LGPL-2.1-or-later"
-version = "0.2.15"
+version = "0.2.16"
 authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 repository = "https://github.com/almostearthling/whenever/"
 edition = "2024"
+
+[features]
+default = ["dbus"]
+dbus = []
 
 [dependencies]
 time = "0.3.17"

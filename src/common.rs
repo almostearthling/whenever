@@ -1321,6 +1321,7 @@ pub mod luaitem {
     }
 }
 
+#[cfg(feature = "dbus")]
 #[allow(dead_code)]
 pub mod dbusitem {
     use crate::constants::*;

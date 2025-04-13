@@ -114,15 +114,19 @@ pub const LOG_EMITTER_MAIN: &str = "MAIN";
 
 pub const LOG_EMITTER_TASK_COMMAND: &str = "COMMAND_TASK";
 pub const LOG_EMITTER_TASK_LUA: &str = "LUA_TASK";
-pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
+
 pub const LOG_EMITTER_EVENT_FSCHANGE: &str = "FSCHANGE_EVENT";
 pub const LOG_EMITTER_EVENT_MANUAL: &str = "CMD_EVENT";
+#[cfg(feature = "dbus")]
+pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
+
 pub const LOG_EMITTER_CONDITION_INTERVAL: &str = "INTERVAL_CONDITION";
 pub const LOG_EMITTER_CONDITION_BUCKET: &str = "BUCKET_CONDITION";
 pub const LOG_EMITTER_CONDITION_COMMAND: &str = "COMMAND_CONDITION";
-pub const LOG_EMITTER_CONDITION_DBUS: &str = "DBUS_CONDITION";
 pub const LOG_EMITTER_CONDITION_IDLE: &str = "IDLE_CONDITION";
 pub const LOG_EMITTER_CONDITION_LUA: &str = "LUA_CONDITION";
+#[cfg(feature = "dbus")]
+pub const LOG_EMITTER_CONDITION_DBUS: &str = "DBUS_CONDITION";
 
 pub const LOG_ACTION_NEW: &str = "new";
 pub const LOG_ACTION_TICK: &str = "tick";
@@ -173,6 +177,13 @@ lazy_static! {
     pub static ref LUAVAR_NAME_TASK: String = format!("{}_task", APP_NAME.to_ascii_lowercase());
     pub static ref LUAVAR_NAME_COND: String = format!("{}_condition", APP_NAME.to_ascii_lowercase());
 
+    // interval for polling spawned commands for stdout/stderr contents
+    pub static ref DUR_SPAWNED_POLL_INTERVAL: Duration = Duration::from_millis(100);
+
+}
+
+#[cfg(feature = "dbus")]
+lazy_static! {
     // DBus names regular expressions (see https://dbus.freedesktop.org/doc/dbus-specification.html)
     // Note that bus names adhere to specification as in (quoting): "only
     // elements that are part of a unique connection name may begin with a
@@ -189,10 +200,6 @@ lazy_static! {
     pub static ref RE_DBUS_INTERFACE_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
     pub static ref RE_DBUS_MEMBER_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_DBUS_ERROR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
-
-    // interval for polling spawned commands for stdout/stderr contents
-    pub static ref DUR_SPAWNED_POLL_INTERVAL: Duration = Duration::from_millis(100);
-
 }
 
 // end.

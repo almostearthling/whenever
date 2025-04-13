@@ -119,6 +119,7 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                                 &task_list,
                             )?;
                         }
+                        #[cfg(feature = "dbus")]
                         "dbus" => {
                             name = condition::dbus_cond::DbusMethodCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
@@ -164,6 +165,7 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                                 &condition_list,
                             )?;
                         }
+                        #[cfg(feature = "dbus")]
                         "dbus" => {
                             name = event::dbus_event::DbusMessageEvent::check_cfgmap(
                                 entry.as_map().unwrap(),
@@ -545,6 +547,7 @@ fn configure_conditions(
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
+                        #[cfg(feature = "dbus")]
                         "dbus" => {
                             let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
                                 entry.as_map().unwrap(),
@@ -832,6 +835,7 @@ fn reconfigure_conditions(
                                 );
                             }
                         }
+                        #[cfg(feature = "dbus")]
                         "dbus" => {
                             let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
                                 entry.as_map().unwrap(),
@@ -1002,6 +1006,7 @@ fn configure_events(
                                 ));
                             }
                         }
+                        #[cfg(feature = "dbus")]
                         "dbus" => {
                             let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
@@ -1176,6 +1181,7 @@ fn reconfigure_events(
                                 );
                             }
                         }
+                        #[cfg(feature = "dbus")]
                         "dbus" => {
                             let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),

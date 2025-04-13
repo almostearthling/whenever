@@ -4,8 +4,10 @@ pub mod base; // this only defines the trait
 pub mod registry; // the main event registry
 
 // specific event types
-pub mod dbus_event;
 pub mod fschange_event;
 pub mod manual_event;
+
+#[cfg(feature = "dbus")]
+pub mod dbus_event;
 
 // end.
