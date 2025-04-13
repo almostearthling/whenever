@@ -19,11 +19,11 @@
       - [Idle session](#idle-session)
       - [Command](#command)
       - [Lua script](#lua-script)
-      - [DBus method](#dbus-method)
+      - [DBus method (optional)](#dbus-method-optional)
       - [Event based](#event-based)
     - [Events](#events)
       - [Filesystem changes](#filesystem-changes)
-      - [DBus signals](#dbus-signals)
+      - [DBus signals (optional)](#dbus-signals-optional)
       - [Command line](#command-line)
   - [Logging](#logging)
   - [Input commands](#input-commands)
@@ -71,16 +71,16 @@ The supported types of [**_condition_**](#conditions) are the following:
 * [_Idle_ user session](#command): this type of condition is verified after the session has been idle for the specified amount of time
 * [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
 * [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
-* [_DBus_ inspection](#dbus-method): a _DBus_ method is executed and the result is checked against some criteria provided in the configuration file
+* [_DBus_ inspection (optional)](#dbus-method-optional): a _DBus_ method is executed and the result is checked against some criteria provided in the configuration file
 * [_Event_ based](#event-based): are verified when a certain event occurs that fires the condition.
 
 The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
 
 * [_Filesystem changes_](#filesystem-changes), that is, changes in files and/or directories that are set to be monitored
-* [_DBus signals_](#dbus-signals), that may be filtered for an expected payload
+* [_DBus_ signals (optional)](#dbus-signals-optional), that may be filtered for an expected payload
 * [_Command line_](#command-line), that are manually triggered by writing to **whenever** standard input.
 
-Note that _DBus_ events and conditions are also (theoretically) supported on Windows, being one of the _DBus_ target platforms.
+Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default. However _DBus_ support can be **disabled** on build, by removing it as a default feature in the _Cargo.toml_ file or by building with the `--no-default-features` command line flag (in this case, other desirable features have to be enabled specifically using the `--features` option).
 
 All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
@@ -582,7 +582,7 @@ The `recur_after_failed_check` flag allows for avoidance of multiple subsequent 
 
 For this type of condition the actual test can be performed at a random time within the tick interval.
 
-#### DBus method
+#### DBus method (optional)
 
 The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^8] One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
 
@@ -775,11 +775,11 @@ The configuration entries are:
 | `recursive`        | _false_ | if _true_, listed directories will be monitored recursively                                |
 | `poll_seconds`     | 2       | generally not used, can be needed on systems where the notification service is unavailable |
 
-#### DBus signals
+#### DBus signals (optional)
 
 DBus provides signals that can be subscribed by applications, to receive information about various aspects of the system status in an asynchronous way. **whenever** offers the possibility to subscribe to these signals, so that when the _return parameters_ match the provided constraints, then the event occurs and the associated condition is fired.
 
-Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility, therefore JSON is not used for this purpose. JSON is used instead to specify the criteria that the _signal parameters_ must meet in order for the event to arise, using the same format that is used for _return message parameter_ checks in [_DBus method_ based conditions](#dbus-method).
+Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility, therefore JSON is not used for this purpose. JSON is used instead to specify the criteria that the _signal parameters_ must meet in order for the event to arise, using the same format that is used for _return message parameter_ checks in [_DBus method_ based conditions](#dbus-method-optional).
 
 A sample configuration section follows:
 
@@ -820,7 +820,7 @@ and the details of the configuration entries are described in the table below:
 | `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
 | `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters               |
 
-The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method). It is worth to remind that any errors that may arise during checks will cause the check itself to yield _false_.
+The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method-optional). It is worth to remind that any errors that may arise during checks will cause the check itself to yield _false_.
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
 
