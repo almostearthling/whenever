@@ -80,7 +80,7 @@ The [**_events_**](#events) that can fire _event_ based conditions are, at the m
 * [_DBus_ signals (optional)](#dbus-signals-optional), that may be filtered for an expected payload
 * [_Command line_](#command-line), that are manually triggered by writing to **whenever** standard input.
 
-Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default. However _DBus_ support can be **disabled** on build, by removing it as a default feature in the _Cargo.toml_ file or by building with the `--no-default-features` command line flag (in this case, other desirable features have to be enabled specifically using the `--features` option).
+Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default. However _DBus_ support can be **disabled** on build, by removing `dbus` from the default features in the _Cargo.toml_ file, or by building the application with the `--no-default-features` command line flag (in this case, other desired features have to be specifically enabled using the `--features` option).
 
 All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
@@ -139,6 +139,8 @@ To exit from **whenever** (when running as a CLI program from an interactive she
 
 The configuration file is strictly based on the current TOML specification: therefore it can be implemented by hand, or automatically written (for example, by a GUI based utility) using a library capable of writing well-formed TOML files. This section describes the exact format of this file, in all of its components.
 
+> **Note:** if **whenever** has been compiled without support for any optional feature, entries for items depending on that feature are considered configuration errors.
+
 
 ### Globals
 
@@ -151,7 +153,7 @@ Globals must be specified at the beginning of the configuration file. The suppor
 
 Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a very short value for the tick period, but in fact it mimics a certain responsiveness and synchronization in checking _event_ based conditions. Note that conditions strictly depending on time do not comply to the request of randomizing the check instant.
 
-> **Note**: These values can _not_ be updated at runtime: possible changes of global parameters in the configuration file are only applied when the application is restarted.
+> **Note:** These values can _not_ be updated at runtime: possible changes of global parameters in the configuration file are only applied when the application is restarted.
 
 
 ### Tasks
@@ -586,6 +588,8 @@ For this type of condition the actual test can be performed at a random time wit
 
 The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^8] One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
 
+> **Note:** this type of item is only available when the `dbus` feature is enabled.
+
 So, as a rule of thumb:
 
 * arguments to be passed to the DBus method are specified in a string containing the _exact_ JSON representation of those arguments
@@ -603,7 +607,7 @@ So, as a rule of thumb:
     * `"ncontains"` to indicate that the second operand _is not contained_ in the first operand
   * `"value"`: the second operand for the specified operator.
 
-> **Note**: the first element of the `"index"` field is always a _zero-based integer_: this ia because a _message_ is supposed to consist of an array of numbered _fields_: if a single value is returned, which can also be as complex as a nested dictionary, it is considered to be the first field (having 0 as index) of the return message, thus _0_ must be specified as the first value in the index.
+> **Note:** the first element of the `"index"` field is always a _zero-based integer_: this ia because a _message_ is supposed to consist of an array of numbered _fields_: if a single value is returned, which can also be as complex as a nested dictionary, it is considered to be the first field (having 0 as index) of the return message, thus _0_ must be specified as the first value in the index.
 
 Please notice that not all types of operand are supported for all operators: comparisons (_greater_ and _greater or equal_, _less_ and _less or equal_) are only supported for numbers, and matching is only supported for strings. The `"contains"`/`"ncontains"` operators support non-structured types for the second operand (booleans, numbers, and strings) and either strings (and object paths) or arrays and dictionaries for the first one: if the first operand is an array the second operand is searched in the list and the check is true when it is found, in case it is a dictionary then the second operand (which should be a string) is searched among the _keys_ of the dictionary, and if the first operand is either a string or an object path, the check is true when the second one is a substring. Also, _comparisons always fail for incompatible operands_: integers can only be compared with integers, floating point numbers with floating point numbers and strings with strings -- no automatic type conversion is performed. This also yields for attempts to find a value in an array: an integer will never be found in an array of floating point numbers, and so on. To be consistent with the rule of unsuccessfulness on incompatible operands, the `"ncontains"` operator too _is unsuccessful when the operands cannot be compared_, even though, from another point of view, the opposite could have been seen as appropriate.
 
@@ -778,6 +782,8 @@ The configuration entries are:
 #### DBus signals (optional)
 
 DBus provides signals that can be subscribed by applications, to receive information about various aspects of the system status in an asynchronous way. **whenever** offers the possibility to subscribe to these signals, so that when the _return parameters_ match the provided constraints, then the event occurs and the associated condition is fired.
+
+> **Note:** this type of item is only available when the `dbus` feature is enabled.
 
 Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility, therefore JSON is not used for this purpose. JSON is used instead to specify the criteria that the _signal parameters_ must meet in order for the event to arise, using the same format that is used for _return message parameter_ checks in [_DBus method_ based conditions](#dbus-method-optional).
 
@@ -959,7 +965,7 @@ The `pause` command is ignored in paused state, and `resume` is ignored otherwis
 
 The `configure` command can be used to load a new configuration (or reload a modified one) while the scheduler is running: in case some of the items are already present in the configuration _and_ they are **identical** to the originally loaded ones in terms of provided parameters, the original ones are left in their status -- this means, in particular, that unchanged conditions are _not_ reset, and unchanged event listening services are _not_ restarted when reloading a configuration. It is important to notice that **all characters beginning from the first non-blank up to the last non-blank** following the `configure` command are considered part of the provided file name, including spaces other blank characters. Possible errors are detected and leave the application status unchanged. Also, neither environment variable nor _tilde_ expansions are performed, and both quotes (either single or double) and backslashes are interpreted literally.
 
-> **Note**: _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions, conditions that are _not recurring_ -- especially when the `max_tasks_retries` parameter is specified, as the number of available retries is set back to the provided value. In the first case, the condition operates as if the interval counter had started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
+> **Note:** _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions, conditions that are _not recurring_ -- especially when the `max_tasks_retries` parameter is specified, as the number of available retries is set back to the provided value. In the first case, the condition operates as if the interval counter had started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
 
 
 ## Build issues
