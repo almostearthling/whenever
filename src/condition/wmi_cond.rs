@@ -208,7 +208,7 @@ impl WmiQueryCondition {
     /// comply with the requirements of a `WmiQueryCondition` an error is
     /// raised.
     ///
-    /// The values for the `results_check` entries are provided as a list of
+    /// The values for the `result_check` entries are provided as a list of
     /// dictionaries, because the WMI case is quite simple to handle: each
     /// test dictionary will contain an index (optional) to specify which
     /// returned record has to be tonsidered, a field name, an operator, and
