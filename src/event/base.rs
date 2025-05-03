@@ -205,7 +205,7 @@ pub trait Event: Send + Sync {
     ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
-    fn stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> Result<bool> {
         Ok(true)
     }
 
@@ -213,7 +213,7 @@ pub trait Event: Send + Sync {
     ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
-    fn thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> Result<bool> {
         // no special thread is running for this kind of event
         Ok(false)
     }

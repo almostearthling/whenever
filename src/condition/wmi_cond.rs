@@ -1,15 +1,8 @@
 //! Define a WMI query interrogation based condition
 //!
 //! This condition is verified whenever the given query returns a result that
-//! matches the provided criteria: criteria are specified as a map
-//!
-//! `HashMap<(Option<u64>, &str), Variant>`
-//!
-//! where
-//!
-//! * `Option<u64>` is an index in the query results (`None` means _any_)
-//! * `&str` is the field of the returned record
-//! * `Variant` is the value to match the field to.
+//! matches the provided criteria: criteria are specified as a list of
+//! `ResultCheckTest` entries.
 //!
 //! A well crafted query might also not need to return a set of records, even
 //! a single value could be sufficient. As in similar multiple-criteria items
@@ -25,6 +18,8 @@ use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use cfgmap::CfgMap;
 use regex::Regex;
+
+use wmi::{WMIConnection, COMLibrary, Variant};
 
 use super::base::Condition;
 use crate::common::wmiitem::*;
@@ -95,9 +90,7 @@ impl Hash for WmiQueryCondition {
         self.task_names.hash(state);
 
         // specific part
-        self.result_checks_all.hash(state);
         self.query.hash(state);
-
         self.result_checks.hash(state);
         self.result_checks_all.hash(state);
         self.check_after.hash(state);
@@ -116,7 +109,7 @@ impl WmiQueryCondition {
             Some((name, 0)),
             LOG_WHEN_INIT,
             LOG_STATUS_MSG,
-            &format!("CONDITION {name}: creating a new DBus method based condition"),
+            &format!("CONDITION {name}: creating a new WMI query based condition"),
         );
         let t = Instant::now();
         WmiQueryCondition {
@@ -157,7 +150,7 @@ impl WmiQueryCondition {
         }
     }
 
-        // constructor modifiers
+    // constructor modifiers
     /// Set the command execution to sequence or parallel
     pub fn execs_sequentially(mut self, yes: bool) -> Self {
         self.exec_sequence = yes;
@@ -835,12 +828,14 @@ impl Condition for WmiQueryCondition {
     }
 
     fn _check_condition(&mut self) -> Result<Option<bool>> {
+
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
             LOG_STATUS_MSG,
             "checking WMI query based condition",
         );
+
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
         let t = self.last_tested.unwrap();
@@ -857,15 +852,15 @@ impl Condition for WmiQueryCondition {
         }
 
         // run the WMI query and retrieve results, then perform the checks
-        // using the helper method provided in common::wmiitem
-        let com_lib = wmi::COMLibrary::new()?;
-        let conn = wmi::WMIConnection::new(com_lib)?;
+        // using the helper method provided in common::wmiitem; the query is
+        // executed anyway, even in case no checks have been provided, because
+        // it still can produce an error or an empty result, where the latter
+        // case is considered a failure
+        let com_lib = COMLibrary::new()?;
+        let conn = WMIConnection::new(com_lib)?;
 
-        // the query is executed anywai, even in case no checks have been
-        // provided, because it still can produce an error or an empty
-        // result, where the latter case is considered a failure
         let query = self.query.clone().unwrap();
-        let results: Vec<HashMap<String, wmi::Variant>> = conn.raw_query(query)?;
+        let results: Vec<HashMap<String, Variant>> = conn.raw_query(query)?;
         if results.is_empty() {
             self.log(
                 LogType::Debug,
@@ -887,7 +882,7 @@ impl Condition for WmiQueryCondition {
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
-                    "outcome is successful because no checks have been provided",
+                    "no result checks specified: outcome is success",
                 );
                 return Ok(Some(true));
             }

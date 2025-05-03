@@ -25,7 +25,7 @@ use std::str::FromStr;
 use super::base::Event;
 use crate::common::dbusitem::*;
 use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
+use crate::common::wres::{Error, Result, Kind};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -820,7 +820,7 @@ impl Event for DbusMessageEvent {
             connection
         }
 
-        // provide the mesage stream we subscribed to through the filter; note
+        // provide the message stream we subscribed to through the filter; note
         // that the rule is moved here since this will be the only consumer
         async fn _get_stream(
             rule: zbus::MatchRule<'_>,
@@ -905,7 +905,7 @@ impl Event for DbusMessageEvent {
         );
 
         // build an async communication channel for the quit signal
-        let (aquit_tx, mut aquit_rx) = channel(10);
+        let (aquit_tx, mut aquit_rx) = channel(EVENT_QUIT_CHANNEL_SIZE);
 
         // now it is time to set the internal `running` flag, before the
         // thread that waits for the quit signal is launched
@@ -1096,7 +1096,7 @@ impl Event for DbusMessageEvent {
         Ok(true)
     }
 
-    fn stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => {
                 if *running {
@@ -1137,20 +1137,20 @@ impl Event for DbusMessageEvent {
                     LOG_STATUS_ERR,
                     "could not determine whether the service is running",
                 );
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    "could not determine whether the service is running",
+                Err(Error::new(
+                    Kind::Forbidden,
+                    ERR_EVENT_LISTENING_NOT_DETERMINED,
                 ))
             }
         }
     }
 
-    fn thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => Ok(*running),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running",
+            _ => Err(Error::new(
+                Kind::Forbidden,
+                ERR_EVENT_LISTENING_NOT_DETERMINED,
             )),
         }
     }

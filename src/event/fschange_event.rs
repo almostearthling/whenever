@@ -23,7 +23,7 @@ use notify::{self, Watcher};
 use super::base::Event;
 
 use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
+use crate::common::wres::{Error, Result, Kind};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -627,7 +627,7 @@ impl Event for FilesystemChangeEvent {
         Ok(true)
     }
 
-    fn stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => {
                 if *running {
@@ -668,20 +668,20 @@ impl Event for FilesystemChangeEvent {
                     LOG_STATUS_ERR,
                     "could not determine whether the listener is running",
                 );
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    "could not determine whether the listener is running",
+                Err(Error::new(
+                    Kind::Forbidden,
+                    ERR_EVENT_LISTENING_NOT_DETERMINED,
                 ))
             }
         }
     }
 
-    fn thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => Ok(*running),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the listener is running",
+            _ => Err(Error::new(
+                Kind::Forbidden,
+                ERR_EVENT_LISTENING_NOT_DETERMINED,
             )),
         }
     }

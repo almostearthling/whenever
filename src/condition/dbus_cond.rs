@@ -127,7 +127,7 @@ impl Hash for DbusMethodCondition {
             0.hash(state);
         }
 
-        // let's hope that to_string is a correct representation of the
+        // let's hope that to_string is a correct representation of elem
         if let Some(x) = &self.param_call {
             for elem in x {
                 elem.to_string().hash(state);
