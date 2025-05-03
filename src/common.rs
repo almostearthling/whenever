@@ -1868,7 +1868,7 @@ pub mod dbusitem {
     /// performs the checks (all or some depends on the value of `checks_all`)
     /// on the message contents.
     ///
-    /// It returns a boolean that specified if the check was successful or not
+    /// It returns a boolean that specifies if the check was successful or not
     /// (under the condition that either some or all the parameters had to be
     /// tested), and four other values that form the variable part of a log
     /// message, suitable for being issued by the specialized logging function
@@ -2543,6 +2543,261 @@ pub mod dbusitem {
     }
 }
 
+/// Infrastructure for performing checks on WMI results: since these checks
+/// are slightly different from the ones that can be performed on DBus ones
+/// (for instance, no returned arrays are taken into account, only simple
+/// values), the operator and check types will be kept separated with no
+/// common base
+#[cfg(windows)]
+#[cfg(feature = "wmi")]
+#[allow(dead_code)]
+pub mod wmiitem {
+    use crate::constants::*;
+    use crate::LogType;
+    use regex::Regex;
+    use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
+
+    use wmi::Variant;
+
+    #[derive(PartialEq, Hash, Clone)]
+    pub enum ResultCheckOperator {
+        Equal,        // "eq"
+        NotEqual,     // "neq"
+        Greater,      // "gt"
+        GreaterEqual, // "ge"
+        Less,         // "lt"
+        LessEqual,    // "le"
+        Match,        // "match"
+    }
+
+    /// an enum containing the value that the result should be checked
+    /// against
+    pub enum ResultCheckValue {
+        Boolean(bool),
+        Integer(i64),
+        Float(f64),
+        String(String),
+        Regex(Regex),
+    }
+
+    pub struct ResultCheckTest {
+        pub index: Option<usize>,   // `None` means any record
+        pub field: String,
+        pub operator: ResultCheckOperator,
+        pub value: ResultCheckValue,
+    }
+
+    // implement the hash protocol for ResultCheckTest
+    impl Hash for ResultCheckTest {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            self.index.hash(state);
+            self.field.hash(state);
+            self.operator.hash(state);
+            match &self.value {
+                ResultCheckValue::Boolean(x) => x.hash(state),
+                ResultCheckValue::Integer(x) => x.hash(state),
+                ResultCheckValue::Float(x) => x.to_bits().hash(state),
+                ResultCheckValue::String(x) => x.hash(state),
+                ResultCheckValue::Regex(x) => x.as_str().hash(state),
+            }
+        }
+    }
+
+    // allow a test to be easily cloned
+    impl Clone for ResultCheckTest {
+        fn clone(&self) -> Self {
+            let value = match &self.value {
+                ResultCheckValue::Boolean(x) => ResultCheckValue::Boolean(*x),
+                ResultCheckValue::Integer(x) => ResultCheckValue::Integer(*x),
+                ResultCheckValue::Float(x) => ResultCheckValue::Float(*x),
+                ResultCheckValue::String(s) => ResultCheckValue::String(s.clone()),
+                ResultCheckValue::Regex(e) => ResultCheckValue::Regex(e.clone()),
+            };
+
+            ResultCheckTest {
+                index: self.index.clone(),
+                field: self.field.clone(),
+                operator: self.operator.clone(),
+                value,
+            }
+        }
+    }
+
+    // the _oper helper to make code more readable is implemented here too
+    fn _oper<T: PartialOrd + PartialEq>(op: &ResultCheckOperator, o1: T, o2: T) -> bool {
+        match op {
+            ResultCheckOperator::Equal => o1 == o2,
+            ResultCheckOperator::NotEqual => o1 != o2,
+            ResultCheckOperator::Less => o1 < o2,
+            ResultCheckOperator::LessEqual => o1 <= o2,
+            ResultCheckOperator::Greater => o1 > o2,
+            ResultCheckOperator::GreaterEqual => o1 >= o2,
+            ResultCheckOperator::Match => false,
+        }
+    }
+
+    fn _check_variant(c: &ResultCheckValue, op: &ResultCheckOperator, v: &Variant) -> bool {
+        match c {
+            ResultCheckValue::Boolean(x) => {
+                match v {
+                    Variant::Bool(y) => _oper(op, x, y),
+                    _ => false,
+                }
+            }
+            ResultCheckValue::Integer(x) => {
+                match v {
+                    Variant::I1(y) => _oper(op, x, &(*y as i64)),
+                    Variant::I2(y) => _oper(op, x, &(*y as i64)),
+                    Variant::I4(y) => _oper(op, x, &(*y as i64)),
+                    Variant::I8(y) => _oper(op, x, &(*y as i64)),
+                    Variant::UI1(y) => _oper(op, x, &(*y as i64)),
+                    Variant::UI2(y) => _oper(op, x, &(*y as i64)),
+                    Variant::UI4(y) => _oper(op, x, &(*y as i64)),
+                    Variant::UI8(y) => {
+                        if *y > i64::MAX as u64 {
+                            false
+                        } else {
+                            _oper(op, x, &(*y as i64))
+                        }
+                    },
+                    Variant::R4(y) => _oper(op, &(*x as f32), y),
+                    Variant::R8(y) => _oper(op, &(*x as f64), y),
+                    _ => false,
+                }
+            }
+            ResultCheckValue::Float(x) => {
+                match v {
+                    Variant::I1(y) => _oper(op, x, &(*y as f64)),
+                    Variant::I2(y) => _oper(op, x, &(*y as f64)),
+                    Variant::I4(y) => _oper(op, x, &(*y as f64)),
+                    Variant::I8(y) => _oper(op, x, &(*y as f64)),
+                    Variant::UI1(y) => _oper(op, x, &(*y as f64)),
+                    Variant::UI2(y) => _oper(op, x, &(*y as f64)),
+                    Variant::UI4(y) => _oper(op, x, &(*y as f64)),
+                    Variant::UI8(y) => _oper(op, x, &(*y as f64)),
+                    Variant::R4(y) => _oper(op, x, &(*y as f64)),
+                    Variant::R8(y) => _oper(op, x, &(*y as f64)),
+                    _ => false,
+                }
+            }
+            ResultCheckValue::String(x) => {
+                match v {
+                    Variant::String(y) => _oper(op, x.as_str(), y.as_str()),
+                    _ => false,
+                }
+            }
+            ResultCheckValue::Regex(x) => {
+                if *op == ResultCheckOperator::Match {
+                    match v {
+                        Variant::String(y) => x.is_match(y),
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    /// This is the heart of WMI result checks: it takes a reference to a raw
+    /// WMI query result (see https://docs.rs/wmi/latest/wmi/ for reference)
+    /// and a reference to the list of checks that has been configured, and
+    /// performs the checks (all or some depends on the value of `checks_all`)
+    /// on the array of records returned by the query.
+    ///
+    /// It returns a boolean that specifies if the check was successful or not
+    /// (under the condition that either some or all the checks had to be
+    /// tested), and four other values that form the variable part of a log
+    /// message, suitable for being issued by the specialized logging function
+    /// defined by the item.
+    pub fn wmi_check_result(
+        result: &Vec<HashMap<String, Variant>>,     // the dbus message
+        checks: &Vec<ResultCheckTest>,              // item.result_checks
+        checks_all: bool,                           // item.checks_all
+    ) -> (
+        bool,         // verified
+        LogType,      // the log severity
+        &'static str, // log/when (LOG_WHEN_...)
+        &'static str, // log/status (LOG_STATUS_...)
+        String,       // log message
+    ) {
+        let mut verified: bool = checks_all;
+        let mut severity: LogType = LogType::Trace;
+        let mut ref_log_when: &str = LOG_WHEN_PROC;
+        let mut ref_log_status: &str = LOG_STATUS_OK;
+        let mut log_message: String = String::from("result check ended");
+
+        'result: for ck in checks.iter() {
+            if let Some(idx) = ck.index {
+                if idx > result.len() {
+                    severity = LogType::Warn;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_FAIL;
+                    log_message =
+                        format!("could not retrieve result: index {idx} out of range");
+                    verified = false;
+                    break 'result;
+                } else {
+                    let rec = result.get(idx).unwrap();
+                    if let Some(v) = rec.get(&ck.field) {
+                        if !_check_variant(&ck.value, &ck.operator, v) {
+                            verified = false;
+                            break 'result;
+                        } else if !checks_all {
+                            verified = true;
+                            break 'result;
+                        }
+                    } else {
+                        severity = LogType::Warn;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_FAIL;
+                        log_message = format!(
+                            "could not check result: field `{}` not found in record",
+                            ck.field,
+                        );
+                        verified = false;
+                        break 'result;
+                    }
+                }
+            } else {
+                for rec in result {
+                    if let Some(v) = rec.get(&ck.field) {
+                        if !_check_variant(&ck.value, &ck.operator, v) {
+                            verified = false;
+                            break 'result;
+                        } else if !checks_all {
+                            verified = true;
+                            break 'result;
+                        }
+                    } else {
+                        severity = LogType::Warn;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_FAIL;
+                        log_message = format!(
+                            "could not check result: field `{}` not found in record",
+                            ck.field,
+                        );
+                        verified = false;
+                        break 'result;
+                    }
+                }
+            }
+        }
+
+
+        // the return value, including the aforementioned log message
+        (
+            verified,
+            severity,
+            ref_log_when,
+            ref_log_status,
+            log_message,
+        )
+    }
+
+}
+
 /// A common result type: catching errors from modules used throughout
 /// the entire code. The corresponding error carries some information
 /// about what went wrong.
@@ -2554,13 +2809,18 @@ pub mod wres {
     use zbus;
 
     /// Types of specific errors
+    #[non_exhaustive]
     #[derive(Debug, Clone)]
     pub enum Kind {
         Forbidden,
         Unsupported,
+        Unavailable,
+        Unconverted,
+        Unparsed,
         Busy,
         Invalid,
         Failed,
+        Empty,
         // ...
         Unknown,
     }
@@ -2573,9 +2833,13 @@ pub mod wres {
                 match self {
                     Kind::Forbidden => "not permitted",
                     Kind::Unsupported => "not supported",
+                    Kind::Unavailable => "not available",
+                    Kind::Unconverted => "not converted",
+                    Kind::Unparsed => "not parsed",
                     Kind::Busy => "resource busy",
                     Kind::Invalid => "invalid",
                     Kind::Failed => "failed",
+                    Kind::Empty => "empty",
                     Kind::Unknown => "unknown",
                 }
             )
@@ -2585,12 +2849,14 @@ pub mod wres {
     /// Describes the origin of the error: if `Native` the error was originated
     /// natively, otherwise the field is set by another error that is converted
     /// into `Error` via a dedicated `From` trait implementation.
+    #[non_exhaustive]
     #[derive(Debug, Clone, PartialEq)]
     pub enum Origin {
         Native,
         StdIo,
         DBus,
         Notify,
+        WMI,
         // ...
         Unknown,
     }
@@ -2605,6 +2871,7 @@ pub mod wres {
                     Origin::StdIo => "io",
                     Origin::DBus => "dbus",
                     Origin::Notify => "fschange",
+                    Origin::WMI => "wmi",
                     // ...
                     Origin::Unknown => "unknown",
                 }
@@ -2666,6 +2933,34 @@ pub mod wres {
             Self {
                 kind: Kind::Failed,
                 origin: Origin::Notify,
+                message: e.to_string(),
+            }
+        }
+    }
+
+    // wmi errors
+    impl From<wmi::WMIError> for Error {
+        fn from(e: wmi::WMIError) -> Self {
+            let kind = match e {
+                wmi::WMIError::ConvertBoolError(_)
+                | wmi::WMIError::ConvertStringError(_)
+                | wmi::WMIError::ConvertLengthError(_)
+                | wmi::WMIError::ConvertDatetimeError(_)
+                | wmi::WMIError::ConvertDurationError(_)
+                | wmi::WMIError::ConvertVariantError(_)
+                | wmi::WMIError::ConvertError(_) => Kind::Unconverted,
+                wmi::WMIError::DeserializeValueError(_)
+                | wmi::WMIError::InvalidDeserializationVariantError(_)
+                | wmi::WMIError::SerdeError(_) => Kind::Invalid,
+                wmi::WMIError::ParseDatetimeError(_)
+                | wmi::WMIError::ParseFloatError(_)
+                | wmi::WMIError::ParseIntError(_) => Kind::Unparsed,
+                wmi::WMIError::UnimplementedArrayItem => Kind::Unavailable,
+                _ => Kind::Failed,
+            };
+            Self {
+                kind,
+                origin: Origin::WMI,
                 message: e.to_string(),
             }
         }
