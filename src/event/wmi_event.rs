@@ -103,7 +103,7 @@ impl WmiQueryEvent {
     pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
-            LOG_EMITTER_EVENT_DBUS,
+            LOG_EMITTER_EVENT_WMI,
             LOG_ACTION_NEW,
             Some((name, 0)),
             LOG_WHEN_INIT,
