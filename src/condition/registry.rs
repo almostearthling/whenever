@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-// use std::io::{Error, ErrorKind};
 
 use lazy_static::lazy_static;
 use unique_id::sequence::SequenceGenerator;
@@ -253,7 +252,7 @@ impl ConditionRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(ErrorKind::Unsupported, _)` - the condition could not be removed
+    /// * `Error(Kind::Failed, _)` - the condition could not be removed
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Condition)` - the removed (_pulled out_) `Condition` on success
     ///

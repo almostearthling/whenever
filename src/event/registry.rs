@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-// use std::io::{Error, ErrorKind};
 use std::sync::mpsc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -472,7 +471,7 @@ impl EventRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(ErrorKind::Unsupported, _)` - the event could not be removed
+    /// * `Error(Kind::Failed, _)` - the event could not be removed
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success
     ///
