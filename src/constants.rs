@@ -86,7 +86,8 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
-pub const ERR_EVENT_LISTENING_NOT_DETERMINED: &str = "could not determine whether the service is running";
+pub const ERR_EVENT_LISTENING_NOT_DETERMINED: &str =
+    "could not determine whether the service is running";
 
 // logging constants
 pub const LOG_WHEN_INIT: &str = "INIT";
@@ -166,6 +167,7 @@ pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100; // default: 100
 
 // channel sizes
 pub const EVENT_QUIT_CHANNEL_SIZE: usize = 10; // default: 10
+pub const EVENT_CHANNEL_SIZE: usize = 10; // default: 10
 
 // crate-wide values
 lazy_static! {

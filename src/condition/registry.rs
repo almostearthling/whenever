@@ -13,11 +13,11 @@ use std::sync::Mutex;
 use std::sync::RwLock;
 
 use lazy_static::lazy_static;
-use unique_id::sequence::SequenceGenerator;
 use unique_id::Generator;
+use unique_id::sequence::SequenceGenerator;
 
 use super::base::Condition;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -500,11 +500,7 @@ impl ConditionRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified condition
@@ -672,11 +668,7 @@ impl ConditionRegistry {
             let res = match cond.test() {
                 Ok(o) => {
                     if let Some(outcome) = o {
-                        if outcome {
-                            cond.run_tasks()
-                        } else {
-                            Ok(None)
-                        }
+                        if outcome { cond.run_tasks() } else { Ok(None) }
                     } else {
                         Ok(None)
                     }

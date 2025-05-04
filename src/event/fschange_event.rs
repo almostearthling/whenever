@@ -7,14 +7,14 @@
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::{mpsc, RwLock};
+use std::sync::{RwLock, mpsc};
 use std::thread;
 use std::time::Duration;
 
 use async_std::task;
 use futures::{
-    channel::mpsc::{channel, Sender},
     SinkExt, StreamExt,
+    channel::mpsc::{Sender, channel},
 };
 
 use cfgmap::CfgMap;
@@ -22,8 +22,8 @@ use notify::{self, Watcher};
 
 use super::base::Event;
 
-use crate::common::logging::{log, LogType};
-use crate::common::wres::{Error, Result, Kind};
+use crate::common::logging::{LogType, log};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -434,8 +434,8 @@ impl Event for FilesystemChangeEvent {
         // at: examples/watcher_kind.rs
 
         // build an async communication channel: since two threads insist on
-        // it, a suitable capacity is needed (OK, 10 might be too much)
-        let (async_tx, mut async_rx) = channel(10);
+        // it, a suitable capacity is needed
+        let (async_tx, mut async_rx) = channel(EVENT_QUIT_CHANNEL_SIZE);
 
         // build a configuration
         let notify_cfg =

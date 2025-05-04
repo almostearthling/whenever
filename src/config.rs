@@ -5,7 +5,7 @@
 use cfgmap::{CfgMap, CfgValue};
 use std::fs;
 
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::constants::*;

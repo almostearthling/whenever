@@ -6,7 +6,7 @@
 //! It is intended as a 100% Rust successor to the core part of the Python
 //! based [When](https://github.com/almostearthling/when-command) utility.
 
-use std::io::{stdin, BufRead, Stdin};
+use std::io::{BufRead, Stdin, stdin};
 use std::sync::RwLock;
 use std::thread;
 use std::thread::JoinHandle;
@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 
 use cfgmap::CfgValue;
 use clokwerk::{Scheduler, TimeUnits};
-use rand::{thread_rng, RngCore};
+use rand::{RngCore, thread_rng};
 use single_instance::SingleInstance;
 use whoami::username;
 
@@ -38,7 +38,7 @@ use task::registry::TaskRegistry;
 use condition::bucket_cond::ExecutionBucket;
 
 use crate::common::wres::{Error, Kind, Result};
-use common::logging::{init as log_init, log, LogType};
+use common::logging::{LogType, init as log_init, log};
 use config::*;
 use constants::*;
 
@@ -328,11 +328,7 @@ fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool>
             LOG_WHEN_START,
             LOG_STATUS_OK,
             &format!("changing state of condition {name} to {}", {
-                if suspended {
-                    "suspended"
-                } else {
-                    "active"
-                }
+                if suspended { "suspended" } else { "active" }
             }),
         );
         if suspended {

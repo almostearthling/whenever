@@ -23,7 +23,7 @@
 
 use std::time::Instant;
 
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 
 use crate::constants::*;
@@ -168,8 +168,8 @@ pub trait Condition: Send {
     ///
     /// This function, in objects implementing the `Condition` trait, actually
     /// performs the check, and must return a successfulness value in the form
-    /// of a `Result<Option<bool>, std::io::Error>`. The return value is
-    /// interpreted as follows:
+    /// of a `Result<Option<bool>, Error>`. The return value is interpreted as
+    /// follows:
     ///
     /// * `Ok(Some(true))` - the _only_ case considered a success
     /// * `Ok(Some(false))` - a verified failure in the test
@@ -515,11 +515,7 @@ pub trait Condition: Send {
                             LOG_WHEN_END,
                             LOG_STATUS_MSG,
                             &format!("task {name} completed: outcome is {}", {
-                                if *outcome {
-                                    "success"
-                                } else {
-                                    "failure"
-                                }
+                                if *outcome { "success" } else { "failure" }
                             },),
                         );
                     } else {

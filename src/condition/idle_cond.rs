@@ -12,7 +12,7 @@ use cfgmap::CfgMap;
 use user_idle::UserIdle;
 
 use super::base::Condition;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -22,7 +22,7 @@ use crate::cfghelp::*;
 /// Idle Session Based Condition
 ///
 /// This condition is verified once enough time has passed since without
-/// user iteraction with the workstation.
+/// user interaction with the workstation.
 pub struct IdleCondition {
     // commom members
     // parameters
@@ -490,13 +490,7 @@ impl Condition for IdleCondition {
                 LOG_STATUS_MSG,
                 &format!(
                     "checking idle time based condition{} (test: {}<{}?)",
-                    {
-                        if self.idle_verified {
-                            " [idle]"
-                        } else {
-                            ""
-                        }
-                    },
+                    { if self.idle_verified { " [idle]" } else { "" } },
                     idle.as_seconds(),
                     self.idle_seconds.as_secs(),
                 ),

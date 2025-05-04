@@ -84,7 +84,7 @@ lazy_static! {
 ///   provided as the `LogType` enumeration
 pub mod logging {
     use crate::constants::{APP_NAME, ERR_LOGGER_NOT_INITIALIZED};
-    use flexi_logger::{style, DeferredNow, FileSpec, Logger};
+    use flexi_logger::{DeferredNow, FileSpec, Logger, style};
     use log::Record;
     use log::{debug, error, info, trace, warn};
     use nu_ansi_term::Style;
@@ -352,8 +352,8 @@ pub mod cmditem {
     use std::time::{Duration, SystemTime};
     use subprocess::{ExitStatus, Popen};
 
-    use crate::constants::*;
     use crate::LogType;
+    use crate::constants::*;
 
     /// In case of failure, the reason will be one of the provided values
     #[derive(Debug, PartialEq)]
@@ -757,15 +757,15 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stdout (regex) {p:?} matched",
-                                            );
+                                                    "condition success stdout (regex) {p:?} matched",
+                                                );
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stdout (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition success stdout (regex) {p:?} NOT matched",
+                                                );
                                                 failure_reason = FailureReason::StdOut;
                                             }
                                         } else if re.find(process_stdout).is_some() {
@@ -813,15 +813,15 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} matched",
+                                                );
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} NOT matched",
+                                                );
                                                 failure_reason = FailureReason::StdErr;
                                             }
                                         } else if re.find(process_stderr).is_some() {
@@ -869,16 +869,16 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition failure stdout (regex) {p:?} matched",
-                                            );
+                                                    "condition failure stdout (regex) {p:?} matched",
+                                                );
                                                 failure_reason = FailureReason::StdOut;
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition failure stdout (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition failure stdout (regex) {p:?} NOT matched",
+                                                );
                                             }
                                         } else if re.find(process_stdout).is_some() {
                                             severity = LogType::Debug;
@@ -902,8 +902,8 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_FAIL;
                                         log_message = format!(
-                                        "provided INVALID failure stdout regex {p:?} NOT found/matched",
-                                    );
+                                            "provided INVALID failure stdout regex {p:?} NOT found/matched",
+                                        );
                                     }
                                 }
                             }
@@ -924,16 +924,16 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} matched",
+                                                );
                                                 failure_reason = FailureReason::StdErr;
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} NOT matched",
+                                                );
                                             }
                                         } else if re.find(process_stderr).is_some() {
                                             severity = LogType::Debug;
@@ -1324,15 +1324,15 @@ pub mod luaitem {
 #[cfg(feature = "dbus")]
 #[allow(dead_code)]
 pub mod dbusitem {
-    use crate::constants::*;
     use crate::LogType;
+    use crate::constants::*;
     use cfgmap::CfgValue;
     use regex::Regex;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
     use zbus;
-    use zbus::zvariant;
     use zbus::Message;
+    use zbus::zvariant;
 
     // this helper is just to avoid ugly code since the implementation of
     // zbus used here still does not implement the `key_signature` method
@@ -2552,8 +2552,8 @@ pub mod dbusitem {
 #[cfg(feature = "wmi")]
 #[allow(dead_code)]
 pub mod wmiitem {
-    use crate::constants::*;
     use crate::LogType;
+    use crate::constants::*;
     use regex::Regex;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
@@ -2582,7 +2582,7 @@ pub mod wmiitem {
     }
 
     pub struct ResultCheckTest {
-        pub index: Option<usize>,   // `None` means any record
+        pub index: Option<usize>, // `None` means any record
         pub field: String,
         pub operator: ResultCheckOperator,
         pub value: ResultCheckValue,
@@ -2639,54 +2639,46 @@ pub mod wmiitem {
 
     fn _check_variant(c: &ResultCheckValue, op: &ResultCheckOperator, v: &Variant) -> bool {
         match c {
-            ResultCheckValue::Boolean(x) => {
-                match v {
-                    Variant::Bool(y) => _oper(op, x, y),
-                    _ => false,
+            ResultCheckValue::Boolean(x) => match v {
+                Variant::Bool(y) => _oper(op, x, y),
+                _ => false,
+            },
+            ResultCheckValue::Integer(x) => match v {
+                Variant::I1(y) => _oper(op, x, &(*y as i64)),
+                Variant::I2(y) => _oper(op, x, &(*y as i64)),
+                Variant::I4(y) => _oper(op, x, &(*y as i64)),
+                Variant::I8(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI1(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI2(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI4(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI8(y) => {
+                    if *y > i64::MAX as u64 {
+                        false
+                    } else {
+                        _oper(op, x, &(*y as i64))
+                    }
                 }
-            }
-            ResultCheckValue::Integer(x) => {
-                match v {
-                    Variant::I1(y) => _oper(op, x, &(*y as i64)),
-                    Variant::I2(y) => _oper(op, x, &(*y as i64)),
-                    Variant::I4(y) => _oper(op, x, &(*y as i64)),
-                    Variant::I8(y) => _oper(op, x, &(*y as i64)),
-                    Variant::UI1(y) => _oper(op, x, &(*y as i64)),
-                    Variant::UI2(y) => _oper(op, x, &(*y as i64)),
-                    Variant::UI4(y) => _oper(op, x, &(*y as i64)),
-                    Variant::UI8(y) => {
-                        if *y > i64::MAX as u64 {
-                            false
-                        } else {
-                            _oper(op, x, &(*y as i64))
-                        }
-                    },
-                    Variant::R4(y) => _oper(op, &(*x as f32), y),
-                    Variant::R8(y) => _oper(op, &(*x as f64), y),
-                    _ => false,
-                }
-            }
-            ResultCheckValue::Float(x) => {
-                match v {
-                    Variant::I1(y) => _oper(op, x, &(*y as f64)),
-                    Variant::I2(y) => _oper(op, x, &(*y as f64)),
-                    Variant::I4(y) => _oper(op, x, &(*y as f64)),
-                    Variant::I8(y) => _oper(op, x, &(*y as f64)),
-                    Variant::UI1(y) => _oper(op, x, &(*y as f64)),
-                    Variant::UI2(y) => _oper(op, x, &(*y as f64)),
-                    Variant::UI4(y) => _oper(op, x, &(*y as f64)),
-                    Variant::UI8(y) => _oper(op, x, &(*y as f64)),
-                    Variant::R4(y) => _oper(op, x, &(*y as f64)),
-                    Variant::R8(y) => _oper(op, x, &(*y as f64)),
-                    _ => false,
-                }
-            }
-            ResultCheckValue::String(x) => {
-                match v {
-                    Variant::String(y) => _oper(op, x.as_str(), y.as_str()),
-                    _ => false,
-                }
-            }
+                Variant::R4(y) => _oper(op, &(*x as f32), y),
+                Variant::R8(y) => _oper(op, &(*x as f64), y),
+                _ => false,
+            },
+            ResultCheckValue::Float(x) => match v {
+                Variant::I1(y) => _oper(op, x, &(*y as f64)),
+                Variant::I2(y) => _oper(op, x, &(*y as f64)),
+                Variant::I4(y) => _oper(op, x, &(*y as f64)),
+                Variant::I8(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI1(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI2(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI4(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI8(y) => _oper(op, x, &(*y as f64)),
+                Variant::R4(y) => _oper(op, x, &(*y as f64)),
+                Variant::R8(y) => _oper(op, x, &(*y as f64)),
+                _ => false,
+            },
+            ResultCheckValue::String(x) => match v {
+                Variant::String(y) => _oper(op, x.as_str(), y.as_str()),
+                _ => false,
+            },
             ResultCheckValue::Regex(x) => {
                 if *op == ResultCheckOperator::Match {
                     match v {
@@ -2712,9 +2704,9 @@ pub mod wmiitem {
     /// message, suitable for being issued by the specialized logging function
     /// defined by the item.
     pub fn wmi_check_result(
-        result: &Vec<HashMap<String, Variant>>,     // the dbus message
-        checks: &Vec<ResultCheckTest>,              // item.result_checks
-        checks_all: bool,                           // item.checks_all
+        result: &Vec<HashMap<String, Variant>>, // the dbus message
+        checks: &Vec<ResultCheckTest>,          // item.result_checks
+        checks_all: bool,                       // item.checks_all
     ) -> (
         bool,         // verified
         LogType,      // the log severity
@@ -2734,8 +2726,7 @@ pub mod wmiitem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message =
-                        format!("could not retrieve result: index {idx} out of range");
+                    log_message = format!("could not retrieve result: index {idx} out of range");
                     verified = false;
                     break 'result;
                 } else {
@@ -2785,7 +2776,6 @@ pub mod wmiitem {
             }
         }
 
-
         // the return value, including the aforementioned log message
         (
             verified,
@@ -2795,7 +2785,6 @@ pub mod wmiitem {
             log_message,
         )
     }
-
 }
 
 /// A common result type: catching errors from modules used throughout

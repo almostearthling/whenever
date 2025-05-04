@@ -15,26 +15,25 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::{Duration, Instant};
 
-use std::collections::HashMap;
 use cfgmap::CfgMap;
 use regex::Regex;
+use std::collections::HashMap;
 
-use wmi::{WMIConnection, COMLibrary, Variant};
+use wmi::{COMLibrary, Variant, WMIConnection};
 
 use super::base::Condition;
+use crate::common::logging::{LogType, log};
 use crate::common::wmiitem::*;
-use crate::common::logging::{log, LogType};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-
-/// DBus Method Based Condition
+/// WMI Query Based Condition
 ///
-/// This condition is verified whenever a value returned by a DBus method
-/// invocation meets the criteria specified in the configuration.
+/// This condition is verified whenever one or more rows returned by a WMI
+/// query satisfy the provided criteria.
 pub struct WmiQueryCondition {
     // commom members
     // parameters
@@ -349,8 +348,7 @@ impl WmiQueryCondition {
                 }
                 let index = index.unwrap();
 
-                let field = cfg_mandatory!(
-                    cfg_string_check_regex(cfgmap, "field", &RE_VAR_NAME));
+                let field = cfg_mandatory!(cfg_string_check_regex(cfgmap, "field", &RE_VAR_NAME));
                 if field.is_err() {
                     return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:field"),
@@ -434,12 +432,15 @@ impl WmiQueryCondition {
                 }
                 // now that we have the full struct, we can add it to criteria
                 result_checks.push(ResultCheckTest {
-                    index: if let Some(i) = index { Some(i as usize) } else { None },
+                    index: if let Some(i) = index {
+                        Some(i as usize)
+                    } else {
+                        None
+                    },
                     field,
                     operator,
                     value,
                 });
-
             }
             // finally the parameter checks become `Some` and makes its way
             // into the new condition structure: the list is formally correct,
@@ -574,8 +575,7 @@ impl WmiQueryCondition {
                     ));
                 }
 
-                let field = cfg_mandatory!(
-                    cfg_string_check_regex(cfgmap, "field", &RE_VAR_NAME));
+                let field = cfg_mandatory!(cfg_string_check_regex(cfgmap, "field", &RE_VAR_NAME));
                 if field.is_err() {
                     return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:field"),
@@ -651,7 +651,6 @@ impl WmiQueryCondition {
                         ERR_MISSING_PARAMETER,
                     ));
                 }
-
             }
 
             // `result_check_all` only makes sense if the paramenter check
@@ -662,7 +661,6 @@ impl WmiQueryCondition {
 
         Ok(name)
     }
-
 }
 
 impl Condition for WmiQueryCondition {
@@ -828,7 +826,6 @@ impl Condition for WmiQueryCondition {
     }
 
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-
         self.log(
             LogType::Debug,
             LOG_WHEN_START,

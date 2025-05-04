@@ -9,10 +9,10 @@
 
 use regex::Regex;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{mpsc, Arc, RwLock};
+use std::sync::{Arc, RwLock, mpsc};
 use std::thread;
 
-use futures::{channel::mpsc::channel, pin_mut, select, FutureExt, SinkExt, StreamExt};
+use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, select};
 
 use cfgmap::{CfgMap, CfgValue};
 
@@ -24,8 +24,8 @@ use std::str::FromStr;
 
 use super::base::Event;
 use crate::common::dbusitem::*;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::{Error, Result, Kind};
+use crate::common::logging::{LogType, log};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -1008,12 +1008,8 @@ impl Event for DbusMessageEvent {
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
                             &format!("parameter checks specified: {} checks must be verified", {
-                                if self.param_checks_all {
-                                    "all"
-                                } else {
-                                    "some"
-                                }
-                            },),
+                                if self.param_checks_all { "all" } else { "some" }
+                            }),
                         );
 
                         let severity;

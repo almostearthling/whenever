@@ -29,7 +29,7 @@ use cfgmap::CfgMap;
 
 use super::base::Condition;
 use crate::common::cmditem::*;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};

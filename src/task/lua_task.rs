@@ -16,7 +16,7 @@ use mlua;
 
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
 use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
@@ -148,13 +148,7 @@ impl LuaTask {
     // helper to build a representation of checks for logging
     fn repr_checks(&self) -> String {
         let mut res = String::new();
-        let sep = {
-            if self.expect_all {
-                "and"
-            } else {
-                "or"
-            }
-        };
+        let sep = { if self.expect_all { "and" } else { "or" } };
         for (k, v) in self.expected.iter() {
             let rval = match v {
                 LuaValue::LuaString(v) => format!("\"{v}\""),
@@ -559,29 +553,17 @@ impl Task for LuaTask {
                                 LuaValue::LuaString(v) => {
                                     let r: std::result::Result<String, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
                                     let r: std::result::Result<f64, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
                                     let r: std::result::Result<bool, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if !res {
@@ -612,29 +594,17 @@ impl Task for LuaTask {
                                 LuaValue::LuaString(v) => {
                                     let r: std::result::Result<String, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
                                     let r: std::result::Result<f64, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
                                     let r: std::result::Result<bool, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if res {

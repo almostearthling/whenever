@@ -11,19 +11,19 @@
 //! functions.
 
 use std::collections::HashMap;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-use std::thread::spawn;
+use std::sync::mpsc::channel;
 use std::thread::JoinHandle;
+use std::thread::spawn;
 
 use lazy_static::lazy_static;
-use unique_id::sequence::SequenceGenerator;
 use unique_id::Generator;
+use unique_id::sequence::SequenceGenerator;
 
 use super::base::Task;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -315,11 +315,7 @@ impl TaskRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified task
@@ -446,11 +442,7 @@ impl TaskRegistry {
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
                     &format!("breaking on {}", {
-                        if task_success {
-                            "success"
-                        } else {
-                            "failure"
-                        }
+                        if task_success { "success" } else { "failure" }
                     }),
                 );
                 break;

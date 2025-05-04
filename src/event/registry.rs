@@ -21,11 +21,11 @@ use futures;
 use futures::SinkExt;
 
 use lazy_static::lazy_static;
-use unique_id::sequence::SequenceGenerator;
 use unique_id::Generator;
+use unique_id::sequence::SequenceGenerator;
 
 use super::base::Event;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -92,7 +92,7 @@ impl EventRegistry {
         registry: &'static Self,
     ) -> Result<JoinHandle<std::result::Result<bool, std::io::Error>>> {
         let registry = Arc::new(Mutex::new(Box::new(registry)));
-        let (smtx, mut smrx) = futures::channel::mpsc::channel(10);
+        let (smtx, mut smrx) = futures::channel::mpsc::channel(EVENT_CHANNEL_SIZE);
 
         let r0 = registry.clone();
         let m0 = r0
@@ -526,11 +526,7 @@ impl EventRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified event.

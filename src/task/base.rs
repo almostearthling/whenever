@@ -9,7 +9,7 @@
 //! and read/write access to its ID in the form of an unsigned integer. A zero
 //! ID is used for _inactive_ tasks.
 
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::constants::*;
 

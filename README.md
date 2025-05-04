@@ -5,7 +5,6 @@
 <!-- code_chunk_output -->
 
 - [The Whenever Task Scheduler](#the-whenever-task-scheduler)
-  - [TODO](#todo)
   - [Introduction](#introduction)
   - [Features](#features)
   - [CLI](#cli)
@@ -43,16 +42,6 @@ Configuration is provided to the scheduler via a [TOML](https://toml.io/) file, 
 Ideally, **whenever** is the successor of the _Python_ based [_When_](https://github.com/almostearthling/when-command) scheduler, with the intention of being cross platform, more efficient and as least resource-consuming as possible. It also gained some features (eg. _Lua_ scripting) that _When_ did not have, at no cost in terms of performance since **whenever** is a self-contained, optimized, and thin executable instead of being an interpreted program.
 
 Although a command line application, it is designed for desktops -- therefore it should be executed via a controlling GUI wrapper.
-
-
-## TODO
-
-- [ ]: fix in-source documentation such as
-  * [/// Time Interval Based Condition](https://github.com/almostearthling/whenever/blob/1d5f9075815847a760f0513e198684050550ad0e/src/condition/time_cond.rs#L230)
-  * [/// Time Interval Based Condition](https://github.com/almostearthling/whenever/blob/1d5f9075815847a760f0513e198684050550ad0e/src/condition/idle_cond.rs#L22)
-  * comments that include references to `std::io::Error` or `std::io::Result`
-  * ... and such
-- [ ]: **REMOVE** this TODO list
 
 
 ## Introduction

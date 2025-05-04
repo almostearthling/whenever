@@ -3,30 +3,35 @@
 #![cfg(windows)]
 #![cfg(feature = "wmi")]
 
-
 use futures::Stream;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{mpsc, RwLock};
+use std::sync::{RwLock, mpsc};
 use std::thread;
 
-use futures::{channel::mpsc::channel, pin_mut, select, FutureExt, SinkExt, StreamExt};
+use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, select};
 
 use cfgmap::CfgMap;
 
 use async_std::task;
 
-use wmi::{WMIConnection, COMLibrary, WMIResult, IWbemClassWrapper};
+use wmi::{COMLibrary, IWbemClassWrapper, WMIConnection, WMIResult};
 
 use super::base::Event;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::{Error, Result, Kind};
+use crate::common::logging::{LogType, log};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-
+/// WMI Based Event
+///
+/// Implements an event based upon WMI suscription to certain events, using
+/// the [wmi](https://docs.rs/wmi/latest/wmi/) Windows-targeted WMI library.
+///
+/// **Note**: the `match_query` holds a string implementing the *WMI query*:
+///           see https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-a-wmi-event
 pub struct WmiQueryEvent {
     // common members
     // parameters
@@ -66,13 +71,7 @@ impl Hash for WmiQueryEvent {
     }
 }
 
-/// WMI Based Event
-///
-/// Implements an event based upon WMI suscription to certain events, using
-/// the [wmi](https://docs.rs/wmi/latest/wmi/) Windows-targeted WMI library.
-///
-/// **Note**: the `match_query` holds a string implementing the *WMI query*:
-///           see https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-a-wmi-event
+// implement cloning
 impl Clone for WmiQueryEvent {
     fn clone(&self) -> Self {
         WmiQueryEvent {
@@ -155,13 +154,7 @@ impl WmiQueryEvent {
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
     ) -> Result<WmiQueryEvent> {
-        let check = vec![
-            "type",
-            "name",
-            "tags",
-            "condition",
-            "query",
-        ];
+        let check = vec!["type", "name", "tags", "condition", "query"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -222,13 +215,7 @@ impl WmiQueryEvent {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
-        let check = vec![
-            "type",
-            "name",
-            "tags",
-            "condition",
-            "query",
-        ];
+        let check = vec!["type", "name", "tags", "condition", "query"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -268,11 +255,9 @@ impl WmiQueryEvent {
 
         Ok(name)
     }
-
 }
 
 impl Event for WmiQueryEvent {
-
     fn set_id(&mut self, id: i64) {
         self.event_id = id;
     }
@@ -355,7 +340,8 @@ impl Event for WmiQueryEvent {
         // explained reason, and because it would be a mess to pass such
         // payload across threads
         async fn _get_wmi_event<T>(stream: &mut T) -> Option<TargetOrQuitEvent>
-            where T: Stream<Item = WMIResult<IWbemClassWrapper>> + Unpin
+        where
+            T: Stream<Item = WMIResult<IWbemClassWrapper>> + Unpin,
         {
             if let Some(m) = stream.next().await {
                 if m.is_ok() {
@@ -497,7 +483,6 @@ impl Event for WmiQueryEvent {
                         }
                     }
                 }
-
             }
         });
 
@@ -574,7 +559,6 @@ impl Event for WmiQueryEvent {
             )),
         }
     }
-
 }
 
 // end.

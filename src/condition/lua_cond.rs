@@ -15,7 +15,7 @@ use cfgmap::CfgMap;
 use mlua;
 
 use super::base::Condition;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
 use crate::common::wres::{Error, Kind, Result};
 use crate::task::registry::TaskRegistry;
@@ -246,13 +246,7 @@ impl LuaCondition {
     // helper to build a representation of checks for logging
     fn repr_checks(&self) -> String {
         let mut res = String::new();
-        let sep = {
-            if self.expect_all {
-                "and"
-            } else {
-                "or"
-            }
-        };
+        let sep = { if self.expect_all { "and" } else { "or" } };
         for (k, v) in self.expected.iter() {
             let rval = match v {
                 LuaValue::LuaString(v) => format!("\"{v}\""),
@@ -277,13 +271,6 @@ impl LuaCondition {
         cfgmap: &CfgMap,
         task_registry: &'static TaskRegistry,
     ) -> Result<LuaCondition> {
-        // fn _invalid_cfg(key: &str, value: &str, message: &str) -> Result<LuaCondition> {
-        //     Err(Error::new(
-        //         Kind::Invalid,
-        //         &format!("{ERR_INVALID_COND_CONFIG}: ({key}={value}) {message}"),
-        //     ))
-        // }
-
         let check = vec![
             "type",
             "name",
@@ -867,29 +854,17 @@ impl Condition for LuaCondition {
                                 LuaValue::LuaString(v) => {
                                     let r: std::result::Result<String, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
                                     let r: std::result::Result<f64, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
                                     let r: std::result::Result<bool, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if !res {
@@ -920,29 +895,17 @@ impl Condition for LuaCondition {
                                 LuaValue::LuaString(v) => {
                                     let r: std::result::Result<String, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaNumber(v) => {
                                     let r: std::result::Result<f64, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                                 LuaValue::LuaBoolean(v) => {
                                     let r: std::result::Result<bool, mlua::Error> =
                                         globals.get(varname.as_str());
-                                    if let Ok(r) = r {
-                                        Some(r == *v)
-                                    } else {
-                                        None
-                                    }
+                                    if let Ok(r) = r { Some(r == *v) } else { None }
                                 }
                             } {
                                 if res {
