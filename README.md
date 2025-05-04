@@ -21,10 +21,12 @@
       - [Command](#command)
       - [Lua script](#lua-script)
       - [DBus method (optional)](#dbus-method-optional)
+      - [WMI Query based (optional, Windows only)](#wmi-query-based-optional-windows-only)
       - [Event based](#event-based)
     - [Events](#events)
       - [Filesystem changes](#filesystem-changes)
       - [DBus signals (optional)](#dbus-signals-optional)
+      - [WMI (optional, Windows only)](#wmi-optional-windows-only)
       - [Command line](#command-line)
   - [Logging](#logging)
   - [Input commands](#input-commands)
@@ -45,10 +47,10 @@ Although a command line application, it is designed for desktops -- therefore it
 
 ## TODO
 
-- [ ]: update documentation by adding optional WMI features
 - [ ]: fix in-source documentation such as
   * [/// Time Interval Based Condition](https://github.com/almostearthling/whenever/blob/1d5f9075815847a760f0513e198684050550ad0e/src/condition/time_cond.rs#L230)
   * [/// Time Interval Based Condition](https://github.com/almostearthling/whenever/blob/1d5f9075815847a760f0513e198684050550ad0e/src/condition/idle_cond.rs#L22)
+  * comments that include references to `std::io::Error` or `std::io::Result`
   * ... and such
 - [ ]: **REMOVE** this TODO list
 
@@ -308,7 +310,9 @@ _Conditions_ are at the heart of **whenever**, by triggering the execution of ta
 
 When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_.[^6]
 
-The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `"lua"`, `"event"`, and `"dbus"`. Any other value is considered a configuration error.
+The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `"lua"`, `"event"`, `"dbus"`, and `"wmi"`. Any other value is considered a configuration error.
+
+> **Note**: the `"dbus"` and `"wmi"` values will be considered an error if the respective features are not available.
 
 For conditions that should be periodically checked and whose associated task list has to be run _whenever_ they occur (and not just after the first occurrence), the `recurring` entry can be set to _true_. Conditions with no associated tasks (eg. when the user comments out all the associated tasks in the configuration file) are not checked.
 
@@ -685,19 +689,19 @@ Since `parameter_check_all` is _false_, satisfaction of one of the provided crit
 
 The specific parameters are described in the following table:
 
-| Entry                       | Default | Description                                                                                                                   |
-|-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
-| `type`                      | N/A     | has to be set to `"dbus"` (mandatory)                                                                                         |
-| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
-| `recur_after_failed_check`  | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
-| `bus`                       | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory)  |
-| `service`                   | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)               |
-| `object_path`               | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
-| `interface`                 | N/A     | the _interface_ to invoke or query (mandatory)                                                                                |
-| `method`                    | N/A     | the name of the _method_ to be invoked (mandatory)                                                                            |
-| `parameter_call`            | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                   |
-| `parameter_check_all`       | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient    |
-| `parameter_check`           | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                 |
+| Entry                      | Default | Description                                                                                                                   |
+|----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                     | N/A     | has to be set to `"dbus"` (mandatory)                                                                                         |
+| `check_after`              | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_failed_check` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `bus`                      | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory)  |
+| `service`                  | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)               |
+| `object_path`              | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
+| `interface`                | N/A     | the _interface_ to invoke or query (mandatory)                                                                                |
+| `method`                   | N/A     | the name of the _method_ to be invoked (mandatory)                                                                            |
+| `parameter_call`           | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                   |
+| `parameter_check_all`      | _false_ | if _true_, all the provided criteria will have to be satisfied for the condition to be successful, otherwise one is enough    |
+| `parameter_check`          | (empty) | a list of maps having the structure explained above                                                                           |
 
 The value corresponding to the `service` entry is often referred to as _bus name_ in various documents: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
@@ -710,6 +714,79 @@ Note that DBus based conditions are supported on Windows, however DBus should be
 The `recur_after_failed_check` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
+
+
+#### WMI Query based (optional, Windows only)
+
+On Windows, **whenever** allows to directly query the [WMI](https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-start-page) subsystem, which is a powerful way to retrieve information. _WMI_ is accessed via a query language called [WQL](https://learn.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi), which is syntactically and semantically close to _SQL_. Queries normally return lists of compound values where every component has a name. For analogy with database operations and queries, this document will refer the returned compound values as _rows_ or _records_, and their components as _fields_.
+
+> **Note:** this type of item is only available when the `wmi` feature is enabled.
+
+_WMI_ inquiries are somewhat simpler than their _DBus_ counterparts, mostly because the query language is more structured and allows for more complex filtering at the query level. Because of that, and since a query can be crafted in order to directly return the values of interest without having to deeply inspect returned _objects_, **whenever** will only inspect fields containing simple values (numbers, booleans, and strings) in a query result. Therefore, in the _WMI_ case, there is no need to use a less strict language (such as JSON) for configuration.
+
+The main part of a _WMI Query_ based condition is obviously the _query_ itself, which is provided as a freeform string using the mandatory `query` configuration entry. **whenever** does not do any parsing or check on the provided query, thus an incorrect query will only cause the condition test to always fail and log an error message, at least in the _debug_ log level.
+
+Since a _WMI_ query returns a set of records, it is possible to filter the returned rows by providing criteria: this can be done using the _result_check_ entry, provided as a list of dictionaries, each representing a check, having the following entries:
+
+* `index` is the index of the row in the result set that will be checked (this sub-entry is optional, leaving it out means _any_ row)
+* `field` indicates which record _field_ is checked, and must be a string
+* `operator` is the check operator, a string of the ones shown below
+* `value` is the value that the field is checked against, and its type must be compatible with the field value.
+
+Operators resemble the ones used for _DBus_ return message value comparisons, with the exception that, since no complex values such as arrays or dictionaries are expected to be tested, operators that check for inclusion are not available. The supported operators are, therefore:
+
+* `"eq"` for _equality_
+* `"neq"` for _inequality_
+* `"gt"` meaning _greater than_
+* `"ge"` meaning _greater or equal to_
+* `"lt"` meaning _less than_
+* `"le"` meaning _less or equal to_
+* `"match"` to indicate that the second operand has to be intended as a _regular expression_ to be matched.
+
+and work for all supported values in the usual way, taking out `"match"` that can obviously only be applied to strings. Note that integers and floating point numbers can be compared to each other, with all the known issues related to this kind of comparison.
+
+An example of _WMI Query_ based condition configuration is the following:
+
+```toml
+[[condition]]
+name = "WMIQueryConditionName"
+type = "wmi"  # mandatory value
+query = '''
+    SELECT * FROM Win32_LogicalDisk WHERE FileSystem = 'NTFS'
+'''
+
+# optional parameters (if omitted, defaults are used)
+recurring = true
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [ "Task1", "Task2" ]
+check_after = 60
+recur_after_failed_check = false
+result_check = [
+    { field = "FreeSpace", operator = "lt", value = 5_000_000_000 },
+]
+result_check_all = false
+```
+
+The above condition definition queries the _WMI_ subsystem to report basic information about the logical drives handled by the system, and is successful if any of them has roughly less than 5GB left. The test is performed every minute. Of course, the `result_check` part coul also be incorporated in the query itself, using an _AND_ clause.
+
+The specific parameters are described in the following table:
+
+| Entry                      | Default | Description                                                                                                                   |
+|----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                     | N/A     | has to be set to `"wmi"` (mandatory)                                                                                          |
+| `check_after`              | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_failed_check` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `query`                    | N/A     | the _WQL_ query used to inquire the system                                                                                    |
+| `result_check_all`         | _false_ | if _true_, all the provided criteria will have to be satisfied for the condition to be successful, otherwise one is enough    |
+| `result_check`             | (empty) | a list of maps having the structure explained above                                                                           |
+
+Note that it is not mandatory to provide criteria to filter the query result: their omission causes the condition to be successful if the query _returns at least one row_. Also, omitting the index on a check causes _that single check_ to be performed on every returned row: this means that, for instance, if all the provided checks omit the row index, even though **whenever** is instructed to consider the test successful when _all_ the provided criteria are satisfied (setting the `result_check_all` entry to _true_), the test will be successful if there is at least one row satisfying each check -- and not just one row satisfying _all_ the checks. This is because the tests that **whenever** applies to the result sets are intended to be simple in order to keep the configuration file as readable as possible (and the configuration of _DBus_ inquiries is a failure in this sense). However, more complex and fine-grained criteria can be kept at the query level.
+
+As said above, any error will cause the condition to be evaluated as unsuccessful.
+
 
 #### Event based
 
@@ -834,12 +911,44 @@ and the details of the configuration entries are described in the table below:
 | `type`                | N/A     | must be set to `"dbus"` (mandatory)                                                                                         |
 | `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                              |
 | `bus`                 | N/A     | the bus on which to listen for events: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
-| `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
+| `parameter_check_all` | _false_ | if _true_, all the provided criteria will have to be satisfied for the event to be fired, otherwise one is enough           |
 | `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters               |
 
 The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method-optional). It is worth to remind that any errors that may arise during checks will cause the check itself to yield _false_.
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
+
+#### WMI (optional, Windows only)
+
+On Windows, **whenever** can subscribe to _WMI_ events using [event-specific _WML_ queries](https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications). This kind of query allows for an extremely precise determination of every aspect of the event that has to be caught, including the possibility to specify any criteria regarding the payload of an event in order to consider it verified. Thus **whenever** leaves to the _query_ part of a _WMI_ event definition the task of filtering the specific event for which it enables a listener.
+
+> **Note:** this type of item is only available when the `wmi` feature is enabled.
+
+As a result, the configuration of a _WMI_ based event is much simpler than the one of _DBus signal_ based ones, by only having to specify a mandatory `query` entry, whose syntax and semantic is similar to the one of the queries used in [WMI Query](#wmi-query-based-optional-windows-only) based conditions, but has to be expressly built for events.
+
+An example of _WMI_ based event configuration follows:
+
+```toml
+name = "WMIEventName"
+type = "wmi"  # mandatory value
+condition = "AssignedConditionName"
+query = """
+    SELECT * FROM __InstanceModificationEvent
+        WHERE TargetInstance ISA "Win32_LogicalDisk"
+        AND   TargetInstance.FreeSpace < 5000000000
+"""
+```
+
+which will occur every time the remaining space of a logical disk goes roughly under 5GB. The details of the configuration entries are described in the table below:
+
+| Entry       | Default | Description                                                                         |
+|-------------|:-------:|-------------------------------------------------------------------------------------|
+| `name`      | N/A     | the unique name of the event (mandatory)                                            |
+| `type`      | N/A     | must be set to `"dbus"` (mandatory)                                                 |
+| `condition` | N/A     | the name of the associated _event_ based condition (mandatory)                      |
+| `query`     | N/A     | the _WQL_ query used specify what criteria must be satisfied for the event to occur |
+
+Every event returned by the system matches the criteria specified in the _query_, and will cause the assigned condition to fire.
 
 #### Command line
 

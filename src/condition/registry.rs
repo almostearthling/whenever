@@ -667,6 +667,8 @@ impl ConditionRegistry {
             drop(bcount);
             drop(cb0);
 
+            // TODO: this can be rewritten in a simpler way using the `?`
+            // operator, thanks to the unified error system
             // the heart of all: test the condition and run tasks if verified
             let res = match cond.test() {
                 Ok(o) => {

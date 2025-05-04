@@ -876,7 +876,7 @@ impl Condition for WmiQueryCondition {
             // if no checks are given, the result is always successful: in
             // this way one can just run a query, regardless of its results,
             // and consider the condition satisfied if it just returns
-            // anything withou error
+            // anything without error
             if checks.is_empty() {
                 self.log(
                     LogType::Debug,
