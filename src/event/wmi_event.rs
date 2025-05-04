@@ -191,6 +191,7 @@ impl WmiQueryEvent {
             }
         }
 
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !new_event.condition_registry.unwrap().has_condition(&v) {
                 return Err(cfg_err_invalid_config(
@@ -221,7 +222,7 @@ impl WmiQueryEvent {
         // common mandatory parameter retrieval
 
         // type and name are both mandatory: type is checked and name is kept
-        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "dbus"))?;
+        cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "wmi"))?;
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
         cfg_mandatory!(cfg_string(cfgmap, "query"))?;
 
@@ -240,6 +241,7 @@ impl WmiQueryEvent {
         }
 
         // assigned condition is checked against the provided array
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !available_conditions.contains(&v.as_str()) {
                 return Err(cfg_err_invalid_config(

@@ -234,6 +234,7 @@ impl FilesystemChangeEvent {
             }
         }
 
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !new_event.condition_registry.unwrap().has_condition(&v) {
                 return Err(cfg_err_invalid_config(
@@ -301,6 +302,7 @@ impl FilesystemChangeEvent {
         }
 
         // assigned condition is checked against the provided array
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !available_conditions.contains(&v.as_str()) {
                 return Err(cfg_err_invalid_config(

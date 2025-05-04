@@ -939,6 +939,8 @@ which will occur every time the remaining space of a logical disk goes roughly u
 
 Every event returned by the system matches the criteria specified in the _query_, and will cause the assigned condition to fire.
 
+> **Warning**: some antimalware tools might detect event subscriptions as suspicious.
+
 #### Command line
 
 As said above, this type of event has no other parameters than the name, the type identifier, and the associated condition. All parameters are mandatory. The event is raised when a wrapper (or the user) passes a `trigger` [command](#input-commands) to **whenever** through the _stdin_ stream of an active session.

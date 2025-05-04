@@ -348,7 +348,7 @@ impl WmiQueryCondition {
                 }
                 let index = index.unwrap();
 
-                let field = cfg_mandatory!(cfg_string_check_regex(cfgmap, "field", &RE_VAR_NAME));
+                let field = cfg_mandatory!(cfg_string_check_regex(spec, "field", &RE_VAR_NAME));
                 if field.is_err() {
                     return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:field"),
@@ -575,7 +575,7 @@ impl WmiQueryCondition {
                     ));
                 }
 
-                let field = cfg_mandatory!(cfg_string_check_regex(cfgmap, "field", &RE_VAR_NAME));
+                let field = cfg_mandatory!(cfg_string_check_regex(spec, "field", &RE_VAR_NAME));
                 if field.is_err() {
                     return Err(cfg_err_invalid_config(
                         &format!("{cur_key}:field"),
@@ -632,12 +632,6 @@ impl WmiQueryCondition {
                             }
                         }
                     } else if !(v.is_bool() || v.is_int() || v.is_float()) {
-                        return Err(cfg_err_invalid_config(
-                            &format!("{cur_key}:value"),
-                            &format!("{v:?}"),
-                            ERR_INVALID_VALUE_FOR_ENTRY,
-                        ));
-                    } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:value"),
                             &format!("{v:?}"),
