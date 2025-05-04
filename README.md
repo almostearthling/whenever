@@ -74,15 +74,17 @@ The supported types of [**_condition_**](#conditions) are the following:
 * [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
 * [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
 * [_DBus_ inspection (optional)](#dbus-method-optional): a _DBus_ method is executed and the result is checked against some criteria provided in the configuration file
+* [_WMI_ query (optional, Windows only)](#wmi-query-based-optional-windows-only): a _WMI_ query is executed and the result is checked against some criteria provided in the configuration file
 * [_Event_ based](#event-based): are verified when a certain event occurs that fires the condition.
 
 The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
 
 * [_Filesystem changes_](#filesystem-changes), that is, changes in files and/or directories that are set to be monitored
 * [_DBus_ signals (optional)](#dbus-signals-optional), that may be filtered for an expected payload
+* [_WMI_ events (optional, Windows only)](#wmi-optional-windows-only), subscribed via specific _WQL_ queries
 * [_Command line_](#command-line), that are manually triggered by writing to **whenever** standard input.
 
-Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default. However _DBus_ support can be **disabled** on build, by removing `dbus` from the default features in the _Cargo.toml_ file, or by building the application with the `--no-default-features` command line flag (in this case, other desired features have to be specifically enabled using the `--features` option).
+Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default.  _WMI_ events and conditions, on the contrary, are only supported on Windows platforms. Both _DBus_ and _WMI_ support can be **disabled** on build, by respectively removing `dbus` and/or `wmi` from the default features in the _Cargo.toml_ file, or by building the application with the `--no-default-features` command line flag (in this case, other desired features have to be specifically enabled using the `--features` option). **whenever** can provide the list of the available optional features by invoking `whenever --options` from the command line.
 
 All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
@@ -110,6 +112,7 @@ Options:
   -q, --quiet              Suppress all output
   -p, --pause              Start in paused mode
   -r, --check-running      Check whether an instance is running
+  -O, --options            Provide the list of available optional features
   -l, --log <LOGFILE>      Specify the log file
   -L, --log-level <LEVEL>  Specify the log level [default: warn] [possible values: trace, debug, info, warn, error]
   -a, --log-append         Append to an existing log file if found

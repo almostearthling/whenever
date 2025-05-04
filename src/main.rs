@@ -953,6 +953,10 @@ struct Args {
     #[arg(short = 'r', long)]
     check_running: bool,
 
+    /// Provide the list of available optional features
+    #[arg(short = 'O', long)]
+    options: bool,
+
     /// Specify the log file
     #[arg(short, long, value_name = "LOGFILE")]
     log: Option<String>,
@@ -1027,6 +1031,18 @@ fn main() {
         } else {
             std::process::exit(0);
         }
+    }
+
+    if args.options {
+        let options = vec![
+            #[cfg(feature = "dbus")]
+            "dbus",
+            #[cfg(windows)]
+            #[cfg(feature = "wmi")]
+            "wmi",
+        ];
+        println!("options: {}", options.join(" "));
+        std::process::exit(0);
     }
 
     exit_if_fails!(args.quiet, check_single_instance(&instance));
