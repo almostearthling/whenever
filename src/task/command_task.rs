@@ -139,16 +139,6 @@ impl Hash for CommandTask {
     }
 }
 
-// /// In case of failure, the reason will be one of the provided values
-// #[derive(Debug, PartialEq)]
-// pub enum FailureReason {
-//     NoFailure,
-//     StdOut,
-//     StdErr,
-//     Status,
-//     Other,
-// }
-
 #[allow(dead_code)]
 impl CommandTask {
     /// Create a new command based task

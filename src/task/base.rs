@@ -80,10 +80,9 @@ pub trait Task: Send {
     /// * the `Ok` part must be either `None`, or a `bool` that reports success
     ///   when set to `true` and failure otherwise; when `None` it indicates
     ///   that the result should not be checked
-    /// * the `Error` part (mandatorily `std::io::Error`) indicates an
-    ///   _unrecoverable_ error condition while trying to execute the task: it
-    ///   actually should never happen, even when the task reports a failure
-    ///   (which should return `Ok(false)` instead).
+    /// * the `Error` part indicates an _unrecoverable_ error condition while
+    ///   trying to execute the task: itactually should never happen, even when
+    ///   the task reports a failure (which should return `Ok(false)` instead).
     ///
     /// This function is the only responsible for _history records_, the log
     /// records used to mimic the _history_ feature seen in the Python version

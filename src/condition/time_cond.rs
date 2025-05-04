@@ -227,10 +227,10 @@ impl TimeSpecification {
     }
 }
 
-/// Time Interval Based Condition
+/// Time Based Condition
 ///
-/// This condition is verified once enough time has passed since it has been
-/// started, or since it last succeeded if it is a recurrent condition.
+/// This condition is verified when current time matches one of the provided
+/// time specifications.
 pub struct TimeCondition {
     // commom members
     // parameters

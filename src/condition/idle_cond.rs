@@ -19,10 +19,10 @@ use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-/// Time Interval Based Condition
+/// Idle Session Based Condition
 ///
-/// This condition is verified once enough time has passed since it has been
-/// started, or since it last succeeded if it is a recurrent condition.
+/// This condition is verified once enough time has passed since without
+/// user iteraction with the workstation.
 pub struct IdleCondition {
     // commom members
     // parameters

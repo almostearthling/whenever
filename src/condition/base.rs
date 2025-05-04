@@ -1,7 +1,7 @@
 //! Define a trait for conditions
 //!
 //! Conditions must follow the constraint of having a `_check_condition`
-//! function that return a `Result<Option<bool>, std::io::Error>`, where the
+//! function that return a `Result<Option<bool>, Error>`, where the
 //! condition is considered verified only if it returns `Ok(true)`. This
 //! mandatory checker is used by the trait to perform actual tests.
 //!

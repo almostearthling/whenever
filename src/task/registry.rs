@@ -236,7 +236,7 @@ impl TaskRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(ErrorKind::Unsupported, _)` - the task could not be removed
+    /// * `Error(Kind::Failed, _)` - the task could not be removed
     /// * `Ok(None)` - task not found in registry
     /// * `Ok(Task)` - the removed (_pulled out_) `Task` on success
     ///

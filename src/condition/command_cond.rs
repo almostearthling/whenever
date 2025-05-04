@@ -36,16 +36,6 @@ use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-// /// In case of failure, the reason will be one of the provided values
-// #[derive(Debug, PartialEq)]
-// pub enum FailureReason {
-//     NoFailure,
-//     StdOut,
-//     StdErr,
-//     Status,
-//     Other,
-// }
-
 /// Command Based Condition
 ///
 /// This condition is verified when the underlying command execution outcome
