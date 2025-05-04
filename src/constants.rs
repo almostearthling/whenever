@@ -123,7 +123,7 @@ pub const LOG_EMITTER_EVENT_MANUAL: &str = "CMD_EVENT";
 #[cfg(feature = "dbus")]
 pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
 #[cfg(windows)]
-#[cfg(feature = "dbus")]
+#[cfg(feature = "wmi")]
 pub const LOG_EMITTER_EVENT_WMI: &str = "WMI_EVENT";
 
 pub const LOG_EMITTER_CONDITION_INTERVAL: &str = "INTERVAL_CONDITION";
@@ -134,7 +134,7 @@ pub const LOG_EMITTER_CONDITION_LUA: &str = "LUA_CONDITION";
 #[cfg(feature = "dbus")]
 pub const LOG_EMITTER_CONDITION_DBUS: &str = "DBUS_CONDITION";
 #[cfg(windows)]
-#[cfg(feature = "dbus")]
+#[cfg(feature = "wmi")]
 pub const LOG_EMITTER_CONDITION_WMI: &str = "WMI_CONDITION";
 
 pub const LOG_ACTION_NEW: &str = "new";
