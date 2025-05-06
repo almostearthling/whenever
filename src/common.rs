@@ -2849,8 +2849,13 @@ pub mod wres {
     pub enum Origin {
         Native,
         StdIo,
-        DBus,
         Notify,
+
+        #[cfg(feature = "dbus")]
+        DBus,
+
+        #[cfg(windows)]
+        #[cfg(feature = "wmi")]
         WMI,
         // ...
         Unknown,
@@ -2864,8 +2869,13 @@ pub mod wres {
                 match self {
                     Origin::Native => "self",
                     Origin::StdIo => "io",
-                    Origin::DBus => "dbus",
                     Origin::Notify => "fschange",
+
+                    #[cfg(feature = "dbus")]
+                    Origin::DBus => "dbus",
+
+                    #[cfg(windows)]
+                    #[cfg(feature = "wmi")]
                     Origin::WMI => "wmi",
                     // ...
                     Origin::Unknown => "unknown",
@@ -2911,17 +2921,6 @@ pub mod wres {
         }
     }
 
-    // zbus errors
-    impl From<zbus::Error> for Error {
-        fn from(e: zbus::Error) -> Self {
-            Self {
-                kind: Kind::Failed,
-                origin: Origin::DBus,
-                message: e.to_string(),
-            }
-        }
-    }
-
     // notify (fschange) errors
     impl From<notify::Error> for Error {
         fn from(e: notify::Error) -> Self {
@@ -2933,7 +2932,21 @@ pub mod wres {
         }
     }
 
+    // zbus errors
+    #[cfg(feature = "dbus")]
+    impl From<zbus::Error> for Error {
+        fn from(e: zbus::Error) -> Self {
+            Self {
+                kind: Kind::Failed,
+                origin: Origin::DBus,
+                message: e.to_string(),
+            }
+        }
+    }
+
     // wmi errors
+    #[cfg(windows)]
+    #[cfg(feature = "wmi")]
     impl From<wmi::WMIError> for Error {
         fn from(e: wmi::WMIError) -> Self {
             let kind = match e {
