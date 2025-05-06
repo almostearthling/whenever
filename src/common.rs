@@ -35,6 +35,10 @@
 //!          show the application status (for instance using an icon in the
 //!          tray area): when there are one or more conditions busy, the second
 //!          element is _YES_, otherwise _NO_
+//! * _PAUSE_ another _trace level only_ message emitted to allow a GUI to
+//!           change application status (for instance using a tray icon) when
+//!           the scheduler is paused: useful because an _internal command_
+//!           based task might pause the scheduler unattendedly
 //!
 //! while the second can be one of:
 //!
@@ -44,8 +48,10 @@
 //! * _MSG_ if the human-readable part is exclusively informational
 //! * _ERR_ (may be followed by a dash `-` and a code) for errors to be
 //!   notified
-//! * _YES_ (only occurs for _BUSY_ indicator) means: application is busy
-//! * _NO_ (only occurs for _BUSY_ indicator) means: application is _not_ busy
+//! * _YES_ (only occurs for _BUSY_ or _PAUSE_ indicators) means: application
+//!   is busy or has been paused
+//! * _NO_ (only occurs for _BUSY_ or _PAUSE_ indicators) means: application
+//!    is _not_ busy or has been resumed
 //!
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to

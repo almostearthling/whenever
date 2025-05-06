@@ -289,7 +289,7 @@ impl LuaTask {
         let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_TASK_NAME))?.unwrap();
 
         // specific mandatory parameter check
-        cfg_mandatory!(cfg_string(cfgmap, "script"))?.unwrap();
+        cfg_mandatory!(cfg_string(cfgmap, "script"))?;
 
         // also for optional parameters just check and throw away the result
 

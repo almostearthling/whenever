@@ -96,6 +96,7 @@ pub const LOG_WHEN_END: &str = "END";
 pub const LOG_WHEN_PROC: &str = "PROC";
 pub const LOG_WHEN_HISTORY: &str = "HIST";
 pub const LOG_WHEN_BUSY: &str = "BUSY";
+pub const LOG_WHEN_PAUSE: &str = "PAUSE";
 
 pub const LOG_STATUS_OK: &str = "OK";
 pub const LOG_STATUS_FAIL: &str = "FAIL";
@@ -117,6 +118,7 @@ pub const LOG_EMITTER_MAIN: &str = "MAIN";
 
 pub const LOG_EMITTER_TASK_COMMAND: &str = "COMMAND_TASK";
 pub const LOG_EMITTER_TASK_LUA: &str = "LUA_TASK";
+pub const LOG_EMITTER_TASK_INTERNAL: &str = "INTERNAL_TASK";
 
 pub const LOG_EMITTER_EVENT_FSCHANGE: &str = "FSCHANGE_EVENT";
 pub const LOG_EMITTER_EVENT_MANUAL: &str = "CMD_EVENT";
