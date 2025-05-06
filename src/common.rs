@@ -35,6 +35,10 @@
 //!          show the application status (for instance using an icon in the
 //!          tray area): when there are one or more conditions busy, the second
 //!          element is _YES_, otherwise _NO_
+//! * _PAUSE_ another _trace level only_ message emitted to allow a GUI to
+//!           change application status (for instance using a tray icon) when
+//!           the scheduler is paused: useful because an _internal command_
+//!           based task might pause the scheduler unattendedly
 //!
 //! while the second can be one of:
 //!
@@ -44,8 +48,10 @@
 //! * _MSG_ if the human-readable part is exclusively informational
 //! * _ERR_ (may be followed by a dash `-` and a code) for errors to be
 //!   notified
-//! * _YES_ (only occurs for _BUSY_ indicator) means: application is busy
-//! * _NO_ (only occurs for _BUSY_ indicator) means: application is _not_ busy
+//! * _YES_ (only occurs for _BUSY_ or _PAUSE_ indicators) means: application
+//!   is busy or has been paused
+//! * _NO_ (only occurs for _BUSY_ or _PAUSE_ indicators) means: application
+//!    is _not_ busy or has been resumed
 //!
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to
@@ -84,7 +90,7 @@ lazy_static! {
 ///   provided as the `LogType` enumeration
 pub mod logging {
     use crate::constants::{APP_NAME, ERR_LOGGER_NOT_INITIALIZED};
-    use flexi_logger::{style, DeferredNow, FileSpec, Logger};
+    use flexi_logger::{DeferredNow, FileSpec, Logger, style};
     use log::Record;
     use log::{debug, error, info, trace, warn};
     use nu_ansi_term::Style;
@@ -352,8 +358,8 @@ pub mod cmditem {
     use std::time::{Duration, SystemTime};
     use subprocess::{ExitStatus, Popen};
 
-    use crate::constants::*;
     use crate::LogType;
+    use crate::constants::*;
 
     /// In case of failure, the reason will be one of the provided values
     #[derive(Debug, PartialEq)]
@@ -757,15 +763,15 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stdout (regex) {p:?} matched",
-                                            );
+                                                    "condition success stdout (regex) {p:?} matched",
+                                                );
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stdout (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition success stdout (regex) {p:?} NOT matched",
+                                                );
                                                 failure_reason = FailureReason::StdOut;
                                             }
                                         } else if re.find(process_stdout).is_some() {
@@ -813,15 +819,15 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} matched",
+                                                );
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} NOT matched",
+                                                );
                                                 failure_reason = FailureReason::StdErr;
                                             }
                                         } else if re.find(process_stderr).is_some() {
@@ -869,16 +875,16 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition failure stdout (regex) {p:?} matched",
-                                            );
+                                                    "condition failure stdout (regex) {p:?} matched",
+                                                );
                                                 failure_reason = FailureReason::StdOut;
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition failure stdout (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition failure stdout (regex) {p:?} NOT matched",
+                                                );
                                             }
                                         } else if re.find(process_stdout).is_some() {
                                             severity = LogType::Debug;
@@ -902,8 +908,8 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_FAIL;
                                         log_message = format!(
-                                        "provided INVALID failure stdout regex {p:?} NOT found/matched",
-                                    );
+                                            "provided INVALID failure stdout regex {p:?} NOT found/matched",
+                                        );
                                     }
                                 }
                             }
@@ -924,16 +930,16 @@ pub mod cmditem {
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} matched",
+                                                );
                                                 failure_reason = FailureReason::StdErr;
                                             } else {
                                                 severity = LogType::Debug;
                                                 ref_log_when = LOG_WHEN_PROC;
                                                 ref_log_status = LOG_STATUS_OK;
                                                 log_message = format!(
-                                                "condition success stderr (regex) {p:?} NOT matched",
-                                            );
+                                                    "condition success stderr (regex) {p:?} NOT matched",
+                                                );
                                             }
                                         } else if re.find(process_stderr).is_some() {
                                             severity = LogType::Debug;
@@ -1324,15 +1330,15 @@ pub mod luaitem {
 #[cfg(feature = "dbus")]
 #[allow(dead_code)]
 pub mod dbusitem {
-    use crate::constants::*;
     use crate::LogType;
+    use crate::constants::*;
     use cfgmap::CfgValue;
     use regex::Regex;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
     use zbus;
-    use zbus::zvariant;
     use zbus::Message;
+    use zbus::zvariant;
 
     // this helper is just to avoid ugly code since the implementation of
     // zbus used here still does not implement the `key_signature` method
@@ -1868,7 +1874,7 @@ pub mod dbusitem {
     /// performs the checks (all or some depends on the value of `checks_all`)
     /// on the message contents.
     ///
-    /// It returns a boolean that specified if the check was successful or not
+    /// It returns a boolean that specifies if the check was successful or not
     /// (under the condition that either some or all the parameters had to be
     /// tested), and four other values that form the variable part of a log
     /// message, suitable for being issued by the specialized logging function
@@ -2543,24 +2549,274 @@ pub mod dbusitem {
     }
 }
 
+/// Infrastructure for performing checks on WMI results: since these checks
+/// are slightly different from the ones that can be performed on DBus ones
+/// (for instance, no returned arrays are taken into account, only simple
+/// values), the operator and check types will be kept separated with no
+/// common base
+#[cfg(windows)]
+#[cfg(feature = "wmi")]
+#[allow(dead_code)]
+pub mod wmiitem {
+    use crate::LogType;
+    use crate::constants::*;
+    use regex::Regex;
+    use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
+
+    use wmi::Variant;
+
+    #[derive(PartialEq, Hash, Clone)]
+    pub enum ResultCheckOperator {
+        Equal,        // "eq"
+        NotEqual,     // "neq"
+        Greater,      // "gt"
+        GreaterEqual, // "ge"
+        Less,         // "lt"
+        LessEqual,    // "le"
+        Match,        // "match"
+    }
+
+    /// an enum containing the value that the result should be checked
+    /// against
+    pub enum ResultCheckValue {
+        Boolean(bool),
+        Integer(i64),
+        Float(f64),
+        String(String),
+        Regex(Regex),
+    }
+
+    pub struct ResultCheckTest {
+        pub index: Option<usize>, // `None` means any record
+        pub field: String,
+        pub operator: ResultCheckOperator,
+        pub value: ResultCheckValue,
+    }
+
+    // implement the hash protocol for ResultCheckTest
+    impl Hash for ResultCheckTest {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            self.index.hash(state);
+            self.field.hash(state);
+            self.operator.hash(state);
+            match &self.value {
+                ResultCheckValue::Boolean(x) => x.hash(state),
+                ResultCheckValue::Integer(x) => x.hash(state),
+                ResultCheckValue::Float(x) => x.to_bits().hash(state),
+                ResultCheckValue::String(x) => x.hash(state),
+                ResultCheckValue::Regex(x) => x.as_str().hash(state),
+            }
+        }
+    }
+
+    // allow a test to be easily cloned
+    impl Clone for ResultCheckTest {
+        fn clone(&self) -> Self {
+            let value = match &self.value {
+                ResultCheckValue::Boolean(x) => ResultCheckValue::Boolean(*x),
+                ResultCheckValue::Integer(x) => ResultCheckValue::Integer(*x),
+                ResultCheckValue::Float(x) => ResultCheckValue::Float(*x),
+                ResultCheckValue::String(s) => ResultCheckValue::String(s.clone()),
+                ResultCheckValue::Regex(e) => ResultCheckValue::Regex(e.clone()),
+            };
+
+            ResultCheckTest {
+                index: self.index.clone(),
+                field: self.field.clone(),
+                operator: self.operator.clone(),
+                value,
+            }
+        }
+    }
+
+    // the _oper helper to make code more readable is implemented here too
+    fn _oper<T: PartialOrd + PartialEq>(op: &ResultCheckOperator, o1: T, o2: T) -> bool {
+        match op {
+            ResultCheckOperator::Equal => o1 == o2,
+            ResultCheckOperator::NotEqual => o1 != o2,
+            ResultCheckOperator::Less => o1 < o2,
+            ResultCheckOperator::LessEqual => o1 <= o2,
+            ResultCheckOperator::Greater => o1 > o2,
+            ResultCheckOperator::GreaterEqual => o1 >= o2,
+            ResultCheckOperator::Match => false,
+        }
+    }
+
+    fn _check_variant(c: &ResultCheckValue, op: &ResultCheckOperator, v: &Variant) -> bool {
+        match c {
+            ResultCheckValue::Boolean(x) => match v {
+                Variant::Bool(y) => _oper(op, x, y),
+                _ => false,
+            },
+            ResultCheckValue::Integer(x) => match v {
+                Variant::I1(y) => _oper(op, x, &(*y as i64)),
+                Variant::I2(y) => _oper(op, x, &(*y as i64)),
+                Variant::I4(y) => _oper(op, x, &(*y as i64)),
+                Variant::I8(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI1(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI2(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI4(y) => _oper(op, x, &(*y as i64)),
+                Variant::UI8(y) => {
+                    if *y > i64::MAX as u64 {
+                        false
+                    } else {
+                        _oper(op, x, &(*y as i64))
+                    }
+                }
+                Variant::R4(y) => _oper(op, &(*x as f32), y),
+                Variant::R8(y) => _oper(op, &(*x as f64), y),
+                _ => false,
+            },
+            ResultCheckValue::Float(x) => match v {
+                Variant::I1(y) => _oper(op, x, &(*y as f64)),
+                Variant::I2(y) => _oper(op, x, &(*y as f64)),
+                Variant::I4(y) => _oper(op, x, &(*y as f64)),
+                Variant::I8(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI1(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI2(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI4(y) => _oper(op, x, &(*y as f64)),
+                Variant::UI8(y) => _oper(op, x, &(*y as f64)),
+                Variant::R4(y) => _oper(op, x, &(*y as f64)),
+                Variant::R8(y) => _oper(op, x, &(*y as f64)),
+                _ => false,
+            },
+            ResultCheckValue::String(x) => match v {
+                Variant::String(y) => _oper(op, x.as_str(), y.as_str()),
+                _ => false,
+            },
+            ResultCheckValue::Regex(x) => {
+                if *op == ResultCheckOperator::Match {
+                    match v {
+                        Variant::String(y) => x.is_match(y),
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    /// This is the heart of WMI result checks: it takes a reference to a raw
+    /// WMI query result (see https://docs.rs/wmi/latest/wmi/ for reference)
+    /// and a reference to the list of checks that has been configured, and
+    /// performs the checks (all or some depends on the value of `checks_all`)
+    /// on the array of records returned by the query.
+    ///
+    /// It returns a boolean that specifies if the check was successful or not
+    /// (under the condition that either some or all the checks had to be
+    /// tested), and four other values that form the variable part of a log
+    /// message, suitable for being issued by the specialized logging function
+    /// defined by the item.
+    pub fn wmi_check_result(
+        result: &Vec<HashMap<String, Variant>>, // the dbus message
+        checks: &Vec<ResultCheckTest>,          // item.result_checks
+        checks_all: bool,                       // item.checks_all
+    ) -> (
+        bool,         // verified
+        LogType,      // the log severity
+        &'static str, // log/when (LOG_WHEN_...)
+        &'static str, // log/status (LOG_STATUS_...)
+        String,       // log message
+    ) {
+        let mut verified: bool = checks_all;
+        let mut severity: LogType = LogType::Trace;
+        let mut ref_log_when: &str = LOG_WHEN_PROC;
+        let mut ref_log_status: &str = LOG_STATUS_OK;
+        let mut log_message: String = String::from("result check ended");
+
+        'result: for ck in checks.iter() {
+            if let Some(idx) = ck.index {
+                if idx > result.len() {
+                    severity = LogType::Warn;
+                    ref_log_when = LOG_WHEN_PROC;
+                    ref_log_status = LOG_STATUS_FAIL;
+                    log_message = format!("could not retrieve result: index {idx} out of range");
+                    verified = false;
+                    break 'result;
+                } else {
+                    let rec = result.get(idx).unwrap();
+                    if let Some(v) = rec.get(&ck.field) {
+                        if !_check_variant(&ck.value, &ck.operator, v) {
+                            verified = false;
+                            break 'result;
+                        } else if !checks_all {
+                            verified = true;
+                            break 'result;
+                        }
+                    } else {
+                        severity = LogType::Warn;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_FAIL;
+                        log_message = format!(
+                            "could not check result: field `{}` not found in record",
+                            ck.field,
+                        );
+                        verified = false;
+                        break 'result;
+                    }
+                }
+            } else {
+                for rec in result {
+                    if let Some(v) = rec.get(&ck.field) {
+                        if !_check_variant(&ck.value, &ck.operator, v) {
+                            verified = false;
+                            break 'result;
+                        } else if !checks_all {
+                            verified = true;
+                            break 'result;
+                        }
+                    } else {
+                        severity = LogType::Warn;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_FAIL;
+                        log_message = format!(
+                            "could not check result: field `{}` not found in record",
+                            ck.field,
+                        );
+                        verified = false;
+                        break 'result;
+                    }
+                }
+            }
+        }
+
+        // the return value, including the aforementioned log message
+        (
+            verified,
+            severity,
+            ref_log_when,
+            ref_log_status,
+            log_message,
+        )
+    }
+}
+
 /// A common result type: catching errors from modules used throughout
 /// the entire code. The corresponding error carries some information
 /// about what went wrong.
 #[allow(dead_code)]
 pub mod wres {
-    // use std::{error, fmt, self};
     use notify;
     use std::{self, fmt};
+
+    #[cfg(feature = "dbus")]
     use zbus;
 
     /// Types of specific errors
+    #[non_exhaustive]
     #[derive(Debug, Clone)]
     pub enum Kind {
         Forbidden,
         Unsupported,
+        Unavailable,
+        Unconverted,
+        Unparsed,
         Busy,
         Invalid,
         Failed,
+        Empty,
         // ...
         Unknown,
     }
@@ -2573,9 +2829,13 @@ pub mod wres {
                 match self {
                     Kind::Forbidden => "not permitted",
                     Kind::Unsupported => "not supported",
+                    Kind::Unavailable => "not available",
+                    Kind::Unconverted => "not converted",
+                    Kind::Unparsed => "not parsed",
                     Kind::Busy => "resource busy",
                     Kind::Invalid => "invalid",
                     Kind::Failed => "failed",
+                    Kind::Empty => "empty",
                     Kind::Unknown => "unknown",
                 }
             )
@@ -2585,12 +2845,20 @@ pub mod wres {
     /// Describes the origin of the error: if `Native` the error was originated
     /// natively, otherwise the field is set by another error that is converted
     /// into `Error` via a dedicated `From` trait implementation.
+    #[non_exhaustive]
     #[derive(Debug, Clone, PartialEq)]
     pub enum Origin {
         Native,
         StdIo,
-        DBus,
         Notify,
+
+        #[cfg(feature = "dbus")]
+        DBus,
+
+        #[cfg(windows)]
+        #[cfg(feature = "wmi")]
+        WMI,
+
         // ...
         Unknown,
     }
@@ -2603,8 +2871,15 @@ pub mod wres {
                 match self {
                     Origin::Native => "self",
                     Origin::StdIo => "io",
-                    Origin::DBus => "dbus",
                     Origin::Notify => "fschange",
+
+                    #[cfg(feature = "dbus")]
+                    Origin::DBus => "dbus",
+
+                    #[cfg(windows)]
+                    #[cfg(feature = "wmi")]
+                    Origin::WMI => "wmi",
+
                     // ...
                     Origin::Unknown => "unknown",
                 }
@@ -2649,7 +2924,19 @@ pub mod wres {
         }
     }
 
+    // notify (fschange) errors
+    impl From<notify::Error> for Error {
+        fn from(e: notify::Error) -> Self {
+            Self {
+                kind: Kind::Failed,
+                origin: Origin::Notify,
+                message: e.to_string(),
+            }
+        }
+    }
+
     // zbus errors
+    #[cfg(feature = "dbus")]
     impl From<zbus::Error> for Error {
         fn from(e: zbus::Error) -> Self {
             Self {
@@ -2660,12 +2947,31 @@ pub mod wres {
         }
     }
 
-    // notify (fschange) errors
-    impl From<notify::Error> for Error {
-        fn from(e: notify::Error) -> Self {
+    // wmi errors
+    #[cfg(windows)]
+    #[cfg(feature = "wmi")]
+    impl From<wmi::WMIError> for Error {
+        fn from(e: wmi::WMIError) -> Self {
+            let kind = match e {
+                wmi::WMIError::ConvertBoolError(_)
+                | wmi::WMIError::ConvertStringError(_)
+                | wmi::WMIError::ConvertLengthError(_)
+                | wmi::WMIError::ConvertDatetimeError(_)
+                | wmi::WMIError::ConvertDurationError(_)
+                | wmi::WMIError::ConvertVariantError(_)
+                | wmi::WMIError::ConvertError(_) => Kind::Unconverted,
+                wmi::WMIError::DeserializeValueError(_)
+                | wmi::WMIError::InvalidDeserializationVariantError(_)
+                | wmi::WMIError::SerdeError(_) => Kind::Invalid,
+                wmi::WMIError::ParseDatetimeError(_)
+                | wmi::WMIError::ParseFloatError(_)
+                | wmi::WMIError::ParseIntError(_) => Kind::Unparsed,
+                wmi::WMIError::UnimplementedArrayItem => Kind::Unavailable,
+                _ => Kind::Failed,
+            };
             Self {
-                kind: Kind::Failed,
-                origin: Origin::Notify,
+                kind,
+                origin: Origin::WMI,
                 message: e.to_string(),
             }
         }

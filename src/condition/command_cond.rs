@@ -29,22 +29,12 @@ use cfgmap::CfgMap;
 
 use super::base::Condition;
 use crate::common::cmditem::*;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-// /// In case of failure, the reason will be one of the provided values
-// #[derive(Debug, PartialEq)]
-// pub enum FailureReason {
-//     NoFailure,
-//     StdOut,
-//     StdErr,
-//     Status,
-//     Other,
-// }
 
 /// Command Based Condition
 ///

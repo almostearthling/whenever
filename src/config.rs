@@ -5,7 +5,7 @@
 use cfgmap::{CfgMap, CfgValue};
 use std::fs;
 
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::constants::*;
@@ -61,6 +61,11 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                         }
                         "lua" => {
                             name = task::lua_task::LuaTask::check_cfgmap(entry.as_map().unwrap())?;
+                        }
+                        "internal" => {
+                            name = task::internal_task::InternalTask::check_cfgmap(
+                                entry.as_map().unwrap(),
+                            )?;
                         }
                         // ...
                         _ => {
@@ -126,6 +131,14 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                                 &task_list,
                             )?;
                         }
+                        #[cfg(windows)]
+                        #[cfg(feature = "wmi")]
+                        "wmi" => {
+                            name = condition::wmi_cond::WmiQueryCondition::check_cfgmap(
+                                entry.as_map().unwrap(),
+                                &task_list,
+                            )?;
+                        }
                         "bucket" | "event" => {
                             name = condition::bucket_cond::BucketCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
@@ -168,6 +181,14 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                         #[cfg(feature = "dbus")]
                         "dbus" => {
                             name = event::dbus_event::DbusMessageEvent::check_cfgmap(
+                                entry.as_map().unwrap(),
+                                &condition_list,
+                            )?;
+                        }
+                        #[cfg(windows)]
+                        #[cfg(feature = "wmi")]
+                        "wmi" => {
+                            name = event::wmi_event::WmiQueryEvent::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &condition_list,
                             )?;
@@ -337,6 +358,14 @@ fn configure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Res
                                 return Err(Error::new(Kind::Invalid, ERR_TASKREG_TASK_NOT_ADDED));
                             }
                         }
+                        "internal" => {
+                            let task = task::internal_task::InternalTask::load_cfgmap(
+                                entry.as_map().unwrap(),
+                            )?;
+                            if !task_registry.add_task(Box::new(task))? {
+                                return Err(Error::new(Kind::Invalid, ERR_TASKREG_TASK_NOT_ADDED));
+                            }
+                        }
                         // ...
                         _ => {
                             return Err(Error::new(Kind::Invalid, ERR_INVALID_TASK_TYPE));
@@ -414,6 +443,48 @@ fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> R
                         "lua" => {
                             let task =
                                 task::lua_task::LuaTask::load_cfgmap(entry.as_map().unwrap())?;
+                            let task_name = task.get_name();
+                            if !task_registry.has_task(&task_name)
+                                || !task_registry.has_task_eq(&task)
+                            {
+                                if !task_registry.dynamic_add_or_replace_task(Box::new(task))? {
+                                    return Err(Error::new(
+                                        Kind::Invalid,
+                                        ERR_TASKREG_TASK_NOT_ADDED,
+                                    ));
+                                }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("task {task_name} has been reconfigured"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!(
+                                        "not reconfiguring task {task_name}: no change detected",
+                                    ),
+                                );
+                            }
+                            if to_remove.contains(&task_name) {
+                                to_remove.swap_remove(
+                                    to_remove.iter().position(|x| task_name == *x).unwrap(),
+                                );
+                            }
+                        }
+                        "internal" => {
+                            let task = task::internal_task::InternalTask::load_cfgmap(
+                                entry.as_map().unwrap(),
+                            )?;
                             let task_name = task.get_name();
                             if !task_registry.has_task(&task_name)
                                 || !task_registry.has_task_eq(&task)
@@ -550,6 +621,17 @@ fn configure_conditions(
                         #[cfg(feature = "dbus")]
                         "dbus" => {
                             let condition = condition::dbus_cond::DbusMethodCondition::load_cfgmap(
+                                entry.as_map().unwrap(),
+                                task_registry,
+                            )?;
+                            if !cond_registry.add_condition(Box::new(condition))? {
+                                return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
+                            }
+                        }
+                        #[cfg(windows)]
+                        #[cfg(feature = "wmi")]
+                        "wmi" => {
+                            let condition = condition::wmi_cond::WmiQueryCondition::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 task_registry,
                             )?;
@@ -881,6 +963,53 @@ fn reconfigure_conditions(
                                 );
                             }
                         }
+                        #[cfg(windows)]
+                        #[cfg(feature = "wmi")]
+                        "wmi" => {
+                            let condition = condition::wmi_cond::WmiQueryCondition::load_cfgmap(
+                                entry.as_map().unwrap(),
+                                task_registry,
+                            )?;
+                            let cond_name = condition.get_name();
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
+                            {
+                                if !cond_registry
+                                    .dynamic_add_or_replace_condition(Box::new(condition))?
+                                {
+                                    return Err(Error::new(
+                                        Kind::Invalid,
+                                        ERR_CONDREG_COND_NOT_ADDED,
+                                    ));
+                                }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("condition {cond_name} has been reconfigured"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!(
+                                        "not reconfiguring condition {cond_name}: no change detected",
+                                    ),
+                                )
+                            }
+                            if to_remove.contains(&cond_name) {
+                                to_remove.swap_remove(
+                                    to_remove.iter().position(|x| cond_name == *x).unwrap(),
+                                );
+                            }
+                        }
                         "bucket" | "event" => {
                             // this is peculiar because it requires extra initialization after loading from map
                             let mut condition =
@@ -1009,6 +1138,39 @@ fn configure_events(
                         #[cfg(feature = "dbus")]
                         "dbus" => {
                             let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                                entry.as_map().unwrap(),
+                                cond_registry,
+                                bucket,
+                            )?;
+                            let event_name = event.get_name();
+                            if !event_registry.add_event(Box::new(event))? {
+                                return Err(Error::new(
+                                    Kind::Invalid,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
+                            } else if event_registry.listen_for(&event_name).is_ok() {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_MAIN_LISTENER,
+                                    None,
+                                    LOG_WHEN_INIT,
+                                    LOG_STATUS_MSG,
+                                    &format!(
+                                        "service installed for event {event_name} (dedicated thread)",
+                                    ),
+                                )
+                            } else {
+                                return Err(Error::new(
+                                    Kind::Invalid,
+                                    ERR_EVENTREG_EVENT_NOT_ADDED,
+                                ));
+                            }
+                        }
+                        #[cfg(windows)]
+                        #[cfg(feature = "wmi")]
+                        "wmi" => {
+                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1184,6 +1346,82 @@ fn reconfigure_events(
                         #[cfg(feature = "dbus")]
                         "dbus" => {
                             let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                                entry.as_map().unwrap(),
+                                cond_registry,
+                                bucket,
+                            )?;
+                            let event_name = event.get_name();
+                            if !event_registry.has_event(&event_name)
+                                || !event_registry.has_event_eq(&event)
+                            {
+                                if event_registry.has_event(&event_name)
+                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_FAIL,
+                                        &format!("service for event {event_name} still listening",),
+                                    );
+                                }
+                                if !event_registry.add_event(Box::new(event))? {
+                                    return Err(Error::new(
+                                        Kind::Invalid,
+                                        ERR_EVENTREG_EVENT_NOT_ADDED,
+                                    ));
+                                } else if event_registry.listen_for(&event_name).is_ok() {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_MSG,
+                                        &format!(
+                                            "service installed for event {event_name} (dedicated thread)",
+                                        ),
+                                    );
+                                } else {
+                                    return Err(Error::new(
+                                        Kind::Invalid,
+                                        ERR_EVENTREG_EVENT_NOT_ADDED,
+                                    ));
+                                }
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    &format!("event {event_name} has been reconfigured"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_CONFIGURATION,
+                                    LOG_ACTION_RECONFIGURE,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!(
+                                        "not reconfiguring event {event_name}: no change detected",
+                                    ),
+                                );
+                            }
+                            if to_remove.contains(&event_name) {
+                                to_remove.swap_remove(
+                                    to_remove.iter().position(|x| event_name == *x).unwrap(),
+                                );
+                            }
+                        }
+                        #[cfg(windows)]
+                        #[cfg(feature = "wmi")]
+                        "wmi" => {
+                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,

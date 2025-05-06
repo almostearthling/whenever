@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-// use std::io::{Error, ErrorKind};
 use std::sync::mpsc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -22,11 +21,11 @@ use futures;
 use futures::SinkExt;
 
 use lazy_static::lazy_static;
-use unique_id::sequence::SequenceGenerator;
 use unique_id::Generator;
+use unique_id::sequence::SequenceGenerator;
 
 use super::base::Event;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -93,7 +92,7 @@ impl EventRegistry {
         registry: &'static Self,
     ) -> Result<JoinHandle<std::result::Result<bool, std::io::Error>>> {
         let registry = Arc::new(Mutex::new(Box::new(registry)));
-        let (smtx, mut smrx) = futures::channel::mpsc::channel(10);
+        let (smtx, mut smrx) = futures::channel::mpsc::channel(EVENT_CHANNEL_SIZE);
 
         let r0 = registry.clone();
         let m0 = r0
@@ -472,7 +471,7 @@ impl EventRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(ErrorKind::Unsupported, _)` - the event could not be removed
+    /// * `Error(Kind::Failed, _)` - the event could not be removed
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success
     ///
@@ -527,11 +526,7 @@ impl EventRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified event.

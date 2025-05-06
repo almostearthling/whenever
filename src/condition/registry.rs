@@ -11,14 +11,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
-// use std::io::{Error, ErrorKind};
 
 use lazy_static::lazy_static;
-use unique_id::sequence::SequenceGenerator;
 use unique_id::Generator;
+use unique_id::sequence::SequenceGenerator;
 
 use super::base::Condition;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 
@@ -253,7 +252,7 @@ impl ConditionRegistry {
     ///
     /// # Returns
     ///
-    /// * `Error(ErrorKind::Unsupported, _)` - the condition could not be removed
+    /// * `Error(Kind::Failed, _)` - the condition could not be removed
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Condition)` - the removed (_pulled out_) `Condition` on success
     ///
@@ -501,11 +500,7 @@ impl ConditionRegistry {
         {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            None
-        } else {
-            Some(res)
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified condition
@@ -667,15 +662,13 @@ impl ConditionRegistry {
             drop(bcount);
             drop(cb0);
 
+            // TODO: this can be rewritten in a simpler way using the `?`
+            // operator, thanks to the unified error system
             // the heart of all: test the condition and run tasks if verified
             let res = match cond.test() {
                 Ok(o) => {
                     if let Some(outcome) = o {
-                        if outcome {
-                            cond.run_tasks()
-                        } else {
-                            Ok(None)
-                        }
+                        if outcome { cond.run_tasks() } else { Ok(None) }
                     } else {
                         Ok(None)
                     }

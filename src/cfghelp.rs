@@ -1,7 +1,7 @@
 // this utility may contain unused functions or other items
 #![allow(dead_code)]
 
-/// pub cfghelp
+/// module cfghelp
 ///
 /// module providing shortcut functions/macros to help configuration of items
 /// by providing a CfgMap instance and the key to be retrieved

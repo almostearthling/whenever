@@ -13,6 +13,7 @@
     - [Tasks](#tasks)
       - [Command tasks](#command-tasks)
       - [Lua script tasks](#lua-script-tasks)
+      - [Internal input command tasks](#internal-input-command-tasks)
     - [Conditions](#conditions)
       - [Interval](#interval)
       - [Time](#time)
@@ -20,10 +21,12 @@
       - [Command](#command)
       - [Lua script](#lua-script)
       - [DBus method (optional)](#dbus-method-optional)
+      - [WMI Query based (optional, Windows only)](#wmi-query-based-optional-windows-only)
       - [Event based](#event-based)
     - [Events](#events)
       - [Filesystem changes](#filesystem-changes)
       - [DBus signals (optional)](#dbus-signals-optional)
+      - [WMI (optional, Windows only)](#wmi-optional-windows-only)
       - [Command line](#command-line)
   - [Logging](#logging)
   - [Input commands](#input-commands)
@@ -61,6 +64,7 @@ The old version of _When_ itself is currently being converted to a frontend wrap
 
 * [_Execution of OS executables_](#command-tasks), either binaries or scripts, checking their exit code or output (both on _stdout_ and _stderr_) for expected or undesired results
 * [_Execution of_ Lua _scripts_](#lua-script-tasks), using an embedded interpreter, with the possibility of checking the contents of _Lua_ variables for expected outcomes
+* [_Execution of internal input commands_](#internal-input-command-tasks), to modify the internal scheduler status at the verification of specific conditions
 
 as the consequence of the verification of a **_condition_**. The concepts of tasks and conditions are inherited from the _Python_ based _When_ scheduler: how tasks and conditions work is almost identical in both tools -- in fact, the development of a tool to convert from _When_ _export files_ to **whenever** configuration files is underway.
 
@@ -72,15 +76,17 @@ The supported types of [**_condition_**](#conditions) are the following:
 * [_Command_ execution](#command): an available executable (be it a script, a batch file on Windows, a binary) is run, its exit code or output is checked and, when an expected outcome is found, the condition is considered verified - or failed on an explicitly undesired outcome
 * [_Lua_ script execution](#lua-script): a _Lua_ script is run using the embedded interpreter, and if the contents of one or more variables meet the specified expectations the condition is considered verified
 * [_DBus_ inspection (optional)](#dbus-method-optional): a _DBus_ method is executed and the result is checked against some criteria provided in the configuration file
+* [_WMI_ query (optional, Windows only)](#wmi-query-based-optional-windows-only): a _WMI_ query is executed and the result is checked against some criteria provided in the configuration file
 * [_Event_ based](#event-based): are verified when a certain event occurs that fires the condition.
 
 The [**_events_**](#events) that can fire _event_ based conditions are, at the moment:
 
 * [_Filesystem changes_](#filesystem-changes), that is, changes in files and/or directories that are set to be monitored
 * [_DBus_ signals (optional)](#dbus-signals-optional), that may be filtered for an expected payload
+* [_WMI_ events (optional, Windows only)](#wmi-optional-windows-only), subscribed via specific _WQL_ queries
 * [_Command line_](#command-line), that are manually triggered by writing to **whenever** standard input.
 
-Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default. However _DBus_ support can be **disabled** on build, by removing `dbus` from the default features in the _Cargo.toml_ file, or by building the application with the `--no-default-features` command line flag (in this case, other desired features have to be specifically enabled using the `--features` option).
+Note that _DBus_ events and conditions are also supported on Windows, being one of the _DBus_ target platforms, and enabled by default.  _WMI_ events and conditions, on the contrary, are only supported on Windows platforms. Both _DBus_ and _WMI_ support can be **disabled** on build, by respectively removing `dbus` and/or `wmi` from the default features in the _Cargo.toml_ file, or by building the application with the `--no-default-features` command line flag (in this case, other desired features have to be specifically enabled using the `--features` option). **whenever** can provide the list of the available optional features by invoking `whenever --options` from the command line.
 
 All of the above listed items are fully configurable via a TOML configuration file, that _must_ be specified as the only mandatory argument on the command line. The syntax of the configuration file is described in the following sections.
 
@@ -108,6 +114,7 @@ Options:
   -q, --quiet              Suppress all output
   -p, --pause              Start in paused mode
   -r, --check-running      Check whether an instance is running
+  -O, --options            Provide the list of available optional features
   -l, --log <LOGFILE>      Specify the log file
   -L, --log-level <LEVEL>  Specify the log level [default: warn] [possible values: trace, debug, info, warn, error]
   -a, --log-append         Append to an existing log file if found
@@ -162,7 +169,7 @@ _Tasks_ are handled first in this document, because _conditions_ must mandatoril
 
 Tasks are defined via a dedicated table, which means that every task definition must start with the TOML `[[task]]` section header.
 
-Task names are mandatory, and must be provided as alphanumeric strings (may include underscores), beginning with a letter. The task type must be either `"command"` or `"lua"` according to what is configured, any other value is considered a configuration error. There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a table.
+Task names are mandatory, and must be provided as alphanumeric strings (may include underscores), beginning with a letter. The task type must be one of `"command"`, `"lua"`, or `"internal"` according to what has to be configured, and any other value is considered a configuration error. There is another optional entry, namely `tags`, that is accepted in item configuration: this entry is ignored by **whenever** itself, however it is checked for correctness at startup and the configuration is refused if not set to an array (of strings) or a table.
 
 #### Command tasks
 
@@ -278,6 +285,41 @@ From the embedded _Lua_ interpreter there are two values set that can be accesse
 
 which might be useful if the scripts are aware of being run within **whenever**.
 
+#### Internal input command tasks
+
+This type of task is useful in case the ability of **whenever** to unattendendly do something is needed to control the running instance of **whenever** itself: it is possible in fact to instruct the scheduler to execute one of the [commands](#input-commands) that have been implemented to be used by wrapper applications. This means that the scheduler:
+
+* can automatically reset one or more conditions
+* can pause itself or shut itself down: in both cases there is no automatic way back
+* can reload its configuration file
+
+and so on upon verification of a condition.
+
+> **Note:** no security concern is raised here, as **whenever** is designed with the intention to run without administration rights; obviously every kind of automation tool, which performs unattended operations, might execute malicious actions under the hood, however the absence of particular privileges when running and the ability to read the configuration file without the need of specific tools, allow for complete control on what **whenever** does.
+
+The configuration for such a type of task is simple, as it only requires to set the `command` parameter in addition to the name and type. An example internal command based task is the following:
+
+```toml
+[[task]]
+name = "InternalTaskName"
+type = "internal"
+command = "reset_conditions Cond1 Cond2"
+```
+
+which resets the conditions named `Cond1` and `Cond2`, if they exist. A detailed description of the parameter entries follows:
+
+| Entry     | Default | Description                                                                     |
+|-----------|:-------:|---------------------------------------------------------------------------------|
+| `name`    | N/A     | the unique name of the task (mandatory)                                         |
+| `type`    | N/A     | must be set to `"internal"` (mandatory)                                         |
+| `command` | N/A     | the internal command to be run, as a single string that includes its parameters |
+
+As mentioned above, a comprehensivew list of possible internal commands can be found in the appropriate [section](#input-commands).
+
+This type of item is mostly intended as a way to automate part of the behavior of **whenever** during a session on behalf of a wrapper, that might expose part of the configuration implemented as a combination of internally managed conditions and specific tasks (even of this type) as single and simpler configuration element: an example could be the use of the _org.freedesktop.UPower_ interface in DBus to catch a _system resume_ event in order to reset all the conditions.
+
+> **Warning:** the command will _not_ be checked upon configuration, it will _fail_ instead causing a warning to be logged in case it is invalid or malformed.
+
 
 ### Conditions
 
@@ -297,7 +339,9 @@ _Conditions_ are at the heart of **whenever**, by triggering the execution of ta
 
 When `execute_sequence` is set to _false_, the associated tasks are started concurrently in the same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented, allowing the sequence to be interrupted after the first success or failure in task execution. Note that it is possible to set both `break_on_success` and `break_on_failure` to _true_.[^6]
 
-The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `"lua"`, `"event"`, and `"dbus"`. Any other value is considered a configuration error.
+The `type` entry can be one of: `"interval"`, `"time"`, `"idle"`, `"command"`, `"lua"`, `"event"`, `"dbus"`, and `"wmi"`. Any other value is considered a configuration error.
+
+> **Note:** the `"dbus"` and `"wmi"` values will be considered an error if the respective features are not available.
 
 For conditions that should be periodically checked and whose associated task list has to be run _whenever_ they occur (and not just after the first occurrence), the `recurring` entry can be set to _true_. Conditions with no associated tasks (eg. when the user comments out all the associated tasks in the configuration file) are not checked.
 
@@ -674,19 +718,19 @@ Since `parameter_check_all` is _false_, satisfaction of one of the provided crit
 
 The specific parameters are described in the following table:
 
-| Entry                       | Default | Description                                                                                                                   |
-|-----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
-| `type`                      | N/A     | has to be set to `"dbus"` (mandatory)                                                                                         |
-| `check_after`               | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
-| `recur_after_failed_check`  | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
-| `bus`                       | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory)  |
-| `service`                   | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)               |
-| `object_path`               | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
-| `interface`                 | N/A     | the _interface_ to invoke or query (mandatory)                                                                                |
-| `method`                    | N/A     | the name of the _method_ to be invoked (mandatory)                                                                            |
-| `parameter_call`            | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                   |
-| `parameter_check_all`       | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient    |
-| `parameter_check`           | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters                 |
+| Entry                      | Default | Description                                                                                                                   |
+|----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                     | N/A     | has to be set to `"dbus"` (mandatory)                                                                                         |
+| `check_after`              | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_failed_check` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `bus`                      | N/A     | the bus on which the method is invoked: must be either `":system"` or `":session"`, including the starting colon (mandatory)  |
+| `service`                  | N/A     | the name of the _service_ that exposes the required _object_ and the _interface_ to invoke or query (mandatory)               |
+| `object_path`              | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
+| `interface`                | N/A     | the _interface_ to invoke or query (mandatory)                                                                                |
+| `method`                   | N/A     | the name of the _method_ to be invoked (mandatory)                                                                            |
+| `parameter_call`           | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                   |
+| `parameter_check_all`      | _false_ | if _true_, all the provided criteria will have to be satisfied for the condition to be successful, otherwise one is enough    |
+| `parameter_check`          | (empty) | a list of maps having the structure explained above                                                                           |
 
 The value corresponding to the `service` entry is often referred to as _bus name_ in various documents: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
@@ -699,6 +743,77 @@ Note that DBus based conditions are supported on Windows, however DBus should be
 The `recur_after_failed_check` flag allows for avoidance of multiple subsequent task runs in case of a persistent situation that cause the condition checks to be successful if the condition is marked as _recurring_: the associated tasks are run as soon as the check is successful for the first time, then the tasks are not executed anymore as long as this status persists. After at least one unsuccessful condition check (in which, of course, the tasks are not executed), at the following successful one the task run is performed again.
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
+
+#### WMI Query based (optional, Windows only)
+
+On Windows, **whenever** allows to directly query the [WMI](https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-start-page) subsystem, which is a powerful way to retrieve information. _WMI_ is accessed via a query language called [WQL](https://learn.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi), which is syntactically and semantically close to _SQL_. Queries normally return lists of compound values where every component has a name. For analogy with database operations and queries, this document will refer the returned compound values as _rows_ or _records_, and their components as _fields_.
+
+> **Note:** this type of item is only available when the `wmi` feature is enabled.
+
+_WMI_ inquiries are somewhat simpler than their _DBus_ counterparts, mostly because the query language is more structured and allows for more complex filtering at the query level. Because of that, and since a query can be crafted in order to directly return the values of interest without having to deeply inspect returned _objects_, **whenever** will only inspect fields containing simple values (numbers, booleans, and strings) in a query result. Therefore, in the _WMI_ case, there is no need to use a less strict language (such as JSON) for configuration.
+
+The main part of a _WMI Query_ based condition is obviously the _query_ itself, which is provided as a freeform string using the mandatory `query` configuration entry. **whenever** does not do any parsing or check on the provided query, thus an incorrect query will only cause the condition test to always fail and log an error message, at least in the _debug_ log level.
+
+Since a _WMI_ query returns a set of records, it is possible to filter the returned rows by providing criteria: this can be done using the _result_check_ entry, provided as a list of dictionaries, each representing a check, having the following entries:
+
+* `index` is the index of the row in the result set that will be checked (this sub-entry is optional, leaving it out means _any_ row)
+* `field` indicates which record _field_ is checked, and must be a string
+* `operator` is the check operator, a string of the ones shown below
+* `value` is the value that the field is checked against, and its type must be compatible with the field value.
+
+Operators resemble the ones used for _DBus_ return message value comparisons, with the exception that, since no complex values such as arrays or dictionaries are expected to be tested, operators that check for inclusion are not available. The supported operators are, therefore:
+
+* `"eq"` for _equality_
+* `"neq"` for _inequality_
+* `"gt"` meaning _greater than_
+* `"ge"` meaning _greater or equal to_
+* `"lt"` meaning _less than_
+* `"le"` meaning _less or equal to_
+* `"match"` to indicate that the second operand has to be intended as a _regular expression_ to be matched.
+
+and work for all supported values in the usual way, taking out `"match"` that can obviously only be applied to strings. Note that integers and floating point numbers can be compared to each other, with all the known issues related to this kind of comparison.
+
+An example of _WMI Query_ based condition configuration is the following:
+
+```toml
+[[condition]]
+name = "WMIQueryConditionName"
+type = "wmi"  # mandatory value
+query = '''
+    SELECT * FROM Win32_LogicalDisk WHERE FileSystem = 'NTFS'
+'''
+
+# optional parameters (if omitted, defaults are used)
+recurring = true
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [ "Task1", "Task2" ]
+check_after = 60
+recur_after_failed_check = false
+result_check = [
+    { field = "FreeSpace", operator = "lt", value = 5_000_000_000 },
+]
+result_check_all = false
+```
+
+The above condition definition queries the _WMI_ subsystem to report basic information about the logical drives handled by the system, and is successful if any of them has roughly less than 5GB left. The test is performed every minute. Of course, the `result_check` part coul also be incorporated in the query itself, using an _AND_ clause.
+
+The specific parameters are described in the following table:
+
+| Entry                      | Default | Description                                                                                                                   |
+|----------------------------|:-------:|-------------------------------------------------------------------------------------------------------------------------------|
+| `type`                     | N/A     | has to be set to `"wmi"` (mandatory)                                                                                          |
+| `check_after`              | (empty) | number of seconds that have to pass before the condition is checked the first time or further times if `recurring` is _true_  |
+| `recur_after_failed_check` | _false_ | if set to _true_ and `recurring` is also _true_, persistent successful checks after the first one do not run associated tasks |
+| `query`                    | N/A     | the _WQL_ query used to inquire the system                                                                                    |
+| `result_check_all`         | _false_ | if _true_, all the provided criteria will have to be satisfied for the condition to be successful, otherwise one is enough    |
+| `result_check`             | (empty) | a list of maps having the structure explained above                                                                           |
+
+Note that it is not mandatory to provide criteria to filter the query result: their omission causes the condition to be successful if the query _returns at least one row_. Also, omitting the index on a check causes _that single check_ to be performed on every returned row: this means that, for instance, if all the provided checks omit the row index, even though **whenever** is instructed to consider the test successful when _all_ the provided criteria are satisfied (setting the `result_check_all` entry to _true_), the test will be successful if there is at least one row satisfying each check -- and not just one row satisfying _all_ the checks. This is because the tests that **whenever** applies to the result sets are intended to be simple in order to keep the configuration file as readable as possible (and the configuration of _DBus_ inquiries is a failure in this sense). However, more complex and fine-grained criteria can be kept at the query level.
+
+As said above, any error will cause the condition to be evaluated as unsuccessful.
 
 #### Event based
 
@@ -790,6 +905,7 @@ Subscription is performed by providing a _watch expression_ in the same form tha
 A sample configuration section follows:
 
 ```toml
+[[event]]
 name = "DbusMessageEventName"
 type = "dbus"                       # mandatory value
 bus = ":session"                    # either ":session" or ":system"
@@ -823,12 +939,49 @@ and the details of the configuration entries are described in the table below:
 | `type`                | N/A     | must be set to `"dbus"` (mandatory)                                                                                         |
 | `condition`           | N/A     | the name of the associated _event_ based condition (mandatory)                                                              |
 | `bus`                 | N/A     | the bus on which to listen for events: must be either `":system"` or `":session"`, including the starting colon (mandatory) |
-| `parameter_check_all` | _false_ | if _true_, all the returned parameters will have to match the criteria for verification, otherwise one match is sufficient  |
+| `parameter_check_all` | _false_ | if _true_, all the provided criteria will have to be satisfied for the event to be fired, otherwise one is enough           |
 | `parameter_check`     | (empty) | a list of maps consisting of three fields each, each of which is a check to be performed on return parameters               |
 
 The considerations about indexes in return parameters are the same that have been seen for [_DBus message_ based conditions](#dbus-method-optional). It is worth to remind that any errors that may arise during checks will cause the check itself to yield _false_.
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
+
+#### WMI (optional, Windows only)
+
+On Windows, **whenever** can subscribe to _WMI_ events using [event-specific _WML_ queries](https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications). This kind of query allows for an extremely precise determination of every aspect of the event that has to be caught, including the possibility to specify any criteria regarding the payload of an event in order to consider it verified. Thus **whenever** leaves to the _query_ part of a _WMI_ event definition the task of filtering the specific event for which it enables a listener.
+
+> **Note:** this type of item is only available when the `wmi` feature is enabled.
+
+As a result, the configuration of a _WMI_ based event is much simpler than the one of _DBus signal_ based ones, by only having to specify a mandatory `query` entry, whose syntax and semantic is similar to the one of the queries used in [WMI Query](#wmi-query-based-optional-windows-only) based conditions, but has to be expressly built for events.
+
+An example of _WMI_ based event configuration follows:
+
+```toml
+[[event]]
+name = "WMIEventName"
+type = "wmi"  # mandatory value
+condition = "AssignedConditionName"
+query = """
+    SELECT * FROM __InstanceModificationEvent
+        WHERE TargetInstance ISA "Win32_LogicalDisk"
+        AND   TargetInstance.FreeSpace < 5000000000
+"""
+```
+
+which will occur every time the remaining space of a logical disk goes roughly under 5GB. The details of the configuration entries are described in the table below:
+
+| Entry       | Default | Description                                                                         |
+|-------------|:-------:|-------------------------------------------------------------------------------------|
+| `name`      | N/A     | the unique name of the event (mandatory)                                            |
+| `type`      | N/A     | must be set to `"dbus"` (mandatory)                                                 |
+| `condition` | N/A     | the name of the associated _event_ based condition (mandatory)                      |
+| `query`     | N/A     | the _WQL_ query used specify what criteria must be satisfied for the event to occur |
+
+As with DBus _match rules_, **whenever** does not do any parsing or check on the provided query: an incorrect query will only cause the event registration to fail and log an error message, at least in the _debug_ log level.
+
+Every event returned by the system matches the criteria specified in the _query_, and will cause the assigned condition to fire.
+
+> **Warning:** some antimalware tools might detect event subscriptions as suspicious.
 
 #### Command line
 
@@ -878,6 +1031,7 @@ As mentioned above, just after the _context_, in the message _payload_, a string
   * `END` when the message is emitted at the end of something, before returning control
   * `HIST` when the message is intended for some receiver (generally a wrapper) that keeps track of the history: in this case the _outcome_ is either `START` or `END`
   * `BUSY` when the message is intended for a receiver (generally a wrapper) that might show whether the scheduler is busy[^11] or not: _outcome_ is here `YES` or `NO`
+  * `PAUSE` when the message is intended for a receiver (generally a wrapper) that might show whether the scheduler has been paused: _outcome_ is here `YES` or `NO`
 
 * _STATUS_ holds the _outcome_ of the current activity, and is one of the following:
   * `OK` for expected behaviours
@@ -886,7 +1040,7 @@ As mentioned above, just after the _context_, in the message _payload_, a string
   * `MSG` when the message is merely informational
   * `ERR` when an operation fails with an error
   * `START`/`END` are pseudo-outcomes that only occur when the _nature_ is `HIST`, to mark the beginning or the end of an activity
-  * `YES`/`NO` are pseudo-outcomes that only occur when the _nature_ is `BUSY`, to state that the scheduler is respectively busy or not
+  * `YES`/`NO` are pseudo-outcomes that only occur when the _nature_ is one of `BUSY` or `PAUSE`, according to the actual busy[^11] state or to the fact that the scheduler has been paused or resumed respectively.[^12]
 
 This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
 
@@ -1014,3 +1168,4 @@ This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future):
 [^9]: See the [DBus Specification](https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types) for the complete list of supported types, and the ASCII character that identifies each of them.
 [^10]: in DBus, strings and object paths are considered different types.
 [^11]: that is, checking one or more conditions and/or running their related tasks.
+[^12]: the _PAUSE_ line will be issued just once when the `pause` input command is invoked, and once when the `resume` input command is issued.

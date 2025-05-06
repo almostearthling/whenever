@@ -38,7 +38,7 @@ use cfgmap::CfgMap;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::cmditem::*;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::{cfg_mandatory, constants::*};
 
@@ -138,16 +138,6 @@ impl Hash for CommandTask {
         }
     }
 }
-
-// /// In case of failure, the reason will be one of the provided values
-// #[derive(Debug, PartialEq)]
-// pub enum FailureReason {
-//     NoFailure,
-//     StdOut,
-//     StdErr,
-//     Status,
-//     Other,
-// }
 
 #[allow(dead_code)]
 impl CommandTask {

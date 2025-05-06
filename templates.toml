@@ -50,6 +50,14 @@ expected_results = { result = 10 }
 
 
 #############################################################################
+# internal command task
+[[task]]
+name = "InternalTaskName"
+type = "internal"
+command = "reset_conditions"
+
+
+#############################################################################
 # interval condition
 [[condition]]
 name = "IntervalConditionName"
@@ -239,7 +247,30 @@ parameter_check = """[
 
 
 #############################################################################
-# Filesystem Change Event
+# DBus method invocation condition
+[[condition]]
+name = "WMIQueryConditionName"
+type = "wmi"                        # mandatory value
+query = "SELECT * FROM Win32_LogicalDisk WHERE FileSystem = 'NTFS'"
+
+# optional parameters (if omitted, defaults are used)
+recurring = false
+max_tasks_retries = 0
+execute_sequence = true
+break_on_failure = false
+break_on_success = false
+suspended = true
+tasks = [ "Task1", "Task2" ]
+check_after = 60
+recur_after_failed_check = false
+result_check = [
+    { index = 0, field = "DeviceID", operator = "eq", value = "C:" }
+]
+result_check_all = false
+
+
+#############################################################################
+# Filesystem Change event
 [[event]]
 name = "FilesystemChangeEventName"
 type = "fschange"
@@ -255,7 +286,7 @@ poll_seconds = 2
 
 
 #############################################################################
-# DBus Message Event
+# DBus Message event
 [[event]]
 name = "DbusMessageEventName"
 type = "dbus"                       # mandatory value
@@ -280,6 +311,19 @@ parameter_check = """[
              "value": "^[A-Z][a-zA-Z0-9_]*$"
          }
     ]"""
+
+
+#############################################################################
+# WMI event
+[[event]]
+name = "WMIEventName"
+type = "wmi"                        # mandatory value
+condition = "AssignedConditionName"
+query = """
+    SELECT * FROM __InstanceModificationEvent
+        WHERE TargetInstance ISA "Win32_LogicalDisk"
+        AND   TargetInstance.FreeSpace < 5000000000
+"""
 
 
 # end.

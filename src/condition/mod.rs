@@ -14,4 +14,8 @@ pub mod time_cond;
 #[cfg(feature = "dbus")]
 pub mod dbus_cond;
 
+#[cfg(windows)]
+#[cfg(feature = "wmi")]
+pub mod wmi_cond;
+
 // end.

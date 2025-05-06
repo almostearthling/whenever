@@ -9,10 +9,10 @@
 
 use regex::Regex;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{mpsc, Arc, RwLock};
+use std::sync::{Arc, RwLock, mpsc};
 use std::thread;
 
-use futures::{channel::mpsc::channel, pin_mut, select, FutureExt, SinkExt, StreamExt};
+use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, select};
 
 use cfgmap::{CfgMap, CfgValue};
 
@@ -24,8 +24,8 @@ use std::str::FromStr;
 
 use super::base::Event;
 use crate::common::dbusitem::*;
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -281,6 +281,7 @@ impl DbusMessageEvent {
             }
         }
 
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !new_event.condition_registry.unwrap().has_condition(&v) {
                 return Err(cfg_err_invalid_config(
@@ -548,6 +549,7 @@ impl DbusMessageEvent {
         }
 
         // assigned condition is checked against the provided array
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !available_conditions.contains(&v.as_str()) {
                 return Err(cfg_err_invalid_config(
@@ -820,7 +822,7 @@ impl Event for DbusMessageEvent {
             connection
         }
 
-        // provide the mesage stream we subscribed to through the filter; note
+        // provide the message stream we subscribed to through the filter; note
         // that the rule is moved here since this will be the only consumer
         async fn _get_stream(
             rule: zbus::MatchRule<'_>,
@@ -905,7 +907,7 @@ impl Event for DbusMessageEvent {
         );
 
         // build an async communication channel for the quit signal
-        let (aquit_tx, mut aquit_rx) = channel(10);
+        let (aquit_tx, mut aquit_rx) = channel(EVENT_QUIT_CHANNEL_SIZE);
 
         // now it is time to set the internal `running` flag, before the
         // thread that waits for the quit signal is launched
@@ -1008,12 +1010,8 @@ impl Event for DbusMessageEvent {
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
                             &format!("parameter checks specified: {} checks must be verified", {
-                                if self.param_checks_all {
-                                    "all"
-                                } else {
-                                    "some"
-                                }
-                            },),
+                                if self.param_checks_all { "all" } else { "some" }
+                            }),
                         );
 
                         let severity;
@@ -1096,7 +1094,7 @@ impl Event for DbusMessageEvent {
         Ok(true)
     }
 
-    fn stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => {
                 if *running {
@@ -1137,20 +1135,20 @@ impl Event for DbusMessageEvent {
                     LOG_STATUS_ERR,
                     "could not determine whether the service is running",
                 );
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    "could not determine whether the service is running",
+                Err(Error::new(
+                    Kind::Forbidden,
+                    ERR_EVENT_LISTENING_NOT_DETERMINED,
                 ))
             }
         }
     }
 
-    fn thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => Ok(*running),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the service is running",
+            _ => Err(Error::new(
+                Kind::Forbidden,
+                ERR_EVENT_LISTENING_NOT_DETERMINED,
             )),
         }
     }

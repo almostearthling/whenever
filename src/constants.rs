@@ -86,6 +86,9 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
+pub const ERR_EVENT_LISTENING_NOT_DETERMINED: &str =
+    "could not determine whether the service is running";
+
 // logging constants
 pub const LOG_WHEN_INIT: &str = "INIT";
 pub const LOG_WHEN_START: &str = "START";
@@ -93,6 +96,7 @@ pub const LOG_WHEN_END: &str = "END";
 pub const LOG_WHEN_PROC: &str = "PROC";
 pub const LOG_WHEN_HISTORY: &str = "HIST";
 pub const LOG_WHEN_BUSY: &str = "BUSY";
+pub const LOG_WHEN_PAUSE: &str = "PAUSE";
 
 pub const LOG_STATUS_OK: &str = "OK";
 pub const LOG_STATUS_FAIL: &str = "FAIL";
@@ -114,11 +118,15 @@ pub const LOG_EMITTER_MAIN: &str = "MAIN";
 
 pub const LOG_EMITTER_TASK_COMMAND: &str = "COMMAND_TASK";
 pub const LOG_EMITTER_TASK_LUA: &str = "LUA_TASK";
+pub const LOG_EMITTER_TASK_INTERNAL: &str = "INTERNAL_TASK";
 
 pub const LOG_EMITTER_EVENT_FSCHANGE: &str = "FSCHANGE_EVENT";
 pub const LOG_EMITTER_EVENT_MANUAL: &str = "CMD_EVENT";
 #[cfg(feature = "dbus")]
 pub const LOG_EMITTER_EVENT_DBUS: &str = "DBUS_EVENT";
+#[cfg(windows)]
+#[cfg(feature = "wmi")]
+pub const LOG_EMITTER_EVENT_WMI: &str = "WMI_EVENT";
 
 pub const LOG_EMITTER_CONDITION_INTERVAL: &str = "INTERVAL_CONDITION";
 pub const LOG_EMITTER_CONDITION_BUCKET: &str = "BUCKET_CONDITION";
@@ -127,6 +135,9 @@ pub const LOG_EMITTER_CONDITION_IDLE: &str = "IDLE_CONDITION";
 pub const LOG_EMITTER_CONDITION_LUA: &str = "LUA_CONDITION";
 #[cfg(feature = "dbus")]
 pub const LOG_EMITTER_CONDITION_DBUS: &str = "DBUS_CONDITION";
+#[cfg(windows)]
+#[cfg(feature = "wmi")]
+pub const LOG_EMITTER_CONDITION_WMI: &str = "WMI_CONDITION";
 
 pub const LOG_ACTION_NEW: &str = "new";
 pub const LOG_ACTION_TICK: &str = "tick";
@@ -161,6 +172,10 @@ pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 // operational values
 pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100; // default: 100
 pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100; // default: 100
+
+// channel sizes
+pub const EVENT_QUIT_CHANNEL_SIZE: usize = 10; // default: 10
+pub const EVENT_CHANNEL_SIZE: usize = 10; // default: 10
 
 // crate-wide values
 lazy_static! {

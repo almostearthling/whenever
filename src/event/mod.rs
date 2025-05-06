@@ -10,4 +10,8 @@ pub mod manual_event;
 #[cfg(feature = "dbus")]
 pub mod dbus_event;
 
+#[cfg(windows)]
+#[cfg(feature = "wmi")]
+pub mod wmi_event;
+
 // end.

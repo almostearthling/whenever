@@ -15,8 +15,8 @@
 
 use std::sync::mpsc;
 
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
@@ -81,17 +81,14 @@ pub trait Event: Send + Sync {
     ///
     /// When either the condition is not registered or the condition registry
     /// has not been set: each would indicate an error in the program flow.
-    fn assign_condition(&mut self, cond_name: &str) -> std::io::Result<bool> {
+    fn assign_condition(&mut self, cond_name: &str) -> Result<bool> {
         if let Some(cond_registry) = self.condition_registry() {
             if let Some(s) = cond_registry.condition_type(cond_name) {
                 if s == "bucket" || s == "event" {
                     self._assign_condition(cond_name);
                     Ok(true)
                 } else {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::Unsupported,
-                        ERR_EVENT_INVALID_COND_TYPE,
-                    ))
+                    Err(Error::new(Kind::Unsupported, ERR_EVENT_INVALID_COND_TYPE))
                 }
             } else {
                 panic!("could not retrieve type of condition {cond_name}");
@@ -205,7 +202,7 @@ pub trait Event: Send + Sync {
     ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
-    fn stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> Result<bool> {
         Ok(true)
     }
 
@@ -213,7 +210,7 @@ pub trait Event: Send + Sync {
     ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.
-    fn thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> Result<bool> {
         // no special thread is running for this kind of event
         Ok(false)
     }

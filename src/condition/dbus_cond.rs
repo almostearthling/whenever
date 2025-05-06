@@ -23,7 +23,7 @@ use std::str::FromStr;
 
 use super::base::Condition;
 use crate::common::dbusitem::*;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -127,7 +127,7 @@ impl Hash for DbusMethodCondition {
             0.hash(state);
         }
 
-        // let's hope that to_string is a correct representation of the
+        // let's hope that to_string is a correct representation of elem
         if let Some(x) = &self.param_call {
             for elem in x {
                 elem.to_string().hash(state);
@@ -145,8 +145,7 @@ impl Hash for DbusMethodCondition {
 
 #[allow(dead_code)]
 impl DbusMethodCondition {
-    /// Create a new DBus method invocation based condition with the given
-    /// name and interval duration
+    /// Create a new DBus method invocation based condition with the given name
     pub fn new(name: &str) -> Self {
         log(
             LogType::Debug,
@@ -233,6 +232,14 @@ impl DbusMethodCondition {
         self
     }
 
+    /// Constructor modifier to specify that the condition is verified on
+    /// check success only if there has been at least one failure after the
+    /// last successful test
+    pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
+        self.recur_after_failed_check = yes;
+        self
+    }
+
     /// Set the bus name to the provided value (checks for validity)
     pub fn set_bus(&mut self, name: &str) -> bool {
         if RE_DBUS_BUS_NAME.is_match(name) {
@@ -240,14 +247,6 @@ impl DbusMethodCondition {
             return true;
         }
         false
-    }
-
-    /// Constructor modifier to specify that the condition is verified on
-    /// check success only if there has been at least one failure after the
-    /// last successful test
-    pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
-        self.recur_after_failed_check = yes;
-        self
     }
 
     /// Return an owned copy of the bus name
@@ -761,7 +760,7 @@ impl DbusMethodCondition {
 
         // type and name are both mandatory: type is checked and name is kept
         cfg_mandatory!(cfg_string_check_exact(cfgmap, "type", "dbus"))?;
-        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_EVENT_NAME))?.unwrap();
+        let name = cfg_mandatory!(cfg_string_check_regex(cfgmap, "name", &RE_COND_NAME))?.unwrap();
 
         // specific mandatory parameter check
         cfg_mandatory!(cfg_string_check_regex(cfgmap, "bus", &RE_DBUS_MSGBUS_NAME))?;
@@ -941,7 +940,7 @@ impl DbusMethodCondition {
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
-                            STR_UNKNOWN_VALUE,
+                            &format!("{oper:?}"),
                             ERR_INVALID_VALUE_FOR_ENTRY,
                         ));
                     }
@@ -969,7 +968,7 @@ impl DbusMethodCondition {
                     } else if !(v.is_bool() || v.is_int() || v.is_float()) {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:value"),
-                            STR_UNKNOWN_VALUE,
+                            &format!("{v:?}"),
                             ERR_INVALID_VALUE_FOR_ENTRY,
                         ));
                     }
@@ -1056,7 +1055,7 @@ impl Condition for DbusMethodCondition {
         self.cond_id
     }
     fn get_type(&self) -> &str {
-        "interval"
+        "dbus"
     }
 
     /// Return a hash of this item for comparison
@@ -1365,12 +1364,8 @@ impl Condition for DbusMethodCondition {
                 LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 &format!("parameter checks specified: {} checks must be verified", {
-                    if self.param_checks_all {
-                        "all"
-                    } else {
-                        "some"
-                    }
-                },),
+                    if self.param_checks_all { "all" } else { "some" }
+                }),
             );
 
             let severity;

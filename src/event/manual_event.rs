@@ -10,7 +10,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use cfgmap::CfgMap;
 
 use super::base::Event;
-use crate::common::logging::{log, LogType};
+use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
@@ -146,6 +146,7 @@ impl ManualCommandEvent {
             }
         }
 
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !new_event.condition_registry.unwrap().has_condition(&v) {
                 return Err(cfg_err_invalid_config(
@@ -194,6 +195,7 @@ impl ManualCommandEvent {
         }
 
         // assigned condition is checked against the provided array
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !available_conditions.contains(&v.as_str()) {
                 return Err(cfg_err_invalid_config(

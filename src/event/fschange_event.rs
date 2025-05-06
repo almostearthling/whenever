@@ -7,14 +7,14 @@
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::{mpsc, RwLock};
+use std::sync::{RwLock, mpsc};
 use std::thread;
 use std::time::Duration;
 
 use async_std::task;
 use futures::{
-    channel::mpsc::{channel, Sender},
     SinkExt, StreamExt,
+    channel::mpsc::{Sender, channel},
 };
 
 use cfgmap::CfgMap;
@@ -22,8 +22,8 @@ use notify::{self, Watcher};
 
 use super::base::Event;
 
-use crate::common::logging::{log, LogType};
-use crate::common::wres::Result;
+use crate::common::logging::{LogType, log};
+use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -234,6 +234,7 @@ impl FilesystemChangeEvent {
             }
         }
 
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !new_event.condition_registry.unwrap().has_condition(&v) {
                 return Err(cfg_err_invalid_config(
@@ -301,6 +302,7 @@ impl FilesystemChangeEvent {
         }
 
         // assigned condition is checked against the provided array
+        let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
             if !available_conditions.contains(&v.as_str()) {
                 return Err(cfg_err_invalid_config(
@@ -434,8 +436,8 @@ impl Event for FilesystemChangeEvent {
         // at: examples/watcher_kind.rs
 
         // build an async communication channel: since two threads insist on
-        // it, a suitable capacity is needed (OK, 10 might be too much)
-        let (async_tx, mut async_rx) = channel(10);
+        // it, a suitable capacity is needed
+        let (async_tx, mut async_rx) = channel(EVENT_QUIT_CHANNEL_SIZE);
 
         // build a configuration
         let notify_cfg =
@@ -627,7 +629,7 @@ impl Event for FilesystemChangeEvent {
         Ok(true)
     }
 
-    fn stop_service(&self) -> std::io::Result<bool> {
+    fn stop_service(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => {
                 if *running {
@@ -668,20 +670,20 @@ impl Event for FilesystemChangeEvent {
                     LOG_STATUS_ERR,
                     "could not determine whether the listener is running",
                 );
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    "could not determine whether the listener is running",
+                Err(Error::new(
+                    Kind::Forbidden,
+                    ERR_EVENT_LISTENING_NOT_DETERMINED,
                 ))
             }
         }
     }
 
-    fn thread_running(&self) -> std::io::Result<bool> {
+    fn thread_running(&self) -> Result<bool> {
         match self.thread_running.read() {
             Ok(running) => Ok(*running),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                "could not determine whether the listener is running",
+            _ => Err(Error::new(
+                Kind::Forbidden,
+                ERR_EVENT_LISTENING_NOT_DETERMINED,
             )),
         }
     }
