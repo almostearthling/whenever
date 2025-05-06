@@ -2798,9 +2798,10 @@ pub mod wmiitem {
 /// about what went wrong.
 #[allow(dead_code)]
 pub mod wres {
-    // use std::{error, fmt, self};
     use notify;
     use std::{self, fmt};
+
+    #[cfg(feature = "dbus")]
     use zbus;
 
     /// Types of specific errors
@@ -2857,6 +2858,7 @@ pub mod wres {
         #[cfg(windows)]
         #[cfg(feature = "wmi")]
         WMI,
+
         // ...
         Unknown,
     }
@@ -2877,6 +2879,7 @@ pub mod wres {
                     #[cfg(windows)]
                     #[cfg(feature = "wmi")]
                     Origin::WMI => "wmi",
+
                     // ...
                     Origin::Unknown => "unknown",
                 }
