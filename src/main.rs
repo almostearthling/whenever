@@ -1234,13 +1234,22 @@ fn main() {
         log(
             LogType::Info,
             LOG_EMITTER_MAIN,
-            LOG_ACTION_SCHEDULER_TICK,
+            LOG_ACTION_MAIN_START,
             None,
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
             "starting in paused mode",
         );
         *APPLICATION_IS_PAUSED.write().unwrap() = true;
+        log(
+            LogType::Trace,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_MAIN_START,
+            None,
+            LOG_WHEN_PAUSE,
+            LOG_STATUS_YES,
+            "scheduler paused",
+        );
     }
 
     // add a thread for stdin interpreter (no args function thus no closure)
