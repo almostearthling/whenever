@@ -2650,39 +2650,39 @@ pub mod wmiitem {
                 _ => false,
             },
             ResultCheckValue::Integer(x) => match v {
-                Variant::I1(y) => _oper(op, x, &(*y as i64)),
-                Variant::I2(y) => _oper(op, x, &(*y as i64)),
-                Variant::I4(y) => _oper(op, x, &(*y as i64)),
-                Variant::I8(y) => _oper(op, x, &(*y as i64)),
-                Variant::UI1(y) => _oper(op, x, &(*y as i64)),
-                Variant::UI2(y) => _oper(op, x, &(*y as i64)),
-                Variant::UI4(y) => _oper(op, x, &(*y as i64)),
+                Variant::I1(y) => _oper(op, &(*y as i64), x),
+                Variant::I2(y) => _oper(op, &(*y as i64), x),
+                Variant::I4(y) => _oper(op, &(*y as i64), x),
+                Variant::I8(y) => _oper(op, &(*y as i64), x),
+                Variant::UI1(y) => _oper(op, &(*y as i64), x),
+                Variant::UI2(y) => _oper(op, &(*y as i64), x),
+                Variant::UI4(y) => _oper(op, &(*y as i64), x),
                 Variant::UI8(y) => {
                     if *y > i64::MAX as u64 {
                         false
                     } else {
-                        _oper(op, x, &(*y as i64))
+                        _oper(op, &(*y as i64), x)
                     }
                 }
-                Variant::R4(y) => _oper(op, &(*x as f32), y),
-                Variant::R8(y) => _oper(op, &(*x as f64), y),
+                Variant::R4(y) => _oper(op, y, &(*x as f32)),
+                Variant::R8(y) => _oper(op, y, &(*x as f64)),
                 _ => false,
             },
             ResultCheckValue::Float(x) => match v {
-                Variant::I1(y) => _oper(op, x, &(*y as f64)),
-                Variant::I2(y) => _oper(op, x, &(*y as f64)),
-                Variant::I4(y) => _oper(op, x, &(*y as f64)),
-                Variant::I8(y) => _oper(op, x, &(*y as f64)),
-                Variant::UI1(y) => _oper(op, x, &(*y as f64)),
-                Variant::UI2(y) => _oper(op, x, &(*y as f64)),
-                Variant::UI4(y) => _oper(op, x, &(*y as f64)),
-                Variant::UI8(y) => _oper(op, x, &(*y as f64)),
-                Variant::R4(y) => _oper(op, x, &(*y as f64)),
-                Variant::R8(y) => _oper(op, x, &(*y as f64)),
+                Variant::I1(y) => _oper(op, &(*y as f64), x),
+                Variant::I2(y) => _oper(op, &(*y as f64), x),
+                Variant::I4(y) => _oper(op, &(*y as f64), x),
+                Variant::I8(y) => _oper(op, &(*y as f64), x),
+                Variant::UI1(y) => _oper(op, &(*y as f64), x),
+                Variant::UI2(y) => _oper(op, &(*y as f64), x),
+                Variant::UI4(y) => _oper(op, &(*y as f64), x),
+                Variant::UI8(y) => _oper(op, &(*y as f64), x),
+                Variant::R4(y) => _oper(op, &(*y as f64), x),
+                Variant::R8(y) => _oper(op, &(*y as f64), x),
                 _ => false,
             },
             ResultCheckValue::String(x) => match v {
-                Variant::String(y) => _oper(op, x.as_str(), y.as_str()),
+                Variant::String(y) => _oper(op, y.as_str(), x.as_str()),
                 _ => false,
             },
             ResultCheckValue::Regex(x) => {
