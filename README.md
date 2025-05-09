@@ -1042,13 +1042,13 @@ As mentioned above, just after the _context_, in the message _payload_, a string
   * `START`/`END` are pseudo-outcomes that only occur when the _nature_ is `HIST`, to mark the beginning or the end of an activity
   * `YES`/`NO` are pseudo-outcomes that only occur when the _nature_ is one of `BUSY` or `PAUSE`, according to the actual busy[^11] state or to the fact that the scheduler has been paused or resumed respectively.[^12]
 
-This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight message when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
+This string appears _before_ a human-readable message, so that it can be used by a wrapper to filter or highlight an entry when displaying the log -- completely or partially. Sometimes it might seem that the expression in square bracket conflicts with the message body, a notable example being a message similar to
 
 ```text
 [2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/6: [END/OK] failure: condition checked with negative outcome
 ```
 
-while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected quite often, this is the reason why the message documenting a failed check is reported as a positive (`[PROC/OK]`) log entry.
+while in fact this kind of message is absolutely legitimate: a negative outcome in condition checking is expected quite often, this is the reason why the message documenting a failed check is reported as a positive (`[END/OK]`) log entry.
 
 There is an option that can be specified on the [command line](#cli), that forces the log lines to be emitted in the JSON format: this allows to separate the parts more easily into a header (`"header"` field) that holds
 
@@ -1099,7 +1099,7 @@ The actual log record, also in JSON format, is emitted in the form of a single t
 
 As said above, **whenever** accepts commands (in the form of _command lines_) through the standard input. Actually, no prompt is shown, and the console log will keep showing up continuously even when an user types any interactive command: in fact the _stdin_ based interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these commands to control the scheduler.
 
-A _command line_ is intended as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects. Note that a reload only affect item configurations: to reset the global parameters the scheduler application must be restarted.
+A _command line_ is intended as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects. Note that a reload only affects item configurations: to reset the global parameters the scheduler application must be restarted.
 
 The available commands are:
 
@@ -1157,7 +1157,7 @@ I am considering **whenever** as the evolution of the _When_ operational engine,
 This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future): see the provided LICENSE file for details.
 
 
-[^1]: Although DBus support is available on Windows too, it is mostly useful on Linux desktops.
+[^1]: Although DBus support is available on Windows too, it is mostly useful on Linux desktops: in fact it might be appropriate to disable it when compiling the application for Windows, in order to save resources. Binaries released for Windows ship _without_ DBus support.
 [^2]: Because TOML is sometimes too strict and is not able to represent certain types of structured data, [JSON](https://www.json.org/) is used in some cases within the TOML configuration file.
 [^3]: When run alone, with no wrapper: using the minimal provided wrapper, both programs together use less than 4MB of RAM and the combined CPU consumption in rare occasions reaches the 0.2% -- as reported by the Windows _Task Manager_.
 [^4]: The occurrence of an _event_, in fact, raises a flag that specifies that the associated condition will be considered as verified at the following tick: the condition is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the scheduler that executes the related tasks. Therefore _event_ based conditions are also referred to as _bucket_ conditions.
