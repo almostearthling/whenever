@@ -1349,7 +1349,7 @@ pub mod dbusitem {
     }
 
     /// an enum to store the operators for checking signal parameters
-    #[derive(PartialEq, Hash, Clone)]
+    #[derive(PartialEq, Hash, Clone, Debug)]
     pub enum ParamCheckOperator {
         Equal,        // "eq"
         NotEqual,     // "neq"
