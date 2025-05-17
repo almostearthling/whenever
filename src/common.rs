@@ -2145,7 +2145,7 @@ pub mod dbusitem {
                                 ParameterCheckValue::Integer(i) => {
                                     match field_value {
                                         zvariant::Value::U8(v) => {
-                                            if _oper(&ck.operator, *i, *v as i64) {
+                                            if _oper(&ck.operator, *v as i64, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2158,7 +2158,7 @@ pub mod dbusitem {
                                             }
                                         }
                                         zvariant::Value::I16(v) => {
-                                            if _oper(&ck.operator, *i, *v as i64) {
+                                            if _oper(&ck.operator, *v as i64, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2171,7 +2171,7 @@ pub mod dbusitem {
                                             }
                                         }
                                         zvariant::Value::U16(v) => {
-                                            if _oper(&ck.operator, *i, *v as i64) {
+                                            if _oper(&ck.operator, *v as i64, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2184,7 +2184,7 @@ pub mod dbusitem {
                                             }
                                         }
                                         zvariant::Value::I32(v) => {
-                                            if _oper(&ck.operator, *i, *v as i64) {
+                                            if _oper(&ck.operator, *v as i64, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2197,7 +2197,7 @@ pub mod dbusitem {
                                             }
                                         }
                                         zvariant::Value::U32(v) => {
-                                            if _oper(&ck.operator, *i, *v as i64) {
+                                            if _oper(&ck.operator, *v as i64, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2210,7 +2210,7 @@ pub mod dbusitem {
                                             }
                                         }
                                         zvariant::Value::I64(v) => {
-                                            if _oper(&ck.operator, *i, *v) {
+                                            if _oper(&ck.operator, *v, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2224,7 +2224,7 @@ pub mod dbusitem {
                                         }
                                         zvariant::Value::U64(v) => {
                                             // lossy, however bigger numbers will just fail test
-                                            if _oper(&ck.operator, *i, *v as i64) {
+                                            if _oper(&ck.operator, *v as i64, *i) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2289,7 +2289,7 @@ pub mod dbusitem {
                                 }
                                 ParameterCheckValue::Float(f) => match field_value {
                                     zvariant::Value::F64(v) => {
-                                        if _oper(&ck.operator, *f, *v) {
+                                        if _oper(&ck.operator, *v, *f) {
                                             verified = true;
                                             if !checks_all {
                                                 break 'params;
