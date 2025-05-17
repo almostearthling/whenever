@@ -2142,163 +2142,159 @@ pub mod dbusitem {
                                         break;
                                     }
                                 }
-                                ParameterCheckValue::Integer(i) => {
-                                    match field_value {
-                                        zvariant::Value::U8(v) => {
-                                            if _oper(&ck.operator, *v as i64, *i) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
+                                ParameterCheckValue::Integer(i) => match field_value {
+                                    zvariant::Value::U8(v) => {
+                                        if _oper(&ck.operator, *v as i64, *i) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
                                             }
-                                        }
-                                        zvariant::Value::I16(v) => {
-                                            if _oper(&ck.operator, *v as i64, *i) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::U16(v) => {
-                                            if _oper(&ck.operator, *v as i64, *i) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::I32(v) => {
-                                            if _oper(&ck.operator, *v as i64, *i) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::U32(v) => {
-                                            if _oper(&ck.operator, *v as i64, *i) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::I64(v) => {
-                                            if _oper(&ck.operator, *v, *i) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::U64(v) => {
-                                            if _oper(&ck.operator, *v as i128, *i as i128) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::F64(v) => {
-                                            if _oper(&ck.operator, *v, *i as f64) {
-                                                verified = true;
-                                                if !checks_all {
-                                                    break 'params;
-                                                }
-                                            } else {
-                                                verified = false;
-                                                if checks_all {
-                                                    break 'params;
-                                                }
-                                            }
-                                        }
-                                        zvariant::Value::Array(_) => {
-                                            if ck.operator == ParamCheckOperator::Contains {
-                                                if _contained_in(i, field_value) {
-                                                    verified = true;
-                                                    if !checks_all {
-                                                        break 'params;
-                                                    }
-                                                } else {
-                                                    verified = false;
-                                                    if checks_all {
-                                                        break 'params;
-                                                    }
-                                                }
-                                            } else if ck.operator == ParamCheckOperator::NotContains
-                                            {
-                                                if !_contained_in(i, field_value) {
-                                                    verified = true;
-                                                    if !checks_all {
-                                                        break 'params;
-                                                    }
-                                                } else {
-                                                    verified = false;
-                                                    if checks_all {
-                                                        break 'params;
-                                                    }
-                                                }
-                                            } else {
-                                                verified = false;
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
                                                 break 'params;
                                             }
                                         }
-                                        e => {
-                                            severity = LogType::Warn;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_FAIL;
-                                            log_message = format!(
-                                                "mismatched result type: {} expected (got `{e:?}`)",
-                                                if ck.operator == ParamCheckOperator::Contains
-                                                    || ck.operator
-                                                        == ParamCheckOperator::NotContains
-                                                {
-                                                    "container"
-                                                } else {
-                                                    "integer"
-                                                },
-                                            );
+                                    }
+                                    zvariant::Value::I16(v) => {
+                                        if _oper(&ck.operator, *v as i64, *i) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::U16(v) => {
+                                        if _oper(&ck.operator, *v as i64, *i) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::I32(v) => {
+                                        if _oper(&ck.operator, *v as i64, *i) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::U32(v) => {
+                                        if _oper(&ck.operator, *v as i64, *i) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::I64(v) => {
+                                        if _oper(&ck.operator, *v, *i) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::U64(v) => {
+                                        if _oper(&ck.operator, *v as i128, *i as i128) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::F64(v) => {
+                                        if _oper(&ck.operator, *v, *i as f64) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::Array(_) => {
+                                        if ck.operator == ParamCheckOperator::Contains {
+                                            if _contained_in(i, field_value) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        } else if ck.operator == ParamCheckOperator::NotContains {
+                                            if !_contained_in(i, field_value) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        } else {
                                             verified = false;
                                             break 'params;
                                         }
                                     }
-                                }
+                                    e => {
+                                        severity = LogType::Warn;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_FAIL;
+                                        log_message = format!(
+                                            "mismatched result type: {} expected (got `{e:?}`)",
+                                            if ck.operator == ParamCheckOperator::Contains
+                                                || ck.operator == ParamCheckOperator::NotContains
+                                            {
+                                                "container"
+                                            } else {
+                                                "integer"
+                                            },
+                                        );
+                                        verified = false;
+                                        break 'params;
+                                    }
+                                },
                                 ParameterCheckValue::Float(f) => match field_value {
                                     zvariant::Value::U8(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
