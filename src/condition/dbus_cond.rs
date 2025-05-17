@@ -1287,13 +1287,6 @@ impl Condition for DbusMethodCondition {
             &format!("opening connection to bus `{bus}`"),
         );
         let conn = task::block_on(async { _get_connection(&bus).await })?;
-        // if conn.is_err() {
-        //     return Err(Error::new(
-        //         Kind::Failed,
-        //         &format!("{ERR_COND_CANNOT_CONNECT_TO} {bus}"),
-        //     ));
-        // }
-        // let conn = conn.unwrap();
 
         // the following bifurcation is in my opinion quite ugly, however it
         // looks like the entire `zbus` crate is built with the purpose of
