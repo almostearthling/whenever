@@ -1311,6 +1311,7 @@ pub mod cmditem {
 pub mod luaitem {
 
     /// The possible values to be checked from Lua
+    #[derive(Debug)]
     pub enum LuaValue {
         LuaString(String),
         LuaNumber(f64),
@@ -1363,6 +1364,7 @@ pub mod dbusitem {
 
     /// an enum containing the value that the parameter should be checked
     /// against
+    #[derive(Debug)]
     pub enum ParameterCheckValue {
         Boolean(bool),
         Integer(i64),
@@ -1372,7 +1374,7 @@ pub mod dbusitem {
     }
 
     /// an enum containing the possible types of indexes for parameters
-    #[derive(Hash)]
+    #[derive(Hash, Debug)]
     pub enum ParameterIndex {
         Integer(u64),
         String(String),
@@ -1389,6 +1391,7 @@ pub mod dbusitem {
     ///            `"somepos"` is the mapping index.
     /// - `Operator`: the operator to check the payload against
     /// - `Value`: the value to compare the parameter entry to
+    #[derive(Debug)]
     pub struct ParameterCheckTest {
         pub index: Vec<ParameterIndex>,
         pub operator: ParamCheckOperator,
@@ -2566,7 +2569,7 @@ pub mod wmiitem {
 
     use wmi::Variant;
 
-    #[derive(PartialEq, Hash, Clone)]
+    #[derive(PartialEq, Hash, Clone, Debug)]
     pub enum ResultCheckOperator {
         Equal,        // "eq"
         NotEqual,     // "neq"
@@ -2579,6 +2582,7 @@ pub mod wmiitem {
 
     /// an enum containing the value that the result should be checked
     /// against
+    #[derive(Debug)]
     pub enum ResultCheckValue {
         Boolean(bool),
         Integer(i64),
@@ -2587,6 +2591,7 @@ pub mod wmiitem {
         Regex(Regex),
     }
 
+    #[derive(Debug)]
     pub struct ResultCheckTest {
         pub index: Option<usize>, // `None` means any record
         pub field: String,
