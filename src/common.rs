@@ -2223,8 +2223,20 @@ pub mod dbusitem {
                                             }
                                         }
                                         zvariant::Value::U64(v) => {
-                                            // lossy, however bigger numbers will just fail test
-                                            if _oper(&ck.operator, *v as i64, *i) {
+                                            if _oper(&ck.operator, *v as i128, *i as i128) {
+                                                verified = true;
+                                                if !checks_all {
+                                                    break 'params;
+                                                }
+                                            } else {
+                                                verified = false;
+                                                if checks_all {
+                                                    break 'params;
+                                                }
+                                            }
+                                        }
+                                        zvariant::Value::F64(v) => {
+                                            if _oper(&ck.operator, *v, *i as f64) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2288,6 +2300,84 @@ pub mod dbusitem {
                                     }
                                 }
                                 ParameterCheckValue::Float(f) => match field_value {
+                                    zvariant::Value::U8(v) => {
+                                        if _oper(&ck.operator, *v as f64, *f) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::I16(v) => {
+                                        if _oper(&ck.operator, *v as f64, *f) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::U16(v) => {
+                                        if _oper(&ck.operator, *v as f64, *f) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::I32(v) => {
+                                        if _oper(&ck.operator, *v as f64, *f) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::U32(v) => {
+                                        if _oper(&ck.operator, *v as f64, *f) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
+                                    zvariant::Value::I64(v) => {
+                                        if _oper(&ck.operator, *v as f64, *f) {
+                                            verified = true;
+                                            if !checks_all {
+                                                break 'params;
+                                            }
+                                        } else {
+                                            verified = false;
+                                            if checks_all {
+                                                break 'params;
+                                            }
+                                        }
+                                    }
                                     zvariant::Value::F64(v) => {
                                         if _oper(&ck.operator, *v, *f) {
                                             verified = true;
