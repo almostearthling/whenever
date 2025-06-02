@@ -2895,6 +2895,8 @@ pub mod wres {
     #[cfg(feature = "dbus")]
     use zbus;
 
+    use crate::constants::ERR_FAILED;
+
     /// Types of specific errors
     #[non_exhaustive]
     #[derive(Debug, Clone)]
@@ -2940,6 +2942,7 @@ pub mod wres {
     #[derive(Debug, Clone, PartialEq)]
     pub enum Origin {
         Native,
+        Unit,
         StdIo,
         Notify,
 
@@ -2961,6 +2964,7 @@ pub mod wres {
                 "{}",
                 match self {
                     Origin::Native => "self",
+                    Origin::Unit => "unit",
                     Origin::StdIo => "io",
                     Origin::Notify => "fschange",
 
@@ -3064,6 +3068,17 @@ pub mod wres {
                 kind,
                 origin: Origin::WMI,
                 message: e.to_string(),
+            }
+        }
+    }
+
+    // errors based on the unit type
+    impl From<()> for Error {
+        fn from(_: ()) -> Self {
+            Self {
+                kind: Kind::Failed,
+                origin: Origin::Unit,
+                message: ERR_FAILED.to_owned(),
             }
         }
     }

@@ -57,7 +57,7 @@ macro_rules! cfg_mandatory {
 pub fn cfg_err_invalid_config(key: &str, value: &str, message: &str) -> Error {
     Error::new(
         Kind::Invalid,
-        &format!("{ERR_INVALID_ITEM_CONFIG}: ({key}={value}) {message}"),
+        &format!("{ERR_INVALID_CONFIG}: ({key}={value}) {message}"),
     )
 }
 

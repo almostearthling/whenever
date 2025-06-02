@@ -37,6 +37,29 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
         }
     }
 
+    // check that the first level keys are only the admitted ones
+    let check = vec![
+        "task",
+        "condition",
+        "event",
+        "scheduler_tick_seconds",
+        "randomize_checks_within_ticks",
+        "tags",
+    ];
+    cfg_check_keys(&config_map, &check)?;
+
+    // tags are always simply checked this way
+    let cur_key = "tags";
+    if let Some(item) = config_map.get(cur_key) {
+        if !item.is_list() && !item.is_map() {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
+        }
+    }
+
     // globals
     cfg_int_check_above_eq(&config_map, "scheduler_tick_seconds", 1)?;
     cfg_bool(&config_map, "randomize_checks_within_ticks")?;
@@ -228,6 +251,29 @@ pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
         }
     }
 
+    // check that the first level keys are only the admitted ones
+    let check = vec![
+        "task",
+        "condition",
+        "event",
+        "scheduler_tick_seconds",
+        "randomize_checks_within_ticks",
+        "tags",
+    ];
+    cfg_check_keys(&config_map, &check)?;
+
+    // tags are always simply checked this way
+    let cur_key = "tags";
+    if let Some(item) = config_map.get(cur_key) {
+        if !item.is_list() && !item.is_map() {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
+        }
+    }
+
     let cur_key = "scheduler_tick_seconds";
     let mut scheduler_tick_seconds = DEFAULT_SCHEDULER_TICK_SECONDS;
     if let Some(item) = config_map.get(cur_key) {
@@ -261,14 +307,14 @@ pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
     // ...
 
     // complete the global configuration map if any values were not present
-    let _ = config_map.add(
+    config_map.add(
         "scheduler_tick_seconds",
         CfgValue::from(scheduler_tick_seconds),
-    );
-    let _ = config_map.add(
+    )?;
+    config_map.add(
         "randomize_checks_within_ticks",
         CfgValue::from(randomize_checks_within_ticks),
-    );
+    )?;
 
     Ok(config_map)
 }

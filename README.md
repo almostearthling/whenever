@@ -162,6 +162,8 @@ Both parameters can be omitted, in which case the default values are used: 5 sec
 
 > **Note:** These values can _not_ be updated at runtime: possible changes of global parameters in the configuration file are only applied when the application is restarted.
 
+No other global entries than the ones described above are accepted by **whenever**: in case an unknown entry is found, the application will exit with an error. As in _items_, a `[[tags]]` section is accepted, which can either be an array or a table whose entries and/or values are not checked: this section can be used by a _wrapper_ in order to define global parameters that will not interfere with the actual configuration.
+
 
 ### Tasks
 
