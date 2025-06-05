@@ -632,14 +632,14 @@ For this type of condition the actual test can be performed at a random time wit
 
 #### DBus method (optional)
 
-The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^8] One of the most notable difficulties consists in the necessity to use embedded _JSON_[^2] in the TOML configuration file: this choice arose due to the fact that, to specify the arguments to pass to the invoked methods and the criteria used to determine the invocation success, _non-homogeneous_ lists are needed -- which are not supported, intentionally, by TOML.
+The return message of a _DBus method invocation_ is used to determine the execution of the tasks associated to this type of condition. Due to the nature of DBus, the configuration of a _DBus_ based condition is quite complex, both in terms of definition of the method to be invoked, especially for what concerns the parameters to be passed to the method, and in terms of specifying how to test the result.[^8]
 
 > **Note:** this type of item is only available when the `dbus` feature is enabled.
 
-So, as a rule of thumb:
+So, as a rule of thumb:[^2]
 
-* arguments to be passed to the DBus method are specified in a string containing the _exact_ JSON representation of those arguments
-* criteria to determine expected return values (aka _messages_, which can be complex structures) are expressed as inline tables of three elements, that is:
+* arguments to be passed to the DBus method are specified in a list
+* criteria to determine expected return values (aka _messages_, which can be complex structures) are expressed a list of tables of three elements each (inline tables can be used for readability), that is:
   * `"index"`: a list of elements, which can be either integers or strings representing each a positional 0-based index or a string (or _object path_) key in a dictionary; this allows to index deeply nested structures in which part of the nested elements are dictionaries
   * `"operator"`: one of the following strings
     * `"eq"` for _equality_
@@ -657,7 +657,7 @@ So, as a rule of thumb:
 
 Please notice that not all types of operand are supported for all operators: comparisons (_greater_ and _greater or equal_, _less_ and _less or equal_) are only supported for numbers, and matching is only supported for strings. The `"contains"`/`"ncontains"` operators support non-structured types for the second operand (booleans, numbers, and strings) and either strings (and object paths) or arrays and dictionaries for the first one: if the first operand is an array the second operand is searched in the list and the check is true when it is found, in case it is a dictionary then the second operand (which should be a string) is searched among the _keys_ of the dictionary, and if the first operand is either a string or an object path, the check is true when the second one is a substring. Also, _comparisons always fail for incompatible operands_: integers can only be compared with integers, floating point numbers with floating point numbers and strings with strings -- no automatic type conversion is performed. This also yields for attempts to find a value in an array: an integer will never be found in an array of floating point numbers, and so on. To be consistent with the rule of unsuccessfulness on incompatible operands, the `"ncontains"` operator too _is unsuccessful when the operands cannot be compared_, even though, from another point of view, the opposite could have been seen as appropriate.
 
-A further difficulty is due to the fact that, while DBus is strictly typed and supports all the basic types supported by _C_ and _C++_, neither TOML nor JSON do. Both (and especially JSON, since it is used for invocation purpose in **whenever**) support more generic types, which are listed below along with the DBus type to which **whenever** converts them in method invocation:
+A further difficulty is due to the fact that, while DBus is strictly typed and supports all the basic types supported by _C_ and _C++_, TOML does not. TOML has instead more generic types, which are listed below along with the DBus type to which **whenever** converts them in method invocation:
 
 * _Boolean_: `BOOLEAN`
 * _Integer_: `I64`
@@ -666,9 +666,9 @@ A further difficulty is due to the fact that, while DBus is strictly typed and s
 * _List_: `ARRAY`
 * _Map_: `DICTIONARY`
 
-This means that there are a lot of value types that are not directly derived from the native JSON types. **whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\` (in the JSON representation it has to be doubled in order to _escape_ it), followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^9]) identifying the type. For example, the string `"\\y42"` indicates a `BYTE` parameter holding _42_ as the value, while `"\\o/com/example/MusicPlayer1"` indicates an `OBJECT_PATH`[^10] containing the value _/com/example/MusicPlayer1_. A specially crafted string will be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `"\\w100"` is translated into a `STRING` holding the value _\w100_.
+This means that there are a lot of value types that are not directly derived from the native TOML types. **whenever** comes to help by allowing to express strictly typed values by using specially crafted strings. These string must begin with a backslash, `\` (in the TOML representation it has to be doubled in order to escape it, or a literal string must be used), followed by the _signature_ character (_ASCII Type Code_ in the basic type table[^9]) identifying the type. For example, the string `'\y42'` indicates a `BYTE` parameter holding _42_ as the value, while `'\o/com/example/MusicPlayer1'` indicates an `OBJECT_PATH`[^10] containing the value _/com/example/MusicPlayer1_. A specially crafted string will be translated into a specific value of a specific type _only_ when a supported _ASCII Type Code_ is used, in all other cases the string is interpreted literally: for instance, `'\w100'` is translated into a `STRING` holding the value _\w100_.
 
-For return values, while the structure of complex entities received from DBus is kept, all values are automatically converted to more generic types: a returned `BYTE` is converted to a JSON _Integer_, and a returned `OBJECT_PATH` is consdered a JSON _String_ which, as a side effect, supports the `"match"` operator.
+For return values, while the structure of complex entities received from DBus is kept, all values are automatically converted to more generic types: a returned `BYTE` is converted to a TOML _Integer_, and a returned `OBJECT_PATH` is consdered a TOML _String_ which, as a side effect, supports the `"match"` operator.
 
 An example of _DBus_ method based condition follows:
 
@@ -691,13 +691,13 @@ suspended = true
 tasks = [ "Task1", "Task2" ]
 check_after = 60
 recur_after_failed_check = false
-parameter_call = """[
+parameter_call = [
         "SomeObject",
         [42, "a structured parameter"],
-        ["the following is an u64", "\\t42"]
-    ]"""
+        ["the following is an u64", "\\t42"],
+    ]
 parameter_check_all = false
-parameter_check = """[
+parameter_check = [
          { "index": 0, "operator": "eq", "value": false },
          { "index": [1, 5], "operator": "neq", "value": "forbidden" },
          {
@@ -705,7 +705,7 @@ parameter_check = """[
              "operator": "match",
              "value": "^[A-Z][a-zA-Z0-9_]*$"
          }
-    ]"""
+    ]
 ```
 
 As shown below, `parameter_check` is the list of criteria against which the _return message parameters_ (the invocation results are often referred to with this terminology in DBus jargon): for what has been explained above, the checks are performed like this:
@@ -730,15 +730,13 @@ The specific parameters are described in the following table:
 | `object_path`              | N/A     | the _object_ exposing the _interface_ to invoke or query (mandatory)                                                          |
 | `interface`                | N/A     | the _interface_ to invoke or query (mandatory)                                                                                |
 | `method`                   | N/A     | the name of the _method_ to be invoked (mandatory)                                                                            |
-| `parameter_call`           | (empty) | a structure, expressed as inline JSON, containing exactly the parameters that shall be passed to the method                   |
+| `parameter_call`           | (empty) | a structure, expressed as a list, containing exactly the parameters that shall be passed to the method                        |
 | `parameter_check_all`      | _false_ | if _true_, all the provided criteria will have to be satisfied for the condition to be successful, otherwise one is enough    |
 | `parameter_check`          | (empty) | a list of maps having the structure explained above                                                                           |
 
 The value corresponding to the `service` entry is often referred to as _bus name_ in various documents: here _service_ is preferred to avoid confusing it with the actual bus, which is either the _session bus_ or the _system bus_.
 
 Methods resulting in an error will _always_ be considered as failed: therefore it is possible to avoid to provide return value criteria, and just consider a successful invocation as a success and an error as a failure. Also, any errors that may arise during checks will cause the check itself to yield _false_.
-
-Working on a file that mixes TOML and JSON, it is worth to remind that JSON supports inline maps distributed on multiple lines (see the example above, the third constraint) and that in JSON trailing commas are considered an error. Also, JSON does not support _literal_ strings, therefore when using backslashes (for instance when specifying typed values with strings as described above), the backslashes themselves have to be escaped within the provided JSON strings.
 
 Note that DBus based conditions are supported on Windows, however DBus should be running for such conditions to be useful -- which is very unlikely to say the least.
 
@@ -752,7 +750,7 @@ On Windows, **whenever** allows to directly query the [WMI](https://learn.micros
 
 > **Note:** this type of item is only available when the `wmi` feature is enabled.
 
-_WMI_ inquiries are somewhat simpler than their _DBus_ counterparts, mostly because the query language is more structured and allows for more complex filtering at the query level. Because of that, and since a query can be crafted in order to directly return the values of interest without having to deeply inspect returned _objects_, **whenever** will only inspect fields containing simple values (numbers, booleans, and strings) in a query result. Therefore, in the _WMI_ case, there is no need to use a less strict language (such as JSON) for configuration.
+_WMI_ inquiries are somewhat simpler than their _DBus_ counterparts, mostly because the query language is more structured and allows for more complex filtering at the query level. Because of that, and since a query can be crafted in order to directly return the values of interest without having to deeply inspect returned _objects_, **whenever** will only inspect fields containing simple values (numbers, booleans, and strings) in a query result.
 
 The main part of a _WMI Query_ based condition is obviously the _query_ itself, which is provided as a freeform string using the mandatory `query` configuration entry. **whenever** does not do any parsing or check on the provided query, thus an incorrect query will only cause the condition test to always fail and log an error message, at least in the _debug_ log level.
 
@@ -902,7 +900,7 @@ DBus provides signals that can be subscribed by applications, to receive informa
 
 > **Note:** this type of item is only available when the `dbus` feature is enabled.
 
-Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility, therefore JSON is not used for this purpose. JSON is used instead to specify the criteria that the _signal parameters_ must meet in order for the event to arise, using the same format that is used for _return message parameter_ checks in [_DBus method_ based conditions](#dbus-method-optional).
+Subscription is performed by providing a _watch expression_ in the same form that is used by the [_dbus-monitor_](https://dbus.freedesktop.org/doc/dbus-monitor.1.html) utility. The criteria that the _signal parameters_ must meet in order for the event to arise, are specified using the same format that is used for _return message parameter_ checks in [_DBus method_ based conditions](#dbus-method-optional).[^2]
 
 A sample configuration section follows:
 
@@ -922,7 +920,7 @@ rule = """\
 
 # optional parameters (if omitted, defaults are used)
 parameter_check_all = false
-parameter_check = """[
+parameter_check = [
          { "index": 0, "operator": "eq", "value": false },
          { "index": [1, 5], "operator": "neq", "value": "forbidden" },
          {
@@ -930,7 +928,7 @@ parameter_check = """[
              "operator": "match",
              "value": "^[A-Z][a-zA-Z0-9_]*$"
          }
-    ]"""
+    ]
 ```
 
 and the details of the configuration entries are described in the table below:
@@ -1160,7 +1158,7 @@ This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future):
 
 
 [^1]: Although DBus support is available on Windows too, it is mostly useful on Linux desktops: in fact it might be appropriate to disable it when compiling the application for Windows, in order to save resources. Binaries released for Windows ship _without_ DBus support.
-[^2]: Because TOML is sometimes too strict and is not able to represent certain types of structured data, [JSON](https://www.json.org/) is used in some cases within the TOML configuration file.
+[^2]: DBus parameters and criteria can still be expressed in [JSON](https://www.json.org/) format for compatibility reasons, but this support will be eventually removed.
 [^3]: When run alone, with no wrapper: using the minimal provided wrapper, both programs together use less than 4MB of RAM and the combined CPU consumption in rare occasions reaches the 0.2% -- as reported by the Windows _Task Manager_.
 [^4]: The occurrence of an _event_, in fact, raises a flag that specifies that the associated condition will be considered as verified at the following tick: the condition is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the scheduler that executes the related tasks. Therefore _event_ based conditions are also referred to as _bucket_ conditions.
 [^5]: Executables compiled in _debug mode_, however, do not consider an active release instance as running, and the instance check option will only report an active debug instance to a debug instance, and an active release instance to a release instance.

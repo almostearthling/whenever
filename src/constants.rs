@@ -165,6 +165,8 @@ pub const LOG_ACTION_RUN_TASKS_PAR: &str = "run_par";
 
 // other string pub constants
 pub const STR_UNKNOWN_VALUE: &str = "<unknown>";
+pub const STR_INVALID_TYPE: &str = "<invalid_type>";
+pub const STR_INVALID_VALUE: &str = "<invalid_value>";
 
 // default values
 pub const DEFAULT_SCHEDULER_TICK_SECONDS: i64 = 5;

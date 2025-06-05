@@ -67,7 +67,7 @@ pub fn cfg_check_keys(cfgmap: &CfgMap, check: &Vec<&str>) -> Result<()> {
         if !check.contains(&key.as_str()) {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_VALUE,
                 &format!("{ERR_INVALID_CFG_ENTRY} ({key})"),
             ));
         }
@@ -81,7 +81,7 @@ pub fn cfg_bool(cfgmap: &CfgMap, key: &str) -> Result<Option<bool>> {
         if !item.is_bool() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -97,7 +97,7 @@ pub fn cfg_int(cfgmap: &CfgMap, key: &str) -> Result<Option<i64>> {
         if !item.is_int() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -154,7 +154,7 @@ pub fn cfg_float(cfgmap: &CfgMap, key: &str) -> Result<Option<f64>> {
         if !item.is_float() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -211,7 +211,7 @@ pub fn cfg_string(cfgmap: &CfgMap, key: &str) -> Result<Option<String>> {
         if !item.is_str() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -290,7 +290,7 @@ pub fn cfg_vec_bool(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<bool>>> {
         if !item.is_list() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -299,7 +299,7 @@ pub fn cfg_vec_bool(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<bool>>> {
             if !elem.is_bool() {
                 return Err(cfg_err_invalid_config(
                     key,
-                    STR_UNKNOWN_VALUE,
+                    STR_INVALID_TYPE,
                     ERR_INVALID_PARAMETER_LIST,
                 ));
             } else {
@@ -318,7 +318,7 @@ pub fn cfg_vec_int(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<i64>>> {
         if !item.is_list() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -327,7 +327,7 @@ pub fn cfg_vec_int(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<i64>>> {
             if !elem.is_int() {
                 return Err(cfg_err_invalid_config(
                     key,
-                    STR_UNKNOWN_VALUE,
+                    STR_INVALID_TYPE,
                     ERR_INVALID_PARAMETER_LIST,
                 ));
             } else {
@@ -393,7 +393,7 @@ pub fn cfg_vec_float(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<f64>>> {
         if !item.is_list() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -402,7 +402,7 @@ pub fn cfg_vec_float(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<f64>>> {
             if !elem.is_float() {
                 return Err(cfg_err_invalid_config(
                     key,
-                    STR_UNKNOWN_VALUE,
+                    STR_INVALID_TYPE,
                     ERR_INVALID_PARAMETER_LIST,
                 ));
             } else {
@@ -476,7 +476,7 @@ pub fn cfg_vec_string(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<String>>>
         if !item.is_list() {
             return Err(cfg_err_invalid_config(
                 key,
-                STR_UNKNOWN_VALUE,
+                STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
             ));
         }
@@ -485,7 +485,7 @@ pub fn cfg_vec_string(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<String>>>
             if !elem.is_str() {
                 return Err(cfg_err_invalid_config(
                     key,
-                    STR_UNKNOWN_VALUE,
+                    STR_INVALID_TYPE,
                     ERR_INVALID_PARAMETER_LIST,
                 ));
             } else {
