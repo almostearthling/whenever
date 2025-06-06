@@ -698,13 +698,9 @@ parameter_call = [
     ]
 parameter_check_all = false
 parameter_check = [
-         { "index": 0, "operator": "eq", "value": false },
-         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-         {
-             "index": [2, "mapidx", 5],
-             "operator": "match",
-             "value": "^[A-Z][a-zA-Z0-9_]*$"
-         }
+         { index = 0, operator = "eq", value = false },
+         { index = [1, 5], operator = "neq", operator = "forbidden" },
+         { index = [2, "mapidx", 5], operator = "match", value = "^[A-Z][a-zA-Z0-9_]*$" },
     ]
 ```
 
@@ -921,13 +917,9 @@ rule = """\
 # optional parameters (if omitted, defaults are used)
 parameter_check_all = false
 parameter_check = [
-         { "index": 0, "operator": "eq", "value": false },
-         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-         {
-             "index": [2, "mapidx", 5],
-             "operator": "match",
-             "value": "^[A-Z][a-zA-Z0-9_]*$"
-         }
+         { index = 0, operator = "eq", value = false },
+         { index = [1, 5], operator = "neq", operator = "forbidden" },
+         { index = [2, "mapidx", 5], operator = "match", value = "^[A-Z][a-zA-Z0-9_]*$" },
     ]
 ```
 
