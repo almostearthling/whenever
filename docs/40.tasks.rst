@@ -1,0 +1,297 @@
+
+Tasks
+=====
+
+*Tasks* are handled first in this document, because *conditions* must mandatorily specify the tasks
+to be executed upon verification. There are two types of task, each of which is described in detail
+in its specific subsection.
+
+Tasks are defined via a dedicated table, which means that every task definition must start with the
+TOML ``[[task]]`` section header.
+
+Task names are mandatory, and must be provided as alphanumeric strings (may include underscores),
+beginning with a letter. The task type must be one of ``"command"``\ , ``"lua"``\ , or
+``"internal"`` according to what has to be configured, and any other value is considered a
+configuration error. There is another optional entry, namely ``tags``\ , that is accepted in item
+configuration: this entry is ignored by **whenever** itself, however it is checked for correctness
+at startup and the configuration is refused if not set to an array (of strings) or a table.
+
+Command tasks
+-------------
+
+*Command* based tasks actually execute commands at the OS level: they might have a *positive* as
+well as a *negative* outcome, depending on user-provided criteria. As said above, these criteria
+may not just depend on the exit code of the executed command, but also on checks performed on its
+output taking either the standard output or the standard error channels into account. By default
+no check is performed, but the user can choose, for instance, to consider a zero exit code as a
+successful execution (quite common for OS commands). It is possible to consider another exit code
+as successful, or the zero exit code as a failure (for example, if a file should not be found,
+performing ``ls`` on it would have the zero exit code as an *undesirable* outcome). Also, a
+particular substring can be sought in the standard output or standard error streams both as
+expected or as unexpected. The two streams can be matched against a provided *regular expression*
+if just seeking a certain substring is not fine-grained enough. Both substrings and regular
+expressions can be respectively sought or matched either case-sensitively or case-insensitively.
+
+A sample configuration for a command based task is the following:
+
+.. code-block:: toml
+
+   [[task]]
+   name = "CommandTaskName"
+   type = "command"
+   startup_path = "/some/startup/directory"    # must exist
+   command = "executable_name"
+   command_arguments = [
+       "arg1",
+       "arg2",
+       ]
+
+   # optional parameters (if omitted, defaults are used)
+   match_exact = false
+   match_regular_expression = false
+   success_stdout = "expected"
+   success_stderr = "expected_error"
+   success_status = 0
+   failure_stdout = "unexpected"
+   failure_stderr = "unexpected_error"
+   failure_status = 2
+   timeout_seconds = 60
+   case_sensitive = false
+   include_environment = false
+   set_environment_variables = false
+   environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
+
+and the following table provides a detailed description of the entries:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Entry
+     - Default
+     - Description
+   * - ``name``
+     - N/A
+     - the unique name of the task (mandatory)
+   * - ``type``
+     - N/A
+     - must be set to ``"command"`` (mandatory)
+   * - ``startup_path``
+     - N/A
+     - the directory in which the command is started
+   * - ``command``
+     - N/A
+     - path to the executable (mandatory; if the path is omitted, the executable should be found
+       in the search *PATH*\ )
+   * - ``command_arguments``
+     - N/A
+     - arguments to pass to the executable: can be an empty list, ``[]`` (mandatory)
+   * - ``match_exact``
+     - *false*
+     - if *true*\ , the entire output is matched instead of searching for a substring
+   * - ``match_regular_expression``
+     - *false*
+     - if *true*\ , the match strings are considered regular expressions instead of substrings
+   * - ``case_sensitive``
+     - *false*
+     - if *true*\ , substring search or match and regular expressions match is performed
+       case-sensitively
+   * - ``timeout_seconds``
+     - (empty)
+     - if set, the number of seconds to wait before the command is terminated (with
+       unsuccessful outcome)
+   * - ``success_status``
+     - (empty)
+     - if set, when the execution ends with the provided exit code the task is considered
+       successful
+   * - ``failure_status``
+     - (empty)
+     - if set, when the execution ends with the provided exit code the task is considered failed
+   * - ``success_stdout``
+     - (empty)
+     - the substring or RE to be found or matched on *stdout* to consider the task successful
+   * - ``success_stderr``
+     - (empty)
+     - the substring or RE to be found or matched on *stderr* to consider the task successful
+   * - ``failure_stdout``
+     - (empty)
+     - the substring or RE to be found or matched on *stdout* to consider the task failed
+   * - ``failure_stderr``
+     - (empty)
+     - the substring or RE to be found or matched on *stderr* to consider the task failed
+   * - ``include_environment``
+     - *true*
+     - if *true*\ , the command is executed in the same environment in which **whenever** was
+       started
+   * - ``set_environment_variables``
+     - *true*
+     - if *true*\ , **whenever** sets environment variables reporting the names of the task and the
+       condition
+   * - ``environment_variables``
+     - ``{}``
+     - extra variables that might have to be set in the environment in which the provided command
+       runs
+
+The priority used by **whenever** to determine success or failure in the task is the one in which
+the related parameters appear in the above table: first exit codes are checked, then both *stdout*
+and *stderr* are checked for substrings or regular expressions that identify success, and finally
+the same check is performed on values that indicate a failure. Most of the times just one or maybe
+two of the expected parameters will have to be set. Note that the command execution is not
+considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both
+assumptions have to be explicitly configured by setting either ``success_status`` or
+``failure_status``. If a command is known to have the possibility to hang, a timeout can be
+configured by specifying the maximum number of seconds to wait for the process to exit: after this
+amount of time the process is terminated and fails.
+
+If ``set_environment_variables`` is *true*\ , **whenever** sets the following environment variables:
+
+* ``WHENEVER_TASK`` to the unique name of the task
+* ``WHENEVER_CONDITION`` to the unique name of the condition that triggered the task
+
+for scripts or other executables that might be aware of **whenever**.
+
+Lua script tasks
+----------------
+
+Tasks based on `\ *Lua* <https://www.lua.org/>`_ scripts might be useful when an action has to be
+performed that requires a non-trivial sequence of operations, but for which it would be excessive to
+write a specific script to be run as a command. The script to be run is embedded directly in the
+configuration file -- TOML helps in this sense, by allowing multiline strings by specification.
+
+*Lua* based tasks can be considered more lightweight than *command* tasks, as the interpreter is
+embedded in **whenever**. Also, the embedded *Lua* interpreter is enriched with library functions
+that allow to write to the **whenever** log, at all logging levels (\ *error*\ , *warn*\ , *info*\ ,
+*debug*\ , *trace*\ ). The library functions are the following:
+
+* ``log.error``
+* ``log.warn``
+* ``log.info``
+* ``log.debug``
+* ``log.trace``
+
+and take a single string as their argument.
+
+The configuration of *Lua* based tasks has the following form:
+
+.. code-block:: toml
+
+   [[task]]
+   name = "LuaTaskName"
+   type = "lua"
+   script = '''
+       log.info("hello from Lua");
+       result = 10;
+       '''
+
+   # optional parameters (if omitted, defaults are used)
+   expect_all = false
+   expected_results = { result = 10 }
+
+and the following table provides a detailed description of the entries:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Entry
+     - Default
+     - Description
+   * - ``name``
+     - N/A
+     - the unique name of the task (mandatory)
+   * - ``type``
+     - N/A
+     - must be set to ``"lua"`` (mandatory)
+   * - ``script``
+     - N/A
+     - the *Lua* code that has to be executed by the internal interpreter (mandatory)
+   * - ``expect_all``
+     - *false*
+     - if *true*\ , all the expected results have to be matched to consider the task successful,
+       otherwise at least one
+   * - ``expected_results``
+     - ``{}``
+     - a dictionary of variable names and their expected values to be checked after execution
+
+
+Note that *triple single quotes* have been used to embed the script: this allows to use escapes
+and quotes in the script itself. Although the script should be embedded in the configuration file,
+it is possible to execute external scripts via ``dofile("/path/to/script.lua")`` or by using the
+``require`` function. While a successful execution is always determined by matching the provided
+criteria, an error in the script is always considered a failure.
+
+From the embedded *Lua* interpreter there are two values set that can be accessed:
+
+
+* ``whenever_task`` is the name of the task that executes the script
+* ``whenever_condition`` is the name of the condition that triggered the task.
+
+which might be useful if the scripts are aware of being run within **whenever**.
+
+Internal input command tasks
+----------------------------
+
+This type of task is useful in case the ability of **whenever** to unattendendly do something is
+needed to control the running instance of **whenever** itself: it is possible in fact to instruct
+the scheduler to execute one of the `commands <70.intcli.md#input-commands>`_ that have been
+implemented to be used by wrapper applications. This means that the scheduler:
+
+
+* can automatically reset one or more conditions
+* can pause itself or shut itself down: in both cases there is no automatic way back
+* can reload its configuration file
+
+and so on upon verification of a condition.
+
+..
+
+   **Note:** no security concern is raised here, as **whenever** is designed with the intention to
+   run without administration rights; obviously every kind of automation tool, which performs
+   unattended operations, might execute malicious actions under the hood, however the absence of
+   particular privileges when running and the ability to read the configuration file without the
+   need of specific tools, allow for complete control on what **whenever** does.
+
+
+The configuration for such a type of task is simple, as it only requires to set the ``command``
+parameter in addition to the name and type. An example internal command based task is the
+following:
+
+.. code-block:: toml
+
+   [[task]]
+   name = "InternalTaskName"
+   type = "internal"
+   command = "reset_conditions Cond1 Cond2"
+
+which resets the conditions named ``Cond1`` and ``Cond2``\ , if they exist. A detailed description
+of the parameter entries follows:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Entry
+     - Default
+     - Description
+   * - ``name``
+     - N/A
+     - the unique name of the task (mandatory)
+   * - ``type``
+     - N/A
+     - must be set to ``"internal"`` (mandatory)
+   * - ``command``
+     - N/A
+     - the internal command to be run, as a single string that includes its parameters
+
+
+As mentioned above, a comprehensivew list of possible internal commands can be found in the
+appropriate `section <70.intcli.md#input-commands>`_.
+
+This type of item is mostly intended as a way to automate part of the behavior of **whenever**
+during a session on behalf of a wrapper, that might expose part of the configuration implemented
+as a combination of internally managed conditions and specific tasks (even of this type) as single
+and simpler configuration element: an example could be the use of the *org.freedesktop.UPower*
+interface in DBus to catch a *system resume* event in order to reset all the conditions.
+
+..
+
+   **Warning:** the command will *not* be checked upon configuration, it will *fail* instead
+                causing a warning to be logged in case it is invalid or malformed.
+

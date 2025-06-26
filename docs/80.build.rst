@@ -1,0 +1,33 @@
+
+Build Issues
+============
+
+**whenever** is being thoroughly tested on Windows and Linux. It should work on Mac too, although
+I have no possibility to test it personally. On Windows, the build process is seamless as long as
+*Rust* and all its dependencies are installed.
+
+On Linux, the build process might complain that some packages are missing: it mainly occurs because
+the "essential build tools" and the *development* versions of some packages are not installed by
+default. Taking Debian as an example, the following packages must be installed:
+
+
+* *pkg-config*
+* *libx11-dev*
+* *libdbus-1-dev*
+* *libxss-dev*
+* *xscreensaver* (not always necessary).
+
+With these packages installed, the scheduler compiles without errors. However, since not all Linux
+distributions come with *Xscreensaver* support (which is used to determine idle time), the related
+condition might not be checked and never fire. There is a *DBus* based workaround, that allows to
+use `Idle session <50.conditions.md#idle-session>`_ conditions on Linux: the idle time, in this
+case, is counted as the amount of seconds after the screen has been locked. To enable this
+workaround, just edit the *Cargo.toml* file by uncommenting the second of the following lines:
+
+.. code-block:: toml
+
+   # user-idle has a problem on wayland-based sessions: work around by using
+   user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }  # <-- this line must be uncommented
+   # user-idle = "0.5.3"                                                             # <-- this line must be commented
+
+and commenting the line below.

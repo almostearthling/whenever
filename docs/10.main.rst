@@ -1,0 +1,231 @@
+
+The **whenever** Documentation
+==============================
+
+**whenever** is a simple task scheduler capable of executing *tasks* (in particular, OS commands
+and *Lua* scripts) according to specific *conditions*. Conditions are of various types:
+depending on time (both intervals or specific more-or-less defined instants), execution of OS
+commands or *Lua* scripts, changes in specific files and directories, session inactivity, DBus
+and WMI signals or property checks.\ [#fn-1]_ The scheduler intends to be as lightweight as
+possible in terms of used computational resources, and to run at a low priority level.
+
+Configuration is provided to the scheduler via a `TOML <https://toml.io/>`__ file, which must
+contain all definitions for conditions and associated tasks, as well as events that the
+scheduler should listen to.
+
+Ideally, **whenever** is the successor of the *Python* based
+`\ *When* <https://github.com/almostearthling/when-command>`__ scheduler, with the intention
+of being cross platform, more efficient and as least resource-consuming as possible. It also
+gained some features (eg. *Lua* scripting) that *When* did not have, at no cost in terms of
+performance since **whenever** is a self-contained, optimized, and thin executable instead
+of being an interpreted program.
+
+Although a command line application, it is designed for desktops -- therefore it should be
+executed via a controlling GUI wrapper.
+
+Introduction
+------------
+
+The purpose of **whenever** is to provide the user, possibly without administrative credentials,
+with the ability to define conditions that do not only depend on time, but also on particular
+states of the session, result of commands run in a shell, execution of *Lua* scripts, or other
+events that may occur while the system is being used. This scheduler is a terminal (or console,
+on Windows) application, however it is meant to run in the background without interaction with
+the user. The application is able to produce detailed logs, so that the user can review what
+the application is doing or has done.
+
+Just like its predecessor, **whenever** overlaps to some extent with the standard *cron*
+scheduler on Unix, and with the *Task Scheduler* on Windows. However this scheduler tries to
+be more flexible -- although less precise than *cron* -- and to function as an alternative to
+more complex solutions that could be implemented using the system-provided schedulers. The
+**whenever** approach is to perform certain tasks after a condition is met, in a relaxed
+fashion: this means that the tasks might not be performed *exactly* in the instant that marks
+the condition verification, but *after* such verification instead. Thus this scheduler is not
+intended as a replacement for the utilities provided by the operating system: it aims at
+representing an easy solution for those who need to automate some actions depending on other
+situations or events that may occur.
+
+Also, **whenever** aims at being cross-platform: until now, all features are available on all
+supported operating systems -- although in some cases part of these features (DBus support,
+for example) can be of little or no use on some supported environments. In opposition to its
+predecessor, **whenever** tries to be conservative in terms of resource cosumption (especially
+CPU and RAM), and, since it does not interact with the user normally, it should be able to run
+at low priority. Therefore, **whenever** does not implement a GUI by itself: on the contrary,
+it offers a `simple *stdin*\ -based interface <70.intcli.md#input-commands>`__ that is mostly
+aimed at interacting with an independent *wrapper*. Also, no *persistence* is implemented in
+this version. The actions to be performed are loaded every time at startup by means of a single
+configuration file that, as many modern tools do, uses the well known TOML format.\ [#fn-2]_
+
+A very lightweight cross-platform wrapper, namely
+`\ **whenever_tray** <https://github.com/almostearthling/whenever_tray>`__\ , is available and
+under active testing on both Linux and Windows. It is developed in C++ and uses the
+`WxWidgets <https://www.wxwidgets.org/>`__ GUI library: it has been designed to implement the
+bare minimum of functionality and to just show an icon in the system tray area, from which it is
+possible to stop the scheduler, and to pause/resume the condition checks and therefore the
+execution of tasks that would derive from them. The minimalistic wrapper also hides the console
+window on Windows environments. Due to the use of *stdin*\ /\ *stdout* for communication, it is
+possible to build more elaborate wrappers in any language that supports the possibility to spawn
+a process and control its I/O, at the expense of a larger resource occupation but possibly
+without drawbacks in terms of performance, as the scheduler runs in a separate task anyway. The
+*Python* based *When* application had an occupation in RAM of about 70MB on Ubuntu Linux using a
+not-too-populated configuration file, and could noticeably use the CPU: this version, written in
+the `\ *Rust* <https://www.rust-lang.org/>`__ programming language, needs around 1.5MB of RAM on
+Windows\ [#fn-3]_ when using a configuration file that tests all possible types of *task*\ ,
+*condition*\ , and *event* supported on the platform. Nevertheless, **whenever** is fully
+multithreaded, condition checks have no influence on each other and, when needed, may run
+concurrently. Consequential task execution also takes place with full parallelism -- with the
+exception of those tasks that, per configuration, are set to run sequentially.
+
+The old version of *When* itself is currently being converted to a frontend wrapper for
+**whenever**\ : see the `repository <https://github.com/almostearthling/when-command>`__ for
+more details.
+
+Features
+--------
+
+**whenever** can perform the following types of `\ *task* <40.tasks.md#tasks>`__\ :
+
+* `\ *Execution of OS executables* <40.tasks.md#command-tasks>`__\ , either binaries or scripts,
+  checking their exit code or output (both on *stdout* and *stderr*\ ) for expected or undesired
+  results
+* `\ *Execution of* Lua *scripts* <40.tasks.md#lua-script-tasks>`__\ , using an embedded
+  interpreter, with the possibility of checking the contents of *Lua* variables for expected
+  outcomes
+* `\ *Execution of internal input commands* <40.tasks.md#internal-input-command-tasks>`__\ , to
+  modify the internal scheduler status at the verification of specific conditions
+
+as the consequence of the verification of a *condition*. The concepts of tasks and conditions
+are inherited from the *Python* based *When* scheduler.
+
+The supported types of `\ *condition* <50.conditions.md#conditions>`__ are the following:
+
+* `\ *Interval* based <50.conditions.md#interval>`__\ : the *periodic* conditions are verified
+  after a certain time interval has passed since **whenever** has started, and may be verified
+  again after the same amount of time if the condition is set to be *recurring*
+* `\ *Time* based <50.conditions.md#time>`__\ : one or more instants in time can be provided for
+  the condition to be verified
+* `\ *Idle* user session <50.conditions.md#command>`__\ : this type of condition is verified
+  after the session has been idle for the specified amount of time
+* `\ *Command* execution <50.conditions.md#command>`__\ : an available executable (be it a script,
+  a batch file on Windows, a binary) is run, its exit code or output is checked and, when an
+  expected outcome is found, the condition is considered verified - or failed on an explicitly
+  undesired outcome
+* `\ *Lua* script execution <50.conditions.md#lua-script>`__\ : a *Lua* script is run using the
+  embedded interpreter, and if the contents of one or more variables meet the specified
+  expectations the condition is considered verified
+* `\ *DBus* inspection (optional) <50.conditions.md#dbus-method-optional>`__\ : a *DBus* method
+  is executed and the result is checked against some criteria provided in the configuration file
+* `\ *WMI* query (optional, Windows only) <50.conditions.md#wmi-query-based-optional-windows-only>`__\ :
+  a *WMI* query is executed and the result is checked against some criteria provided in the
+  configuration file
+* `\ *Event* based <50.conditions.md#event-based>`__\ : are verified when a certain event occurs
+  that fires the condition.
+
+The `\ **\ *events*\ ** <60.events.md#events>`__ that can fire *event* based conditions are, at the
+moment:
+
+* `\ *Filesystem changes* <60.events.md#filesystem-changes>`__\ , that is, changes in files and/or
+  directories that are set to be monitored
+* `\ *DBus* signals (optional) <60.events.md#dbus-signals-optional>`__\ , that may be filtered for
+  an expected payload
+* `\ *WMI* events (optional, Windows only) <60.events.md#wmi-optional-windows-only>`__\ ,
+  subscribed via specific *WQL* queries
+* `\ *Command line* <60.events.md#command-line>`__\ , that are manually triggered by writing to
+  **whenever** standard input.
+
+Note that *DBus* events and conditions are also supported on Windows, being one of the *DBus* target
+platforms, and enabled by default.  *WMI* events and conditions, on the contrary, are only supported
+on Windows platforms. Both *DBus* and *WMI* support can be **disabled** on build, by respectively
+removing ``dbus`` and/or ``wmi`` from the default features in the *Cargo.toml* file, or by building
+the application with the ``--no-default-features`` command line flag (in this case, other desired
+features have to be specifically enabled using the ``--features`` option). **whenever** can provide
+the list of the available optional features by invoking ``whenever --options`` from the command line.
+
+All of the above listed items are fully configurable via a TOML configuration file, that *must* be
+specified as the only mandatory argument on the command line. The syntax of the configuration file
+is described in the following sections.
+
+Every type of check is performed periodically, even the ones involving *event* based
+conditions\ [#fn-4]_\ : the periodic time interval at which the conditions are checked is referred
+here as *tick*\ , and the tick interval can be specified in the configuration file -- defaulting at
+5 seconds. Note that, since performing all checks in the same instant at every tick could cause
+usage peaks in terms of computational resources, there is the option to attempt to randomly
+distribute some of the checks within the tick interval, by explicitly specifying this behavior in
+the configuration file.
+
+The configuration can be also modified while the scheduler application is running, using a specific
+`command <70.intcli.md#input-commands>`__\ , in a dynamic fashion that does not reset the items
+whose configuration is unchanged.
+
+Configuration
+-------------
+
+The configuration file is strictly based on the current TOML specification: therefore it can be
+implemented by hand, or automatically written (for example, by a GUI based utility) using a library
+capable of writing well-formed TOML files. This section describes the exact format of this file, in
+all of its components.
+
+..
+
+   **Note:** if **whenever** has been compiled without support for any optional feature, entries for
+   items depending on that feature are considered configuration errors.
+
+
+Globals
+^^^^^^^
+
+Globals must be specified at the beginning of the configuration file. The supported global entries
+are the following:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Option
+     - Default
+     - Description
+   * - ``scheduler_tick_seconds``
+     - 5
+     - Number of seconds between scheduler ticks
+   * - ``randomize_checks_within_ticks``
+     - *false*
+     - Whether or not condition checks should be uniformly randomized within the tick period
+
+
+Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a
+very short value for the tick period, but in fact it mimics a certain responsiveness and
+synchronization in checking *event* based conditions. Note that conditions strictly depending on
+time do not comply to the request of randomizing the check instant.
+
+..
+
+   **Note:** These values can *not* be updated at runtime: possible changes of global parameters in
+   the configuration file are only applied when the application is restarted.
+
+
+No other global entries than the ones described above are accepted by **whenever**\ : in case an
+unknown entry is found, the application will exit with an error. As in *items*\ , a ``[[tags]]``
+section is accepted, which can either be an array or a table whose entries and/or values are not
+checked: this section can be used by a *wrapper* in order to define global parameters that will not
+interfere with the actual configuration.
+
+License
+-------
+
+This tool is licensed under the LGPL v2.1 (may change to LGPL v3 in the future): see the provided
+LICENSE file for details.
+
+
+.. [#fn-1] Although DBus support is available on Windows too, it is mostly useful on Linux
+           desktops: in fact it might be appropriate to disable it when compiling the
+           application for Windows, in order to save resources. Binaries released for Windows
+           ship *without* DBus support.
+.. [#fn-2] DBus parameters and criteria can still be expressed in `JSON <https://www.json.org/>`_
+           format for compatibility reasons, but this support will be eventually removed.
+.. [#fn-3] When run alone, with no wrapper: using the minimal provided wrapper, both programs
+           together use less than 4MB of RAM and the combined CPU consumption in rare occasions
+           reaches the 0.2% -- as reported by the Windows *Task Manager*.
+.. [#fn-4] The occurrence of an *event*\ , in fact, raises a flag that specifies that the
+           associated condition will be considered as verified at the following tick: the condition
+           is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the
+           scheduler that executes the related tasks. Therefore *event* based conditions are also
+           referred to as *bucket* conditions.
