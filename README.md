@@ -36,7 +36,7 @@
 
 <!-- /code_chunk_output -->
 
-**whenever** is a simple task scheduler capable of executing _tasks_ (OS commands and _Lua_ scripts) according to specific _conditions_. Conditions are of various types: depending on time (both intervals or specific more-or-less defined instants), execution of OS commands or _Lua_ scripts, changes in specific files and directories, session inactivity, DBus signals or property checks.[^1] The scheduler intends to be as lightweight as possible in terms of used computational resources, and to run at a low priority level.
+**whenever** is a simple task scheduler capable of executing _tasks_ (in particular, OS commands and _Lua_ scripts) according to specific _conditions_. Conditions are of various types: depending on time (both intervals or specific more-or-less defined instants), execution of OS commands or _Lua_ scripts, changes in specific files and directories, session inactivity, DBus signals or property checks.[^1] The scheduler intends to be as lightweight as possible in terms of used computational resources, and to run at a low priority level.
 
 Configuration is provided to the scheduler via a [TOML](https://toml.io/) file, which must contain all definitions for conditions and associated tasks, as well as events that the scheduler should listen to.
 
@@ -698,13 +698,9 @@ parameter_call = [
     ]
 parameter_check_all = false
 parameter_check = [
-         { "index": 0, "operator": "eq", "value": false },
-         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-         {
-             "index": [2, "mapidx", 5],
-             "operator": "match",
-             "value": "^[A-Z][a-zA-Z0-9_]*$"
-         }
+         { index = 0, operator = "eq", value = false },
+         { index = [1, 5], operator = "neq", operator = "forbidden" },
+         { index = [2, "mapidx", 5], operator = "match", value = "^[A-Z][a-zA-Z0-9_]*$" },
     ]
 ```
 
@@ -921,13 +917,9 @@ rule = """\
 # optional parameters (if omitted, defaults are used)
 parameter_check_all = false
 parameter_check = [
-         { "index": 0, "operator": "eq", "value": false },
-         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-         {
-             "index": [2, "mapidx", 5],
-             "operator": "match",
-             "value": "^[A-Z][a-zA-Z0-9_]*$"
-         }
+         { index = 0, operator = "eq", value = false },
+         { index = [1, 5], operator = "neq", operator = "forbidden" },
+         { index = [2, "mapidx", 5], operator = "match", value = "^[A-Z][a-zA-Z0-9_]*$" },
     ]
 ```
 
@@ -1099,7 +1091,7 @@ The actual log record, also in JSON format, is emitted in the form of a single t
 
 As said above, **whenever** accepts commands (in the form of _command lines_) through the standard input. Actually, no prompt is shown, and the console log will keep showing up continuously even when an user types any interactive command: in fact the _stdin_ based interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these commands to control the scheduler.
 
-A _command line_ is intended as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects. Note that a reload only affects item configurations: to reset the global parameters the scheduler application must be restarted.
+A _command line_ is intended here as one of the commands in the table below, possibly followed by one or more arguments, when supported, separated by whitespace and terminated by a _carriage return_ -- meaning that `'\n'` must be used at the end of the line when sending a command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error, however the offending _command line_ is just ignored with no other side effects.
 
 The available commands are:
 
@@ -1117,7 +1109,7 @@ The available commands are:
 
 The `pause` command is ignored in paused state, and `resume` is ignored otherwise. Attempts to suspend conditions that are already suspended or to resume already active conditions are also ignored. Typing `exit` or `quit` followed by a _carriage return_ on the console window where **whenever** is running has almost the same effect as hitting _Ctrl+C_. The `reset_conditions` command resets the internal state of all configured conditions when no arguments are provided. The `trigger` command can only receive the name of a [Command line](#command-line) event as an argument: other uses will cause the command to be ignored and an error or a warning to be logged.
 
-The `configure` command can be used to load a new configuration (or reload a modified one) while the scheduler is running: in case some of the items are already present in the configuration _and_ they are **identical** to the originally loaded ones in terms of provided parameters, the original ones are left in their status -- this means, in particular, that unchanged conditions are _not_ reset, and unchanged event listening services are _not_ restarted when reloading a configuration. It is important to notice that **all characters beginning from the first non-blank up to the last non-blank** following the `configure` command are considered part of the provided file name, including spaces other blank characters. Possible errors are detected and leave the application status unchanged. Also, neither environment variable nor _tilde_ expansions are performed, and both quotes (either single or double) and backslashes are interpreted literally.
+The `configure` command can be used to load a new configuration (or reload a modified one) while the scheduler is running: in case some of the items are already present in the configuration _and_ they are **identical** to the originally loaded ones in terms of provided parameters, the original ones are left in their status -- this means, in particular, that unchanged conditions are _not_ reset, and unchanged event listening services are _not_ restarted when reloading a configuration. It is important to notice that **all characters beginning from the first non-blank up to the last non-blank** following the `configure` command are considered part of the provided file name, including spaces other blank characters. Possible errors are detected and leave the application status unchanged. Also, neither environment variable nor _tilde_ expansions are performed, and both quotes (either single or double) and backslashes are interpreted literally. A configuration reload only affects _item_ configurations: in order to reset the global parameters, the scheduler application must be fully restarted.
 
 > **Note:** _resetting_ the internal state of a condition indicates that, after the operation, the condition has the same state as when the scheduler just started. It mostly has effect on [interval](#interval) based conditions, conditions that are _not recurring_ -- especially when the `max_tasks_retries` parameter is specified, as the number of available retries is set back to the provided value. In the first case, the condition operates as if the interval counter had started in the instant of its reset. The second case is actually more interesting, as the success state is taken back to an undetermined state, and thus the scheduler starts checking the condition again even if it had succeeded before. A condition that is resumed using the `resume_condition` command also receives a `reset`, so that conditions that depend on waiting for a certain amount of time to fire do not count the time spent in suspended state as part of the time to wait for.
 
@@ -1149,7 +1141,7 @@ and commenting the line below.
 
 The configuration of **whenever** might be difficult, especially for complex aspects such as events and conditions based on DBus. In this sense, since **whenever** does not provide a GUI, the features of the Python based _When_ are not completely matched. However, this happens to be a significant step towards solution of [issue #85](https://github.com/almostearthling/when-command/issues/85) in the Python version. Moreover, **whenever** gains some useful features (such as the _Lua_ embedded interpreter) in this transition, as well as the possibility of running on many platforms instead of being confined to a restricted number of versions of Ubuntu Linux, and the very low impact on the system in terms of resource usage. Note that the development version of [_When_](https://github.com/almostearthling/when-command), although non production ready, can be used to create and edit valid **whenever** configuration files.
 
-I am considering **whenever** as the evolution of the _When_ operational engine, and future versions of _When_ itself (which will bump its version number to something more near to the awaited _2.0.0_) will only implement the GUIs that might (or might not) be used to configure **whenever** and to control it from the system tray in a more sophisticated way than the one allowed by the minimal C++ based utility.
+I am considering **whenever** as the evolution of the _When_ operational engine, and the current version of _When_ itself (which is now approaching version _2.0.0_) only implements the GUIs that might (or might not) be used to configure **whenever** and to control it from the system tray in a more sophisticated way than the one allowed by the minimal C++ based utility.
 
 
 ## License
