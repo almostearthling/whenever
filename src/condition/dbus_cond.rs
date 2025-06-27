@@ -18,7 +18,6 @@ use async_std::task;
 use zbus;
 use zbus::zvariant;
 
-use serde_json::value::Value;
 use std::str::FromStr;
 
 use super::base::Condition;
@@ -452,48 +451,12 @@ impl DbusMethodCondition {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
-        // TODO: remove JSON support before version 0.4.0
         let check = ["index", "operator", "value"];
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
             let params;
-            if item.is_str() {
-                // since CfgMap only accepts maps as input, and we expect a list
-                // instead, we build a map with a single element labeled '0':
-                let json = Value::from_str(
-                    &format!("{{\"0\": {}}}", item.as_str().unwrap()),
-                );
-                if json.is_err() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                // NOTE: this is the only part in `check_cfgmap` that logs
-                // in order to warn that use of JSON here is deprecated
-                log(
-                    LogType::Warn,
-                    LOG_EMITTER_CONDITION_DBUS,
-                    LOG_ACTION_NEW,
-                    Some((&name, 0)),
-                    LOG_WHEN_INIT,
-                    LOG_STATUS_MSG,
-                    &format!("CONDITION {name} ({cur_key}): use of JSON in this context is deprecated"),
-                );
-                // and then we extract the '0' element and check it to be a list
-                let item = CfgMap::from_json(json.unwrap());
-                let item = item.get("0").unwrap();
-                if !item.is_list() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                params = item.clone();
-            } else if !item.is_list() {
+            if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
@@ -665,42 +628,7 @@ impl DbusMethodCondition {
         if let Some(item) = cfgmap.get(cur_key) {
             let mut param_call: Vec<zvariant::OwnedValue> = Vec::new();
             let params;
-            if item.is_str() {
-                // since CfgMap only accepts maps as input, and we expect a list
-                // instead, we build a map with a single element labeled '0':
-                let json = Value::from_str(
-                    &format!("{{\"0\": {}}}", item.as_str().unwrap()),
-                );
-                if json.is_err() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                // NOTE: this is the only part in `check_cfgmap` that logs
-                // in order to warn that use of JSON here is deprecated
-                log(
-                    LogType::Warn,
-                    LOG_EMITTER_CONDITION_DBUS,
-                    LOG_ACTION_NEW,
-                    Some((&name, 0)),
-                    LOG_WHEN_INIT,
-                    LOG_STATUS_MSG,
-                    &format!("CONDITION {name} ({cur_key}): use of JSON in this context is deprecated"),
-                );
-                // and then we extract the '0' element and check it to be a list
-                let item = CfgMap::from_json(json.unwrap());
-                let item = item.get("0").unwrap();
-                if !item.is_list() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                params = item.clone();
-            } else if !item.is_list() {
+            if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
@@ -860,31 +788,7 @@ impl DbusMethodCondition {
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
             let params;
-            if item.is_str() {
-                // since CfgMap only accepts maps as input, and we expect a list
-                // instead, we build a map with a single element labeled '0':
-                let json = Value::from_str(
-                    &format!("{{\"0\": {}}}", item.as_str().unwrap()),
-                );
-                if json.is_err() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                // and then we extract the '0' element and check it to be a list
-                let item = CfgMap::from_json(json.unwrap());
-                let item = item.get("0").unwrap();
-                if !item.is_list() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                params = item.clone();
-            } else if !item.is_list() {
+            if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
@@ -1030,31 +934,7 @@ impl DbusMethodCondition {
         let cur_key = "parameter_call";
         if let Some(item) = cfgmap.get(cur_key) {
             let params;
-            if item.is_str() {
-                // since CfgMap only accepts maps as input, and we expect a list
-                // instead, we build a map with a single element labeled '0':
-                let json = Value::from_str(
-                    &format!("{{\"0\": {}}}", item.as_str().unwrap()),
-                );
-                if json.is_err() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                // and then we extract the '0' element and check it to be a list
-                let item = CfgMap::from_json(json.unwrap());
-                let item = item.get("0").unwrap();
-                if !item.is_list() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_VALUE_FOR_ENTRY,
-                    ));
-                }
-                params = item.clone();
-            } else if !item.is_list() {
+            if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,

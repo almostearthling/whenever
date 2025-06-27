@@ -563,7 +563,7 @@ impl TaskRegistry {
     /// **Note:** this function runs in the calling thread, that is blocked
     /// until it returns.
     ///
-    /// TODO: this must be reimplemented with a maximum concurrency level,
+    /// TODO: this might be reimplemented with a maximum concurrency level,
     ///       possibly using a _thread pool_.
     ///
     /// # Arguments
