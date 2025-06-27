@@ -13,10 +13,11 @@ This document describes **whenever**, a lightweight scheduler and automation too
    10.main
    20.cli
    30.logging
+   35.globals
    40.tasks
    50.conditions
    60.events
    70.intcli
    80.build
-
+   99.license
 

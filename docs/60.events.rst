@@ -1,3 +1,4 @@
+.. _60-events:
 
 Events
 ======
@@ -17,7 +18,7 @@ in the filesystem for watched entities (files or directories), which is also imp
 **whenever** as one of the possible events that can fire conditions.
 
 The last kind of events supported by **whenever** relies on its *stdin* based
-`command interface <70.intcli.md#input-commands>`__. These events are directly raised by
+:ref:`command interface <70-intcli-input-commands>`. These events are directly raised by
 issuing a ``trigger`` command followed by the event name: a wrapper, even possibly a platform
 specific one, can therefore notify **whenever** that a specific event took place, or that the
 user explicitly required to trigger it from the available user interface. This type of event is
@@ -28,11 +29,14 @@ Note that if an event arises more that once within the tick interval, it is auto
 
 All *event* definition sections must start with the TOML ``[[event]]`` header.
 
-An optional entry, namely ``tags``\ , is accepted in item configuration: this entry is ignored by
+An optional entry, namely ``tags``, is accepted in item configuration: this entry is ignored by
 **whenever** itself, however it is checked for correctness at startup and the configuration is
 refused if not set to an array (of strings) or a table.
 
 The associated conditions must exist, otherwise an error is raised and **whenever** aborts.
+
+
+.. _60-events-fschange:
 
 Filesystem changes
 ------------------
@@ -79,11 +83,14 @@ The configuration entries are:
      - a list of items to be monitored: possibly expressed with their full path
    * - ``recursive``
      - *false*
-     - if *true*\ , listed directories will be monitored recursively
+     - if *true*, listed directories will be monitored recursively
    * - ``poll_seconds``
      - 2
      - generally not used, can be needed on systems where the notification service is unavailable
 
+
+
+.. _60-events-dbus:
 
 DBus signals (optional)
 -----------------------
@@ -93,16 +100,15 @@ aspects of the system status in an asynchronous way. **whenever** offers the pos
 subscribe to these signals, so that when the *return parameters* match the provided constraints,
 then the event occurs and the associated condition is fired.
 
-..
-
-   **Note:** this type of item is only available when the ``dbus`` feature is enabled.
+.. note::
+   This type of item is only available when the ``dbus`` feature is enabled.
 
 
 Subscription is performed by providing a *watch expression* in the same form that is used by the
-`\ *dbus-monitor* <https://dbus.freedesktop.org/doc/dbus-monitor.1.html>`__ utility. The criteria
+`dbus-monitor <https://dbus.freedesktop.org/doc/dbus-monitor.1.html>` utility. The criteria
 that the *signal parameters* must meet in order for the event to arise, are specified using the
 same format that is used for *return message parameter* checks in
-`\ *DBus method* based conditions <50.conditions.md#dbus-method-optional>`__.\ [#fn-1]_
+:ref:`DBus method based conditions <50-conditions-dbus>`.
 
 A sample configuration section follows:
 
@@ -148,44 +154,44 @@ and the details of the configuration entries are described in the table below:
      - the name of the associated *event* based condition (mandatory)
    * - ``bus``
      - N/A
-     - the bus on which to listen for events: must be either ``":system"`` or ``":session"``\ ,
+     - the bus on which to listen for events: must be either ``":system"`` or ``":session"``,
        including the starting colon (mandatory)
    * - ``parameter_check_all``
      - *false*
-     - if *true*\ , all the provided criteria will have to be satisfied for the event to be
+     - if *true*, all the provided criteria will have to be satisfied for the event to be
        fired, otherwise one is enough
    * - ``parameter_check``
      - (empty)
      - a list of maps consisting of three fields each, each of which is a check to be performed
        on return parameters
 
-
 The considerations about indexes in return parameters are the same that have been seen for
-`\ *DBus message* based conditions <50.conditions.md#dbus-method-optional>`__. It is worth to
-remind that any errors that may arise during checks will cause the check itself to yield *false*.
+:ref:`DBus message based conditions <50-conditions-dbus>`. It is worth to remind that any errors
+that may arise during checks will cause the check itself to yield *false*.
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
+
+
+.. _60-events-wmi:
 
 WMI (optional, Windows only)
 ----------------------------
 
-On Windows, **whenever** can subscribe to *WMI* events using
-`event-specific *WML* queries <https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications>`__.
+On Windows, **whenever** can subscribe to *WMI* events using event specific `WML queries`_.
 This kind of query allows for an extremely precise determination of every aspect of the event
 that has to be caught, including the possibility to specify any criteria regarding the payload
 of an event in order to consider it verified. Thus **whenever** leaves to the *query* part of a
 *WMI* event definition the task of filtering the specific event for which it enables a listener.
 
-..
+.. _WML queries: https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications
 
-   **Note:** this type of item is only available when the ``wmi`` feature is enabled.
-
+.. note::
+   This type of item is only available when the ``wmi`` feature is enabled.
 
 As a result, the configuration of a *WMI* based event is much simpler than the one of *DBus signal*
 based ones, by only having to specify a mandatory ``query`` entry, whose syntax and semantic is
-similar to the one of the queries used in
-`WMI Query <50.conditions.md#wmi-query-based-optional-windows-only>`_ based conditions, but has to
-be expressly built for events.
+similar to the one of the queries used in :ref:`WMI Query <50-conditions-dbus>` based conditions,
+but has to be expressly built for events.
 
 An example of *WMI* based event configuration follows:
 
@@ -224,24 +230,25 @@ details of the configuration entries are described in the table below:
      - the *WQL* query used specify what criteria must be satisfied for the event to occur
 
 
-As with DBus *match rules*\ , **whenever** does not do any parsing or check on the provided query:
+As with DBus *match rules*, **whenever** does not do any parsing or check on the provided query:
 an incorrect query will only cause the event registration to fail and log an error message, at
 least in the *debug* log level.
 
-Every event returned by the system matches the criteria specified in the *query*\ , and will cause
+Every event returned by the system matches the criteria specified in the *query*, and will cause
 the assigned condition to fire.
 
-..
+.. warning::
+   Some antimalware tools might detect event subscriptions as suspicious.
 
-   **Warning:** some antimalware tools might detect event subscriptions as suspicious.
 
+.. _60-events-cli:
 
 Command line
 ------------
 
 As said above, this type of event has no other parameters than the name, the type identifier, and
 the associated condition. All parameters are mandatory. The event is raised when a wrapper (or
-the user) passes a ``trigger`` `command <70.intcli.md#input-commands>`_ to **whenever** through
+the user) passes a ``trigger`` :ref:`command <70-intcli-input-commands>` to **whenever** through
 the *stdin* stream of an active session.
 
 A sample configuration section follows:
@@ -274,7 +281,3 @@ and the details of the configuration entries are described in the table below:
 No listening service is installed, so the impact on resource consumption and performance is almost
 unnoticeable.
 
-
-.. [#fn-1] DBus parameters and criteria can still be expressed in `JSON <https://www.json.org/>`__
-           format for compatibility reasons, but this support is deprecated will be eventually
-           removed.

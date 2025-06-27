@@ -1,3 +1,4 @@
+.. _20-cli:
 
 Command Line Interface
 ======================
@@ -48,7 +49,7 @@ The only elements that should be highlighted are the following:
   immediately with a ``0`` exit code if another instance is found, ``1`` otherwise: it also writes
   an answer to the standard output that can be suppressed using the ``--quiet`` switch.\ [#fn-1]_
 
-When debugging a configuration file, it might be useful to set the log level at least to *debug*\ ,
+When debugging a configuration file, it might be useful to set the log level at least to *debug*,
 if not to *trace* which also emits some redundant messages.
 
 An important thing to notice is that configuration errors will cause **whenever** to abort, by
@@ -57,16 +58,15 @@ issuing a very brief message on the console.
 Also, **whenever** will refuse to start when another instance is running for the same user (that
 is, most of the times in the same session): the ``--check-running`` switch has been introduced to
 possibly allow a launcher to perform a test before attempting to actually start the scheduler. On
-the same host, however, different users can launch instances of **whenever**\ , which are
+the same host, however, different users can launch instances of **whenever**, which are
 considered different.
 
 To exit from **whenever** (when running as a CLI program from an interactive shell) che usual
 *Ctrl+C* key combination can be used. This will however wait for all currently running activities,
 be it condition checks or tasks, to finish. In order to force **whenever** to exit abruptly,
-either a `command <70.intcli.md#input-commands>`_ must be used or it must be explicitly killed.
+either a :ref:`command <70-intcli-input-commands>` must be used or it must be explicitly killed.
 
 
-.. [#fn-1] Executables compiled in *debug mode*\ , however, do not consider an active release
+.. [#fn-1] Executables compiled in *debug mode*, however, do not consider an active release
            instance as running, and the instance check option will only report an active debug
-           instance to a deb
-           ug instance, and an active release instance to a release instance.
+           instance to a deb ug instance, and an active release instance to a release instance.

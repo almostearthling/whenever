@@ -1,8 +1,9 @@
+.. _50-conditions:
 
 Conditions
 ==========
 
-*Conditions* are at the heart of **whenever**\ , by triggering the execution of tasks. As
+*Conditions* are at the heart of **whenever**, by triggering the execution of tasks. As
 mentioned before, several types of condition are supported. Part of the configuration is
 common to all conditions, that is:
 
@@ -20,7 +21,7 @@ common to all conditions, that is:
      - string describing the type of condition (mandatory, one of the possible values)
    * - ``recurring``
      - *false*
-     - if *false*\ , the condition is not checked anymore after first successful verification
+     - if *false*, the condition is not checked anymore after first successful verification
    * - ``max_tasks_retries``
      - 0
      - how many times the tasks will be retried, when at least one of them fails, in non recurring
@@ -31,33 +32,32 @@ common to all conditions, that is:
        are listed
    * - ``break_on_success``
      - *false*
-     - if *true*\ , task execution stops after the first successfully executed task (when
+     - if *true*, task execution stops after the first successfully executed task (when
        ``execute_sequence`` is *true*\ )
    * - ``break_on_failure``
      - *false*
-     - if *true*\ , task execution stops after the first failed task (when ``execute_sequence`` is
+     - if *true*, task execution stops after the first failed task (when ``execute_sequence`` is
        *true*\ )
    * - ``suspended``
      - *false*
-     - if *true*\ , the condition will not be checked nor the associated tasks executed
+     - if *true*, the condition will not be checked nor the associated tasks executed
    * - ``tasks``
      - ``[]``
      - a list of task names that will be executed upon condition verification
 
 
-When ``execute_sequence`` is set to *false*\ , the associated tasks are started concurrently in the
+When ``execute_sequence`` is set to *false*, the associated tasks are started concurrently in the
 same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented,
 allowing the sequence to be interrupted after the first success or failure in task execution. Note
 that it is possible to set both ``break_on_success`` and ``break_on_failure`` to *true*.\ [#fn-1]_
 
-The ``type`` entry can be one of: ``"interval"``\ , ``"time"``\ , ``"idle"``\ , ``"command"``\ ,
-``"lua"``\ , ``"event"``\ , ``"dbus"``\ , and ``"wmi"``. Any other value is considered a
+The ``type`` entry can be one of: ``"interval"``, ``"time"``, ``"idle"``, ``"command"``,
+``"lua"``, ``"event"``, ``"dbus"``, and ``"wmi"``. Any other value is considered a
 configuration error.
 
-..
-
-   **Note:** the ``"dbus"`` and ``"wmi"`` values will be considered an error if the respective
-             features are not available.
+.. note::
+   The ``"dbus"`` and ``"wmi"`` values will be considered an error if the respective features are
+   not available.
 
 
 For conditions that should be periodically checked and whose associated task list has to be run
@@ -81,10 +81,10 @@ executed count for outcome verification.
 The ``suspended`` entry can assume a *true* value for conditions for which the user does not want
 to remove the configuration but should be (at least temporarily) prevented. However, a condition
 that is suspended by configuration can be awakened using an interactive command (usually by a
-wrapper): `input commands <70.intcli.md#input-commands>`__ passed via the *stdin* based interface
+wrapper): :ref:`input commands <70-intcli-input-commands>` passed via the *stdin* based interface
 can be used to suspend and resume condition checks when the scheduler is running.
 
-There is another optional entry, namely ``tags``\ , that is accepted in item configuration: this
+There is another optional entry, namely ``tags``, that is accepted in item configuration: this
 entry is ignored by **whenever** itself, however it is checked for correctness at startup and the
 configuration is refused if not set to an array (of strings) or a table.
 
@@ -103,7 +103,7 @@ unsuccessful condition check (in which, of course, the tasks are not executed), 
 successful one the task run is performed again.
 
 While a condition check or the execution of an associated task sequence is underway, the condition
-is marked as *busy*\ , and while a condition is in this state no further checks are performed. The
+is marked as *busy*, and while a condition is in this state no further checks are performed. The
 condition is released from its *busy* state only after all checks and tasks have been performed.
 This is important when long-running checks and tasks are requested, as this flag ensures that
 checks and tasks for a single long-running and recurring activity cannot overlap.
@@ -115,6 +115,9 @@ The following paragraphs describe in detail each condition type. For the sake of
 specific configuration entries will be described for each type.
 
 All *condition* definition sections must start with the TOML ``[[condition]]`` header.
+
+
+.. _50-conditions-interval:
 
 Interval
 --------
@@ -145,7 +148,7 @@ of condition. The following is an example of interval based condition:
 
 describing a condition that is verified one hour after **whenever** has started, and not anymore
 after the first occurrence -- because ``recurring`` is *false* here and no retries are allowed.
-Were it *true*\ , the condition would be verified *every* hour.
+Were it *true*, the condition would be verified *every* hour.
 
 The specific parameters for this type of condition are:
 
@@ -165,6 +168,9 @@ The specific parameters for this type of condition are:
 
 The check for this type of condition is never randomized.
 
+
+.. _50-conditions-time:
+
 Time
 ----
 
@@ -172,13 +178,13 @@ Time
 Time specifications are given as a list of tables, each of which can contain one or more of the
 following entries:
 
-* ``hour``\ : the hour, as an integer between 0 and 23
-* ``minute``\ : the minute, as an integer between 0 and 59
-* ``second``\ : the second, as an integer between 0 and 59
-* ``year``\ : an integer expressing the (full) year
-* ``month``\ : an integer expressing the month, between 1 (January) and 12 (December)
-* ``day``\ : an integer expressing the day of the month, between 1 and 31
-* ``weekday``\ : the name of the weekday in English, either whole or abbreviated to three letters.
+* ``hour``: the hour, as an integer between 0 and 23
+* ``minute``: the minute, as an integer between 0 and 59
+* ``second``: the second, as an integer between 0 and 59
+* ``year``: an integer expressing the (full) year
+* ``month``: an integer expressing the month, between 1 (January) and 12 (December)
+* ``day``: an integer expressing the day of the month, between 1 and 31
+* ``weekday``: the name of the weekday in English, either whole or abbreviated to three letters.
 
 Not all the entries must be specified: for instance, specifying the day of week and a full date (as
 year, month, date) may cause the event to never occur if that particular date does not occur on
@@ -239,6 +245,9 @@ parameters are:
 
 The check for this type of condition is never randomized.
 
+
+.. _50-conditions-idle:
+
 Idle session
 ------------
 
@@ -286,6 +295,9 @@ table below describes the specific configuration entries:
 
 
 The check for this type of condition is never randomized.
+
+
+.. _50-conditions-command:
 
 Command
 -------
@@ -351,7 +363,7 @@ An example of command based condition follows:
    set_environment_variables = true
    environment_variables = { VARNAME1 = "value1", VARNAME2 = "value2" }
 
-Note that the ``recurring`` flag is ``false``\ , and ``max_tasks_retries`` is set to *3*\ : this
+Note that the ``recurring`` flag is ``false``, and ``max_tasks_retries`` is set to *3*: this
 means that the check will be performed *three more times* after the first unsuccessful run of
 the associated tasks.
 
@@ -372,7 +384,7 @@ The following table illustrates the parameters specific to *command* based condi
        further times if ``recurring`` is *true*
    * - ``recur_after_failed_check``
      - *false*
-     - if set to *true* and ``recurring`` is also *true*\ , persistent successful checks after
+     - if set to *true* and ``recurring`` is also *true*, persistent successful checks after
        the first one do not run associated tasks
    * - ``startup_path``
      - N/A
@@ -386,13 +398,13 @@ The following table illustrates the parameters specific to *command* based condi
      - arguments to pass to the executable: can be an empty list, ``[]`` (mandatory)
    * - ``match_exact``
      - *false*
-     - if *true*\ , the entire output is matched instead of searching for a substring
+     - if *true*, the entire output is matched instead of searching for a substring
    * - ``match_regular_expression``
      - *false*
-     - if *true*\ , the match strings are considered regular expressions instead of substrings
+     - if *true*, the match strings are considered regular expressions instead of substrings
    * - ``case_sensitive``
      - *false*
-     - if *true*\ , substring search or match and regular expressions match is performed
+     - if *true*, substring search or match and regular expressions match is performed
        case-sensitively
    * - ``timeout_seconds``
      - (empty)
@@ -420,18 +432,18 @@ The following table illustrates the parameters specific to *command* based condi
      - the substring or RE to be found or matched on *stderr* to consider the task failed
    * - ``include_environment``
      - *true*
-     - if *true*\ , the command is executed in the same environment in which **whenever** was
+     - if *true*, the command is executed in the same environment in which **whenever** was
        started
    * - ``set_environment_variables``
      - *true*
-     - if *true*\ , **whenever** sets environment variables reporting the names of the task
+     - if *true*, **whenever** sets environment variables reporting the names of the task
        and the condition
    * - ``environment_variables``
      - ``{}``
      - extra variables that might have to be set in the environment in which the provided
        command runs
 
-If ``set_environment_variables`` is *true*\ , **whenever** sets the following environment variable:
+If ``set_environment_variables`` is *true*, **whenever** sets the following environment variable:
 
 * ``WHENEVER_CONDITION`` to the unique name of the condition that is currently being tested
 
@@ -440,15 +452,18 @@ for scripts or other executables used in checks that might be aware of **wheneve
 For this type of condition the actual test can be performed at a random time within the tick
 interval.
 
+
+.. _50-conditions-lua:
+
 Lua script
 ----------
 
-A `\ *Lua* <https://www.lua.org/>`__ script can be used to determine the verification of a
-condition: after the execution of the script, one or more variables can be checked against
-expected values and thus decide whether or not the associated tasks have to be run. Given the
-power of *Lua* and its standard library, this type of condition can constitute a lightweight
-alternative to complex scripts to call to implement a *command* based condition. The
-definition of a *Lua* condition is actually much simpler:
+A `Lua <https://www.lua.org/>`__ script can be used to determine the verification of a condition:
+after the execution of the script, one or more variables can be checked against expected values
+and thus decide whether or not the associated tasks have to be run. Given the power of *Lua* and
+its standard library, this type of condition can constitute a lightweight alternative to complex
+scripts to call to implement a *command* based condition. The definition of a *Lua* condition is
+actually much simpler:
 
 .. code-block:: toml
 
@@ -476,7 +491,7 @@ definition of a *Lua* condition is actually much simpler:
    expect_all = false
    expected_results = { result = 10 }
 
-Note that the ``recurring`` flag is ``false``\ , and ``max_tasks_retries`` is set to *-1*\ : this
+Note that the ``recurring`` flag is ``false``, and ``max_tasks_retries`` is set to *-1*: this
 means that the check will be performed until **all** the associated tasks are executed
 successfully.
 
@@ -497,14 +512,14 @@ The specific parameters are described in the following table:
        or further times if ``recurring`` is *true*
    * - ``recur_after_failed_check``
      - *false*
-     - if set to *true* and ``recurring`` is also *true*\ , persistent successful checks after
+     - if set to *true* and ``recurring`` is also *true*, persistent successful checks after
        the first one do not run associated tasks
    * - ``script``
      - N/A
      - the *Lua* code that has to be executed by the internal interpreter (mandatory)
    * - ``expect_all``
      - *false*
-     - if *true*\ , all the expected results have to be matched to consider the task successful,
+     - if *true*, all the expected results have to be matched to consider the task successful,
        otherwise at least one
    * - ``expected_results``
      - ``{}``
@@ -513,7 +528,7 @@ The specific parameters are described in the following table:
 
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
 *Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,
-at all logging levels (\ *error*\ , *warn*\ , *info*\ , *debug*\ , *trace*\ ). The library
+at all logging levels (\ *error*, *warn*, *info*, *debug*, *trace*\ ). The library
 functions are the following:
 
 * ``log.error``
@@ -533,13 +548,16 @@ error in the script is always considered a failure.
 
 The ``recur_after_failed_check`` flag allows for avoidance of multiple subsequent task runs in case
 of a persistent situation that cause the condition checks to be successful if the condition is
-marked as *recurring*\ : the associated tasks are run as soon as the check is successful for the
+marked as *recurring*: the associated tasks are run as soon as the check is successful for the
 first time, then the tasks are not executed anymore as long as this status persists. After at least
 one unsuccessful condition check (in which, of course, the tasks are not executed), at the
 following successful one the task run is performed again.
 
 For this type of condition the actual test can be performed at a random time within the tick
 interval.
+
+
+.. _50-conditions-dbus:
 
 DBus method (optional)
 ----------------------
@@ -550,23 +568,20 @@ based condition is quite complex, both in terms of definition of the method to b
 especially for what concerns the parameters to be passed to the method, and in terms of specifying
 how to test the result.\ [#fn-3]_
 
-..
-
-   **Note:** this type of item is only available when the ``dbus`` feature is enabled.
-
+.. note::
+   This type of item is only available when the ``dbus`` feature is enabled.
 
 So, as a rule of thumb:\ [#fn-4]_
 
-
 * arguments to be passed to the DBus method are specified in a list
-* criteria to determine expected return values (aka *messages*\ , which can be complex structures)
+* criteria to determine expected return values (aka *messages*, which can be complex structures)
   are expressed a list of tables of three elements each (inline tables can be used for readability),
   that is:
 
-  * ``"index"``\ : a list of elements, which can be either integers or strings representing each a
+  * ``"index"``: a list of elements, which can be either integers or strings representing each a
     positional 0-based index or a string (or *object path*\ ) key in a dictionary; this allows to
     index deeply nested structures in which part of the nested elements are dictionaries
-  * ``"operator"``\ : one of the following strings
+  * ``"operator"``: one of the following strings
 
     * ``"eq"`` for *equality*
     * ``"neq"`` for *inequality*
@@ -580,19 +595,18 @@ So, as a rule of thumb:\ [#fn-4]_
       (see below)
     * ``"ncontains"`` to indicate that the second operand *is not contained* in the first operand
 
-  * ``"value"``\ : the second operand for the specified operator.
+  * ``"value"``: the second operand for the specified operator.
 
-..
-
-   **Note:** the first element of the ``"index"`` field is always a *zero-based integer*\ :
-             this ia because a *message* is supposed to consist of an array of numbered *fields*\ :
-             if a single value is returned, which can also be as complex as a nested dictionary,
-             it is considered to be the first field (having 0 as index) of the return message,
-             thus *0* must be specified as the first value in the index.
+.. note::
+   The first element of the ``"index"`` field is always a *zero-based integer*:
+   this ia because a *message* is supposed to consist of an array of numbered *fields*:
+   if a single value is returned, which can also be as complex as a nested dictionary,
+   it is considered to be the first field (having 0 as index) of the return message,
+   thus *0* must be specified as the first value in the index.
 
 
 Please notice that not all types of operand are supported for all operators: comparisons
-(\ *greater* and *greater or equal*\ , *less* and *less or equal*\ ) are only supported
+(\ *greater* and *greater or equal*, *less* and *less or equal*\ ) are only supported
 for numbers, and matching is only supported for strings. The ``"contains"``\ /\ ``"ncontains"``
 operators support non-structured types for the second operand (booleans, numbers, and strings)
 and either strings (and object paths) or arrays and dictionaries for the first one: if the first
@@ -600,23 +614,23 @@ operand is an array the second operand is searched in the list and the check is 
 found, in case it is a dictionary then the second operand (which should be a string) is searched
 among the *keys* of the dictionary, and if the first operand is either a string or an object path,
 the check is true when the second one is a substring. Also, *comparisons always fail for
-incompatible operands*\ : integers can only be compared with integers, floating point numbers with
+incompatible operands*: integers can only be compared with integers, floating point numbers with
 floating point numbers and strings with strings -- no automatic type conversion is performed. This
 also yields for attempts to find a value in an array: an integer will never be found in an array of
 floating point numbers, and so on. To be consistent with the rule of unsuccessfulness on incompatible
-operands, the ``"ncontains"`` operator too *is unsuccessful when the operands cannot be compared*\ ,
+operands, the ``"ncontains"`` operator too *is unsuccessful when the operands cannot be compared*,
 even though, from another point of view, the opposite could have been seen as appropriate.
 
 A further difficulty is due to the fact that, while DBus is strictly typed and supports all the
-basic types supported by *C* and *C++*\ , TOML does not. TOML has instead more generic types, which
+basic types supported by *C* and *C++*, TOML does not. TOML has instead more generic types, which
 are listed below along with the DBus type to which **whenever** converts them in method invocation:
 
-* *Boolean*\ : ``BOOLEAN``
-* *Integer*\ : ``I64``
-* *Float*\ : ``F64``
-* *String*\ : ``STRING``
-* *List*\ : ``ARRAY``
-* *Map*\ : ``DICTIONARY``
+* *Boolean*: ``BOOLEAN``
+* *Integer*: ``I64``
+* *Float*: ``F64``
+* *String*: ``STRING``
+* *List*: ``ARRAY``
+* *Map*: ``DICTIONARY``
 
 This means that there are a lot of value types that are not directly derived from the native TOML
 types. **whenever** comes to help by allowing to express strictly typed values by using specially
@@ -632,7 +646,7 @@ interpreted literally: for instance, ``'\w100'`` is translated into a ``STRING``
 
 For return values, while the structure of complex entities received from DBus is kept, all values
 are automatically converted to more generic types: a returned ``BYTE`` is converted to a TOML
-*Integer*\ , and a returned ``OBJECT_PATH`` is consdered a TOML *String* which, as a side effect,
+*Integer*, and a returned ``OBJECT_PATH`` is consdered a TOML *String* which, as a side effect,
 supports the ``"match"`` operator.
 
 An example of *DBus* method based condition follows:
@@ -673,7 +687,6 @@ As shown below, ``parameter_check`` is the list of criteria against which the *r
 (the invocation results are often referred to with this terminology in DBus jargon): for what has
 been explained above, the checks are performed like this:
 
-
 #. the first element (thus with 0 as index) of the returned array is expected to be a boolean and
    to be *false*
 #. the second element is considered to be an array, whose sixth element (with index 5) must not be
@@ -688,7 +701,7 @@ not an array or a dictionary and its value is required directly, the square brac
 single index can be omitted and **whenever** does not complain. Since this is probably the most
 frequent use case, this is a way to make configuration more readable and concise in such cases.
 
-Since ``parameter_check_all`` is *false*\ , satisfaction of one of the provided criteria is
+Since ``parameter_check_all`` is *false*, satisfaction of one of the provided criteria is
 sufficient to determine the success of the condition.
 
 The specific parameters are described in the following table:
@@ -708,11 +721,11 @@ The specific parameters are described in the following table:
        times if ``recurring`` is *true*
    * - ``recur_after_failed_check``
      - *false*
-     - if set to *true* and ``recurring`` is also *true*\ , persistent successful checks after the
+     - if set to *true* and ``recurring`` is also *true*, persistent successful checks after the
        first one do not run associated tasks
    * - ``bus``
      - N/A
-     - the bus on which the method is invoked: must be either ``":system"`` or ``":session"``\ ,
+     - the bus on which the method is invoked: must be either ``":system"`` or ``":session"``,
        including the starting colon (mandatory)
    * - ``service``
      - N/A
@@ -733,12 +746,11 @@ The specific parameters are described in the following table:
        the method
    * - ``parameter_check_all``
      - *false*
-     - if *true*\ , all the provided criteria will have to be satisfied for the condition to be
+     - if *true*, all the provided criteria will have to be satisfied for the condition to be
        successful, otherwise one is enough
    * - ``parameter_check``
      - (empty)
      - a list of maps having the structure explained above
-
 
 The value corresponding to the ``service`` entry is often referred to as *bus name* in various
 documents: here *service* is preferred to avoid confusing it with the actual bus, which is
@@ -754,12 +766,15 @@ conditions to be useful -- which is very unlikely to say the least.
 
 The ``recur_after_failed_check`` flag allows for avoidance of multiple subsequent task runs in case
 of a persistent situation that cause the condition checks to be successful if the condition is
-marked as *recurring*\ : the associated tasks are run as soon as the check is successful for the
+marked as *recurring*: the associated tasks are run as soon as the check is successful for the
 first time, then the tasks are not executed anymore as long as this status persists. After at least
 one unsuccessful condition check (in which, of course, the tasks are not executed), at the following
 successful one the task run is performed again.
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
+
+
+.. _50-conditions-wmi:
 
 WMI Query based (optional, Windows only)
 ----------------------------------------
@@ -767,20 +782,18 @@ WMI Query based (optional, Windows only)
 On Windows, **whenever** allows to directly query the
 `WMI <https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-start-page>`__ subsystem, which is a
 powerful way to retrieve information. *WMI* is accessed via a query language called
-`WQL <https://learn.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi>`__\ , which is
+`WQL <https://learn.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi>`__, which is
 syntactically and semantically close to *SQL*. Queries normally return lists of compound values
 where every component has a name. For analogy with database operations and queries, this document
-will refer the returned compound values as *rows* or *records*\ , and their components as *fields*.
+will refer the returned compound values as *rows* or *records*, and their components as *fields*.
 
-..
-
-   **Note:** this type of item is only available when the ``wmi`` feature is enabled.
-
+.. note::
+   This type of item is only available when the ``wmi`` feature is enabled.
 
 *WMI* inquiries are somewhat simpler than their *DBus* counterparts, mostly because the query
 language is more structured and allows for more complex filtering at the query level. Because of
 that, and since a query can be crafted in order to directly return the values of interest without
-having to deeply inspect returned *objects*\ , **whenever** will only inspect fields containing
+having to deeply inspect returned *objects*, **whenever** will only inspect fields containing
 simple values (numbers, booleans, and strings) in a query result.
 
 The main part of a *WMI Query* based condition is obviously the *query* itself, which is provided
@@ -792,7 +805,6 @@ Since a *WMI* query returns a set of records, it is possible to filter the retur
 providing criteria: this can be done using the _result\ *check* entry, provided as a list of
 dictionaries, each representing a check, having the following entries:
 
-
 * ``index`` is the index of the row in the result set that will be checked (this sub-entry is
   optional, leaving it out means *any* row)
 * ``field`` indicates which record *field* is checked, and must be a string
@@ -803,7 +815,6 @@ dictionaries, each representing a check, having the following entries:
 Operators resemble the ones used for *DBus* return message value comparisons, with the exception
 that, since no complex values such as arrays or dictionaries are expected to be tested, operators
 that check for inclusion are not available. The supported operators are, therefore:
-
 
 * ``"eq"`` for *equality*
 * ``"neq"`` for *inequality*
@@ -865,19 +876,18 @@ The specific parameters are described in the following table:
        further times if ``recurring`` is *true*
    * - ``recur_after_failed_check``
      - *false*
-     - if set to *true* and ``recurring`` is also *true*\ , persistent successful checks after
+     - if set to *true* and ``recurring`` is also *true*, persistent successful checks after
        the first one do not run associated tasks
    * - ``query``
      - N/A
      - the *WQL* query used to inquire the system
    * - ``result_check_all``
      - *false*
-     - if *true*\ , all the provided criteria will have to be satisfied for the condition to
+     - if *true*, all the provided criteria will have to be satisfied for the condition to
        be successful, otherwise one is enough
    * - ``result_check``
      - (empty)
      - a list of maps having the structure explained above
-
 
 Note that it is not mandatory to provide criteria to filter the query result: their omission causes
 the condition to be successful if the query *returns at least one row*. Also, omitting the index on
@@ -892,13 +902,16 @@ in this sense). However, more complex and fine-grained criteria can be kept at t
 
 As said above, any error will cause the condition to be evaluated as unsuccessful.
 
+
+.. _50-conditions-event:
+
 Event based
 -----------
 
 Conditions that are fired by *events* are referred to here both as *event* conditions and as
 *bucket* conditions. The reason for the second name is that every time that **whenever** catches
 an event that has been required to be monitored, it tosses the associated condition in a sort of
-*execution bucket*\ , that is checked by the scheduler at every tick: the scheduler withdraws
+*execution bucket*, that is checked by the scheduler at every tick: the scheduler withdraws
 every condition found in the bucket and runs the associated tasks. In facts, these conditions
 only exist as a connection between the events, that occur asynchronously, and the scheduler. Their
 configuration is therefore very simple, as seen in this example:

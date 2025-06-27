@@ -1,0 +1,37 @@
+.. _35-globals:
+
+Globals
+=======
+
+Globals must be specified at the beginning of the configuration file. The supported global entries
+are the following:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Option
+     - Default
+     - Description
+   * - ``scheduler_tick_seconds``
+     - 5
+     - Number of seconds between scheduler ticks
+   * - ``randomize_checks_within_ticks``
+     - *false*
+     - Whether or not condition checks should be uniformly randomized within the tick period
+
+
+Both parameters can be omitted, in which case the default values are used: 5 seconds might seem a
+very short value for the tick period, but in fact it mimics a certain responsiveness and
+synchronization in checking *event* based conditions. Note that conditions strictly depending on
+time do not comply to the request of randomizing the check instant.
+
+.. note::
+   These values can *not* be updated at runtime: possible changes of global parameters in the
+   configuration file are only applied when the application is restarted.
+
+No other global entries than the ones described above are accepted by **whenever**: in case an
+unknown entry is found, the application will exit with an error. As in *items*, a ``[[tags]]``
+section is accepted, which can either be an array or a table whose entries and/or values are not
+checked: this section can be used by a *wrapper* in order to define global parameters that will not
+interfere with the actual configuration.
+

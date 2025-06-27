@@ -1,3 +1,4 @@
+.. _40-tasks:
 
 Tasks
 =====
@@ -10,11 +11,14 @@ Tasks are defined via a dedicated table, which means that every task definition 
 TOML ``[[task]]`` section header.
 
 Task names are mandatory, and must be provided as alphanumeric strings (may include underscores),
-beginning with a letter. The task type must be one of ``"command"``\ , ``"lua"``\ , or
+beginning with a letter. The task type must be one of ``"command"``, ``"lua"``, or
 ``"internal"`` according to what has to be configured, and any other value is considered a
-configuration error. There is another optional entry, namely ``tags``\ , that is accepted in item
+configuration error. There is another optional entry, namely ``tags``, that is accepted in item
 configuration: this entry is ignored by **whenever** itself, however it is checked for correctness
 at startup and the configuration is refused if not set to an array (of strings) or a table.
+
+
+.. _40-tasks-command:
 
 Command tasks
 -------------
@@ -87,13 +91,13 @@ and the following table provides a detailed description of the entries:
      - arguments to pass to the executable: can be an empty list, ``[]`` (mandatory)
    * - ``match_exact``
      - *false*
-     - if *true*\ , the entire output is matched instead of searching for a substring
+     - if *true*, the entire output is matched instead of searching for a substring
    * - ``match_regular_expression``
      - *false*
-     - if *true*\ , the match strings are considered regular expressions instead of substrings
+     - if *true*, the match strings are considered regular expressions instead of substrings
    * - ``case_sensitive``
      - *false*
-     - if *true*\ , substring search or match and regular expressions match is performed
+     - if *true*, substring search or match and regular expressions match is performed
        case-sensitively
    * - ``timeout_seconds``
      - (empty)
@@ -120,11 +124,11 @@ and the following table provides a detailed description of the entries:
      - the substring or RE to be found or matched on *stderr* to consider the task failed
    * - ``include_environment``
      - *true*
-     - if *true*\ , the command is executed in the same environment in which **whenever** was
+     - if *true*, the command is executed in the same environment in which **whenever** was
        started
    * - ``set_environment_variables``
      - *true*
-     - if *true*\ , **whenever** sets environment variables reporting the names of the task and the
+     - if *true*, **whenever** sets environment variables reporting the names of the task and the
        condition
    * - ``environment_variables``
      - ``{}``
@@ -142,25 +146,28 @@ assumptions have to be explicitly configured by setting either ``success_status`
 configured by specifying the maximum number of seconds to wait for the process to exit: after this
 amount of time the process is terminated and fails.
 
-If ``set_environment_variables`` is *true*\ , **whenever** sets the following environment variables:
+If ``set_environment_variables`` is *true*, **whenever** sets the following environment variables:
 
 * ``WHENEVER_TASK`` to the unique name of the task
 * ``WHENEVER_CONDITION`` to the unique name of the condition that triggered the task
 
 for scripts or other executables that might be aware of **whenever**.
 
+
+.. _40-tasks-lua:
+
 Lua script tasks
 ----------------
 
-Tasks based on `\ *Lua* <https://www.lua.org/>`_ scripts might be useful when an action has to be
+Tasks based on `Lua <https://www.lua.org/>`_ scripts might be useful when an action has to be
 performed that requires a non-trivial sequence of operations, but for which it would be excessive to
 write a specific script to be run as a command. The script to be run is embedded directly in the
 configuration file -- TOML helps in this sense, by allowing multiline strings by specification.
 
 *Lua* based tasks can be considered more lightweight than *command* tasks, as the interpreter is
 embedded in **whenever**. Also, the embedded *Lua* interpreter is enriched with library functions
-that allow to write to the **whenever** log, at all logging levels (\ *error*\ , *warn*\ , *info*\ ,
-*debug*\ , *trace*\ ). The library functions are the following:
+that allow to write to the **whenever** log, at all logging levels (\ *error*, *warn*, *info*,
+*debug*, *trace*\ ). The library functions are the following:
 
 * ``log.error``
 * ``log.warn``
@@ -205,12 +212,11 @@ and the following table provides a detailed description of the entries:
      - the *Lua* code that has to be executed by the internal interpreter (mandatory)
    * - ``expect_all``
      - *false*
-     - if *true*\ , all the expected results have to be matched to consider the task successful,
+     - if *true*, all the expected results have to be matched to consider the task successful,
        otherwise at least one
    * - ``expected_results``
      - ``{}``
      - a dictionary of variable names and their expected values to be checked after execution
-
 
 Note that *triple single quotes* have been used to embed the script: this allows to use escapes
 and quotes in the script itself. Although the script should be embedded in the configuration file,
@@ -226,14 +232,16 @@ From the embedded *Lua* interpreter there are two values set that can be accesse
 
 which might be useful if the scripts are aware of being run within **whenever**.
 
+
+.. _40-tasks-internal:
+
 Internal input command tasks
 ----------------------------
 
 This type of task is useful in case the ability of **whenever** to unattendendly do something is
 needed to control the running instance of **whenever** itself: it is possible in fact to instruct
-the scheduler to execute one of the `commands <70.intcli.md#input-commands>`_ that have been
+the scheduler to execute one of the :ref:`commands <70-intcli-input-commands>` that have been
 implemented to be used by wrapper applications. This means that the scheduler:
-
 
 * can automatically reset one or more conditions
 * can pause itself or shut itself down: in both cases there is no automatic way back
@@ -241,13 +249,12 @@ implemented to be used by wrapper applications. This means that the scheduler:
 
 and so on upon verification of a condition.
 
-..
-
-   **Note:** no security concern is raised here, as **whenever** is designed with the intention to
-   run without administration rights; obviously every kind of automation tool, which performs
-   unattended operations, might execute malicious actions under the hood, however the absence of
-   particular privileges when running and the ability to read the configuration file without the
-   need of specific tools, allow for complete control on what **whenever** does.
+.. note::
+  No security concern is raised here, as **whenever** is designed with the intention to
+  run without administration rights; obviously every kind of automation tool, which performs
+  unattended operations, might execute malicious actions under the hood, however the absence of
+  particular privileges when running and the ability to read the configuration file without the
+  need of specific tools, allow for complete control on what **whenever** does.
 
 
 The configuration for such a type of task is simple, as it only requires to set the ``command``
@@ -261,7 +268,7 @@ following:
    type = "internal"
    command = "reset_conditions Cond1 Cond2"
 
-which resets the conditions named ``Cond1`` and ``Cond2``\ , if they exist. A detailed description
+which resets the conditions named ``Cond1`` and ``Cond2``, if they exist. A detailed description
 of the parameter entries follows:
 
 .. list-table::
@@ -282,7 +289,7 @@ of the parameter entries follows:
 
 
 As mentioned above, a comprehensivew list of possible internal commands can be found in the
-appropriate `section <70.intcli.md#input-commands>`_.
+appropriate :ref:`section <70-intcli-input-commands>`.
 
 This type of item is mostly intended as a way to automate part of the behavior of **whenever**
 during a session on behalf of a wrapper, that might expose part of the configuration implemented
@@ -290,8 +297,7 @@ as a combination of internally managed conditions and specific tasks (even of th
 and simpler configuration element: an example could be the use of the *org.freedesktop.UPower*
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
-..
-
-   **Warning:** the command will *not* be checked upon configuration, it will *fail* instead
-                causing a warning to be logged in case it is invalid or malformed.
+.. warning::
+   the command will *not* be checked upon configuration, it will *fail* instead causing a warning
+   to be logged in case it is invalid or malformed.
 
