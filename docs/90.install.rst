@@ -1,0 +1,110 @@
+.. _90-install:
+
+Installation
+============
+
+**whenever** does not really need an installation: the binary files that result from the
+:ref:`build <80-build>` process are self-contained, and only need to be moved in a directory
+mentioned in the *PATH* environment variable, or just to be directly invoked using the full
+path to the executable.
+
+Running **whenever** from the command line, though, is not really useful -- if not in order
+to test a configuration file, especially if it has not been produced by means of a configuration
+utility such as `When`_. The tool, in fact, is designed to be launched by a GUI application, to
+hide the console window and to issue appropriate commands to control the scheduler execution.
+
+There are two frontend applications available for **whenever**: one is minimal, takes only about
+4MB of RAM when running, and does little more than running the scheduler in background and giving
+the user the possibility to stop it gracefully. The second one is a full-featured frontend, that
+manages the scheduler configuration, runs it in the background, provides user interaction with it,
+and exploits some of the advanced features of **whenever** to provide useful configuration items
+for the supported platform.
+
+
+.. _90-install-minimal:
+
+Minimal Frontend
+----------------
+
+The *minimal* frontend is `whenever_tray`_: the installation procedure is manual, and can be
+fulfilled following these steps:
+
+0. on Windows there are no prerequisites, so this step can be skipped. On Linux, some libraries
+   might be needed:
+
+   - *wxGTK 3.2* (or later): they should be available most of the times via the system package
+     manager, sometimes by adding a third party repository
+   - *libxss* and *libX11*, which normally come by installing *Xorg* support.
+
+   Also, enable *app indicators* if needed, using an appropriate *shell extension*.
+1. Download the latest binaries ZIP file from the **whenever** releases page (the provided one
+   contains both **whenever** and **whenever_tray**) and extract its contents in a directory
+   in the system *PATH*.
+2. Create the *application data directory* for **whenever_tray** as follows:
+
+   - on Linux: ``mkdir ~/.whenever``
+   - on Windows: ``mkdir %APPDATA%\Whenever``
+3. Edit *whenever.toml* in the *application data directory*, so that it contains the following
+   TOML configuration:
+
+   .. code-block:: toml
+
+    # whenever configuration file
+    scheduler_tick_seconds = 5
+    randomize_checks_within_ticks = true
+
+    [[task]]
+    type = "lua"
+    name = "TRACE"
+    script = '''
+        log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`");
+        '''
+
+    [[condition]]
+    name = "Periodic00"
+    type = "interval"
+    interval_seconds = 60
+    recurring = true
+    tasks = [
+        "TRACE",
+        ]
+
+    # end.
+4. in the same *application data directory*, also create the *whenever_tray.toml* file, so that
+   it contains what follows:
+
+   .. code-block:: toml
+
+    [whenever_tray]
+    # path to the text processor used to view the log file
+    #logview_command = 'gnome-text-editor'
+    #logview_command = 'gedit'
+    #logview_command = 'notepad.exe'
+
+   just uncommenting the appropriate line for a log viewer available on the platform.
+5. Launch **whenever_tray**, for example from the command line
+6. Access **whenever** from the metronome icon in the notification/tray area.
+
+The *whenever.toml* configuration file should be edited to suit your needs, as the provided
+example only logs a line (with *WARN* severity) every minute. Also, you might want to install a
+log viewer application to specify as ``logview_command`` in *whenever_tray.toml*, in lieu of a
+simple editor as shown in the provided example.
+
+
+.. _90-install-when:
+
+Complete Frontend
+-----------------
+
+At the moment the easiest way to install **whenever** and start using it effectively is through
+its full-featured frontend: `When`_. You can follow its specific installation instructions
+`here <https://almostearthling.github.io/when-command/install.html>`__: **When** takes care of
+downloading and checking the latest binary release of **whenever**, and provides a way to install
+the program icons and to autostart the scheduler upon login. Moreover, **When** offers a graphical
+UI to configure *tasks*, *conditions*, and *events*, instead of manually editing the configuration
+file.
+
+
+.. _When: https://github.com/almostearthling/when-command
+
+.. _whenever_tray: https://github.com/almostearthling/whenever_tray
