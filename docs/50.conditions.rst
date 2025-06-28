@@ -795,8 +795,8 @@ For this type of conditions the actual test can be performed at a random time wi
 
 .. _50-conditions-wmi:
 
-WMI Query based (optional, Windows only)
-----------------------------------------
+WMI Query (optional, Windows only)
+----------------------------------
 
 On Windows, **whenever** allows to directly query the
 `WMI <https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-start-page>`__ subsystem, which is a
@@ -924,8 +924,8 @@ As said above, any error will cause the condition to be evaluated as unsuccessfu
 
 .. _50-conditions-event:
 
-Event based
------------
+Event
+-----
 
 Conditions that are fired by *events* are referred to here both as *event* conditions and as
 *bucket* conditions. The reason for the second name is that every time that **whenever** catches
