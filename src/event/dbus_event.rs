@@ -206,11 +206,6 @@ impl DbusMessageEvent {
     /// provided in the `CfgMap` argument. If the `CfgMap` format does not
     /// comply with the requirements of a `DbusMessageEvent` an error is
     /// raised.
-    ///
-    /// Note that the values for the `parameter_check` entry are provided as
-    /// JSON strings, because TOML is intentionally limited to accepting only
-    /// lists of elements of the same type, and in our case we need to mix
-    /// types both as arguments to a call and as index sequences.
     pub fn load_cfgmap(
         cfgmap: &CfgMap,
         cond_registry: &'static ConditionRegistry,
@@ -304,6 +299,7 @@ impl DbusMessageEvent {
         // ones supported by DBus, and subsequent tests will take this into
         // account and compare only values compatible with each other, and
         // compatible with the operator used
+        // TODO: remove JSON support before version 0.4.0
         let check = ["index", "operator", "value"];
 
         let cur_key = "parameter_check";
@@ -323,6 +319,17 @@ impl DbusMessageEvent {
                         ERR_INVALID_VALUE_FOR_ENTRY,
                     ));
                 }
+                // NOTE: these the only parts in `check_cfgmap` that log
+                // in order to warn that use of JSON jere is deprecated
+                log(
+                    LogType::Warn,
+                    LOG_EMITTER_EVENT_DBUS,
+                    LOG_ACTION_NEW,
+                    Some((&name, 0)),
+                    LOG_WHEN_INIT,
+                    LOG_STATUS_MSG,
+                    &format!("EVENT {name} ({cur_key}): use of JSON in this context is deprecated"),
+                );
                 // and then we extract the '0' element and check it to be a list
                 let item = CfgMap::from_json(json.unwrap());
                 let item = item.get("0").unwrap();
