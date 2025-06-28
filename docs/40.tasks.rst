@@ -138,13 +138,14 @@ and the following table provides a detailed description of the entries:
 The priority used by **whenever** to determine success or failure in the task is the one in which
 the related parameters appear in the above table: first exit codes are checked, then both *stdout*
 and *stderr* are checked for substrings or regular expressions that identify success, and finally
-the same check is performed on values that indicate a failure. Most of the times just one or maybe
-two of the expected parameters will have to be set. Note that the command execution is not
-considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both
-assumptions have to be explicitly configured by setting either ``success_status`` or
-``failure_status``. If a command is known to have the possibility to hang, a timeout can be
-configured by specifying the maximum number of seconds to wait for the process to exit: after this
-amount of time the process is terminated and fails.
+the same check is performed on values that indicate a failure. Note that the command execution is
+not considered successful with a zero exit code by default, nor a failure on a nonzero exit code:
+both assumptions have to be explicitly configured by setting either ``success_status`` or
+``failure_status``.
+
+If a command is known to have the possibility to hang, a timeout can be configured by specifying
+the maximum number of seconds to wait for the process to exit: after this amount of time the
+process is terminated and fails.
 
 If ``set_environment_variables`` is *true*, **whenever** sets the following environment variables:
 
@@ -152,6 +153,13 @@ If ``set_environment_variables`` is *true*, **whenever** sets the following envi
 * ``WHENEVER_CONDITION`` to the unique name of the condition that triggered the task
 
 for scripts or other executables that might be aware of **whenever**.
+
+.. tip::
+   Many times the success or failure status can be disregarded, especially in situations where
+   a condition causes a single task to be executed. When an execution flow must be respected,
+   providing the correct parameters to identify success or failure becomes substantial, as well
+   as in cases when the associated condition is set to retry the task (or a sequence where it
+   is contained) until it succeeds.
 
 
 .. _40-tasks-lua:

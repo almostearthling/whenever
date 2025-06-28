@@ -308,8 +308,8 @@ standard output or standard error channel. The available checks are of the same 
 available for command based tasks. In fact it is possible to:
 
 * identify a provided exit code as a failure or as a success
-* specify that the presence of a substring or matching a regular expression corresponds to either
-  a failure or a success.
+* specify that the presence of a substring or matching a regular expression in what the command
+  provides as output (on both *stdout* and *stderr*) corresponds to either a failure or a success.
 
 When a success rule is specified (that is, one of the parameters with the ``success_`` prefix),
 the verification of that rule is considered a successful outcome, and outcomes that do not satisfy
@@ -328,6 +328,9 @@ then outcomes that match that rule are considered failures: any other outcome is
    and then, if none of these rules (if provided) is matched, failure is checked in the same
    order. Therefore, if one or more success rules are given, not matching them is considered
    a failure anyway and the failure rules are simply skipped.
+
+   Most of the times it is useful to just provide one or two criteria, either on the success
+   or on the failure side only.
 
 As for command based tasks, it is not mandatory to follow the usual conventions -- this means,
 for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a
