@@ -307,15 +307,31 @@ the condition is verified testing the command exit code and/or what the command 
 standard output or standard error channel. The available checks are of the same type as the ones
 available for command based tasks. In fact it is possible to:
 
-
 * identify a provided exit code as a failure or as a success
 * specify that the presence of a substring or matching a regular expression corresponds to either
   a failure or a success.
 
-Only a *success* allows the corresponding tasks to be executed: however, as for command based
-tasks, it is not mandatory to follow the usual conventions -- this means, for instance, that a
-zero exit code can be identified as a failure and a non-zero exit code as a success. A
-non-success outcome has the same effect as a failure on task execution.
+When a success rule is specified (that is, one of the parameters with the ``success_`` prefix),
+the verification of that rule is considered a successful outcome, and outcomes that do not satisfy
+any given success rule are identified as failures. On the other hand, if a failure rule is set,
+then outcomes that match that rule are considered failures: any other outcome is successful.
+
+.. tip::
+   Setting both success and failure rules is actually possible, however it is not really useful
+   because of the priority that is used when checking for success or failure in the execution
+   of a command. Success is checked first, and in the following order:
+
+   * exit code correspondance
+   * standard input search or match
+   * standard error search or match
+
+   and then, if none of these rules (if provided) is matched, failure is checked in the same
+   order. Therefore, if one or more success rules are given, not matching them is considered
+   a failure anyway and the failure rules are simply skipped.
+
+As for command based tasks, it is not mandatory to follow the usual conventions -- this means,
+for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a
+success.
 
 If a command is known to have the possibility to hang, a timeout can be configured by specifying
 the maximum number of seconds to wait for the process to exit: after this amount of time the

@@ -20,8 +20,8 @@ at startup and the configuration is refused if not set to an array (of strings) 
 
 .. _40-tasks-command:
 
-Command tasks
--------------
+Command
+-------
 
 *Command* based tasks actually execute commands at the OS level: they might have a *positive* as
 well as a *negative* outcome, depending on user-provided criteria. As said above, these criteria
@@ -156,8 +156,8 @@ for scripts or other executables that might be aware of **whenever**.
 
 .. _40-tasks-lua:
 
-Lua script tasks
-----------------
+Lua script
+----------
 
 Tasks based on `Lua <https://www.lua.org/>`_ scripts might be useful when an action has to be
 performed that requires a non-trivial sequence of operations, but for which it would be excessive to
@@ -235,8 +235,8 @@ which might be useful if the scripts are aware of being run within **whenever**.
 
 .. _40-tasks-internal:
 
-Internal input command tasks
-----------------------------
+Internal input command
+----------------------
 
 This type of task is useful in case the ability of **whenever** to unattendendly do something is
 needed to control the running instance of **whenever** itself: it is possible in fact to instruct
@@ -298,6 +298,6 @@ and simpler configuration element: an example could be the use of the *org.freed
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
 .. warning::
-   the command will *not* be checked upon configuration, it will *fail* instead causing a warning
-   to be logged in case it is invalid or malformed.
+   The providded command will *not* be checked upon configuration, it will *fail* instead causing
+   a warning to be logged in case it is invalid or malformed.
 
