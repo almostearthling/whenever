@@ -58,7 +58,7 @@ to suspend conditions that are already suspended or to resume already active con
 ignored. Typing ``exit`` or ``quit`` followed by a *carriage return* on the console window where
 **whenever** is running has almost the same effect as hitting *Ctrl+C*. The ``reset_conditions``
 command resets the internal state of all configured conditions when no arguments are provided.
-The ``trigger`` command can only receive the name of a :ref:`Command based <60-events-cli>`
+The ``trigger`` command can only receive the name of a :ref:`command based <60-events-cli>`
 event as an argument: other uses will cause the command to be ignored and an error or a warning
 to be logged.
 

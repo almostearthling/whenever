@@ -20,8 +20,8 @@ at startup and the configuration is refused if not set to an array (of strings) 
 
 .. _40-tasks-command:
 
-Command tasks
--------------
+Command
+-------
 
 *Command* based tasks actually execute commands at the OS level: they might have a *positive* as
 well as a *negative* outcome, depending on user-provided criteria. As said above, these criteria
@@ -138,13 +138,14 @@ and the following table provides a detailed description of the entries:
 The priority used by **whenever** to determine success or failure in the task is the one in which
 the related parameters appear in the above table: first exit codes are checked, then both *stdout*
 and *stderr* are checked for substrings or regular expressions that identify success, and finally
-the same check is performed on values that indicate a failure. Most of the times just one or maybe
-two of the expected parameters will have to be set. Note that the command execution is not
-considered successful with a zero exit code by default, nor a failure on a nonzero exit code: both
-assumptions have to be explicitly configured by setting either ``success_status`` or
-``failure_status``. If a command is known to have the possibility to hang, a timeout can be
-configured by specifying the maximum number of seconds to wait for the process to exit: after this
-amount of time the process is terminated and fails.
+the same check is performed on values that indicate a failure. Note that the command execution is
+not considered successful with a zero exit code by default, nor a failure on a nonzero exit code:
+both assumptions have to be explicitly configured by setting either ``success_status`` or
+``failure_status``.
+
+If a command is known to have the possibility to hang, a timeout can be configured by specifying
+the maximum number of seconds to wait for the process to exit: after this amount of time the
+process is terminated and fails.
 
 If ``set_environment_variables`` is *true*, **whenever** sets the following environment variables:
 
@@ -153,11 +154,18 @@ If ``set_environment_variables`` is *true*, **whenever** sets the following envi
 
 for scripts or other executables that might be aware of **whenever**.
 
+.. tip::
+   Many times the success or failure status can be disregarded, especially in situations where
+   a condition causes a single task to be executed. When an execution flow must be respected,
+   providing the correct parameters to identify success or failure becomes substantial, as well
+   as in cases when the associated condition is set to retry the task (or a sequence where it
+   is contained) until it succeeds.
+
 
 .. _40-tasks-lua:
 
-Lua script tasks
-----------------
+Lua script
+----------
 
 Tasks based on `Lua <https://www.lua.org/>`_ scripts might be useful when an action has to be
 performed that requires a non-trivial sequence of operations, but for which it would be excessive to
@@ -235,8 +243,8 @@ which might be useful if the scripts are aware of being run within **whenever**.
 
 .. _40-tasks-internal:
 
-Internal input command tasks
-----------------------------
+Internal input command
+----------------------
 
 This type of task is useful in case the ability of **whenever** to unattendendly do something is
 needed to control the running instance of **whenever** itself: it is possible in fact to instruct
@@ -298,6 +306,6 @@ and simpler configuration element: an example could be the use of the *org.freed
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
 .. warning::
-   the command will *not* be checked upon configuration, it will *fail* instead causing a warning
-   to be logged in case it is invalid or malformed.
+   The providded command will *not* be checked upon configuration, it will *fail* instead causing
+   a warning to be logged in case it is invalid or malformed.
 
