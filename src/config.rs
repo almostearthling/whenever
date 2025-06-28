@@ -1335,7 +1335,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening",),
+                                        &format!("service for event {event_name} still listening"),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
@@ -1410,7 +1410,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening",),
+                                        &format!("service for event {event_name} still listening"),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
@@ -1486,7 +1486,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening",),
+                                        &format!("service for event {event_name} still listening"),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
@@ -1560,7 +1560,7 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening",),
+                                        &format!("service for event {event_name} still listening"),
                                     );
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
