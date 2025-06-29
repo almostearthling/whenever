@@ -306,6 +306,6 @@ and simpler configuration element: an example could be the use of the *org.freed
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
 .. warning::
-   The providded command will *not* be checked upon configuration, it will *fail* instead causing
+   The provided command will *not* be checked upon configuration, it will *fail* instead causing
    a warning to be logged in case it is invalid or malformed.
 
