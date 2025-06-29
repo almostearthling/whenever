@@ -3,9 +3,9 @@
 Tasks
 =====
 
-*Tasks* are handled first in this document, because *conditions* must mandatorily specify the tasks
-to be executed upon verification. There are two types of task, each of which is described in detail
-in its specific subsection.
+*Tasks* are handled first in this document, because *conditions* must mandatorily specify the
+tasks to be executed upon verification. There are three types of task, each of which is described
+in detail in its specific subsection.
 
 Tasks are defined via a dedicated table, which means that every task definition must start with the
 TOML ``[[task]]`` section header.
