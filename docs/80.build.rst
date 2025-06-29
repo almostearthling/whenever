@@ -60,7 +60,7 @@ default. Taking Debian as an example, the following packages must be installed:
 With these packages installed, the scheduler compiles without errors. However, since not all Linux
 distributions come with *Xscreensaver* support (which is used to determine idle time), the related
 condition might not be checked and never fire. There is a *DBus* based workaround, that allows to
-use :ref:`Idle session <50-conditions-idle>` conditions on Linux: the idle time, in this case, is
+use :ref:`idle session <50-conditions-idle>` conditions on Linux: the idle time, in this case, is
 counted as the amount of seconds after the screen has been locked. To enable this workaround, just
 edit the *Cargo.toml* file by uncommenting the second of the following lines:
 

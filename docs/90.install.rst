@@ -13,12 +13,13 @@ to test a configuration file, especially if it has not been produced by means of
 utility such as `When`_. The tool, in fact, is designed to be launched by a GUI application, to
 hide the console window and to issue appropriate commands to control the scheduler execution.
 
-There are two frontend applications available for **whenever**: one is minimal, takes only about
-4MB of RAM when running, and does little more than running the scheduler in background and giving
-the user the possibility to stop it gracefully. The second one is a full-featured frontend, that
-manages the scheduler configuration, runs it in the background, provides user interaction with it,
-and exploits some of the advanced features of **whenever** to provide useful configuration items
-for the supported platform.
+There are two frontend applications available for **whenever**: the former is minimal, takes only
+about 4MB of RAM while running, and does little more than executing the scheduler in background
+and giving the user the possibility to stop it gracefully. The latter is a full-featured frontend,
+that manages the scheduler configuration, runs it in the background, provides user interaction
+with it, and exploits some of the advanced features of **whenever** to provide a more effective
+interface and some specific configuration items (tasks, conditions and events) for the platform
+it is running on.
 
 
 .. _90-install-minimal:
@@ -87,8 +88,9 @@ fulfilled following these steps:
 
 The *whenever.toml* configuration file should be edited to suit your needs, as the provided
 example only logs a line (with *WARN* severity) every minute. Also, you might want to install a
-log viewer application to specify as ``logview_command`` in *whenever_tray.toml*, in lieu of a
-simple editor as shown in the provided example.
+log viewer application to specify as ``logview_command`` in *whenever_tray.toml*, instead of
+using generic editor like the ones shown in the example above: for instance, `glogg`_ has been
+very useful in my case on both Linux and Windows.
 
 
 .. _90-install-when:
@@ -108,3 +110,5 @@ file.
 .. _When: https://github.com/almostearthling/when-command
 
 .. _whenever_tray: https://github.com/almostearthling/whenever_tray
+
+.. _glogg: https://glogg.bonnefon.org/

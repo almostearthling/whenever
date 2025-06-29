@@ -45,7 +45,8 @@ Note that, since *Lua* scripts are allowed to log at each of the above described
 emitted by *Lua* script might not always correspond to what is illustrated above.
 
 As mentioned above, just after the *context*, in the message *payload*, a string of the form
-``[WHEN/STATUS]`` appears that can be used to better identify of the message, where
+``[WHEN/STATUS]`` appears that can be used to better identify the reason why the message has
+been issued, where
 
 
 * *WHEN* represents the *nature* of the log entry, and can be one of
@@ -62,7 +63,8 @@ As mentioned above, just after the *context*, in the message *payload*, a string
   * ``BUSY`` when the message is intended for a receiver (generally a wrapper) that might show
     whether the scheduler is busy\ [#fn-1]_ or not: *outcome* is here ``YES`` or ``NO``
   * ``PAUSE`` when the message is intended for a receiver (generally a wrapper) that might show
-    whether the scheduler has been paused: *outcome* is here ``YES`` or ``NO``
+    whether the scheduler has been paused\ [#fn-2]_ or resumed: *outcome* is here ``YES`` or
+    ``NO``.
 
 * *STATUS* holds the *outcome* of the current activity, and is one of the following:
 
@@ -74,8 +76,8 @@ As mentioned above, just after the *context*, in the message *payload*, a string
   * ``START``\ /\ ``END`` are pseudo-outcomes that only occur when the *nature* is ``HIST``, to
     mark the beginning or the end of an activity
   * ``YES``\ /\ ``NO`` are pseudo-outcomes that only occur when the *nature* is one of ``BUSY`` or
-    ``PAUSE``, according to the actual busy[^1] state or to the fact that the scheduler has been
-    paused or resumed respectively.\ [#fn-2]_
+    ``PAUSE``, according to the actual busy state or to the fact that the scheduler has been
+    paused or resumed respectively.
 
 This string appears *before* a human-readable message, so that it can be used by a wrapper to
 filter or highlight an entry when displaying the log -- completely or partially. Sometimes it might
@@ -114,7 +116,8 @@ followed by the actual log contents, consisting of
 
 * a human readable message (``"message"``)
 
-in order to better handle the logs and to provide feedback to the user. A sample JSON record is shown below:
+in order to better handle the logs and to provide feedback to the user. A sample JSON record is
+shown below:
 
 .. code-block:: json
 
