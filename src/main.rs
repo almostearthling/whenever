@@ -247,7 +247,7 @@ macro_rules! exit_if_fails {
 }
 
 // reset the conditions whose names are provided in a vector of &str
-fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
+fn reset_conditions(names: &[String]) -> Result<bool> {
     for name in names {
         if !CONDITION_REGISTRY.has_condition(name) {
             log(
@@ -312,7 +312,7 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
 }
 
 // set the suspended state for a condition identified by its name
-fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool> {
+fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
     if !CONDITION_REGISTRY.has_condition(name) {
         log(
             LogType::Error,

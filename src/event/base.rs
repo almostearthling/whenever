@@ -124,7 +124,7 @@ pub trait Event: Send + Sync {
     /// When either the condition is not associated or the execution bucket
     /// has not been set: each would indicate an error in the program flow.
     /// Also panics if the event has not been registered.
-    fn fire_condition(&self) -> std::io::Result<bool> {
+    fn fire_condition(&self) -> Result<bool> {
         assert!(
             self.get_id() != 0,
             "event {} not registered",

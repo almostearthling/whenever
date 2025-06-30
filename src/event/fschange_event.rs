@@ -148,7 +148,7 @@ impl FilesystemChangeEvent {
     }
 
     /// Add a location to be watched.
-    pub fn watch_location(&mut self, location: &str) -> std::io::Result<bool> {
+    pub fn watch_location(&mut self, location: &str) -> Result<bool> {
         let p = PathBuf::from(location);
         if p.exists() {
             self.log(
