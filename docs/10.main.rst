@@ -117,7 +117,7 @@ The supported types of :ref:`condition <50-conditions>` are the following:
 * :ref:`Lua script execution <50-conditions-lua>`: a *Lua* script is run using the embedded
   interpreter, and if the contents of one or more variables meet the specified expectations
   the condition is considered verified
-* `DBus inspection (optional) <50-conditions-dbus>`: a *DBus* method is called and the result
+* :ref:`DBus inspection (optional) <50-conditions-dbus>`: a *DBus* method is called and the result
   is checked against some criteria provided in the configuration file
 * :ref:`WMI query (optional, Windows only) <50-conditions-wmi>`: a *WMI* query is executed and
   the result is checked against some criteria provided in the configuration file
