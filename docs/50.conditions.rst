@@ -783,12 +783,21 @@ itself to yield *false*.
 Note that DBus based conditions are supported on Windows, however DBus should be running for such
 conditions to be useful -- which is very unlikely to say the least.
 
-The ``recur_after_failed_check`` flag allows for avoidance of multiple subsequent task runs in case
-of a persistent situation that cause the condition checks to be successful if the condition is
-marked as *recurring*: the associated tasks are run as soon as the check is successful for the
-first time, then the tasks are not executed anymore as long as this status persists. After at least
-one unsuccessful condition check (in which, of course, the tasks are not executed), at the following
-successful one the task run is performed again.
+The ``recur_after_failed_check`` flag allows for avoidance of multiple subsequent task runs in
+case of a persistent situation that cause the condition checks to be successful if the condition
+is marked as *recurring*: the associated tasks are run as soon as the check is successful for the
+first time, then the tasks are not executed anymore as long as this status persists. After at
+least one unsuccessful condition check (in which, of course, the tasks are not executed), at the
+following successful one the task run is performed again.
+
+.. warning::
+   Before version *0.4.x*, **whenever** used to accept parameters to be sent to a method (the
+   ``parameter_call`` entry) and the result criteria (the ``parameter_check`` entry) as JSON
+   encoded strings: this is not supported anymore, and the entries *must* be specified as TOML
+   lists. `When`_ can be used to convert an old configuration file to the new format, by using
+   the ``when tool --fix-config`` tool from the command line.
+
+.. _When: https://github.com/almostearthling/when-command
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
 

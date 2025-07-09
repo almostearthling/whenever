@@ -171,6 +171,14 @@ that may arise during checks will cause the check itself to yield *false*.
 
 If no parameter checks are provided, the event arises simply when the signal is caught.
 
+.. warning::
+   Before version *0.4.x*, **whenever** used to accept the check criteria (that is, the
+   ``parameter_check`` entry) as a JSON encoded string: this is not supported anymore, and the
+   entry *must* be specified as a TOML list. `When`_ can be used to convert an old configuration
+   file to the new format, by using    the ``when tool --fix-config`` tool from the command line.
+
+.. _When: https://github.com/almostearthling/when-command
+
 
 .. _60-events-wmi:
 
