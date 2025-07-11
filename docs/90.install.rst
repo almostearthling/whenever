@@ -89,7 +89,7 @@ fulfilled following these steps:
 The *whenever.toml* configuration file should be edited to suit your needs, as the provided
 example only logs a line (with *WARN* severity) every minute. Also, you might want to install a
 log viewer application to specify as ``logview_command`` in *whenever_tray.toml*, instead of
-using generic editor like the ones shown in the example above: for instance, `glogg`_ has been
+using a generic editor like the ones shown in the example above: for instance, `glogg`_ has been
 very useful in my case on both Linux and Windows.
 
 
