@@ -13,7 +13,7 @@
   * :zzz: session inactivity,
   * :rotating_light: _DBus_ signals on Linux, and _WMI_ event queries on Windows.
 
-and more. The ability to inspect [_DBus_](https://www.freedesktop.org/wiki/Software/dbus/) and [_WMI_](https://learn.microsoft.com/it-it/windows/win32/wmisdk/wmi-start-page), and to react to signals and events, and to use system commands and check their status and output, allows for conditions to be triggered by virtually every possible change in the system status.
+and more. The ability to inspect [_DBus_](https://www.freedesktop.org/wiki/Software/dbus/) and [_WMI_](https://learn.microsoft.com/it-it/windows/win32/wmisdk/wmi-start-page) as well as react to the respective signals and events, and to use system commands and check their status and output, allows for conditions to be triggered by virtually every possible change in the system status.
 
 The scheduler intends to remain as frugal as possible in terms of used computational resources, and to possibly run at a low priority level, while still providing high flexibility and configurability. The configuration is provided by a [TOML](https://toml.io/) file, which must contain all definitions for conditions and associated tasks, as well as events that the scheduler should listen to while running in the background.
 
