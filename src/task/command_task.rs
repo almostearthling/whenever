@@ -26,7 +26,7 @@ use std::env;
 use std::ffi::OsString;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use itertools::Itertools;
@@ -153,14 +153,10 @@ impl CommandTask {
     /// * `args` - a list of parameters to be passed to the command
     /// * `startup_dir` - the OS directory where to start the command from
     ///
-    /// The `command` and `startup_dir` are `PathBuf`s, and must exist. The
-    /// command arguments must be passed in a `Vec` of owned `String`s in order
-    /// to enable the correct invocation.
-    ///
-    /// FIXME:
-    ///     1. use a `Vec<&str>` instead of a `Vec<String>` for arguments
-    ///     2. use `Path` for `command` and `startup_dir`.
-    pub fn new(name: &str, command: &PathBuf, args: &Vec<String>, startup_dir: &PathBuf) -> Self {
+    /// The `command` and `startup_dir` are `Path`s, and must exist. Command
+    /// arguments must be passed in a `Vec` of owned `String`s in order to
+    /// enable the correct invocation.
+    pub fn new(name: &str, command: &Path, args: &Vec<String>, startup_dir: &Path) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_TASK_COMMAND,
@@ -180,7 +176,7 @@ impl CommandTask {
 
             // specific members initialization
             // parameters
-            command: command.clone(),
+            command: PathBuf::from(command),
             args: args.clone(),
             startup_dir: PathBuf::from(startup_dir),
             match_exact: false,

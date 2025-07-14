@@ -1,10 +1,7 @@
 //! # whenever
 //!
-//! A simple multiplatform background job launcher based upon verification of
-//! various types of conditions.
-//!
-//! It is intended as a 100% Rust successor to the core part of the Python
-//! based [When](https://github.com/almostearthling/when-command) utility.
+//! A lightweight multiplatform background job launcher based upon
+//! verification of various types of conditions.
 
 use std::io::{BufRead, Stdin, stdin};
 use std::sync::{Mutex, RwLock};
