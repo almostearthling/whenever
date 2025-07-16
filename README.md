@@ -1,9 +1,13 @@
 # The Whenever Task Scheduler
 
-![HeaderImage](docs/graphics/metronome.png)
+![HeaderImage](docs/graphics/banner.png)
+
+> _This is not the scheduler you are looking for..._
+
+[![pages-build-deployment](https://github.com/almostearthling/whenever/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/almostearthling/whenever/actions/workflows/pages/pages-build-deployment)
 
 
-**whenever** is a lightweight scheduler and automation tool capable of executing _tasks_ (in particular, OS commands and _Lua_ scripts) according to specific _conditions_. Conditions can be of several types:
+**whenever** is a lightweight automation tool capable of executing _tasks_ when specific _conditions_ are verified. Conditions can be of several types, for example:
 
 * :alarm_clock: time based, that is, verified at intervals or specific more-or-less defined instants,
 * :wrench: depending on the results of OS commands or _Lua_ scripts,
@@ -13,20 +17,77 @@
   * :zzz: session inactivity,
   * :rotating_light: _DBus_ signals on Linux, and _WMI_ event queries on Windows.
 
-and more. The ability to inspect [_DBus_](https://www.freedesktop.org/wiki/Software/dbus/) and [_WMI_](https://learn.microsoft.com/it-it/windows/win32/wmisdk/wmi-start-page) as well as react to the respective signals and events, and to use system commands to check their status and output, allows for conditions to be activated virtually at every possible change in the system status.
+while _tasks_ mostly consist in the execution of OS commands and _Lua_ scripts. This is done within a desktop session, without the need for the user to have administrative rights.
 
-The scheduler intends to remain as frugal as possible in terms of used computational resources, and to possibly run at a low priority level, while still providing high flexibility and configurability. The configuration is provided by a [TOML](https://toml.io/) file, which must contain all definitions for conditions and associated tasks, as well as events that the scheduler should listen to while running in the background.
 
-Even though **whenever** is a command line application, it is designed for desktops: therefore it should be executed via a controlling GUI frontend. Currently, there are two companion wrappers available:
+## :sparkles: Purpose
+
+**whenever** works on both Linux and Windows: on Linux it allows for a more flexible way of automating actions compared to the traditional _cron_ method, and on Windows it offers a more streamlined way to schedule activities, compared to the system-provided _Time Scheduler_ which is available through the system management console.
+
+The ability to inspect [_DBus_](https://www.freedesktop.org/wiki/Software/dbus/) and [_WMI_](https://learn.microsoft.com/it-it/windows/win32/wmisdk/wmi-start-page) as well as react to the respective signals and events, and to use system commands to check their status and output, allows for conditions to be activated virtually at every possible change in the system status.
+
+The tool intends to remain as frugal as possible in terms of used computational resources, and to possibly run at a low priority level, while still providing high flexibility and configurability. The configuration is provided by a [TOML](https://toml.io/) file, which must contain all definitions for conditions and associated tasks, as well as events that the application should listen to while running in the background.
+
+
+## :floppy_disk: Installation
+
+Even though **whenever** is a console application, it is designed for desktops: therefore it should be executed via a controlling GUI frontend. Currently, there are two companion wrappers available:
 
 * [When](https://github.com/almostearthling/when-command), a Python based fully featured application to configure and run **whenever**,
 * [whenever_tray](https://github.com/almostearthling/whenever_tray), a minimal wrapper that displays an icon in the system tray and provides basic interaction.
 
-Prebuilt binaries can be downloaded from the [releases](https://github.com/almostearthling/whenever/releases) page, and basic [installation instructions](https://almostearthling.github.io/whenever/90.install.html) can be found in the online documentation. However, the easiest (and suggested) way to get **whenever** up and running, is to [install When](https://almostearthling.github.io/when-command/install.html), use it to download and configure **whenever**, and set it up to start when the user session begins.
+Prebuilt binaries can be downloaded from the [releases](https://github.com/almostearthling/whenever/releases) page, and basic [installation instructions](https://almostearthling.github.io/whenever/90.install.html) are provided in the online documentation. However, the easiest (and suggested) way to get **whenever** up and running, is to [install When](https://almostearthling.github.io/when-command/install.html), use it to download and configure **whenever**, and set it up to start when the user session begins.
+
+The provided binaries are self-contained on Windows, and almost so on Linux: on Linux they require the _X.org_ subsystem to be installed, a prerequisite that is often satisfied. So, to just give a try to the console application you can:
+
+1. download the prebuilt binary archive suitable for your OS, and extract the **whenever** executable to a directory in your PATH, for example _~/.local/bin_ if present
+2. create and edit a file named _whenever.toml_, so that it contains the following text:
+
+   ```toml
+   [[task]]
+   type = "lua"
+   name = "TRACE"
+   script = '''log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`");'''
+
+   [[condition]]
+   name = "Periodic_15s"
+   type = "interval"
+   interval_seconds = 15
+   recurring = true
+   tasks = ["TRACE"]
+   ```
+
+3. launch the following command, in the same directory where _whenever.toml_ is located:
+
+   ```shell
+   whenever -L trace whenever.toml
+   ```
+
+The output should be similar to the following:
+
+[![asciicast](https://asciinema.org/a/2q7yy5p1uqv9FBRRGl53LvZUb.svg)](https://asciinema.org/a/2q7yy5p1uqv9FBRRGl53LvZUb)
+
+Well, not that impressive... But, in fact, **whenever** has not been designed to be used this way.
+
+To terminate the console application, just hit `Ctrl+C` and it will gracefully stop.
+
+
+## :book: Documentation
+
+Detailed [documentation](https://almostearthling.github.io/whenever/index.html) is available, which explains how to configure **whenever** by manually editing its configuration file. However, the installation and the configuration via the **When** frontend are definitely easier, and the most useful resources are in this case the following:
+
+* [Installation](https://almostearthling.github.io/when-command/install.html)
+* [Tutorial](https://almostearthling.github.io/when-command/tutorial.html)
+* [Manual](https://almostearthling.github.io/when-command/main.html)
+
+As said above, **When** is helpful as a frontend also for most of the common setup and configuration issues.
+
+
+## :beetle: Bug Reporting
+
+If there is a bug in the **whenever** application, please use the project [issue tracker](https://github.com/almostearthling/whenever/issues) to report it.
+
+
+## :balance_scale: License
 
 **whenever** is released under the terms of the [LGPL v2.1](LICENSE).
-
-Please refer to the [documentation](https://almostearthling.github.io/whenever/index.html) for configuration and installation details.
-
-
-[![pages-build-deployment](https://github.com/almostearthling/whenever/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/almostearthling/whenever/actions/workflows/pages/pages-build-deployment)
