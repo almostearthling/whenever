@@ -1,0 +1,72 @@
+.. _20-cli:
+
+Command Line Interface
+======================
+
+The command can be directly invoked as a foreground process from the command line. This is
+particularly useful (especially with full logging enabled) to debug the configuration.
+**whenever** either logs to the console or to a specified file. When logging to the console,
+different colors are used by default to visually accentuate messages related to different
+logging levels.
+
+By invoking **whenever** and specifying ``--help`` as argument, the output is the following:
+
+.. code-block:: text
+
+   ~$ whenever --help
+   A lightweight task scheduler and automation tool
+
+   Usage: whenever [OPTIONS] <CONFIG>
+
+   Arguments:
+     <CONFIG>  Path to configuration file
+
+   Options:
+     -q, --quiet              Suppress all output
+     -p, --pause              Start in paused mode
+     -r, --check-running      Check whether an instance is running
+     -O, --options            Provide the list of available optional features
+     -l, --log <LOGFILE>      Specify the log file
+     -L, --log-level <LEVEL>  Specify the log level [default: warn] [possible values: trace, debug, info, warn, error]
+     -a, --log-append         Append to an existing log file if found
+     -P, --log-plain          No colors when logging (default when logging to file)
+     -C, --log-color          Use colors when logging (default, ignored when logging to file)
+     -J, --log-json           Use JSON format for logging
+     -h, --help               Print help
+     -V, --version            Print version
+
+The only elements that should be highlighted are the following:
+
+
+* **whenever** also suppresses errors in *quiet* mode, it is recommended to at least specify a log
+  file
+* it is possible to suppress colors when logging to console, by specifying ``--log-plain`` as an
+  argument
+* when run within a wrapper, **whenever** can emit log messages in the JSON format, to make it
+  easier for the wrapper to interpret and classify them
+* **whenever** can be started in paused mode
+* when checking for another running instance, the ``whenever --check-running`` command exits
+  immediately with a ``0`` exit code if another instance is found, ``1`` otherwise: it also writes
+  an answer to the standard output that can be suppressed using the ``--quiet`` switch.\ [#fn-1]_
+
+When debugging a configuration file, it might be useful to set the log level at least to *debug*,
+if not to *trace* which also emits some redundant messages.
+
+An important thing to notice is that configuration errors will cause **whenever** to abort, by
+issuing a very brief message on the console.
+
+Also, **whenever** will refuse to start when another instance is running for the same user (that
+is, most of the times in the same session): the ``--check-running`` switch has been introduced to
+possibly allow a launcher to perform a test before attempting to actually start the scheduler. On
+the same host, however, different users can launch instances of **whenever**, which are
+considered different.
+
+To exit from **whenever** (when running as a CLI program from an interactive shell) che usual
+*Ctrl+C* key combination can be used. This will however wait for all currently running activities,
+be it condition checks or tasks, to finish. In order to force **whenever** to exit abruptly,
+either a :ref:`command <70-intcli-input-commands>` must be used or it must be explicitly killed.
+
+
+.. [#fn-1] Executables compiled in *debug mode*, however, do not consider an active release
+           instance as running, and the instance check option will only report an active debug
+           instance to a deb ug instance, and an active release instance to a release instance.
