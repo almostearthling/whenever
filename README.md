@@ -83,7 +83,7 @@ Detailed [documentation](https://almostearthling.github.io/whenever/index.html) 
 As said above, **When** is helpful as a frontend also for most of the common setup and configuration issues.
 
 
-## :beetle: Bug Reporting
+## :lady_beetle: Bug Reporting
 
 If there is a bug in the **whenever** application, please use the project [issue tracker](https://github.com/almostearthling/whenever/issues) to report it.
 
