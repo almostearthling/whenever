@@ -567,7 +567,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn trigger_event(&self, name: &str) -> std::io::Result<bool> {
+    pub fn trigger_event(&self, name: &str) -> Result<bool> {
         assert!(self.has_event(name), "event {name} not in registry");
         assert!(
             self.event_triggerable(name).unwrap(),

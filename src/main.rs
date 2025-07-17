@@ -1,10 +1,7 @@
 //! # whenever
 //!
-//! A simple multiplatform background job launcher based upon verification of
-//! various types of conditions.
-//!
-//! It is intended as a 100% Rust successor to the core part of the Python
-//! based [When](https://github.com/almostearthling/when-command) utility.
+//! A lightweight multiplatform background job launcher based upon
+//! verification of various types of conditions.
 
 use std::io::{BufRead, Stdin, stdin};
 use std::sync::{Mutex, RwLock};
@@ -247,7 +244,7 @@ macro_rules! exit_if_fails {
 }
 
 // reset the conditions whose names are provided in a vector of &str
-fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
+fn reset_conditions(names: &[String]) -> Result<bool> {
     for name in names {
         if !CONDITION_REGISTRY.has_condition(name) {
             log(
@@ -312,7 +309,7 @@ fn reset_conditions(names: &[String]) -> std::io::Result<bool> {
 }
 
 // set the suspended state for a condition identified by its name
-fn set_suspended_condition(name: &str, suspended: bool) -> std::io::Result<bool> {
+fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
     if !CONDITION_REGISTRY.has_condition(name) {
         log(
             LogType::Error,

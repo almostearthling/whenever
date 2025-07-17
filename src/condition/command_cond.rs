@@ -18,7 +18,7 @@ use std::env;
 use std::ffi::OsString;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
 use itertools::Itertools;
@@ -172,7 +172,7 @@ impl Hash for CommandCondition {
 #[allow(dead_code)]
 impl CommandCondition {
     /// Create a new external command based condition with the given parameters
-    pub fn new(name: &str, command: &PathBuf, args: &Vec<String>, startup_dir: &PathBuf) -> Self {
+    pub fn new(name: &str, command: &Path, args: &Vec<String>, startup_dir: &Path) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_COMMAND,
@@ -209,7 +209,7 @@ impl CommandCondition {
 
             // specific members initialization
             // parameters
-            command: command.clone(),
+            command: PathBuf::from(command),
             args: args.clone(),
             startup_dir: PathBuf::from(startup_dir),
             match_exact: false,

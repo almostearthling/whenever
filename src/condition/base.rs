@@ -516,7 +516,7 @@ pub trait Condition: Send {
                             LOG_STATUS_MSG,
                             &format!("task {name} completed: outcome is {}", {
                                 if *outcome { "success" } else { "failure" }
-                            },),
+                            }),
                         );
                     } else {
                         self.log(

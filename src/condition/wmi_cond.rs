@@ -889,7 +889,7 @@ impl Condition for WmiQueryCondition {
                     } else {
                         "some"
                     }
-                },),
+                }),
             );
 
             let severity;

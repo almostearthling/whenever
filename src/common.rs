@@ -601,7 +601,7 @@ pub mod cmditem {
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
                     log_message =
-                        format!("condition expected success exit code NOT matched: {expected}",);
+                        format!("condition expected success exit code NOT matched: {expected}");
                     failure_reason = FailureReason::Status;
                 }
             } else if let Some(expectedf) = failure_status {
@@ -610,7 +610,7 @@ pub mod cmditem {
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
                     log_message =
-                        format!("condition expected failure exit code matched: {expectedf}",);
+                        format!("condition expected failure exit code matched: {expectedf}");
                     failure_reason = FailureReason::Status;
                 }
             }
@@ -672,7 +672,7 @@ pub mod cmditem {
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
                             log_message =
-                                format!("condition expected success exit code {expected} matched",);
+                                format!("condition expected success exit code {expected} matched");
                         } else {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
@@ -985,7 +985,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition success stdout {p:?} matched",);
+                                                format!("condition success stdout {p:?} matched");
                                         } else {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
@@ -1000,13 +1000,13 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} found",);
+                                            format!("condition success stdout {p:?} found");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} NOT found",);
+                                            format!("condition success stdout {p:?} NOT found");
                                         failure_reason = FailureReason::StdOut;
                                     }
                                 }
@@ -1022,7 +1022,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition success stderr {p:?} matched",);
+                                                format!("condition success stderr {p:?} matched");
                                         } else {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
@@ -1037,13 +1037,13 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} found",);
+                                            format!("condition success stderr {p:?} found");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} NOT found",);
+                                            format!("condition success stderr {p:?} NOT found");
                                         failure_reason = FailureReason::StdErr;
                                     }
                                 }
@@ -1059,7 +1059,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition failure stdout {p:?} matched",);
+                                                format!("condition failure stdout {p:?} matched");
                                             failure_reason = FailureReason::StdOut;
                                         } else {
                                             severity = LogType::Debug;
@@ -1074,14 +1074,14 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} found",);
+                                            format!("condition failure stdout {p:?} found");
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} NOT found",);
+                                            format!("condition failure stdout {p:?} NOT found");
                                     }
                                 }
                             }
@@ -1096,7 +1096,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition failure stderr {p:?} matched",);
+                                                format!("condition failure stderr {p:?} matched");
                                             failure_reason = FailureReason::StdErr;
                                         } else {
                                             severity = LogType::Debug;
@@ -1111,14 +1111,14 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} found",);
+                                            format!("condition failure stderr {p:?} found");
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} NOT found",);
+                                            format!("condition failure stderr {p:?} NOT found");
                                     }
                                 }
                             }
@@ -1134,7 +1134,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition success stdout {p:?} matched",);
+                                                format!("condition success stdout {p:?} matched");
                                         } else {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
@@ -1152,13 +1152,13 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} found",);
+                                            format!("condition success stdout {p:?} found");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} NOT found",);
+                                            format!("condition success stdout {p:?} NOT found");
                                         failure_reason = FailureReason::StdOut;
                                     }
                                 }
@@ -1174,7 +1174,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition success stderr {p:?} matched",);
+                                                format!("condition success stderr {p:?} matched");
                                         } else {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
@@ -1192,13 +1192,13 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} found",);
+                                            format!("condition success stderr {p:?} found");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} NOT found",);
+                                            format!("condition success stderr {p:?} NOT found");
                                         failure_reason = FailureReason::StdErr;
                                     }
                                 }
@@ -1214,7 +1214,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition failure stdout {p:?} matched",);
+                                                format!("condition failure stdout {p:?} matched");
                                             failure_reason = FailureReason::StdOut;
                                         } else {
                                             severity = LogType::Debug;
@@ -1232,14 +1232,14 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} found",);
+                                            format!("condition failure stdout {p:?} found");
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} NOT found",);
+                                            format!("condition failure stdout {p:?} NOT found");
                                     }
                                 }
                             }
@@ -1254,7 +1254,7 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message =
-                                                format!("condition failure stderr {p:?} matched",);
+                                                format!("condition failure stderr {p:?} matched");
                                             failure_reason = FailureReason::StdErr;
                                         } else {
                                             severity = LogType::Debug;
@@ -1272,14 +1272,14 @@ pub mod cmditem {
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} found",);
+                                            format!("condition failure stderr {p:?} found");
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} NOT found",);
+                                            format!("condition failure stderr {p:?} NOT found");
                                     }
                                 }
                             }
@@ -2995,9 +2995,9 @@ pub mod wres {
     impl fmt::Display for Error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             if self.origin != Origin::Native {
-                write!(f, "{} ({}): {}", &self.kind, &self.origin, &self.message,)
+                write!(f, "{} ({}): {}", &self.kind, &self.origin, &self.message)
             } else {
-                write!(f, "{}: {}", &self.kind, &self.message,)
+                write!(f, "{}: {}", &self.kind, &self.message)
             }
         }
     }

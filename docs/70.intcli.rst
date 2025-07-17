@@ -1,0 +1,90 @@
+.. _70-intcli-input-commands:
+
+Input Commands
+==============
+
+As said above, **whenever** accepts commands (in the form of *command lines*) through the
+standard input. Actually, no prompt is shown, and the console log will keep showing up
+continuously even when an user types any interactive command: in fact the *stdin* based
+interface is mainly aimed at wrapping **whenever** into a graphical shell that could use these
+commands to control the scheduler.
+
+A *command line* is intended here as one of the commands in the table below, possibly followed
+by one or more arguments, when supported, separated by whitespace and terminated by a
+*carriage return* -- meaning that ``'\n'`` must be used at the end of the line when sending a
+command from the wrapper. Unsupported commands or arguments cause **whenever** to log an error,
+however the offending *command line* is just ignored with no other side effects.
+
+The available commands are:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Command
+     - Arguments
+     - Action
+   * - ``pause``
+     - *none*
+     - the scheduler keeps running, but all checks are suspended
+   * - ``resume``
+     - *none*
+     - resume from a paused state: enabled conditions are checked again
+   * - ``exit`` (or ``quit``)
+     - *none*
+     - shut down **whenever**, waiting for running activity to finish
+   * - ``kill``
+     - *none*
+     - shut down **whenever** immediately, terminating all current activity
+   * - ``reset_conditions``
+     - [Cond1 [Cond2 [...]]]
+     - reset the state of specified conditions: the *optional* arguments are names of conditions
+       to be reset (all by default)
+   * - ``suspend_condition``
+     - Condition
+     - suspend the specified condition: the condition name argument is mandatory
+   * - ``resume_condition``
+     - Condition
+     - resume the specified condition from a suspended state: the condition name argument is
+       mandatory
+   * - ``trigger``
+     - Event
+     - trigger the specified event causing the associated conditions to fire
+   * - ``configure``
+     - *valid path*
+     - load a new configuration from the file located at the provided path
+
+The ``pause`` command is ignored in paused state, and ``resume`` is ignored otherwise. Attempts
+to suspend conditions that are already suspended or to resume already active conditions are also
+ignored. Typing ``exit`` or ``quit`` followed by a *carriage return* on the console window where
+**whenever** is running has almost the same effect as hitting *Ctrl+C*. The ``reset_conditions``
+command resets the internal state of all configured conditions when no arguments are provided.
+The ``trigger`` command can only receive the name of a :ref:`command based <60-events-cli>`
+event as an argument: other uses will cause the command to be ignored and an error or a warning
+to be logged.
+
+The ``configure`` command can be used to load a new configuration (or reload a modified one) while
+the scheduler is running: in case some of the items are already present in the configuration *and*
+they are **identical** to the originally loaded ones in terms of provided parameters, the original
+ones are left in their status -- this means, in particular, that unchanged conditions are *not*
+reset, and unchanged event listening services are *not* restarted when reloading a configuration.
+It is important to notice that **all characters beginning from the first non-blank up to the last
+non-blank** following the ``configure`` command are considered part of the provided file name,
+including spaces other blank characters. Possible errors are detected and leave the application
+status unchanged. Also, neither environment variable nor *tilde* expansions are performed, and
+both quotes (either single or double) and backslashes are interpreted literally. A configuration
+reload only affects *item* configurations: in order to reset the global parameters, the scheduler
+application must be fully restarted.
+
+.. note::
+   *Resetting* the internal state of a condition indicates that, after the operation, the
+   condition has the same state as when the scheduler just started. It mostly has effect on
+   :ref:`interval <50-conditions-interval>` based conditions, conditions that are *not recurring*
+   -- especially when the ``max_tasks_retries`` parameter is specified, as the number of
+   available retries is set back to the provided value. In the first case, the condition
+   operates as if the interval counter had started in the instant of its reset. The second case
+   is actually more interesting, as the success state is taken back to an undetermined state,
+   and thus the scheduler starts checking the condition again even if it had succeeded before.
+   A condition that is resumed using the ``resume_condition`` command also receives a ``reset``,
+   so that conditions that depend on waiting for a certain amount of time to fire do not count
+   the time spent in suspended state as part of the time to wait for.
+
