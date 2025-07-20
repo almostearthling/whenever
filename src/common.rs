@@ -145,7 +145,7 @@ pub mod logging {
             w,
             "[{}] {} {} {}",
             format!("{}", now.format(NOW_FMT)),
-            dimmed.paint(format!("({})", APP_NAME)),
+            dimmed.paint(format!("({APP_NAME})")),
             style(level).paint(format!("{:5}", level.to_string())),
             bold.paint(format!("{}", &record.args())),
         )
@@ -297,8 +297,7 @@ pub mod logging {
         status: &str,
         message: &str,
     ) {
-        let payload;
-        if *LOGGER_EMITS_JSON.read().unwrap() {
+        let payload = if *LOGGER_EMITS_JSON.read().unwrap() {
             let context = if let Some((item, item_id)) = item {
                 json!({
                     "emitter": emitter,
@@ -318,20 +317,20 @@ pub mod logging {
                 "when": when,
                 "status": status,
             });
-            payload = json!({
+            json!({
                 "context": context,
                 "message_type": message_type,
                 "message": message,
             })
-            .to_string();
+            .to_string()
         } else {
             let item_repr = if let Some((name, id)) = item {
                 format!(" {name}/{id}")
             } else {
                 String::new()
             };
-            payload = format!("{emitter} {action}{item_repr}: [{when}/{status}] {message}");
-        }
+            format!("{emitter} {action}{item_repr}: [{when}/{status}] {message}")
+        };
         match severity {
             LogType::Trace => {
                 trace!("{payload}")
@@ -591,10 +590,8 @@ pub mod cmditem {
             severity = LogType::Debug;
             ref_log_when = LOG_WHEN_PROC;
             ref_log_status = LOG_STATUS_OK;
-            log_message = format!(
-                "command: `{}` exited with SUCCESS status {statusmsg}",
-                command_line,
-            );
+            log_message =
+                format!("command: `{command_line}` exited with SUCCESS status {statusmsg}",);
             if let Some(expected) = success_status {
                 if *expected != 0 {
                     severity = LogType::Debug;
@@ -629,8 +626,7 @@ pub mod cmditem {
                     ref_log_status = LOG_STATUS_OK;
                     process_status = *v;
                     log_message = format!(
-                        "command: `{}` exited with FAILURE status {statusmsg}",
-                        command_line
+                        "command: `{command_line}` exited with FAILURE status {statusmsg}",
                     );
                     if let Some(expectedf) = failure_status {
                         if v == expectedf {
@@ -694,8 +690,7 @@ pub mod cmditem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message =
-                        format!("command: `{}` ended for reason {statusmsg}", command_line);
+                    log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
                     failure_reason = FailureReason::Other;
                 }
                 ExitStatus::Other(v) => {
@@ -703,8 +698,7 @@ pub mod cmditem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message =
-                        format!("command: `{}` ended for reason {statusmsg}", command_line);
+                    log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
                     failure_reason = FailureReason::Other;
                 }
                 ExitStatus::Undetermined => {
@@ -712,8 +706,7 @@ pub mod cmditem {
                     severity = LogType::Warn;
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_FAIL;
-                    log_message =
-                        format!("command: `{}` ended for reason {statusmsg}", command_line);
+                    log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
                     failure_reason = FailureReason::Other;
                 }
             }
@@ -1385,10 +1378,10 @@ pub mod dbusitem {
     ///
     /// short explaination, so that I remember how to use it:
     /// - `Index`: contains a list of indexes which specify, also for nested
-    ///            structures. This means that for an array of mappings it
-    ///            might be of the form `{ 1, 3, "somepos" }` where the first
-    ///            `1` is the argument index, the `3` is the array index, and
-    ///            `"somepos"` is the mapping index.
+    ///   structures. This means that for an array of mappings it might be of
+    ///   the form `{ 1, 3, "somepos" }` where the first`1` is the argument
+    ///   index, the `3` is the array index, and `"somepos"` is the mapping
+    ///   index.
     /// - `Operator`: the operator to check the payload against
     /// - `Value`: the value to compare the parameter entry to
     #[derive(Debug)]
@@ -1467,12 +1460,10 @@ pub mod dbusitem {
                     // i64 that is created to test for inclusion, and large u64
                     // numbers are be automatically discarded and set to `None`
                     // which is never matched
-                    let testv: Vec<Option<i64>>;
-                    match a.element_signature().as_str() {
+                    let testv: Vec<Option<i64>> = match a.element_signature().as_str() {
                         "y" => {
                             // BYTE
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::U8(z) = x {
                                         Some(i64::from(*z))
@@ -1480,12 +1471,11 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         "n" => {
                             // INT16
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::I16(z) = x {
                                         Some(i64::from(*z))
@@ -1493,12 +1483,11 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         "q" => {
                             // UINT16
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::I16(z) = x {
                                         Some(i64::from(*z))
@@ -1506,12 +1495,11 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         "i" => {
                             // INT32
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::I32(z) = x {
                                         Some(i64::from(*z))
@@ -1519,12 +1507,11 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         "u" => {
                             // UINT32
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::U32(z) = x {
                                         Some(i64::from(*z))
@@ -1532,12 +1519,11 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         "x" => {
                             // INT64
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::I64(z) = x {
                                         Some(*z)
@@ -1545,7 +1531,7 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         "t" => {
                             // UINT64
@@ -1553,8 +1539,7 @@ pub mod dbusitem {
                             // unsigned integer surely do not match the provided
                             // value, we just convert them to `None` here, which
                             // will never match
-                            testv = a
-                                .iter()
+                            a.iter()
                                 .map(|x| {
                                     if let zvariant::Value::U64(z) = x {
                                         if *z <= i64::MAX as u64 {
@@ -1566,12 +1551,12 @@ pub mod dbusitem {
                                         None
                                     }
                                 })
-                                .collect();
+                                .collect()
                         }
                         _ => {
                             return false;
                         }
-                    }
+                    };
                     testv.contains(&Some(*self))
                 }
                 _ => false,
@@ -1648,7 +1633,7 @@ pub mod dbusitem {
         fn is_contained_in(&self, v: &zvariant::Value) -> bool {
             match v {
                 zvariant::Value::Array(a) => {
-                    for elem in a.to_vec() {
+                    for elem in a.iter().cloned() {
                         if let zvariant::Value::Str(s) = elem {
                             if self.is_match(s.as_str()) {
                                 return true;
@@ -1883,9 +1868,9 @@ pub mod dbusitem {
     /// message, suitable for being issued by the specialized logging function
     /// defined by the item.
     pub fn dbus_check_message(
-        message: &Message,                // the dbus message
-        checks: &Vec<ParameterCheckTest>, // item.param_checks
-        checks_all: bool,                 // item.checks_all
+        message: &Message,              // the dbus message
+        checks: &[ParameterCheckTest],  // item.param_checks
+        checks_all: bool,               // item.checks_all
     ) -> (
         bool,         // verified
         LogType,      // the log severity
@@ -2713,7 +2698,7 @@ pub mod wmiitem {
             };
 
             ResultCheckTest {
-                index: self.index.clone(),
+                index: self.index,
                 field: self.field.clone(),
                 operator: self.operator.clone(),
                 value,
@@ -2802,7 +2787,7 @@ pub mod wmiitem {
     /// defined by the item.
     pub fn wmi_check_result(
         result: &Vec<HashMap<String, Variant>>, // the dbus message
-        checks: &Vec<ResultCheckTest>,          // item.result_checks
+        checks: &[ResultCheckTest],             // item.result_checks
         checks_all: bool,                       // item.checks_all
     ) -> (
         bool,         // verified
@@ -2951,7 +2936,7 @@ pub mod wres {
 
         #[cfg(windows)]
         #[cfg(feature = "wmi")]
-        WMI,
+        Wmi,
 
         // ...
         Unknown,
@@ -2973,7 +2958,7 @@ pub mod wres {
 
                     #[cfg(windows)]
                     #[cfg(feature = "wmi")]
-                    Origin::WMI => "wmi",
+                    Origin::Wmi => "wmi",
 
                     // ...
                     Origin::Unknown => "unknown",
@@ -3066,7 +3051,7 @@ pub mod wres {
             };
             Self {
                 kind,
-                origin: Origin::WMI,
+                origin: Origin::Wmi,
                 message: e.to_string(),
             }
         }

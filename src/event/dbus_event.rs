@@ -41,8 +41,8 @@ const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;
 /// DBus library. Configurations are provided for the different platforms.
 ///
 /// **Note**: the `match_rule` holds a string implementing the *match rules*:
-///           see [match rules](https://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-routing-match-rules)
-///           in the DBus specification for the exact (formal) syntax.
+/// see [match rules](https://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-routing-match-rules)
+/// in the DBus specification for the exact (formal) syntax.
 pub struct DbusMessageEvent {
     // common members
     // parameters
@@ -303,16 +303,15 @@ impl DbusMessageEvent {
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
-            let params;
-            if !item.is_list() {
+            let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY,
                 ));
             } else {
-                params = item.clone();
-            }
+                item.clone()
+            };
             let item = params.as_list().unwrap();
             for spec in item.iter() {
                 if !spec.is_map() {
@@ -544,16 +543,15 @@ impl DbusMessageEvent {
         // performed like this: of course here no structure is created
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
-            let params;
-            if !item.is_list() {
+            let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY,
                 ));
             } else {
-                params = item.clone();
-            }
+                item.clone()
+            };
             let item = params.as_list().unwrap();
             for spec in item.iter() {
                 if !spec.is_map() {

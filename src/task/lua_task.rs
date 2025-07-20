@@ -432,13 +432,12 @@ impl Task for LuaTask {
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
                 &format!(
-                    "(trigger: {trigger_name}) cannot start Lua interpreter ({})",
-                    e,
+                    "(trigger: {trigger_name}) cannot start Lua interpreter ({e})",
                 ),
             );
             return Err(Error::new(
                 Kind::Failed,
-                &format!("cannot start Lua interpreter ({})", e),
+                &format!("cannot start Lua interpreter ({e})"),
             ));
         }
         let lua = lua.unwrap();

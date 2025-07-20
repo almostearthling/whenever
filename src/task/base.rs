@@ -16,8 +16,8 @@ use crate::constants::*;
 /// Define the interface for `Task` objects.
 ///
 /// **Note**: the methods prefixed with an underscore must be defined in
-///           the types implementing the trait, but *must not* be used
-///           by the trait object users.
+/// the types implementing the trait, but *must not* be used by the trait
+/// object users.
 #[allow(dead_code)]
 pub trait Task: Send {
     /// Mandatory ID setter for registration.
@@ -140,7 +140,7 @@ pub trait Task: Send {
                     LogType::Trace,
                     LOG_WHEN_HISTORY,
                     LOG_STATUS_HIST_END,
-                    &format!("ERR/trigger:{trigger_name} error: {}", e),
+                    &format!("ERR/trigger:{trigger_name} error: {e}"),
                 );
             }
         }

@@ -26,16 +26,12 @@ use crate::cfghelp::*;
 
 /// Check the configuration from a string
 pub fn check_configuration(config_file: &str) -> Result<()> {
-    let config_map: CfgMap; // to be initialized below
-
-    match toml::from_str(fs::read_to_string(config_file)?.as_str()) {
-        Ok(toml_text) => {
-            config_map = CfgMap::from_toml(toml_text);
-        }
+    let config_map: CfgMap = match toml::from_str(fs::read_to_string(config_file)?.as_str()) {
+        Ok(toml_text) => CfgMap::from_toml(toml_text),
         _ => {
             return Err(Error::new(Kind::Invalid, ERR_INVALID_CONFIG_FILE));
         }
-    }
+    };
 
     // check that the first level keys are only the admitted ones
     let check = vec![
@@ -75,21 +71,14 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                     return Err(Error::new(Kind::Invalid, ERR_INVALID_TASK_CONFIG));
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
                     let item_type = item_type.as_str().unwrap();
-                    let name;
-                    match item_type.as_str() {
+                    let name = match item_type.as_str() {
                         "command" => {
-                            name = task::command_task::CommandTask::check_cfgmap(
-                                entry.as_map().unwrap(),
-                            )?;
+                            task::command_task::CommandTask::check_cfgmap(entry.as_map().unwrap())?
                         }
-                        "lua" => {
-                            name = task::lua_task::LuaTask::check_cfgmap(entry.as_map().unwrap())?;
-                        }
-                        "internal" => {
-                            name = task::internal_task::InternalTask::check_cfgmap(
-                                entry.as_map().unwrap(),
-                            )?;
-                        }
+                        "lua" => task::lua_task::LuaTask::check_cfgmap(entry.as_map().unwrap())?,
+                        "internal" => task::internal_task::InternalTask::check_cfgmap(
+                            entry.as_map().unwrap(),
+                        )?,
                         // ...
                         _ => {
                             return Err(Error::new(Kind::Invalid, ERR_INVALID_TASK_TYPE));
@@ -115,58 +104,57 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
                     let task_list = task_list.iter().map(|x| x.as_str()).collect();
                     let item_type = item_type.as_str().unwrap();
-                    let name;
-                    match item_type.as_str() {
+                    let name = match item_type.as_str() {
                         "interval" => {
-                            name = condition::interval_cond::IntervalCondition::check_cfgmap(
+                            condition::interval_cond::IntervalCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         "idle" => {
-                            name = condition::idle_cond::IdleCondition::check_cfgmap(
+                            condition::idle_cond::IdleCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         "time" => {
-                            name = condition::time_cond::TimeCondition::check_cfgmap(
+                            condition::time_cond::TimeCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         "command" => {
-                            name = condition::command_cond::CommandCondition::check_cfgmap(
+                            condition::command_cond::CommandCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         "lua" => {
-                            name = condition::lua_cond::LuaCondition::check_cfgmap(
+                            condition::lua_cond::LuaCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            name = condition::dbus_cond::DbusMethodCondition::check_cfgmap(
+                            condition::dbus_cond::DbusMethodCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            name = condition::wmi_cond::WmiQueryCondition::check_cfgmap(
+                            condition::wmi_cond::WmiQueryCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         "bucket" | "event" => {
-                            name = condition::bucket_cond::BucketCondition::check_cfgmap(
+                            condition::bucket_cond::BucketCondition::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &task_list,
-                            )?;
+                            )?
                         }
                         // ...
                         _ => {
@@ -193,34 +181,33 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
                 } else if let Some(item_type) = entry.as_map().unwrap().get("type") {
                     let condition_list = condition_list.iter().map(|x| x.as_str()).collect();
                     let item_type = item_type.as_str().unwrap();
-                    let name;
-                    match item_type.as_str() {
+                    let name = match item_type.as_str() {
                         "fschange" => {
-                            name = event::fschange_event::FilesystemChangeEvent::check_cfgmap(
+                            event::fschange_event::FilesystemChangeEvent::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &condition_list,
-                            )?;
+                            )?
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            name = event::dbus_event::DbusMessageEvent::check_cfgmap(
+                            event::dbus_event::DbusMessageEvent::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &condition_list,
-                            )?;
+                            )?
                         }
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            name = event::wmi_event::WmiQueryEvent::check_cfgmap(
+                            event::wmi_event::WmiQueryEvent::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &condition_list,
-                            )?;
+                            )?
                         }
                         "cli" => {
-                            name = event::manual_event::ManualCommandEvent::check_cfgmap(
+                            event::manual_event::ManualCommandEvent::check_cfgmap(
                                 entry.as_map().unwrap(),
                                 &condition_list,
-                            )?;
+                            )?
                         }
                         // ...
                         _ => {

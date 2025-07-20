@@ -156,7 +156,7 @@ impl CommandTask {
     /// The `command` and `startup_dir` are `Path`s, and must exist. Command
     /// arguments must be passed in a `Vec` of owned `String`s in order to
     /// enable the correct invocation.
-    pub fn new(name: &str, command: &Path, args: &Vec<String>, startup_dir: &Path) -> Self {
+    pub fn new(name: &str, command: &Path, args: &[String], startup_dir: &Path) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_TASK_COMMAND,
@@ -177,7 +177,7 @@ impl CommandTask {
             // specific members initialization
             // parameters
             command: PathBuf::from(command),
-            args: args.clone(),
+            args: args.to_owned(),
             startup_dir: PathBuf::from(startup_dir),
             match_exact: false,
             match_regexp: false,
@@ -468,14 +468,14 @@ impl CommandTask {
 
         new_task.success_stdout = cfg_string(cfgmap, "success_stdout")?;
         new_task.success_stderr = cfg_string(cfgmap, "success_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)?
         {
             new_task.success_status = Some(v as u32);
         }
 
         new_task.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
         new_task.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)?
         {
             new_task.failure_status = Some(v as u32);
         }
@@ -603,11 +603,11 @@ impl CommandTask {
 
         cfg_string(cfgmap, "success_stdout")?;
         cfg_string(cfgmap, "success_stderr")?;
-        cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?;
+        cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)?;
 
         cfg_string(cfgmap, "failure_stdout")?;
         cfg_string(cfgmap, "failure_stderr")?;
-        cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?;
+        cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)?;
 
         cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)?;
 

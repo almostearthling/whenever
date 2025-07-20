@@ -184,8 +184,8 @@ pub trait Event: Send + Sync {
     /// it happens.
     ///
     /// **Note**: the worker function must be self-contained, in the sense that
-    ///           it must _not_ modify the internals of the structure, apart
-    ///           from a flag that states that the service thread is running.
+    /// it must _not_ modify the internals of the structure, apart from a flag
+    /// that states that the service thread is running.
     ///
     /// The default implementation is only suitable for events that do not
     /// require a listener, all other event type must reimplement it.

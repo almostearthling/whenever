@@ -11,9 +11,9 @@
 //! * _suspension_ - whether or not a `Condition` has to be checked
 //! * _recurrency_ - a `Condition` can be either _one-shot_ or recurring
 //! * _checkedness_ - whether or not a `Condition` has ever been checked after
-//!                   last reset
+//!   last reset
 //! * _successfulness_ - whether or not last check result was a success since
-//!                      last verification
+//!   last verification
 //!
 //! Note that being _suspended_ for a `Condition` is different from being
 //! _active_: an _active_ condition is such if it has been registered in the
@@ -32,8 +32,8 @@ use crate::task::registry::TaskRegistry;
 /// Define the interface for `Condition` objects.
 ///
 /// **Note**: the methods prefixed with an underscore must be defined in
-///           the types implementing the trait, but *must not* be used
-///           by the trait object users.
+/// the types implementing the trait, but *must not* be used by the trait
+/// object users.
 #[allow(dead_code)]
 pub trait Condition: Send {
     /// Mandatory ID setter for registration.
@@ -174,7 +174,7 @@ pub trait Condition: Send {
     /// * `Ok(Some(true))` - the _only_ case considered a success
     /// * `Ok(Some(false))` - a verified failure in the test
     /// * `Ok(None)` - indefinite state, it normally should indicate that it
-    ///                was impossible to check the condition; yields a failure
+    ///   was impossible to check the condition; yields a failure
     /// * `Err(_)` - an error occurred and will be logged, failure anyway
     ///
     /// The different return states are logged accordingly by the trait-defined
@@ -220,7 +220,7 @@ pub trait Condition: Send {
     /// * `Ok(Some(true))` - the _only_ case considered a success
     /// * `Ok(Some(false))` - a verified failure in the test
     /// * `Ok(None)` - indefinite state, it normally should indicate that it
-    ///                was impossible to check the condition; yields a failure
+    ///   was impossible to check the condition; yields a failure
     /// * `Err(_)` - an error occurred and will be logged, failure anyway
     ///
     /// The result of the `_check_condition` function is logged, as well as
@@ -439,7 +439,7 @@ pub trait Condition: Send {
     /// as task outcomes after execution.
     ///
     /// **Note**: This function waits for all tasks to finish prior to
-    ///           returning: spawning a separate thread may be needed.
+    /// returning: spawning a separate thread may be needed.
     ///
     /// # Panics
     ///
@@ -570,7 +570,7 @@ pub trait Condition: Send {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
-                        &"some tasks failed: no retries left, will stop checking".to_string(),
+                        "some tasks failed: no retries left, will stop checking",
                     );
                 }
             } else {
@@ -578,7 +578,7 @@ pub trait Condition: Send {
                     LogType::Debug,
                     LOG_WHEN_END,
                     LOG_STATUS_MSG,
-                    &"some tasks failed: will retry until all succeed".to_string(),
+                    "some tasks failed: will retry until all succeed",
                 );
             }
         }

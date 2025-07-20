@@ -42,13 +42,16 @@ fn generate_task_id() -> i64 {
     UID_GENERATOR.next_id()
 }
 
+// define a type for boxed task references
+type TaskRef = Box<dyn Task>;
+
 /// The task registry: there must be one and only one task registry in each
 /// instance of the process, and should have `'static` lifetime. It may be
 /// passed around as a reference for tasks.
 pub struct TaskRegistry {
     // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
-    task_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Task>>>>>,
+    task_list: RwLock<HashMap<String, Arc<Mutex<TaskRef>>>>,
 
     // counter to verify whether there are running tasks at a moment
     running_sessions: Arc<Mutex<u64>>,
@@ -57,7 +60,7 @@ pub struct TaskRegistry {
     // need to be added are stored as full (dyn) items, while the ones to
     // be removed are stored as names
     items_to_remove: Arc<Mutex<Vec<String>>>,
-    items_to_add: Arc<Mutex<Vec<Box<dyn Task>>>>,
+    items_to_add: Arc<Mutex<Vec<TaskRef>>>,
 }
 
 #[allow(dead_code)]
@@ -148,7 +151,7 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * `boxed_task` - an object implementing the `base::Task` trait,
-    ///                  provided to the function as a `Box<dyn Task>`
+    ///   provided to the function as a `Box<dyn Task>` aka `TaskRef`
     ///
     /// # Returns
     ///
@@ -156,14 +159,14 @@ impl TaskRegistry {
     /// * `Ok(false)` - the task could not be inserted
     ///
     /// **Note**: the task is _moved_ into the registry, and can only be
-    ///           released (and given back stored in a `Box`) using the
-    ///           `remove_task`function. Also, although the possible outcomes
-    ///           include an error condition, `Err(_)` is never returned.
+    /// released (and given back stored in a `Box`) using the `remove_task`
+    /// function. Also, although the possible outcomes include an error
+    /// condition, `Err(_)` is never returned.
     ///
     /// # Panics
     ///
     /// May panic if the task registry could not be locked for insertion.
-    pub fn add_task(&self, mut boxed_task: Box<dyn Task>) -> Result<bool> {
+    pub fn add_task(&self, mut boxed_task: TaskRef) -> Result<bool> {
         let name = boxed_task.get_name();
         if self.has_task(&name) {
             return Ok(false);
@@ -180,7 +183,7 @@ impl TaskRegistry {
 
     /// Add or replace an already-boxed `Task` while running: if the registry
     /// is busy running any task all modifications are deferred
-    pub fn dynamic_add_or_replace_task(&self, boxed_task: Box<dyn Task>) -> Result<bool> {
+    pub fn dynamic_add_or_replace_task(&self, boxed_task: TaskRef) -> Result<bool> {
         let name = boxed_task.get_name();
         let sessions = self.running_sessions.clone();
         let sessions = sessions
@@ -243,7 +246,7 @@ impl TaskRegistry {
     /// # Panics
     ///
     /// May panic if the task registry could not be locked for extraction.
-    pub fn remove_task(&self, name: &str) -> Result<Option<Box<dyn Task>>> {
+    pub fn remove_task(&self, name: &str) -> Result<Option<TaskRef>> {
         if self.has_task(name) {
             match self
                 .task_list
@@ -564,7 +567,7 @@ impl TaskRegistry {
     /// until it returns.
     ///
     /// TODO: this might be reimplemented with a maximum concurrency level,
-    ///       possibly using a _thread pool_.
+    /// possibly using a _thread pool_.
     ///
     /// # Arguments
     ///

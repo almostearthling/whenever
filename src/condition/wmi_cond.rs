@@ -192,7 +192,7 @@ impl WmiQueryCondition {
     /// Set the query: no validity check is performed
     pub fn set_query(&mut self, query: &str) -> bool {
         self.query = Some(String::from(query));
-        return true;
+        true
     }
 
     /// Return an owned copy of the query
@@ -898,7 +898,7 @@ impl Condition for WmiQueryCondition {
             let log_message;
 
             (verified, severity, log_when, log_status, log_message) =
-                wmi_check_result(&results, &checks, self.result_checks_all);
+                wmi_check_result(&results, checks, self.result_checks_all);
             self.log(severity, log_when, log_status, &log_message);
         } else {
             panic!("attempt to verify condition without initializing tests")
@@ -918,7 +918,7 @@ impl Condition for WmiQueryCondition {
                 LogType::Debug,
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
-                &"persistent success status: waiting for failure to recur".to_string(),
+                "persistent success status: waiting for failure to recur",
             );
         }
 

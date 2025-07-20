@@ -36,6 +36,9 @@ fn generate_condition_id() -> i64 {
     UID_GENERATOR.next_id()
 }
 
+// define a type for boxed condition references
+type ConditionRef = Box<dyn Condition>;
+
 /// The condition registry: there must be one and only one condition registry
 /// in each instance of the process, and should have `'static` lifetime. It may
 /// be passed around as a reference.
@@ -43,7 +46,7 @@ pub struct ConditionRegistry {
     // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself; on the other hand, the _busy_
     // flag is kept in a `Mutex` because it changes quite dynamically
-    condition_list: RwLock<HashMap<String, Arc<Mutex<Box<dyn Condition>>>>>,
+    condition_list: RwLock<HashMap<String, Arc<Mutex<ConditionRef>>>>,
     conditions_busy: Arc<Mutex<u64>>,
 
     // a list of conditions to be reset as soon as they become not busy
@@ -56,7 +59,7 @@ pub struct ConditionRegistry {
     // need to be added are stored as full (dyn) items, while the ones to
     // be removed are stored as names
     items_to_remove: Arc<Mutex<Vec<String>>>,
-    items_to_add: Arc<Mutex<Vec<Box<dyn Condition>>>>,
+    items_to_add: Arc<Mutex<Vec<ConditionRef>>>,
 }
 
 #[allow(dead_code)]
@@ -158,8 +161,8 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// * `boxed_condition` - an object implementing the `base::Condition`
-    ///                       trait, provided to the function as a
-    ///                       `Box<dyn Condition>`
+    ///   trait, provided to the function as a `Box<dyn Condition>` aka
+    ///   `ConditionRef`
     ///
     /// # Returns
     ///
@@ -167,15 +170,14 @@ impl ConditionRegistry {
     /// * `Ok(false)` - the condition could not be inserted
     ///
     /// **Note**: the condition is _moved_ into the registry, and can only be
-    ///           released (and given back stored in a `Box`) using the
-    ///           `remove_condition` function. Also, although the possible
-    ///           outcomes include an error condition, `Err(_)` is never
-    ///           returned.
+    /// released (and given back stored in a `Box`) using the `remove_condition`
+    /// function. Also, although the possible outcomes include an error
+    /// condition, `Err(_)` is never returned.
     ///
     /// # Panics
     ///
     /// May panic if the condition registry could not be locked for insertion.
-    pub fn add_condition(&self, mut boxed_condition: Box<dyn Condition>) -> Result<bool> {
+    pub fn add_condition(&self, mut boxed_condition: ConditionRef) -> Result<bool> {
         let name = boxed_condition.get_name();
         if self.has_condition(&name) {
             return Ok(false);
@@ -194,7 +196,7 @@ impl ConditionRegistry {
     /// registry is busy running any condition all modifications are deferred
     pub fn dynamic_add_or_replace_condition(
         &self,
-        boxed_condition: Box<dyn Condition>,
+        boxed_condition: ConditionRef,
     ) -> Result<bool> {
         let name = boxed_condition.get_name();
         let busy = self.conditions_busy.clone();
@@ -262,7 +264,7 @@ impl ConditionRegistry {
     /// or if an attempt is made to extract a condition that is in use (FIXME:
     /// maybe it should return an error in this case? for now the scheduler is
     /// suspended while reconfiguring, the only actual case for removal).
-    pub fn remove_condition(&self, name: &str) -> Result<Option<Box<dyn Condition>>> {
+    pub fn remove_condition(&self, name: &str) -> Result<Option<ConditionRef>> {
         if self.has_condition(name) {
             let mut cl0 = self
                 .condition_list

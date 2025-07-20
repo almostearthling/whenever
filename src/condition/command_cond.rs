@@ -172,7 +172,7 @@ impl Hash for CommandCondition {
 #[allow(dead_code)]
 impl CommandCondition {
     /// Create a new external command based condition with the given parameters
-    pub fn new(name: &str, command: &Path, args: &Vec<String>, startup_dir: &Path) -> Self {
+    pub fn new(name: &str, command: &Path, args: &[String], startup_dir: &Path) -> Self {
         log(
             LogType::Debug,
             LOG_EMITTER_CONDITION_COMMAND,
@@ -210,7 +210,7 @@ impl CommandCondition {
             // specific members initialization
             // parameters
             command: PathBuf::from(command),
-            args: args.clone(),
+            args: args.to_owned(),
             startup_dir: PathBuf::from(startup_dir),
             match_exact: false,
             match_regexp: false,
@@ -607,14 +607,14 @@ impl CommandCondition {
 
         new_condition.success_stdout = cfg_string(cfgmap, "success_stdout")?;
         new_condition.success_stderr = cfg_string(cfgmap, "success_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)?
         {
             new_condition.success_status = Some(v as u32);
         }
 
         new_condition.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
         new_condition.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)?
         {
             new_condition.failure_status = Some(v as u32);
         }
@@ -776,11 +776,11 @@ impl CommandCondition {
 
         cfg_string(cfgmap, "success_stdout")?;
         cfg_string(cfgmap, "success_stderr")?;
-        cfg_int_check_interval(cfgmap, "success_status", 0, std::u32::MAX as i64)?;
+        cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)?;
 
         cfg_string(cfgmap, "failure_stdout")?;
         cfg_string(cfgmap, "failure_stderr")?;
-        cfg_int_check_interval(cfgmap, "failure_status", 0, std::u32::MAX as i64)?;
+        cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)?;
 
         cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)?;
 
@@ -956,7 +956,7 @@ impl Condition for CommandCondition {
     /// exits and the success criteria are met, the condition is verified.
     ///
     /// **NOTE**: this is an _almost exact_ copy of the `_run()` method in
-    ///           the command based `CommandTask` task structure.
+    ///  the command based `CommandTask` task structure.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
         self.log(
             LogType::Debug,
@@ -1191,7 +1191,7 @@ impl Condition for CommandCondition {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &"persistent success status: waiting for failure to recur".to_string(),
+                        "persistent success status: waiting for failure to recur",
                     );
                     Ok(Some(false))
                 }

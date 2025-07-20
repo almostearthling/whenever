@@ -31,7 +31,7 @@ use crate::cfghelp::*;
 /// the [wmi](https://docs.rs/wmi/latest/wmi/) Windows-targeted WMI library.
 ///
 /// **Note**: the `match_query` holds a string implementing the *WMI query*:
-///           see https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-a-wmi-event
+/// see https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-a-wmi-event
 pub struct WmiQueryEvent {
     // common members
     // parameters
@@ -412,7 +412,7 @@ impl Event for WmiQueryEvent {
             LogType::Debug,
             LOG_WHEN_START,
             LOG_STATUS_OK,
-            &format!("successfully subscribed to WMI event"),
+            "successfully subscribed to WMI event",
         );
 
         // this should run in the local pool
@@ -495,7 +495,7 @@ impl Event for WmiQueryEvent {
             LogType::Debug,
             LOG_WHEN_END,
             LOG_STATUS_OK,
-            &format!("closing WMI event listening service"),
+            "closing WMI event listening service",
         );
 
         let mut running = self.thread_running.write().unwrap();

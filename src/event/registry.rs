@@ -44,6 +44,9 @@ fn generate_event_id() -> i64 {
     UID_GENERATOR.next_id()
 }
 
+// define a type for boxed event references
+type EventRef = Box<dyn Event>;
+
 /// Messages that can be sent to the event service manager
 enum ServiceManagerMessage {
     Start(String), // start listener for event whose name is the payload
@@ -57,7 +60,7 @@ enum ServiceManagerMessage {
 pub struct EventRegistry {
     // the entire list is enclosed in `RwLock<...>` in order to avoid
     // concurrent access to the list itself
-    event_list: RwLock<HashMap<String, Arc<RwLock<Box<dyn Event>>>>>,
+    event_list: RwLock<HashMap<String, Arc<RwLock<EventRef>>>>,
 
     // the triggerable list is kept separate because the triggerable
     // attribute is actually a constant that can be retrieved at startup
@@ -417,7 +420,7 @@ impl EventRegistry {
     /// # Arguments
     ///
     /// * `boxed_event` - an object implementing the `base::Event` trait,
-    ///                   provided to the function as a `Box<dyn Event>`
+    ///   provided to the function as a `Box<dyn Event>` aka `EventRef`
     ///
     /// # Returns
     ///
@@ -425,15 +428,14 @@ impl EventRegistry {
     /// * `Ok(false)` - the event could not be inserted
     ///
     /// **Note**: the event is _moved_ into the registry, and can only be
-    ///           released (and given back stored in a `Box`) using the
-    ///           `remove_event` function. Also, although the possible
-    ///           outcomes include an error condition, `Err(_)` is never
-    ///           returned.
+    /// released (and given back stored in a `Box`) using the `remove_event`
+    /// function. Also, although the possible outcomes include an error
+    /// condition, `Err(_)` is never returned.
     ///
     /// # Panics
     ///
     /// May panic if the event registry could not be locked for insertion.
-    pub fn add_event(&self, mut boxed_event: Box<dyn Event>) -> Result<bool> {
+    pub fn add_event(&self, mut boxed_event: EventRef) -> Result<bool> {
         let name = boxed_event.get_name();
         if self.has_event(&name) {
             return Ok(false);
@@ -480,7 +482,7 @@ impl EventRegistry {
     /// May panic if the event registry could not be locked for extraction,
     /// or if an attempt is made to extract an event that is in use (FIXME:
     /// maybe it should return an error in this case?).
-    pub fn remove_event(&self, name: &str) -> Result<Option<Box<dyn Event>>> {
+    pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
         if self.has_event(name) {
             match self
                 .event_list
@@ -966,7 +968,7 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn unlisten_and_remove(&self, name: &str) -> Result<Option<Box<dyn Event>>> {
+    pub fn unlisten_and_remove(&self, name: &str) -> Result<Option<EventRef>> {
         assert!(self.has_event(name), "event {name} not in registry");
 
         self.unlisten_for(name)?;

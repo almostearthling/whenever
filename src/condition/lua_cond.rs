@@ -700,7 +700,7 @@ impl Condition for LuaCondition {
     /// exits and the success criteria are met, the condition is verified.
     ///
     /// **NOTE**: this is an _almost exact_ copy of the `_run()` method in
-    ///           the _Lua_ script based `LuaTask` task structure.
+    /// the _Lua_ script based `LuaTask` task structure.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
         self.log(
             LogType::Debug,
@@ -744,11 +744,11 @@ impl Condition for LuaCondition {
                 LogType::Debug,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
-                &format!("cannot start Lua interpreter ({})", e),
+                &format!("cannot start Lua interpreter ({e})"),
             );
             return Err(Error::new(
                 Kind::Failed,
-                &format!("cannot start Lua interpreter ({})", e),
+                &format!("cannot start Lua interpreter ({e})"),
             ));
         }
         let lua = lua.unwrap();
@@ -931,7 +931,7 @@ impl Condition for LuaCondition {
                         LogType::Warn,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
-                        &format!("error in Lua script: {}", err_msg),
+                        &format!("error in Lua script: {err_msg}"),
                     );
                 } else {
                     self.log(
@@ -967,7 +967,7 @@ impl Condition for LuaCondition {
                         LogType::Debug,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &"persistent success status: waiting for failure to recur".to_string(),
+                        "persistent success status: waiting for failure to recur",
                     );
                     Ok(Some(false))
                 }

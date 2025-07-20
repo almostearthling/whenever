@@ -167,14 +167,14 @@ impl TimeSpecification {
             "{}-{}-{}T{}:{}:{} [{}]",
             {
                 if let Some(n) = self.year {
-                    format!("{:04}", n)
+                    format!("{n:04}")
                 } else {
                     String::from("____")
                 }
             },
             {
                 if let Some(n) = self.month {
-                    format!("{:02}", n)
+                    format!("{n:02}")
                 } else {
                     String::from("__")
                 }
@@ -188,21 +188,21 @@ impl TimeSpecification {
             },
             {
                 if let Some(n) = self.hour {
-                    format!("{:02}", n)
+                    format!("{n:02}")
                 } else {
                     String::from("__")
                 }
             },
             {
                 if let Some(n) = self.minute {
-                    format!("{:02}", n)
+                    format!("{n:02}")
                 } else {
                     String::from("__")
                 }
             },
             {
                 if let Some(n) = self.second {
-                    format!("{:02}", n)
+                    format!("{n:02}")
                 } else {
                     String::from("__")
                 }
@@ -360,7 +360,7 @@ impl TimeCondition {
 
     /// Set tick duration after creation
     pub fn set_tick_duration(&mut self, seconds: u64) -> Result<bool> {
-        if seconds < 1 || seconds > std::i64::MAX as u64 {
+        if seconds < 1 || seconds > i64::MAX as u64 {
             Err(Error::new(
                 Kind::Invalid,
                 &format!("{ERR_INVALID_TICK_SECONDS}: {seconds}"),

@@ -848,9 +848,9 @@ pub fn run_command(line: &str) -> Result<bool> {
                         None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
-                        &msg,
+                        msg,
                     );
-                    Err(Error::new(Kind::Invalid, &msg))
+                    Err(Error::new(Kind::Invalid, msg))
                 } else {
                     log(
                         LogType::Debug,
@@ -879,9 +879,9 @@ pub fn run_command(line: &str) -> Result<bool> {
                         None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
-                        &msg,
+                        msg,
                     );
-                    Err(Error::new(Kind::Invalid, &msg))
+                    Err(Error::new(Kind::Invalid, msg))
                 } else {
                     log(
                         LogType::Debug,
@@ -916,10 +916,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                     None,
                     LOG_WHEN_PROC,
                     LOG_STATUS_MSG,
-                    &format!(
-                        "attempting to reconfigure using configuration file `{}`",
-                        fname
-                    ),
+                    &format!("attempting to reconfigure using configuration file `{fname}`"),
                 );
                 // same considerations as above
                 thread::spawn(move || {
@@ -937,9 +934,9 @@ pub fn run_command(line: &str) -> Result<bool> {
                         None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
-                        &msg,
+                        msg,
                     );
-                    Err(Error::new(Kind::Invalid, &msg))
+                    Err(Error::new(Kind::Invalid, msg))
                 } else {
                     log(
                         LogType::Debug,
@@ -964,7 +961,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                 Ok(false)
             }
             t => {
-                let msg = format!("unrecognized command: `{t}`");
+                let msg = &format!("unrecognized command: `{t}`");
                 log(
                     LogType::Error,
                     LOG_EMITTER_MAIN,
@@ -972,9 +969,9 @@ pub fn run_command(line: &str) -> Result<bool> {
                     None,
                     LOG_WHEN_PROC,
                     LOG_STATUS_ERR,
-                    &msg,
+                    msg,
                 );
-                Err(Error::new(Kind::Unsupported, &msg))
+                Err(Error::new(Kind::Unsupported, msg))
             }
         }
     } else {
@@ -986,9 +983,9 @@ pub fn run_command(line: &str) -> Result<bool> {
             None,
             LOG_WHEN_PROC,
             LOG_STATUS_ERR,
-            &msg,
+            msg,
         );
-        Err(Error::new(Kind::Invalid, &msg))
+        Err(Error::new(Kind::Invalid, msg))
     }
 }
 
@@ -1112,7 +1109,7 @@ fn main() {
     }
 
     if args.options {
-        let options = vec![
+        let options = [
             #[cfg(feature = "dbus")]
             "dbus",
             #[cfg(windows)]

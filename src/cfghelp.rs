@@ -33,7 +33,7 @@ macro_rules! cfg_mandatory {
         if let Some(v) = $func_name($cfgmap, $key, $a1)? {
             Ok(Some(v))
         } else {
-            Err(crate::cfghelp::cfg_err_invalid_config(
+            Err($crate::cfghelp::cfg_err_invalid_config(
                 $key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER,
@@ -44,7 +44,7 @@ macro_rules! cfg_mandatory {
         if let Some(v) = $func_name($cfgmap, $key, $a1, $a2)? {
             Ok(Some(v))
         } else {
-            Err(crate::cfghelp::cfg_err_invalid_config(
+            Err($crate::cfghelp::cfg_err_invalid_config(
                 $key,
                 STR_UNKNOWN_VALUE,
                 ERR_MISSING_PARAMETER,

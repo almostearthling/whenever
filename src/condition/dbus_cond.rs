@@ -455,16 +455,15 @@ impl DbusMethodCondition {
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
             let mut param_checks: Vec<ParameterCheckTest> = Vec::new();
-            let params;
-            if !item.is_list() {
+            let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY,
                 ));
             } else {
-                params = item.clone();
-            }
+                item.clone()
+            };
             let item = params.as_list().unwrap();
             for spec in item.iter() {
                 if !spec.is_map() {
@@ -627,16 +626,15 @@ impl DbusMethodCondition {
         let cur_key = "parameter_call";
         if let Some(item) = cfgmap.get(cur_key) {
             let mut param_call: Vec<zvariant::OwnedValue> = Vec::new();
-            let params;
-            if !item.is_list() {
+            let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY,
                 ));
             } else {
-                params = item.clone();
-            }
+                item.clone()
+            };
             let item = params.as_list().unwrap();
             // the `ToVariant` trait should do the tedious recursive job for
             // us: should there be any unsupported value in the array the
@@ -787,16 +785,15 @@ impl DbusMethodCondition {
 
         let cur_key = "parameter_check";
         if let Some(item) = cfgmap.get(cur_key) {
-            let params;
-            if !item.is_list() {
+            let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY,
                 ));
             } else {
-                params = item.clone();
-            }
+                item.clone()
+            };
             let item = params.as_list().unwrap();
             for spec in item.iter() {
                 if !spec.is_map() {
@@ -933,16 +930,15 @@ impl DbusMethodCondition {
         // logged
         let cur_key = "parameter_call";
         if let Some(item) = cfgmap.get(cur_key) {
-            let params;
-            if !item.is_list() {
+            let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_VALUE_FOR_ENTRY,
                 ));
             } else {
-                params = item.clone();
-            }
+                item.clone()
+            };
             let item = params.as_list().unwrap();
             // the `ToVariant` trait should do the tedious recursive job for
             // us: should there be any unsupported value in the array the
@@ -1306,7 +1302,7 @@ impl Condition for DbusMethodCondition {
                 LogType::Debug,
                 LOG_WHEN_END,
                 LOG_STATUS_MSG,
-                &"persistent success status: waiting for failure to recur".to_string(),
+                "persistent success status: waiting for failure to recur",
             );
         }
 
