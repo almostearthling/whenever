@@ -431,9 +431,7 @@ impl Task for LuaTask {
                 LogType::Debug,
                 LOG_WHEN_START,
                 LOG_STATUS_FAIL,
-                &format!(
-                    "(trigger: {trigger_name}) cannot start Lua interpreter ({e})",
-                ),
+                &format!("(trigger: {trigger_name}) cannot start Lua interpreter ({e})"),
             );
             return Err(Error::new(
                 Kind::Failed,

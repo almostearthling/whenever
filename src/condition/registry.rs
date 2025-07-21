@@ -191,10 +191,7 @@ impl ConditionRegistry {
 
     /// Add or replace an already-boxed `Condition` while running: if the
     /// registry is busy running any condition all modifications are deferred
-    pub fn dynamic_add_or_replace_condition(
-        &self,
-        boxed_condition: ConditionRef,
-    ) -> Result<bool> {
+    pub fn dynamic_add_or_replace_condition(&self, boxed_condition: ConditionRef) -> Result<bool> {
         let name = boxed_condition.get_name();
         let busy = self.conditions_busy.clone();
         let busy = busy.lock().expect("cannot acquire busy conditions counter");

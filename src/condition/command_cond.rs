@@ -607,15 +607,13 @@ impl CommandCondition {
 
         new_condition.success_stdout = cfg_string(cfgmap, "success_stdout")?;
         new_condition.success_stderr = cfg_string(cfgmap, "success_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)?
-        {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)? {
             new_condition.success_status = Some(v as u32);
         }
 
         new_condition.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
         new_condition.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)?
-        {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)? {
             new_condition.failure_status = Some(v as u32);
         }
 

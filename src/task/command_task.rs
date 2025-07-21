@@ -468,15 +468,13 @@ impl CommandTask {
 
         new_task.success_stdout = cfg_string(cfgmap, "success_stdout")?;
         new_task.success_stderr = cfg_string(cfgmap, "success_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)?
-        {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "success_status", 0, u32::MAX as i64)? {
             new_task.success_status = Some(v as u32);
         }
 
         new_task.failure_stdout = cfg_string(cfgmap, "failure_stdout")?;
         new_task.failure_stderr = cfg_string(cfgmap, "failure_stderr")?;
-        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)?
-        {
+        if let Some(v) = cfg_int_check_interval(cfgmap, "failure_status", 0, u32::MAX as i64)? {
             new_task.failure_status = Some(v as u32);
         }
 

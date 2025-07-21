@@ -1868,9 +1868,9 @@ pub mod dbusitem {
     /// message, suitable for being issued by the specialized logging function
     /// defined by the item.
     pub fn dbus_check_message(
-        message: &Message,              // the dbus message
-        checks: &[ParameterCheckTest],  // item.param_checks
-        checks_all: bool,               // item.checks_all
+        message: &Message,             // the dbus message
+        checks: &[ParameterCheckTest], // item.param_checks
+        checks_all: bool,              // item.checks_all
     ) -> (
         bool,         // verified
         LogType,      // the log severity
