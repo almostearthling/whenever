@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
-use super::base::Condition;
+use super::base::{Condition, ConditionRef};
 use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
@@ -35,9 +35,6 @@ lazy_static! {
 fn generate_condition_id() -> i64 {
     UID_GENERATOR.next_id()
 }
-
-// define a type for boxed condition references
-type ConditionRef = Box<dyn Condition>;
 
 /// The condition registry: there must be one and only one condition registry
 /// in each instance of the process, and should have `'static` lifetime. It may

@@ -148,4 +148,7 @@ pub trait Task: Send {
     }
 }
 
+// define a type for boxed task references
+pub type TaskRef = Box<dyn Task>;
+
 // end.

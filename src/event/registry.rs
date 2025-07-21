@@ -24,7 +24,7 @@ use lazy_static::lazy_static;
 use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
-use super::base::Event;
+use super::base::{Event, EventRef};
 use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
@@ -43,9 +43,6 @@ lazy_static! {
 fn generate_event_id() -> i64 {
     UID_GENERATOR.next_id()
 }
-
-// define a type for boxed event references
-type EventRef = Box<dyn Event>;
 
 /// Messages that can be sent to the event service manager
 enum ServiceManagerMessage {

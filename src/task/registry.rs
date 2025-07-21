@@ -22,7 +22,7 @@ use lazy_static::lazy_static;
 use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
-use super::base::Task;
+use super::base::{Task, TaskRef};
 use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
@@ -41,9 +41,6 @@ lazy_static! {
 fn generate_task_id() -> i64 {
     UID_GENERATOR.next_id()
 }
-
-// define a type for boxed task references
-type TaskRef = Box<dyn Task>;
 
 /// The task registry: there must be one and only one task registry in each
 /// instance of the process, and should have `'static` lifetime. It may be

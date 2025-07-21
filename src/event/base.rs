@@ -219,4 +219,7 @@ pub trait Event: Send + Sync {
     fn _assign_condition(&mut self, cond_name: &str);
 }
 
+// define a type for boxed event references
+pub type EventRef = Box<dyn Event>;
+
 // end.

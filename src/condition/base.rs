@@ -587,4 +587,7 @@ pub trait Condition: Send {
     }
 }
 
+// define a type for boxed condition references
+pub type ConditionRef = Box<dyn Condition>;
+
 // end.
