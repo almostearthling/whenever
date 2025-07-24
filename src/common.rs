@@ -1918,6 +1918,8 @@ pub mod dbusitem {
                                                     log_message = format!(
                                                         "could not retrieve result: index {i} out of range",
                                                     );
+                                                    verified = false;
+                                                    break 'params;
                                                 }
                                                 // if something is wrong here, either the test
                                                 // or the next "parameter shift" will go berserk
@@ -1932,6 +1934,8 @@ pub mod dbusitem {
                                                     log_message = format!(
                                                         "could not retrieve result: index {i} out of range",
                                                     );
+                                                    verified = false;
+                                                    break 'params;
                                                 }
                                                 if let Some(v) = f.get(i) {
                                                     field_value = v;
@@ -1942,6 +1946,8 @@ pub mod dbusitem {
                                                     log_message = format!(
                                                         "could not retrieve result: index {i} provided no value",
                                                     );
+                                                    verified = false;
+                                                    break 'params;
                                                 }
                                             }
                                             _ => {
