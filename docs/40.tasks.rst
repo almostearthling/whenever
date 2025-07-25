@@ -193,12 +193,13 @@ The configuration of *Lua* based tasks has the following form:
    name = "LuaTaskName"
    type = "lua"
    script = '''
-       log.info("hello from Lua");
+       log.info("hello from " .. name);
        result = 10;
        '''
 
    # optional parameters (if omitted, defaults are used)
    expect_all = false
+   variables_to_set = { name = "Lua" }
    expected_results = { result = 10 }
 
 and the following table provides a detailed description of the entries:
@@ -222,9 +223,23 @@ and the following table provides a detailed description of the entries:
      - *false*
      - if *true*, all the expected results have to be matched to consider the task successful,
        otherwise at least one
+   * - ``variables_to_set``
+     - ``{}``
+     - a dictionary of variable names and the values to which they will be set as globals in
+       the interpreter before running the script
    * - ``expected_results``
      - ``{}``
      - a dictionary of variable names and their expected values to be checked after execution
+
+.. tip::
+
+   The `variables_to_set` entry can be used to set _any_ global variable in the embedded
+   interpreter: this includes special variables such as ``LUA_PATH``, which affects the behavior
+   of the ``require`` function, and specifically where the required libraries can be found. While
+   an user provided script would probably not care about defining globals in the configuration or
+   in the script itself (probably the second option would even make the script easier to read), a
+   _frontend_ may provide extra functionality to the Lua interpreter by explicitly setting the
+   ``LUA_PATH`` variable to point to extra libraries and scripts that it provides.
 
 Note that *triple single quotes* have been used to embed the script: this allows to use escapes
 and quotes in the script itself. Although the script should be embedded in the configuration file,

@@ -490,7 +490,7 @@ actually much simpler:
    name = "LuaConditionName"
    type = "lua"                                # mandatory value
    script = '''
-       log.info("hello from Lua");
+       log.info("hello from " .. name);
        result = 10;
        '''
 
@@ -508,6 +508,7 @@ actually much simpler:
    check_after = 10
    recur_after_failed_check = false
    expect_all = false
+   variables_to_set = { name = "Lua" }
    expected_results = { result = 10 }
 
 Note that the ``recurring`` flag is ``false``, and ``max_tasks_retries`` is set to *-1*: this
@@ -540,10 +541,23 @@ The specific parameters are described in the following table:
      - *false*
      - if *true*, all the expected results have to be matched to consider the task successful,
        otherwise at least one
+   * - ``variables_to_set``
+     - ``{}``
+     - a dictionary of variable names and the values to which they will be set as globals in
+       the interpreter before running the script
    * - ``expected_results``
      - ``{}``
      - a dictionary of variable names and their expected values to be checked after execution
 
+.. tip::
+
+   The `variables_to_set` entry can be used to set _any_ global variable in the embedded
+   interpreter: this includes special variables such as ``LUA_PATH``, which affects the behavior
+   of the ``require`` function, and specifically where the required libraries can be found. While
+   an user provided script would probably not care about defining globals in the configuration or
+   in the script itself (probably the second option would even make the script easier to read), a
+   _frontend_ may provide extra functionality to the Lua interpreter by explicitly setting the
+   ``LUA_PATH`` variable to point to extra libraries and scripts that it provides.
 
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
 *Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,

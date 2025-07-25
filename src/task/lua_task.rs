@@ -36,6 +36,7 @@ pub struct LuaTask {
     // parameters
     script: String,
     set_vars: bool,
+    variables: HashMap<String, LuaValue>,
     expected: HashMap<String, LuaValue>,
     expect_all: bool,
 }
@@ -48,8 +49,16 @@ impl Hash for LuaTask {
         self.set_vars.hash(state);
         self.expect_all.hash(state);
 
-        // expected values is sorted because the order in which they are
-        // defined is not significant
+        // expected and variables keys are sorted because the order in which
+        // they are defined is not significant
+        for key in self.variables.keys().sorted() {
+            key.hash(state);
+            match &self.variables[key] {
+                LuaValue::LuaBoolean(x) => x.hash(state),
+                LuaValue::LuaNumber(x) => x.to_bits().hash(state),
+                LuaValue::LuaString(x) => x.hash(state),
+            }
+        }
         for key in self.expected.keys().sorted() {
             key.hash(state);
             match &self.expected[key] {
@@ -102,6 +111,7 @@ impl LuaTask {
             // specific members initialization
             script: String::from(script),
             set_vars: true,
+            variables: HashMap::new(),
             expected: HashMap::new(),
             expect_all: false,
         }
@@ -124,6 +134,27 @@ impl LuaTask {
     /// Add a variable to check for a boolean value
     pub fn add_check_bool(mut self, varname: &str, value: bool) -> Self {
         self.expected
+            .insert(varname.to_string(), LuaValue::LuaBoolean(value));
+        self
+    }
+
+    /// Add a variable to set as a string value
+    pub fn add_var_string(mut self, varname: &str, value: &str) -> Self {
+        self.variables
+            .insert(varname.to_string(), LuaValue::LuaString(value.to_string()));
+        self
+    }
+
+    /// Add a variable to set as a number (f64) value
+    pub fn add_var_number(mut self, varname: &str, value: f64) -> Self {
+        self.variables
+            .insert(varname.to_string(), LuaValue::LuaNumber(value));
+        self
+    }
+
+    /// Add a variable to set as a boolean value
+    pub fn add_var_bool(mut self, varname: &str, value: bool) -> Self {
+        self.variables
             .insert(varname.to_string(), LuaValue::LuaBoolean(value));
         self
     }
@@ -176,6 +207,7 @@ impl LuaTask {
             "tags",
             "script",
             "expect_all",
+            "variables_to_set",
             "expected_results",
         ];
         cfg_check_keys(cfgmap, &check)?;
@@ -207,6 +239,59 @@ impl LuaTask {
         // specific optional parameter initialization
         if let Some(v) = cfg_bool(cfgmap, "expect_all")? {
             new_task.expect_all = v;
+        }
+
+        // variables to set are in a complex map, thus no shortcut is given
+        let cur_key = "variables_to_set";
+        if cfgmap.contains_key(cur_key) {
+            if let Some(item) = cfgmap.get(cur_key) {
+                if !item.is_map() {
+                    return Err(cfg_err_invalid_config(
+                        cur_key,
+                        STR_UNKNOWN_VALUE,
+                        ERR_INVALID_PARAMETER,
+                    ));
+                } else {
+                    let map = item.as_map().unwrap();
+                    let mut vars: HashMap<String, LuaValue> = HashMap::new();
+                    for name in map.keys() {
+                        if !RE_VAR_NAME.is_match(name) {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                name,
+                                ERR_INVALID_VAR_NAME,
+                            ));
+                        } else if let Some(value) = map.get(name) {
+                            if value.is_int() {
+                                let v = value.as_int().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
+                            } else if value.is_float() {
+                                let v = value.as_float().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                            } else if value.is_bool() {
+                                let v = value.as_bool().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                            } else if value.is_str() {
+                                let v = value.as_str().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
+                            } else {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_VAR_VALUE,
+                                ));
+                            }
+                        } else {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                name,
+                                ERR_INVALID_VAR_NAME,
+                            ));
+                        }
+                    }
+                    new_task.variables = vars;
+                }
+            }
         }
 
         // expected results are in a complex map, thus no shortcut is given
@@ -278,6 +363,7 @@ impl LuaTask {
             "tags",
             "script",
             "expect_all",
+            "variables_to_set",
             "expected_results",
         ];
         cfg_check_keys(cfgmap, &check)?;
@@ -306,6 +392,58 @@ impl LuaTask {
         }
 
         cfg_bool(cfgmap, "expect_all")?;
+
+        // variables to set are in a complex map, thus no shortcut is given
+        let cur_key = "variables_to_set";
+        if cfgmap.contains_key(cur_key) {
+            if let Some(item) = cfgmap.get(cur_key) {
+                if !item.is_map() {
+                    return Err(cfg_err_invalid_config(
+                        cur_key,
+                        STR_UNKNOWN_VALUE,
+                        ERR_INVALID_PARAMETER,
+                    ));
+                } else {
+                    let map = item.as_map().unwrap();
+                    let mut vars: HashMap<String, LuaValue> = HashMap::new();
+                    for name in map.keys() {
+                        if !RE_VAR_NAME.is_match(name) {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                name,
+                                ERR_INVALID_VAR_NAME,
+                            ));
+                        } else if let Some(value) = map.get(name) {
+                            if value.is_int() {
+                                let v = value.as_int().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
+                            } else if value.is_float() {
+                                let v = value.as_float().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                            } else if value.is_bool() {
+                                let v = value.as_bool().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                            } else if value.is_str() {
+                                let v = value.as_str().unwrap();
+                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
+                            } else {
+                                return Err(cfg_err_invalid_config(
+                                    cur_key,
+                                    STR_UNKNOWN_VALUE,
+                                    ERR_INVALID_VAR_VALUE,
+                                ));
+                            }
+                        } else {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                name,
+                                ERR_INVALID_VAR_NAME,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
 
         // expected results are in a complex map, thus no shortcut is given
         let cur_key = "expected_results";
@@ -452,10 +590,38 @@ impl Task for LuaTask {
 
         let globals = lua.globals();
 
-        // set Lua variables if configured to do so
+        // set Lua variables if configured to do so: it is actually always
+        // true, because this has not been enabled as a configuration entry
+        // but is only available as a constructor modifier; the same modifier
+        // decides whether or not to pollute the Lua environment also setting
+        // the variables configured by the user
         if self.set_vars {
             let _ = globals.set(LUAVAR_NAME_COND.as_str(), trigger_name.to_string());
             let _ = globals.set(LUAVAR_NAME_TASK.as_str(), self.task_name.to_string());
+
+            for varname in self.variables.keys() {
+                if let Some(v) = self.variables.get(varname.as_str()) {
+                    let res = match v {
+                        LuaValue::LuaBoolean(x) => {
+                            globals.set(varname.as_str(), *x)
+                        }
+                        LuaValue::LuaNumber(x) => {
+                            globals.set(varname.as_str(), *x)
+                        }
+                        LuaValue::LuaString(x) => {
+                            globals.set(varname.as_str(), x.as_str())
+                        }
+                    };
+                    if res.is_err() {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_START,
+                            LOG_STATUS_ERR,
+                            &format!("(trigger: {trigger_name}) cannot set variable `{varname}`"),
+                        );
+                    }
+                }
+            }
         }
 
         // create functions for logging in a table called `log`
