@@ -551,12 +551,12 @@ The specific parameters are described in the following table:
 
 .. tip::
 
-   The `variables_to_set` entry can be used to set _any_ global variable in the embedded
+   The ``variables_to_set`` entry can be used to set *any* global variable in the embedded
    interpreter: this includes special variables such as ``LUA_PATH``, which affects the behavior
    of the ``require`` function, and specifically where the required libraries can be found. While
    an user provided script would probably not care about defining globals in the configuration or
    in the script itself (probably the second option would even make the script easier to read), a
-   _frontend_ may provide extra functionality to the Lua interpreter by explicitly setting the
+   *frontend* may provide extra functionality to the Lua interpreter by explicitly setting the
    ``LUA_PATH`` variable to point to extra libraries and scripts that it provides.
 
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
