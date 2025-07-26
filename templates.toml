@@ -47,6 +47,8 @@ script = '''
 # optional parameters (if omitted, defaults are used)
 expect_all = false
 expected_results = { result = 10 }
+variables_to_set = { name = "Lua" }
+init_script_path = "/etc/lua/init.lua"      # must exist
 
 
 #############################################################################
@@ -164,6 +166,8 @@ check_after = 10
 recur_after_failed_check = false
 expect_all = false
 expected_results = { result = 10 }
+variables_to_set = { name = "Lua" }
+init_script_path = "/etc/lua/init.lua"      # must exist
 
 
 #############################################################################
@@ -235,15 +239,11 @@ parameter_call = """[
         ["the following is an u64", "\\t42"]
     ]"""
 parameter_check_all = false
-parameter_check = """[
-         { "index": 0, "operator": "eq", "value": false },
-         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-         {
-             "index": [2, "mapidx", 5],
-             "operator": "match",
-             "value": "^[A-Z][a-zA-Z0-9_]*$"
-         }
-    ]"""
+parameter_check = [
+        { index = 0, operator = "eq", value = false },
+        { index = [1, 5], operator = "neq", value = "forbidden" },
+        { index = [2, "mapidx", 5], operator = "match", value = "^[A-Z][a-zA-Z0-9_]*$" },
+]
 
 
 #############################################################################
@@ -302,15 +302,11 @@ rule = """\
 
 # optional parameters (if omitted, defaults are used)
 parameter_check_all = false
-parameter_check = """[
-         { "index": 0, "operator": "eq", "value": false },
-         { "index": [1, 5], "operator": "neq", "value": "forbidden" },
-         {
-             "index": [2, "mapidx", 5],
-             "operator": "match",
-             "value": "^[A-Z][a-zA-Z0-9_]*$"
-         }
-    ]"""
+parameter_check = [
+        { index = 0, operator = "eq", value = false },
+        { index = [1, 5], operator = "neq", value = "forbidden" },
+        { index = [2, "mapidx", 5], operator = "match", value = "^[A-Z][a-zA-Z0-9_]*$" },
+]
 
 
 #############################################################################
