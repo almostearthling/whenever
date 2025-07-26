@@ -1318,6 +1318,7 @@ pub mod luaitem {
         NoFailure,
         VariableMatch,
         ScriptError,
+        InitError,
     }
 }
 

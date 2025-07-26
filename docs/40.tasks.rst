@@ -193,12 +193,13 @@ The configuration of *Lua* based tasks has the following form:
    name = "LuaTaskName"
    type = "lua"
    script = '''
-       log.info("hello from Lua");
+       log.info("hello from " .. name);
        result = 10;
        '''
 
    # optional parameters (if omitted, defaults are used)
    expect_all = false
+   variables_to_set = { name = "Lua" }
    expected_results = { result = 10 }
 
 and the following table provides a detailed description of the entries:
@@ -222,9 +223,25 @@ and the following table provides a detailed description of the entries:
      - *false*
      - if *true*, all the expected results have to be matched to consider the task successful,
        otherwise at least one
+   * - ``variables_to_set``
+     - ``{}``
+     - a dictionary of variable names and the values to which they will be set as globals in
+       the interpreter before running the script
    * - ``expected_results``
      - ``{}``
      - a dictionary of variable names and their expected values to be checked after execution
+   * - ``init_script_path``
+     - (empty)
+     - the path to an optional initialization script to be executed before the provided one
+
+.. tip::
+
+   The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
+   user-provided items, since the execution of an extra script can be performed at the script
+   level and global variables can be set up at the beginning of the script. A *frontend*, on
+   the other hand, can benefit of the combination of global variables and an initialization
+   script to change the interpreter behavior, for instance by setting the ``package.path`` and
+   ``package.cpath`` settings programmatically, possibly according to the current setup.
 
 Note that *triple single quotes* have been used to embed the script: this allows to use escapes
 and quotes in the script itself. Although the script should be embedded in the configuration file,
@@ -234,11 +251,18 @@ criteria, an error in the script is always considered a failure.
 
 From the embedded *Lua* interpreter there are two values set that can be accessed:
 
-
 * ``whenever_task`` is the name of the task that executes the script
 * ``whenever_condition`` is the name of the condition that triggered the task.
 
 which might be useful if the scripts are aware of being run within **whenever**.
+
+The Lua interpreter is initialized at each run by
+
+* setting the additional variables, including the ones implicitly provided by **whenever**,
+* implementing the extra log functionality, and
+* executing the startup script,
+
+exactly in this order.
 
 
 .. _40-tasks-internal:

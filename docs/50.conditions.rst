@@ -490,7 +490,7 @@ actually much simpler:
    name = "LuaConditionName"
    type = "lua"                                # mandatory value
    script = '''
-       log.info("hello from Lua");
+       log.info("hello from " .. name);
        result = 10;
        '''
 
@@ -508,7 +508,9 @@ actually much simpler:
    check_after = 10
    recur_after_failed_check = false
    expect_all = false
+   variables_to_set = { name = "Lua" }
    expected_results = { result = 10 }
+   init_script_path = "/etc/lua/init.lua"
 
 Note that the ``recurring`` flag is ``false``, and ``max_tasks_retries`` is set to *-1*: this
 means that the check will be performed until **all** the associated tasks are executed
@@ -540,10 +542,25 @@ The specific parameters are described in the following table:
      - *false*
      - if *true*, all the expected results have to be matched to consider the task successful,
        otherwise at least one
+   * - ``variables_to_set``
+     - ``{}``
+     - a dictionary of variable names and the values to which they will be set as globals in
+       the interpreter before running the script
    * - ``expected_results``
      - ``{}``
      - a dictionary of variable names and their expected values to be checked after execution
+   * - ``init_script_path``
+     - (empty)
+     - the path to an optional initialization script to be executed before the provided one
 
+.. tip::
+
+   The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
+   user-provided items, since the execution of an extra script can be performed at the script
+   level and global variables can be set up at the beginning of the script. A *frontend*, on
+   the other hand, can benefit of the combination of global variables and an initialization
+   script to change the interpreter behavior, for instance by setting the ``package.path`` and
+   ``package.cpath`` settings programmatically, possibly according to the current setup.
 
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
 *Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,
@@ -560,6 +577,14 @@ and take a single string as their argument. Also, from the embedded *Lua* interp
 value that can be accessed:
 
 * ``whenever_condition`` is the name of the condition being checked.
+
+The Lua interpreter is initialized at each run by
+
+* setting the additional variables, including the ones implicitly provided by **whenever**,
+* implementing the extra log functionality, and
+* executing the startup script,
+
+exactly in this order.
 
 External scripts can be executed via ``dofile("/path/to/script.lua")`` or by using the ``require``
 function. While a successful execution is always determined by matching the provided criteria, an

@@ -66,6 +66,7 @@ pub const ERR_INVALID_CFG_ENTRY: &str = "invalid configuration entry";
 pub const ERR_MISSING_PARAMETER: &str = "missing parameter";
 pub const ERR_INVALID_PARAMETER: &str = "invalid parameter";
 pub const ERR_INVALID_PARAMETER_LIST: &str = "invalid list or list element";
+pub const ERR_INVALID_FILESPEC: &str = "invalid file specification";
 pub const ERR_INVALID_COND_TYPE: &str = "condition type invalid or mismatched";
 pub const ERR_INVALID_TASK: &str = "invalid task specification or inexistent task";
 
