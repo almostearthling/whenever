@@ -9,6 +9,9 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::SystemTime;
 
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use itertools::Itertools;
 
 use cfgmap::CfgMap;
@@ -38,6 +41,7 @@ pub struct LuaTask {
     set_vars: bool,
     variables: HashMap<String, LuaValue>,
     expected: HashMap<String, LuaValue>,
+    init_script: Option<PathBuf>,
     expect_all: bool,
 }
 
@@ -66,6 +70,11 @@ impl Hash for LuaTask {
                 LuaValue::LuaNumber(x) => x.to_bits().hash(state),
                 LuaValue::LuaString(x) => x.hash(state),
             }
+        }
+        if let Some(init_script) = &self.init_script {
+            init_script.hash(state);
+        } else {
+            0.hash(state);
         }
     }
 }
@@ -113,6 +122,7 @@ impl LuaTask {
             set_vars: true,
             variables: HashMap::new(),
             expected: HashMap::new(),
+            init_script: None,
             expect_all: false,
         }
     }
@@ -156,6 +166,12 @@ impl LuaTask {
     pub fn add_var_bool(mut self, varname: &str, value: bool) -> Self {
         self.variables
             .insert(varname.to_string(), LuaValue::LuaBoolean(value));
+        self
+    }
+
+    /// Add an init script path
+    pub fn add_init_script(mut self, init_script: &Path) -> Self {
+        self.init_script = Some(PathBuf::from(init_script));
         self
     }
 
@@ -209,6 +225,7 @@ impl LuaTask {
             "expect_all",
             "variables_to_set",
             "expected_results",
+            "init_script_path",
         ];
         cfg_check_keys(cfgmap, &check)?;
 
@@ -347,6 +364,20 @@ impl LuaTask {
             }
         }
 
+        // if an initialization file is specified, it must exist at config time
+        let cur_key = "init_script_path";
+        if let Some(init_script) = cfg_string(cfgmap, cur_key)? {
+            let path = PathBuf::from(&init_script);
+            if !path.is_file() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    &init_script,
+                    ERR_INVALID_FILESPEC,
+                ));
+            }
+            new_task.init_script = Some(path);
+        }
+
         Ok(new_task)
     }
 
@@ -365,6 +396,7 @@ impl LuaTask {
             "expect_all",
             "variables_to_set",
             "expected_results",
+            "init_script_path",
         ];
         cfg_check_keys(cfgmap, &check)?;
 
@@ -497,6 +529,19 @@ impl LuaTask {
             }
         }
 
+        // if an initialization file is specified, it must exist at config time
+        let cur_key = "init_script_path";
+        if let Some(init_script) = cfg_string(cfgmap, cur_key)? {
+            let path = PathBuf::from(&init_script);
+            if !path.is_file() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    &init_script,
+                    ERR_INVALID_FILESPEC,
+                ));
+            }
+        }
+
         Ok(name)
     }
 }
@@ -602,15 +647,9 @@ impl Task for LuaTask {
             for varname in self.variables.keys() {
                 if let Some(v) = self.variables.get(varname.as_str()) {
                     let res = match v {
-                        LuaValue::LuaBoolean(x) => {
-                            globals.set(varname.as_str(), *x)
-                        }
-                        LuaValue::LuaNumber(x) => {
-                            globals.set(varname.as_str(), *x)
-                        }
-                        LuaValue::LuaString(x) => {
-                            globals.set(varname.as_str(), x.as_str())
-                        }
+                        LuaValue::LuaBoolean(x) => globals.set(varname.as_str(), *x),
+                        LuaValue::LuaNumber(x) => globals.set(varname.as_str(), *x),
+                        LuaValue::LuaString(x) => globals.set(varname.as_str(), x.as_str()),
                     };
                     if res.is_err() {
                         self.log(
@@ -619,6 +658,7 @@ impl Task for LuaTask {
                             LOG_STATUS_ERR,
                             &format!("(trigger: {trigger_name}) cannot set variable `{varname}`"),
                         );
+                        failure_reason = FailureReason::InitError;
                     }
                 }
             }
@@ -689,121 +729,198 @@ impl Task for LuaTask {
 
         let _ = globals.set("log", logftab);
 
-        match lua.load(self.script.clone()).exec() {
-            // if the script executed without error, iterate over the provided
-            // names and values to check that the results match expectations;
-            // obviously if no varnames/values are provided, no iteration will
-            // occur and the outcome remains `FailureReason::NoCheck`.
-            Ok(()) => {
-                // if all values are to be checked: assume no error initially,
-                // break at first mismatch, set `FailureReason::VariableMatch`;
-                // otherwise: assume error initially, break at first match, and
-                // set `FailureReason::NoFailure`
-                if !self.expected.is_empty() {
+        // run the initialization script if it has been specified: an error in
+        // the initialization script can abort the execution at this point
+        if let Some(path) = &self.init_script {
+            if path.is_file() {
+                if let Ok(script) = fs::read_to_string(path) {
+                    match lua.load(script).exec() {
+                        Ok(()) => {
+                            self.log(
+                                LogType::Debug,
+                                LOG_WHEN_START,
+                                LOG_STATUS_OK,
+                                &format!(
+                                    "(trigger: {trigger_name}) Lua initialization script `{}` successfully executed",
+                                    path.to_string_lossy(),
+                                ),
+                            );
+                        }
+                        Err(res) => {
+                            if let Some(err_msg) = res.to_string().split('\n').next() {
+                                self.log(
+                                    LogType::Warn,
+                                    LOG_WHEN_START,
+                                    LOG_STATUS_ERR,
+                                    &format!(
+                                        "trigger: {trigger_name}) error in Lua initialization script `{}`: {err_msg}",
+                                        path.to_string_lossy(),
+                                    ),
+                                );
+                            } else {
+                                self.log(
+                                    LogType::Warn,
+                                    LOG_WHEN_START,
+                                    LOG_STATUS_ERR,
+                                    &format!(
+                                        "trigger: {trigger_name}) error in Lua initialization script `{}` (unknown)",
+                                        path.to_string_lossy(),
+                                    ),
+                                );
+                            }
+                            failure_reason = FailureReason::InitError;
+                        }
+                    }
+                } else {
                     self.log(
-                        LogType::Debug,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_MSG,
+                        LogType::Warn,
+                        LOG_WHEN_START,
+                        LOG_STATUS_ERR,
                         &format!(
-                            "(trigger: {trigger_name}) checking results: {}",
-                            &self.repr_checks(),
+                            "(trigger: {trigger_name}) provided Lua initialization script `{}` could not be read",
+                            path.to_string_lossy(),
                         ),
                     );
-                    if self.expect_all {
-                        failure_reason = FailureReason::NoFailure;
-                        for (varname, value) in self.expected.iter() {
-                            if let Some(res) = match value {
-                                LuaValue::LuaString(v) => {
-                                    let r: std::result::Result<String, mlua::Error> =
-                                        globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
-                                }
-                                LuaValue::LuaNumber(v) => {
-                                    let r: std::result::Result<f64, mlua::Error> =
-                                        globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
-                                }
-                                LuaValue::LuaBoolean(v) => {
-                                    let r: std::result::Result<bool, mlua::Error> =
-                                        globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
-                                }
-                            } {
-                                if !res {
+                    failure_reason = FailureReason::InitError;
+                }
+            } else {
+                self.log(
+                    LogType::Warn,
+                    LOG_WHEN_START,
+                    LOG_STATUS_ERR,
+                    &format!(
+                        "(trigger: {trigger_name}) provided Lua initialization script `{}` is not a valid file",
+                        path.to_string_lossy(),
+                    ),
+                );
+                failure_reason = FailureReason::InitError;
+            }
+        }
+
+        // if still at the initial value, execute the script and check results
+        if failure_reason == FailureReason::NoCheck {
+            match lua.load(self.script.clone()).exec() {
+                // if the script executed without error, iterate over the provided
+                // names and values to check that the results match expectations;
+                // obviously if no varnames/values are provided, no iteration will
+                // occur and the outcome remains `FailureReason::NoCheck`.
+                Ok(()) => {
+                    // if all values are to be checked: assume no error initially,
+                    // break at first mismatch, set `FailureReason::VariableMatch`;
+                    // otherwise: assume error initially, break at first match, and
+                    // set `FailureReason::NoFailure`
+                    if !self.expected.is_empty() {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_MSG,
+                            &format!(
+                                "(trigger: {trigger_name}) checking results: {}",
+                                &self.repr_checks(),
+                            ),
+                        );
+                        if self.expect_all {
+                            failure_reason = FailureReason::NoFailure;
+                            for (varname, value) in self.expected.iter() {
+                                if let Some(res) = match value {
+                                    LuaValue::LuaString(v) => {
+                                        let r: std::result::Result<String, mlua::Error> =
+                                            globals.get(varname.as_str());
+                                        if let Ok(r) = r { Some(r == *v) } else { None }
+                                    }
+                                    LuaValue::LuaNumber(v) => {
+                                        let r: std::result::Result<f64, mlua::Error> =
+                                            globals.get(varname.as_str());
+                                        if let Ok(r) = r { Some(r == *v) } else { None }
+                                    }
+                                    LuaValue::LuaBoolean(v) => {
+                                        let r: std::result::Result<bool, mlua::Error> =
+                                            globals.get(varname.as_str());
+                                        if let Ok(r) = r { Some(r == *v) } else { None }
+                                    }
+                                } {
+                                    if !res {
+                                        self.log(
+                                            LogType::Debug,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!(
+                                                "(trigger: {trigger_name}) result mismatch on at least one variable ({varname}): failure"
+                                            ),
+                                        );
+                                        failure_reason = FailureReason::VariableMatch;
+                                        break;
+                                    }
+                                } else {
                                     self.log(
                                         LogType::Debug,
                                         LOG_WHEN_PROC,
-                                        LOG_STATUS_OK,
-                                        &format!("(trigger: {trigger_name}) result mismatch on at least one variable ({varname}): failure"),
+                                        LOG_STATUS_FAIL,
+                                        &format!(
+                                            "(trigger: {trigger_name}) result not found for at least one variable ({varname}): failure"
+                                        ),
                                     );
                                     failure_reason = FailureReason::VariableMatch;
                                     break;
                                 }
-                            } else {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    &format!("(trigger: {trigger_name}) result not found for at least one variable ({varname}): failure"),
-                                );
-                                failure_reason = FailureReason::VariableMatch;
-                                break;
                             }
-                        }
-                    } else {
-                        failure_reason = FailureReason::VariableMatch;
-                        for (varname, value) in self.expected.iter() {
-                            if let Some(res) = match value {
-                                LuaValue::LuaString(v) => {
-                                    let r: std::result::Result<String, mlua::Error> =
-                                        globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
-                                }
-                                LuaValue::LuaNumber(v) => {
-                                    let r: std::result::Result<f64, mlua::Error> =
-                                        globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
-                                }
-                                LuaValue::LuaBoolean(v) => {
-                                    let r: std::result::Result<bool, mlua::Error> =
-                                        globals.get(varname.as_str());
-                                    if let Ok(r) = r { Some(r == *v) } else { None }
-                                }
-                            } {
-                                if res {
-                                    self.log(
-                                        LogType::Debug,
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_OK,
-                                        &format!("(trigger: {trigger_name}) result match on at least one variable ({varname}): success"),
-                                    );
-                                    failure_reason = FailureReason::NoFailure;
-                                    break;
+                        } else {
+                            failure_reason = FailureReason::VariableMatch;
+                            for (varname, value) in self.expected.iter() {
+                                if let Some(res) = match value {
+                                    LuaValue::LuaString(v) => {
+                                        let r: std::result::Result<String, mlua::Error> =
+                                            globals.get(varname.as_str());
+                                        if let Ok(r) = r { Some(r == *v) } else { None }
+                                    }
+                                    LuaValue::LuaNumber(v) => {
+                                        let r: std::result::Result<f64, mlua::Error> =
+                                            globals.get(varname.as_str());
+                                        if let Ok(r) = r { Some(r == *v) } else { None }
+                                    }
+                                    LuaValue::LuaBoolean(v) => {
+                                        let r: std::result::Result<bool, mlua::Error> =
+                                            globals.get(varname.as_str());
+                                        if let Ok(r) = r { Some(r == *v) } else { None }
+                                    }
+                                } {
+                                    if res {
+                                        self.log(
+                                            LogType::Debug,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_OK,
+                                            &format!(
+                                                "(trigger: {trigger_name}) result match on at least one variable ({varname}): success"
+                                            ),
+                                        );
+                                        failure_reason = FailureReason::NoFailure;
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // in case of error report a brief error message to the log
-            Err(res) => {
-                if let Some(err_msg) = res.to_string().split('\n').next() {
-                    self.log(
-                        LogType::Warn,
-                        LOG_WHEN_END,
-                        LOG_STATUS_FAIL,
-                        &format!("error in Lua script: {err_msg}"),
-                    );
-                } else {
-                    self.log(
-                        LogType::Warn,
-                        LOG_WHEN_END,
-                        LOG_STATUS_FAIL,
-                        "error in Lua script (unknown)",
-                    );
+                // in case of error report a brief error message to the log
+                Err(res) => {
+                    if let Some(err_msg) = res.to_string().split('\n').next() {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            &format!("trigger: {trigger_name}) error in Lua script: {err_msg}"),
+                        );
+                    } else {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_END,
+                            LOG_STATUS_FAIL,
+                            &format!("trigger: {trigger_name}) error in Lua script (unknown)"),
+                        );
+                    }
+                    failure_reason = FailureReason::ScriptError;
                 }
-                failure_reason = FailureReason::ScriptError;
             }
         }
 
@@ -817,7 +934,7 @@ impl Task for LuaTask {
                     LOG_STATUS_OK,
                     &format!(
                         "(trigger: {trigger_name}) task exited successfully in {:.2}s",
-                        duration.as_secs_f64()
+                        duration.as_secs_f64(),
                     ),
                 );
                 Ok(Some(true))
@@ -829,7 +946,7 @@ impl Task for LuaTask {
                     LOG_STATUS_OK,
                     &format!(
                         "(trigger: {trigger_name}) task exited with no outcome in {:.2}s",
-                        duration.as_secs_f64()
+                        duration.as_secs_f64(),
                     ),
                 );
                 Ok(None)
@@ -841,7 +958,8 @@ impl Task for LuaTask {
                     LOG_STATUS_OK,
                     &format!(
                         "(trigger: {trigger_name}) task exited unsuccessfully (unmatched values) in {:.2}s",
-                        duration.as_secs_f64()));
+                        duration.as_secs_f64(),
+                    ));
                 Ok(Some(false))
             }
             FailureReason::ScriptError => {
@@ -849,8 +967,21 @@ impl Task for LuaTask {
                     LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    &format!("(trigger: {trigger_name}) task exited unsuccessfully (script error) in {:.2}s",
-                        duration.as_secs_f64()));
+                    &format!(
+                        "(trigger: {trigger_name}) task exited unsuccessfully (script error) in {:.2}s",
+                        duration.as_secs_f64(),
+                    ));
+                Ok(Some(false))
+            }
+            FailureReason::InitError => {
+                self.log(
+                    LogType::Warn,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!(
+                        "(trigger: {trigger_name}) task exited unsuccessfully (initialization error) in {:.2}s",
+                        duration.as_secs_f64(),
+                    ));
                 Ok(Some(false))
             }
         }
