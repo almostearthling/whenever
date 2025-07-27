@@ -13,7 +13,7 @@ use lazy_static::lazy_static;
 
 use cfgmap::CfgValue;
 use clokwerk::{Scheduler, TimeUnits};
-use rand::{RngCore, thread_rng};
+use rand::{RngCore, rng};
 use single_instance::SingleInstance;
 use whoami::username;
 
@@ -174,7 +174,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
         std::thread::spawn(move || {
             if !NO_DELAY_CONDITIONS.contains(&CONDITION_REGISTRY.condition_type(&name).unwrap()) {
                 if let Some(ms) = rand_millis_range {
-                    let mut rng = thread_rng();
+                    let mut rng = rng();
                     let rms = rng.next_u64() % ms;
                     let dur = std::time::Duration::from_millis(rms);
                     std::thread::sleep(dur);
