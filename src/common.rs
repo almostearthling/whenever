@@ -1894,12 +1894,15 @@ pub mod dbusitem {
         let mut log_message: String = String::from("message or return parameter check ended");
 
         // !!!! if let Ok(mbody) = message.body() {
-        if let Ok(mbody) = message.body().deserialize::<zvariant::Array>() {
+        let b = message.body();
+        let bs = b.deserialize::<zvariant::Structure>();
+        if let Ok(mbody) = bs {
             // the label is set to make sure that we can break out from
             // any nested loop on shortcut evaluation condition (that is
             // when all condition had to be true and at least one is false
             // or when one true condition is sufficient and we find it)
             // or when an error occurs, which implies evaluation to false
+            let mbody = mbody.fields();
             'params: for ck in checks.iter() {
                 let argnum = ck.index.first();
                 if let Some(argnum) = argnum {
@@ -1918,7 +1921,7 @@ pub mod dbusitem {
                                 verified = false;
                                 break 'params;
                             }
-                            let s = mbody.get(*x as usize).unwrap();
+                            let s = mbody.get(*x as usize);
                             if s.is_none() {
                                 severity = LogType::Warn;
                                 ref_log_when = LOG_WHEN_PROC;
@@ -1928,7 +1931,7 @@ pub mod dbusitem {
                                 verified = false;
                                 break 'params;
                             }
-                            let mut field_value = &s.unwrap();
+                            let mut field_value = s.unwrap();
                             for x in 1..ck.index.len() {
                                 match ck.index.get(x).unwrap() {
                                     ParameterIndex::Integer(i) => {
