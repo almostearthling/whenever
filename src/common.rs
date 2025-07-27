@@ -1329,12 +1329,12 @@ pub mod dbusitem {
     use crate::constants::*;
     use cfgmap::CfgValue;
     use regex::Regex;
-    use zbus::zvariant::Signature;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
     use zbus;
     use zbus::Message;
     use zbus::zvariant;
+    use zbus::zvariant::Signature;
 
     // this helper is just to avoid ugly code since the implementation of
     // zbus used here still does not implement the `key_signature` method
@@ -1604,8 +1604,9 @@ pub mod dbusitem {
                     if let Signature::Dict { key: ks, value: _ } = d.signature() {
                         match ks.signature() {
                             Signature::Str => {
-                            let k = zvariant::Str::from(self.as_str());
-                            let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
+                                let k = zvariant::Str::from(self.as_str());
+                                let res: Result<Option<&zvariant::Value>, zvariant::Error> =
+                                    d.get(&k);
                                 if let Ok(res) = res {
                                     res.is_some()
                                 } else {
@@ -1616,7 +1617,10 @@ pub mod dbusitem {
                                 let k = zvariant::ObjectPath::try_from(self.as_str());
                                 if k.is_ok() {
                                     let k = k.unwrap();
-                                    let res: Result<Option<zbus::zvariant::ObjectPath<'_>>, zvariant::Error> = d.get(&k);
+                                    let res: Result<
+                                        Option<zbus::zvariant::ObjectPath<'_>>,
+                                        zvariant::Error,
+                                    > = d.get(&k);
                                     if let Ok(res) = res {
                                         res.is_some()
                                     } else {
@@ -1631,7 +1635,7 @@ pub mod dbusitem {
                     } else {
                         false
                     }
-                },
+                }
                 _ => false,
             }
         }
@@ -1923,8 +1927,9 @@ pub mod dbusitem {
                                 severity = LogType::Warn;
                                 ref_log_when = LOG_WHEN_PROC;
                                 ref_log_status = LOG_STATUS_FAIL;
-                                log_message =
-                                    format!("could not retrieve result: index {x} provided no value");
+                                log_message = format!(
+                                    "could not retrieve result: index {x} provided no value"
+                                );
                                 verified = false;
                                 break 'params;
                             }
@@ -1999,13 +2004,19 @@ pub mod dbusitem {
                                         match field_value {
                                             zvariant::Value::Dict(f) => {
                                                 // in order to match either strings or object paths, match key signature
-                                                let m = if let Signature::Dict { key: ks, value: _ } = f.signature() {
+                                                let m = if let Signature::Dict {
+                                                    key: ks,
+                                                    value: _,
+                                                } = f.signature()
+                                                {
                                                     match **ks {
-                                                        Signature::Str => {
-                                                            f.get(s)
-                                                        },
+                                                        Signature::Str => f.get(s),
                                                         Signature::ObjectPath => {
-                                                            if zvariant::ObjectPath::try_from(s.as_str()).is_err() {
+                                                            if zvariant::ObjectPath::try_from(
+                                                                s.as_str(),
+                                                            )
+                                                            .is_err()
+                                                            {
                                                                 severity = LogType::Warn;
                                                                 ref_log_when = LOG_WHEN_PROC;
                                                                 ref_log_status = LOG_STATUS_FAIL;
@@ -2017,7 +2028,7 @@ pub mod dbusitem {
                                                             } else {
                                                                 f.get(s)
                                                             }
-                                                        },
+                                                        }
                                                         _ => {
                                                             severity = LogType::Warn;
                                                             ref_log_when = LOG_WHEN_PROC;
@@ -2027,7 +2038,7 @@ pub mod dbusitem {
                                                             );
                                                             verified = false;
                                                             break 'params;
-                                                        },
+                                                        }
                                                     }
                                                 } else {
                                                     severity = LogType::Warn;

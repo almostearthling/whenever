@@ -1241,14 +1241,17 @@ impl Condition for DbusMethodCondition {
                         },
                         method.as_str(),
                         &arg,
-                    ).await
+                    )
+                    .await
                 })
             } else {
                 self.log(
                     LogType::Warn,
                     LOG_WHEN_START,
                     LOG_STATUS_FAIL,
-                    &format!("could not build parameter list invoking method {method} on bus `{bus}`"),
+                    &format!(
+                        "could not build parameter list invoking method {method} on bus `{bus}`",
+                    ),
                 );
                 return Ok(Some(false));
             };
