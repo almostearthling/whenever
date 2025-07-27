@@ -792,7 +792,7 @@ impl Event for DbusMessageEvent {
         async fn _get_dbus_message(stream: &mut MessageStream) -> Option<TargetOrQuitEvent> {
             if let Some(m) = stream.next().await {
                 if let Ok(m) = m {
-                    Some(TargetOrQuitEvent::Target(m))
+                    Some(TargetOrQuitEvent::Target(Arc::new(m)))
                 } else {
                     None
                 }

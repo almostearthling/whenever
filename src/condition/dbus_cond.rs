@@ -642,7 +642,16 @@ impl DbusMethodCondition {
             for i in item.iter() {
                 let v = i.to_variant();
                 if let Some(v) = v {
-                    param_call.push(v.into());
+                    let v = v.try_to_owned();
+                    if v.is_err() {
+                        return Err(cfg_err_invalid_config(
+                            cur_key,
+                            STR_UNKNOWN_VALUE,
+                            ERR_INVALID_CONFIG_FOR_ENTRY,
+                        ));
+                    } else {
+                        param_call.push(v.unwrap());
+                    }
                 } else {
                     return Err(cfg_err_invalid_config(
                         cur_key,
@@ -1216,24 +1225,33 @@ impl Condition for DbusMethodCondition {
                 let v = zvariant::Value::from(p);
                 arg.push_value(v);
             }
-            message = task::block_on(async {
-                conn.call_method(
-                    if service.is_empty() {
-                        None
-                    } else {
-                        Some(service.as_str())
-                    },
-                    object_path.as_str(),
-                    if interface.is_empty() {
-                        None
-                    } else {
-                        Some(interface.as_str())
-                    },
-                    method.as_str(),
-                    &arg.build(),
-                )
-                .await
-            });
+            if let Ok(arg) = arg.build() {
+                message = task::block_on(async {
+                    conn.call_method(
+                        if service.is_empty() {
+                            None
+                        } else {
+                            Some(service.as_str())
+                        },
+                        object_path.as_str(),
+                        if interface.is_empty() {
+                            None
+                        } else {
+                            Some(interface.as_str())
+                        },
+                        method.as_str(),
+                        &arg,
+                    ).await
+                })
+            } else {
+                self.log(
+                    LogType::Warn,
+                    LOG_WHEN_START,
+                    LOG_STATUS_FAIL,
+                    &format!("could not build parameter list invoking method {method} on bus `{bus}`"),
+                );
+                return Ok(Some(false));
+            };
         } else {
             message = task::block_on(async {
                 conn.call_method(
@@ -1263,6 +1281,7 @@ impl Condition for DbusMethodCondition {
             );
             return Ok(Some(false));
         }
+        let message = message.unwrap();
 
         // now check method result in the same way as in signal message
         let verified;
@@ -1282,7 +1301,7 @@ impl Condition for DbusMethodCondition {
             let log_message;
 
             (verified, severity, log_when, log_status, log_message) =
-                dbus_check_message(&message.unwrap(), checks, self.param_checks_all);
+                dbus_check_message(&message, checks, self.param_checks_all);
             self.log(severity, log_when, log_status, &log_message);
         } else {
             panic!("attempt to verify condition without initializing tests")
