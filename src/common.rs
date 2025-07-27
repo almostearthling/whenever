@@ -1909,10 +1909,6 @@ pub mod dbusitem {
                 if let Some(argnum) = argnum {
                     match argnum {
                         ParameterIndex::Integer(x) => {
-                            // see:
-                            // https://docs.rs/zvariant/5.6.0/zvariant/index.html
-                            // https://docs.rs/zvariant/latest/zvariant/trait.DynamicDeserialize.html
-                            // https://serde.rs/impl-deserialize.html
                             if *x >= mbody.len() as u64 {
                                 severity = LogType::Warn;
                                 ref_log_when = LOG_WHEN_PROC;
