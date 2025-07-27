@@ -82,6 +82,7 @@ pub const ERR_INVALID_TICK_SECONDS: &str = "invalid number of seconds for tick";
 pub const ERR_INVALID_VALUE_FOR: &str = "invalid value for";
 pub const ERR_INVALID_VALUE_FOR_ENTRY: &str = "invalid value for entry";
 pub const ERR_INVALID_VALUE_FOR_LIST_ENTRY: &str = "invalid value for list entry";
+pub const ERR_INVALID_CONFIG_FOR_ENTRY: &str = "cannot configure entry";
 
 pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 

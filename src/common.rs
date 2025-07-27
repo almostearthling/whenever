@@ -1329,6 +1329,7 @@ pub mod dbusitem {
     use crate::constants::*;
     use cfgmap::CfgValue;
     use regex::Regex;
+    use zbus::zvariant::Signature;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
     use zbus;
@@ -1339,7 +1340,7 @@ pub mod dbusitem {
     // zbus used here still does not implement the `key_signature` method
     // for dictionaries
     pub fn key_signature(d: &zvariant::Dict) -> String {
-        String::from(d.signature().as_str().chars().nth(2).unwrap())
+        String::from(d.signature().to_string().chars().nth(2).unwrap())
     }
 
     /// an enum to store the operators for checking signal parameters
@@ -1461,8 +1462,8 @@ pub mod dbusitem {
                     // i64 that is created to test for inclusion, and large u64
                     // numbers are be automatically discarded and set to `None`
                     // which is never matched
-                    let testv: Vec<Option<i64>> = match a.element_signature().as_str() {
-                        "y" => {
+                    let testv: Vec<Option<i64>> = match a.element_signature() {
+                        Signature::U8 => {
                             // BYTE
                             a.iter()
                                 .map(|x| {
@@ -1474,7 +1475,7 @@ pub mod dbusitem {
                                 })
                                 .collect()
                         }
-                        "n" => {
+                        Signature::I16 => {
                             // INT16
                             a.iter()
                                 .map(|x| {
@@ -1486,7 +1487,7 @@ pub mod dbusitem {
                                 })
                                 .collect()
                         }
-                        "q" => {
+                        Signature::U16 => {
                             // UINT16
                             a.iter()
                                 .map(|x| {
@@ -1498,7 +1499,7 @@ pub mod dbusitem {
                                 })
                                 .collect()
                         }
-                        "i" => {
+                        Signature::I32 => {
                             // INT32
                             a.iter()
                                 .map(|x| {
@@ -1510,7 +1511,7 @@ pub mod dbusitem {
                                 })
                                 .collect()
                         }
-                        "u" => {
+                        Signature::U32 => {
                             // UINT32
                             a.iter()
                                 .map(|x| {
@@ -1522,7 +1523,7 @@ pub mod dbusitem {
                                 })
                                 .collect()
                         }
-                        "x" => {
+                        Signature::I64 => {
                             // INT64
                             a.iter()
                                 .map(|x| {
@@ -1534,7 +1535,7 @@ pub mod dbusitem {
                                 })
                                 .collect()
                         }
-                        "t" => {
+                        Signature::U64 => {
                             // UINT64
                             // this is the tricky one, but since we know that big
                             // unsigned integer surely do not match the provided
@@ -1582,9 +1583,9 @@ pub mod dbusitem {
             match v {
                 zvariant::Value::Str(s) => s.as_str().contains(self.as_str()),
                 zvariant::Value::ObjectPath(s) => s.as_str().contains(self.as_str()),
-                zvariant::Value::Array(a) => match a.element_signature().as_str() {
-                    "s" => a.contains(&zvariant::Value::from(self)),
-                    "o" => {
+                zvariant::Value::Array(a) => match a.element_signature() {
+                    Signature::Str => a.contains(&zvariant::Value::from(self)),
+                    Signature::ObjectPath => {
                         let o = zvariant::ObjectPath::try_from(self.as_str());
                         if let Ok(o) = o {
                             a.contains(&zvariant::Value::from(o))
@@ -1598,30 +1599,38 @@ pub mod dbusitem {
                 // allow to search the keys as set or list, thus the easiest test
                 // that can be made is retrieving a value and checking for errors
                 // and that the result is something
-                zvariant::Value::Dict(d) => match key_signature(d).as_str() {
-                    "s" => {
-                        let k = zvariant::Str::from(self.as_str());
-                        let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
-                        if let Ok(res) = res {
-                            res.is_some()
-                        } else {
-                            false
+                // !!!! zvariant::Value::Dict(d) => match key_signature(d).as_str() {
+                zvariant::Value::Dict(d) => {
+                    if let Signature::Dict { key: ks, value: _ } = d.signature() {
+                        match ks.signature() {
+                            Signature::Str => {
+                            let k = zvariant::Str::from(self.as_str());
+                            let res: Result<Option<&zvariant::Value>, zvariant::Error> = d.get(&k);
+                                if let Ok(res) = res {
+                                    res.is_some()
+                                } else {
+                                    false
+                                }
+                            }
+                            Signature::ObjectPath => {
+                                let k = zvariant::ObjectPath::try_from(self.as_str());
+                                if k.is_ok() {
+                                    let k = k.unwrap();
+                                    let res: Result<Option<zbus::zvariant::ObjectPath<'_>>, zvariant::Error> = d.get(&k);
+                                    if let Ok(res) = res {
+                                        res.is_some()
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                            _ => false,
                         }
+                    } else {
+                        false
                     }
-                    "o" => {
-                        let k = zvariant::ObjectPath::try_from(self.as_str());
-                        if k.is_err() {
-                            return false;
-                        }
-                        let res: Result<Option<&zvariant::Value>, zvariant::Error> =
-                            d.get(&k.unwrap());
-                        if let Ok(res) = res {
-                            res.is_some()
-                        } else {
-                            false
-                        }
-                    }
-                    _ => false,
                 },
                 _ => false,
             }
@@ -1885,18 +1894,26 @@ pub mod dbusitem {
         let mut ref_log_status: &str = LOG_STATUS_OK;
         let mut log_message: String = String::from("message or return parameter check ended");
 
-        if let Ok(mbody) = message.body::<zvariant::Structure>() {
+        // !!!! if let Ok(mbody) = message.body() {
+        let b = message.body();
+        let bs = b.deserialize::<zvariant::Structure>();
+        if let Ok(mbody) = bs {
             // the label is set to make sure that we can break out from
             // any nested loop on shortcut evaluation condition (that is
             // when all condition had to be true and at least one is false
             // or when one true condition is sufficient and we find it)
             // or when an error occurs, which implies evaluation to false
+            let mbody = mbody.fields();
             'params: for ck in checks.iter() {
                 let argnum = ck.index.first();
                 if let Some(argnum) = argnum {
                     match argnum {
                         ParameterIndex::Integer(x) => {
-                            if *x >= mbody.fields().len() as u64 {
+                            // see:
+                            // https://docs.rs/zvariant/5.6.0/zvariant/index.html
+                            // https://docs.rs/zvariant/latest/zvariant/trait.DynamicDeserialize.html
+                            // https://serde.rs/impl-deserialize.html
+                            if *x >= mbody.len() as u64 {
                                 severity = LogType::Warn;
                                 ref_log_when = LOG_WHEN_PROC;
                                 ref_log_status = LOG_STATUS_FAIL;
@@ -1905,7 +1922,17 @@ pub mod dbusitem {
                                 verified = false;
                                 break 'params;
                             }
-                            let mut field_value = mbody.fields().get(*x as usize).unwrap();
+                            let s = mbody.get(*x as usize);
+                            if s.is_none() {
+                                severity = LogType::Warn;
+                                ref_log_when = LOG_WHEN_PROC;
+                                ref_log_status = LOG_STATUS_FAIL;
+                                log_message =
+                                    format!("could not retrieve result: index {x} provided no value");
+                                verified = false;
+                                break 'params;
+                            }
+                            let mut field_value = s.unwrap();
                             for x in 1..ck.index.len() {
                                 match ck.index.get(x).unwrap() {
                                     ParameterIndex::Integer(i) => {
@@ -1972,41 +1999,49 @@ pub mod dbusitem {
                                     // in fact ugly as hell, however a nicer implementation might come with more recent
                                     // releases of zbus, which provide enum variants for signature nested structures
                                     ParameterIndex::String(s) => {
-                                        let s = s.as_str();
+                                        // let s = s.as_str();
                                         match field_value {
                                             zvariant::Value::Dict(f) => {
                                                 // in order to match either strings or object paths, match key signature
-                                                let m = match key_signature(f).as_str() {
-                                                    "s" => {
-                                                        let k = zvariant::Str::from(s);
-                                                        f.get(&k)
-                                                    }
-                                                    "o" => {
-                                                        let res = zvariant::ObjectPath::try_from(s);
-                                                        if res.is_err() {
+                                                let m = if let Signature::Dict { key: ks, value: _ } = f.signature() {
+                                                    match **ks {
+                                                        Signature::Str => {
+                                                            f.get(s)
+                                                        },
+                                                        Signature::ObjectPath => {
+                                                            if zvariant::ObjectPath::try_from(s.as_str()).is_err() {
+                                                                severity = LogType::Warn;
+                                                                ref_log_when = LOG_WHEN_PROC;
+                                                                ref_log_status = LOG_STATUS_FAIL;
+                                                                log_message = format!(
+                                                                    "could not retrieve result: index `{s}` should be an object path",
+                                                                );
+                                                                verified = false;
+                                                                break 'params;
+                                                            } else {
+                                                                f.get(s)
+                                                            }
+                                                        },
+                                                        _ => {
                                                             severity = LogType::Warn;
                                                             ref_log_when = LOG_WHEN_PROC;
                                                             ref_log_status = LOG_STATUS_FAIL;
                                                             log_message = format!(
-                                                                "could not retrieve result: index `{s}` should be an object path",
+                                                                "could not retrieve result: index `{s}` not matching dictionary key type",
                                                             );
                                                             verified = false;
                                                             break 'params;
-                                                        } else {
-                                                            let k = res.unwrap().to_owned();
-                                                            f.get(&k)
-                                                        }
+                                                        },
                                                     }
-                                                    _ => {
-                                                        severity = LogType::Warn;
-                                                        ref_log_when = LOG_WHEN_PROC;
-                                                        ref_log_status = LOG_STATUS_FAIL;
-                                                        log_message = format!(
-                                                            "could not retrieve result: index `{s}` not matching dictionary key type",
-                                                        );
-                                                        verified = false;
-                                                        break 'params;
-                                                    }
+                                                } else {
+                                                    severity = LogType::Warn;
+                                                    ref_log_when = LOG_WHEN_PROC;
+                                                    ref_log_status = LOG_STATUS_FAIL;
+                                                    log_message = format!(
+                                                        "could not retrieve result: index `{s}` not matching dictionary key type",
+                                                    );
+                                                    verified = false;
+                                                    break 'params;
                                                 };
                                                 field_value = match m {
                                                     Ok(fv) => {
@@ -2087,7 +2122,7 @@ pub mod dbusitem {
                                     } else if ck.operator == ParamCheckOperator::Contains {
                                         match field_value {
                                             zvariant::Value::Array(_) => {
-                                                if _contained_in(b, field_value) {
+                                                if _contained_in(b, &field_value) {
                                                     verified = true;
                                                     if !checks_all {
                                                         break 'params;
@@ -2107,7 +2142,7 @@ pub mod dbusitem {
                                     } else if ck.operator == ParamCheckOperator::NotContains {
                                         match field_value {
                                             zvariant::Value::Array(_) => {
-                                                if !_contained_in(b, field_value) {
+                                                if !_contained_in(b, &field_value) {
                                                     verified = true;
                                                     if !checks_all {
                                                         break 'params;
@@ -2241,7 +2276,7 @@ pub mod dbusitem {
                                     }
                                     zvariant::Value::Array(_) => {
                                         if ck.operator == ParamCheckOperator::Contains {
-                                            if _contained_in(i, field_value) {
+                                            if _contained_in(i, &field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2253,7 +2288,7 @@ pub mod dbusitem {
                                                 }
                                             }
                                         } else if ck.operator == ParamCheckOperator::NotContains {
-                                            if !_contained_in(i, field_value) {
+                                            if !_contained_in(i, &field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2381,7 +2416,7 @@ pub mod dbusitem {
                                     }
                                     zvariant::Value::Array(_) => {
                                         if ck.operator == ParamCheckOperator::Contains {
-                                            if _contained_in(f, field_value) {
+                                            if _contained_in(f, &field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2393,7 +2428,7 @@ pub mod dbusitem {
                                                 }
                                             }
                                         } else if ck.operator == ParamCheckOperator::NotContains {
-                                            if !_contained_in(f, field_value) {
+                                            if !_contained_in(f, &field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2507,7 +2542,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     } else if ck.operator == ParamCheckOperator::Contains {
-                                        if _contained_in(s, field_value) {
+                                        if _contained_in(s, &field_value) {
                                             verified = true;
                                             if !checks_all {
                                                 break 'params;
@@ -2519,7 +2554,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     } else if ck.operator == ParamCheckOperator::NotContains {
-                                        if !_contained_in(s, field_value) {
+                                        if !_contained_in(s, &field_value) {
                                             verified = true;
                                             if !checks_all {
                                                 break 'params;
