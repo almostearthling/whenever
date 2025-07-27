@@ -3,6 +3,7 @@
 //! Various public string constants used throughout the crate, mostly error
 //! messages or other kinds of hints. Also, expose some regular expressions
 //! that are used to identify various items, to all modules.
+#![allow(dead_code)]
 
 use lazy_static::lazy_static;
 use regex::Regex;
