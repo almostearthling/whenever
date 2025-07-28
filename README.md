@@ -82,6 +82,8 @@ Detailed [documentation](https://almostearthling.github.io/whenever/index.html) 
 
 As said above, **When** is helpful as a frontend also for most of the common setup and configuration issues.
 
+Note that the documentation generally refers to the version of **whenever** currently in the _main_ branch, that is, the latest stable version: it is usually published as a release as well, although sometimes the latest published release might still be some steps behind. Please check the version that the documentation refers to on the [index](https://almostearthling.github.io/whenever/index.html) page.
+
 
 ## :radioactive: Issues and Breaking Changes
 
