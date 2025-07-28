@@ -1,6 +1,8 @@
 The Whenever Scheduler
 ======================
 
+:Version: |release|
+
 This document describes **whenever**, a lightweight scheduler and automation tool for desktop environments.
 
 `whenever <https://github.com/almostearthling/whenever>`__ development is hosted on GitHub.
