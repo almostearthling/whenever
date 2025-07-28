@@ -586,6 +586,17 @@ The Lua interpreter is initialized at each run by
 
 exactly in this order.
 
+.. note::
+
+   Each *Lua* based item (either task or condition) initializes its own instance of the
+   interpreter: this means that the global variables are set and the initialization script is run
+   every time the item is executed. At the end of the execution, the interpreter instance is
+   destroyed and its resources are freed. In fact, this means that at each run **whenever** has
+   to do some extra work to initialize the interpreter context; on the other hand, this allows
+   for multiple instances of *Lua* to run concurrently, and to be initialized with different
+   global variables and different startup scripts, as suggested by the *per item* configuration
+   options.
+
 External scripts can be executed via ``dofile("/path/to/script.lua")`` or by using the ``require``
 function. While a successful execution is always determined by matching the provided criteria, an
 error in the script is always considered a failure.
