@@ -83,6 +83,11 @@ Detailed [documentation](https://almostearthling.github.io/whenever/index.html) 
 As said above, **When** is helpful as a frontend also for most of the common setup and configuration issues.
 
 
+## :radioactive: Issues and Breaking Changes
+
+**Breaking change:** The _0.4_ series of **whenever** introduces an incompatibility in terms of configuration file with early versions of the _0.3_ series, as it ultimately drops support for embedded JSON strings to define parameter checks for _DBus_: using JSON has been deprecated in version _0.3.8_ (a log warning is issued if JSON is found), in favor of pure TOML dictionaries. Pure TOML is obviously easier to read and manage especially using small inline tables, one for each check, and JSON support is dropped in order to reclaim some memory.
+
+
 ## :lady_beetle: Bug Reporting
 
 If there is a bug in the **whenever** application, please use the project [issue tracker](https://github.com/almostearthling/whenever/issues) to report it.
