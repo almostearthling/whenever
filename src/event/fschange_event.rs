@@ -153,7 +153,7 @@ impl FilesystemChangeEvent {
         if p.exists() {
             self.log(
                 LogType::Debug,
-                LOG_WHEN_INIT,
+                LOG_WHEN_START,
                 LOG_STATUS_OK,
                 &format!(
                     "found valid item to watch: `{}`",
@@ -169,7 +169,7 @@ impl FilesystemChangeEvent {
         } else {
             self.log(
                 LogType::Warn,
-                LOG_WHEN_INIT,
+                LOG_WHEN_END,
                 LOG_STATUS_FAIL,
                 &format!(
                     "refusing non-existent item: `{}`",

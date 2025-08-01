@@ -355,7 +355,7 @@ pub trait Condition: Send {
         // check that the task is actually in the regstry
         self.log(
             LogType::Trace,
-            LOG_WHEN_INIT,
+            LOG_WHEN_PROC,
             LOG_STATUS_MSG,
             &format!("checking for presence of task {name} in the registry"),
         );
@@ -366,7 +366,7 @@ pub trait Condition: Send {
                 if !r.has_task(name) {
                     self.log(
                         LogType::Error,
-                        LOG_WHEN_INIT,
+                        LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
                         &format!("could not add task {name}: not found in registry"),
                     );
@@ -376,7 +376,7 @@ pub trait Condition: Send {
             None => {
                 self.log(
                     LogType::Error,
-                    LOG_WHEN_INIT,
+                    LOG_WHEN_PROC,
                     LOG_STATUS_FAIL,
                     &format!("could not add task {name}: registry not assigned"),
                 );
@@ -389,14 +389,14 @@ pub trait Condition: Send {
         if outcome {
             self.log(
                 LogType::Debug,
-                LOG_WHEN_INIT,
+                LOG_WHEN_PROC,
                 LOG_STATUS_OK,
                 &format!("task {name} successfully added to condition"),
             );
         } else {
             self.log(
                 LogType::Error,
-                LOG_WHEN_INIT,
+                LOG_WHEN_PROC,
                 LOG_STATUS_FAIL,
                 &format!("could not add task {name} to condition"),
             );
@@ -416,14 +416,14 @@ pub trait Condition: Send {
         if outcome {
             self.log(
                 LogType::Debug,
-                LOG_WHEN_INIT,
+                LOG_WHEN_PROC,
                 LOG_STATUS_OK,
                 &format!("task {name} successfully removed from condition"),
             );
         } else {
             self.log(
                 LogType::Error,
-                LOG_WHEN_INIT,
+                LOG_WHEN_PROC,
                 LOG_STATUS_FAIL,
                 &format!("could not remove task {name} from condition"),
             );
@@ -479,7 +479,7 @@ pub trait Condition: Send {
         let res = if self.exec_sequence() {
             self.log(
                 LogType::Info,
-                LOG_WHEN_INIT,
+                LOG_WHEN_START,
                 LOG_STATUS_MSG,
                 &format!("running tasks sequentially: {s_task_names}"),
             );
@@ -492,7 +492,7 @@ pub trait Condition: Send {
         } else {
             self.log(
                 LogType::Info,
-                LOG_WHEN_INIT,
+                LOG_WHEN_START,
                 LOG_STATUS_MSG,
                 &format!("running tasks simultaneously: {s_task_names}"),
             );
