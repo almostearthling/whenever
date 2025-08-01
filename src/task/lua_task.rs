@@ -21,8 +21,13 @@ use mlua;
 use super::base::Task;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
-use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
+
+#[cfg(feature = "lua_unsafe")]
+use crate::common::wres::Result;
+
+#[cfg(not(feature = "lua_unsafe"))]
+use crate::common::wres::{Error, Kind, Result};
 
 use crate::cfghelp::*;
 
@@ -607,21 +612,30 @@ impl Task for LuaTask {
             );
         }
 
-        let lua = mlua::Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::new());
-        if lua.is_err() {
-            let e = lua.unwrap_err();
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_START,
-                LOG_STATUS_FAIL,
-                &format!("(trigger: {trigger_name}) cannot start Lua interpreter ({e})"),
-            );
-            return Err(Error::new(
-                Kind::Failed,
-                &format!("cannot start Lua interpreter ({e})"),
-            ));
-        }
-        let lua = lua.unwrap();
+        let lua = {
+            #[cfg(feature = "lua_unsafe")]
+            unsafe {
+                mlua::Lua::unsafe_new_with(mlua::StdLib::ALL, mlua::LuaOptions::new())
+            }
+            #[cfg(not(feature = "lua_unsafe"))]
+            {
+                let l = mlua::Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::new());
+                if l.is_err() {
+                    let e = l.unwrap_err();
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_START,
+                        LOG_STATUS_FAIL,
+                        &format!("cannot start Lua interpreter ({e})"),
+                    );
+                    return Err(Error::new(
+                        Kind::Failed,
+                        &format!("cannot start Lua interpreter ({e})"),
+                    ));
+                }
+                l.unwrap()
+            }
+        };
 
         self.log(
             LogType::Debug,
