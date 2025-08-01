@@ -1,0 +1,73 @@
+.. _80-build:
+
+Building **whenever**
+=====================
+
+**whenever** is being thoroughly tested on Windows and Linux. It should work on Mac too, although
+I have no possibility to test it personally. On Windows, the build process is seamless as long as
+*Rust* and all its dependencies are installed.
+
+The resulting binaries are generally autosufficient on the destination platform: no extra
+libraries, other than the ones provided by the OS itself, are needed to run it from the command
+line. Copying the executable file to a directory in the *PATH* or just invoking it using the
+full path to the file should be enough to have it up and running.
+
+
+.. _80-build-scratch:
+
+Building from Scratch
+---------------------
+
+In order to build **whenever** a recent version of *Rust* is needed: some of the features that
+have been released with version **1.87.0** have been used. Once the *Rust* requirement, along with
+the toolchain for the destination platform, is fulfilled, the following build commands produce the
+binaries that are normally available in the published releases:
+
+1. on Linux:
+
+.. code-block:: shell
+
+   cargo build --release --no-default-features --features dbus
+
+
+2. on Windows:
+
+.. code-block:: shell
+
+   cargo build --release --no-default-features --features wmi
+
+
+This way, the produced binaries will only contain code for features that can be effectively used
+on the host platform.
+
+
+.. _80-build-issues:
+
+Build Issues
+------------
+
+On Linux, the build process might complain that some packages are missing: it mainly occurs because
+the "essential build tools" and the *development* versions of some packages are not installed by
+default. Taking Debian as an example, the following packages must be installed:
+
+
+* *pkg-config*
+* *libx11-dev*
+* *libdbus-1-dev*
+* *libxss-dev*
+* *xscreensaver* (not always necessary).
+
+With these packages installed, the scheduler compiles without errors. However, since not all Linux
+distributions come with *Xscreensaver* support (which is used to determine idle time), the related
+condition might not be checked and never fire. There is a *DBus* based workaround, that allows to
+use :ref:`idle session <50-conditions-idle>` conditions on Linux: the idle time, in this case, is
+counted as the amount of seconds after the screen has been locked. To enable this workaround, just
+edit the *Cargo.toml* file by uncommenting the second of the following lines:
+
+.. code-block:: toml
+
+   # user-idle has a problem on wayland-based sessions: work around by using
+   user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }  # <-- this line must be uncommented
+   # user-idle = "0.5.3"                                                             # <-- this line must be commented
+
+and commenting the line below.
