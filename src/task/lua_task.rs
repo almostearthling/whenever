@@ -753,7 +753,7 @@ impl Task for LuaTask {
                                     LOG_WHEN_START,
                                     LOG_STATUS_ERR,
                                     &format!(
-                                        "trigger: {trigger_name}) error in Lua initialization script `{}`: {err_msg}",
+                                        "trigger: {trigger_name}) error in Lua initialization script `{}`: {err_msg} ...",
                                         path.to_string_lossy(),
                                     ),
                                 );
@@ -909,7 +909,7 @@ impl Task for LuaTask {
                             LogType::Warn,
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
-                            &format!("trigger: {trigger_name}) error in Lua script: {err_msg}"),
+                            &format!("trigger: {trigger_name}) error in Lua script: {err_msg} ..."),
                         );
                     } else {
                         self.log(

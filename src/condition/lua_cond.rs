@@ -1051,7 +1051,7 @@ impl Condition for LuaCondition {
                                     LOG_WHEN_START,
                                     LOG_STATUS_ERR,
                                     &format!(
-                                        "error in Lua initialization script `{}`: {err_msg}",
+                                        "error in Lua initialization script `{}`: {err_msg} ...",
                                         path.to_string_lossy(),
                                     ),
                                 );
@@ -1204,7 +1204,7 @@ impl Condition for LuaCondition {
                             LogType::Warn,
                             LOG_WHEN_END,
                             LOG_STATUS_FAIL,
-                            &format!("error in Lua script: {err_msg}"),
+                            &format!("error in Lua script: {err_msg} ..."),
                         );
                     } else {
                         self.log(
