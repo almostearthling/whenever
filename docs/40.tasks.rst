@@ -243,6 +243,12 @@ and the following table provides a detailed description of the entries:
    script to change the interpreter behavior, for instance by setting the ``package.path`` and
    ``package.cpath`` settings programmatically, possibly according to the current setup.
 
+.. warning::
+   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*: this is due to
+   the fact that safety is enforced at build time, and loading an external library is considered
+   unsafe. This also means that the ``package.cpath`` setting will never have effect, since any
+   attempt to load a binary module will always result in a runtime error.
+
 Note that *triple single quotes* have been used to embed the script: this allows to use escapes
 and quotes in the script itself. Although the script should be embedded in the configuration file,
 it is possible to execute external scripts via ``dofile("/path/to/script.lua")`` or by using the

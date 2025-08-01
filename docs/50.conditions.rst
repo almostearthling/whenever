@@ -562,6 +562,12 @@ The specific parameters are described in the following table:
    script to change the interpreter behavior, for instance by setting the ``package.path`` and
    ``package.cpath`` settings programmatically, possibly according to the current setup.
 
+.. warning::
+   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*: this is due to
+   the fact that safety is enforced at build time, and loading an external library is considered
+   unsafe. This also means that the ``package.cpath`` setting will never have effect, since any
+   attempt to load a binary module will always result in a runtime error.
+
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
 *Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,
 at all logging levels (\ *error*, *warn*, *info*, *debug*, *trace*\ ). The library
