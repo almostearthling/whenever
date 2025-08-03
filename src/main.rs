@@ -1115,6 +1115,8 @@ fn main() {
             #[cfg(windows)]
             #[cfg(feature = "wmi")]
             "wmi",
+            #[cfg(feature = "lua_unsafe")]
+            "lua_unsafe",
         ];
         println!("options: {}", options.join(" "));
         std::process::exit(0);
