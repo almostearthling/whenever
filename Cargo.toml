@@ -19,8 +19,8 @@ edition = "2024"
 #
 # the suggested configurations are:
 #
-# - cargo build --release --no-default-features --features dbus     (Windows)
-# - cargo build --release --no-default-features --features wmi      (Linux)
+# - cargo build --release --no-default-features --features dbus     (Linux)
+# - cargo build --release --no-default-features --features wmi      (Windows)
 #
 # as the default features are both enabled for rust-analyzer to consider them
 [features]
