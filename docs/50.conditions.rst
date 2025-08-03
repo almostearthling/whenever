@@ -563,10 +563,10 @@ The specific parameters are described in the following table:
    ``package.cpath`` settings programmatically, possibly according to the current setup.
 
 .. warning::
-   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*: this is due to
-   the fact that safety is enforced at build time, and loading an external library is considered
-   unsafe. This also means that the ``package.cpath`` setting will never have effect, since any
-   attempt to load a binary module will always result in a runtime error.
+   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
+   due to the fact that safety is enforced at build time, and loading an external library is
+   considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
+   since any attempt to load a binary module will always result in a runtime error.
 
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
 *Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,
@@ -1028,6 +1028,9 @@ interval.
            the first success or failure happens.
 .. [#fn-2] Except on *Wayland* based Linux systems (e.g. Ubuntu), on which the idle time starts
            *after the session has been locked*.
+.. [#fn-7] In fact, there is the option to include the *unsafe* version of the *Lua* interpreter
+           in **whenever**: it is still experimental and not well supported, and loading binary
+           modules often leads to runtime errors in this case too.
 .. [#fn-3] In fact, in the original *When* the DBus based conditions and events were considered
            an advanced feature: even the dialog box that allowed the configuration of user-defined
            DBus events was only available through a specific invocation using the command line.
@@ -1036,4 +1039,4 @@ interval.
 .. [#fn-5] See the `DBus Specification
            <https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types>`__ for the
            complete list of supported types, and the ASCII character that identifies each of them.
-.. [#fn-6] in DBus, strings and object paths are considered different types.
+.. [#fn-6] In DBus, strings and object paths are considered different types.

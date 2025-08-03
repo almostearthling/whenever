@@ -244,10 +244,10 @@ and the following table provides a detailed description of the entries:
    ``package.cpath`` settings programmatically, possibly according to the current setup.
 
 .. warning::
-   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*: this is due to
-   the fact that safety is enforced at build time, and loading an external library is considered
-   unsafe. This also means that the ``package.cpath`` setting will never have effect, since any
-   attempt to load a binary module will always result in a runtime error.
+   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
+   due to the fact that safety is enforced at build time, and loading an external library is
+   considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
+   since any attempt to load a binary module will always result in a runtime error.
 
 Note that *triple single quotes* have been used to embed the script: this allows to use escapes
 and quotes in the script itself. Although the script should be embedded in the configuration file,
@@ -350,3 +350,7 @@ interface in DBus to catch a *system resume* event in order to reset all the con
    The provided command will *not* be checked upon configuration, it will *fail* instead causing
    a warning to be logged in case it is invalid or malformed.
 
+
+.. [#fn-7] In fact, there is the option to include the *unsafe* version of the *Lua* interpreter
+           in **whenever**: it is still experimental and not well supported, and loading binary
+           modules often leads to runtime errors in this case too.
