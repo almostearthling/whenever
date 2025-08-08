@@ -1663,29 +1663,29 @@ pub mod dbusitem {
 
     // the trait used to convert values to `zvariant::Value`
     pub trait ToVariant {
-        fn to_variant(&self) -> Option<zvariant::Value>;
+        fn to_variant(&self) -> Option<zvariant::Value<'_>>;
     }
 
     impl ToVariant for bool {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             Some(zvariant::Value::Bool(*self))
         }
     }
 
     impl ToVariant for i64 {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             Some(zvariant::Value::I64(*self))
         }
     }
 
     impl ToVariant for f64 {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             Some(zvariant::Value::F64(*self))
         }
     }
 
     impl ToVariant for str {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             let s = &self.to_string();
             if s.starts_with('\\') {
                 let rest = s.clone().split_off(2);
@@ -1772,7 +1772,7 @@ pub mod dbusitem {
     where
         T: ToVariant,
     {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             let mut a: Vec<zvariant::Value> = Vec::new();
             for item in self.iter() {
                 if let Some(v) = item.to_variant() {
@@ -1790,7 +1790,7 @@ pub mod dbusitem {
     where
         T: ToVariant,
     {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             let mut d: HashMap<String, zvariant::Value> = HashMap::new();
             for (key, item) in self.iter() {
                 if let Some(v) = item.to_variant() {
@@ -1805,14 +1805,14 @@ pub mod dbusitem {
 
     // this is necessary for the following conversion
     impl ToVariant for zvariant::Value<'_> {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             Some(self.clone())
         }
     }
 
     // and finally we support CfgValue, which is similar to a variant
     impl ToVariant for CfgValue {
-        fn to_variant(&self) -> Option<zvariant::Value> {
+        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             if self.is_bool() {
                 self.as_bool().unwrap().to_variant()
             } else if self.is_int() {
