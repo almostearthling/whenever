@@ -1336,13 +1336,6 @@ pub mod dbusitem {
     use zbus::zvariant;
     use zbus::zvariant::Signature;
 
-    // this helper is just to avoid ugly code since the implementation of
-    // zbus used here still does not implement the `key_signature` method
-    // for dictionaries
-    pub fn key_signature(d: &zvariant::Dict) -> String {
-        String::from(d.signature().to_string().chars().nth(2).unwrap())
-    }
-
     /// an enum to store the operators for checking signal parameters
     #[derive(PartialEq, Hash, Clone, Debug)]
     pub enum ParamCheckOperator {
