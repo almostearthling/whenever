@@ -56,7 +56,7 @@ Therefore, **whenever** does not implement a GUI by itself: on the contrary, it 
 with an independent *wrapper*.
 
 The actions to be performed are loaded every time at startup by means of a single configuration
-file that, as many modern tools do, uses the well known TOML format.\ [#fn-2]_
+file that, as many modern tools do, uses the well known TOML format.
 
 A very lightweight cross-platform wrapper, namely `whenever_tray`_, is available for both Linux
 and Windows. Developed in C++ and using the `WxWidgets <https://www.wxwidgets.org/>`__ GUI
@@ -72,7 +72,7 @@ an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated con
 and could noticeably use the CPU.
 
 This version, written in the `Rust <https://www.rust-lang.org/>`__ programming language, uses
-around 2MB of RAM on Windows\ [#fn-3]_ with a reasonable configuration file that uses *tasks*,
+around 2MB of RAM on Windows\ [#fn-2]_ with a reasonable configuration file that uses *tasks*,
 *conditions*, and *events* supported on the platform. Although small in footprint, **whenever**
 is fully multithreaded, condition checks have no influence on each other and, when needed, may
 run concurrently. Consequential task execution also takes place with full parallelism -- with the
@@ -146,7 +146,7 @@ specified as the only mandatory argument on the command line. The syntax of the 
 is described in the following sections.
 
 Every type of check is performed periodically, even the ones involving *event* based
-conditions\ [#fn-4]_: the periodic time interval at which the conditions are checked is referred
+conditions\ [#fn-3]_: the periodic time interval at which the conditions are checked is referred
 here as *tick*, and the tick interval can be specified in the configuration file -- defaulting at
 5 seconds. Note that, since performing all checks in the same instant at every tick could cause
 usage peaks in terms of computational resources, there is the option to attempt to randomly
@@ -194,12 +194,10 @@ to the tool itself.
            desktops: in fact it might be appropriate to disable it when compiling the
            application for Windows, in order to save resources. Binaries released for Windows
            ship *without* DBus support.
-.. [#fn-2] DBus parameters and criteria can still be expressed in `JSON <https://www.json.org/>`_
-           format for compatibility reasons, but this support will be eventually removed.
-.. [#fn-3] When run alone, with no wrapper: using the minimal provided wrapper, both programs
+.. [#fn-2] When run alone, with no wrapper: using the minimal provided wrapper, both programs
            together use less than 4MB of RAM and the combined CPU consumption in rare occasions
            reaches the 0.2% -- as reported by the Windows *Task Manager*.
-.. [#fn-4] The occurrence of an *event*, in fact, raises a flag that specifies that the
+.. [#fn-3] The occurrence of an *event*, in fact, raises a flag that specifies that the
            associated condition will be considered as verified at the following tick: the condition
            is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the
            scheduler that executes the related tasks. Therefore *event* based conditions are also
