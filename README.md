@@ -4,7 +4,10 @@
 
 > _This is not the scheduler you are looking for..._
 
-[![pages-build-deployment](https://github.com/almostearthling/whenever/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/almostearthling/whenever/actions/workflows/pages/pages-build-deployment)
+[![Linux Standard Build](https://github.com/almostearthling/whenever/actions/workflows/rust-linux-std.yml/badge.svg)](https://github.com/almostearthling/whenever/actions/workflows/rust-linux-std.yml)
+[![Windows Standard Build](https://github.com/almostearthling/whenever/actions/workflows/rust-windows-std.yml/badge.svg)](https://github.com/almostearthling/whenever/actions/workflows/rust-windows-std.yml)
+
+[![Documentation](https://github.com/almostearthling/whenever/actions/workflows/documentation.yaml/badge.svg)](https://github.com/almostearthling/whenever/actions/workflows/documentation.yaml)
 
 
 **whenever** is a lightweight automation tool capable of executing _tasks_ when specific _conditions_ are verified. Conditions can be of several types, for example:
