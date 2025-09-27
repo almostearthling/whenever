@@ -1,4 +1,4 @@
-name: Linux Standard Build
+name: Windows Standard Build
 
 on:
   push:
