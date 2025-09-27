@@ -15,6 +15,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Prerequisites
-      run: apt-get install -y libx11-dev libxss-dev libdbus-1-dev
+      run: sudo apt-get install -y libx11-dev libxss-dev libdbus-1-dev
     - name: Build
       run: cargo build --verbose --no-default-features --features dbus
