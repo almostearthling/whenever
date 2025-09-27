@@ -1,4 +1,4 @@
-name: Rust Linux STD
+name: Linux Standard Build
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Rust Windows STD
+name: Linux Standard Build
 
 on:
   push:
