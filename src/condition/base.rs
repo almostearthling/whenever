@@ -339,7 +339,7 @@ pub trait Condition: Send {
                     LOG_STATUS_FAIL,
                     "aborting: condition could not be set to checked",
                 );
-                return Err(Error::new(Kind::Failed, ERR_COND_CANNOT_SET_CHECKED));
+                Err(Error::new(Kind::Failed, ERR_COND_CANNOT_SET_CHECKED))
             }
         }
     }

@@ -100,8 +100,7 @@ fn check_single_instance(instance: &SingleInstance) -> Result<()> {
 fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
     // log whether or not there are any busy conditions
     let busy_conds = CONDITION_REGISTRY.conditions_busy().unwrap();
-    if busy_conds.is_some() {
-        let busy_conds = busy_conds.unwrap();
+    if let Some(busy_conds) = busy_conds {
         if busy_conds > 0 {
             log(
                 LogType::Trace,

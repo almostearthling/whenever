@@ -620,8 +620,7 @@ impl Task for LuaTask {
             #[cfg(not(feature = "lua_unsafe"))]
             {
                 let l = mlua::Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::new());
-                if l.is_err() {
-                    let e = l.unwrap_err();
+                if let Err(e) = l {
                     self.log(
                         LogType::Debug,
                         LOG_WHEN_START,

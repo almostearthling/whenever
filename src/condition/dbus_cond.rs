@@ -643,14 +643,14 @@ impl DbusMethodCondition {
                 let v = i.to_variant();
                 if let Some(v) = v {
                     let v = v.try_to_owned();
-                    if v.is_err() {
+                    if let Ok(v) = v {
+                        param_call.push(v);
+                    } else {
                         return Err(cfg_err_invalid_config(
                             cur_key,
                             STR_UNKNOWN_VALUE,
                             ERR_INVALID_CONFIG_FOR_ENTRY,
                         ));
-                    } else {
-                        param_call.push(v.unwrap());
                     }
                 } else {
                     return Err(cfg_err_invalid_config(

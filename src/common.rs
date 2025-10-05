@@ -11,7 +11,7 @@
 //!     - the log level
 //!     - the log message
 //! * The log message in turn has the following form:
-//!     `context: [MSGTYPE] human readable message`
+//!   `context: [MSGTYPE] human readable message`
 //!   where
 //!     - the context is usually constructed with two space-separated strings
 //!       indicating the part of the program where a certain message is issued
@@ -28,17 +28,17 @@
 //! * _PROC_ if the event occurs while processing or during some activity
 //! * _END_ if the event occurs at the end of a service or process
 //! * _HIST_ is a _trace level only_ message emitted to show history on GUI:
-//!          in this case _MSG_ is sent at the beginning of task execution, and
-//!          _OK_, _FAIL_ or _IND_ are sent at the end (resp. on success,
-//!          failure or _indeterminate_ outcome)
+//!   in this case _MSG_ is sent at the beginning of task execution, and
+//!   _OK_, _FAIL_ or _IND_ are sent at the end (resp. on success,
+//!   failure or _indeterminate_ outcome)
 //! * _BUSY_ is also a _trace level only_ message emitted to allow a GUI to
-//!          show the application status (for instance using an icon in the
-//!          tray area): when there are one or more conditions busy, the second
-//!          element is _YES_, otherwise _NO_
+//!   show the application status (for instance using an icon in the
+//!   tray area): when there are one or more conditions busy, the second
+//!   element is _YES_, otherwise _NO_
 //! * _PAUSE_ another _trace level only_ message emitted to allow a GUI to
-//!           change application status (for instance using a tray icon) when
-//!           the scheduler is paused: useful because an _internal command_
-//!           based task might pause the scheduler unattendedly
+//!   change application status (for instance using a tray icon) when
+//!   the scheduler is paused: useful because an _internal command_
+//!   based task might pause the scheduler unattendedly
 //!
 //! while the second can be one of:
 //!
@@ -51,7 +51,7 @@
 //! * _YES_ (only occurs for _BUSY_ or _PAUSE_ indicators) means: application
 //!   is busy or has been paused
 //! * _NO_ (only occurs for _BUSY_ or _PAUSE_ indicators) means: application
-//!    is _not_ busy or has been resumed
+//!   is _not_ busy or has been resumed
 //!
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to
@@ -113,7 +113,7 @@ pub mod logging {
             w,
             "[{}] ({APP_NAME}) {} {}",
             now.format(NOW_FMT),
-            format!("{:5}", record.level()),
+            format_args!("{:5}", record.level()),
             &record.args(),
         )
     }
@@ -127,9 +127,8 @@ pub mod logging {
             "application": APP_NAME,
             "time": now.format(NOW_FMT_FULL).to_string(),
             "level": record.level().to_string(),
-        })
-        .to_string();
-        let payload = record.args().to_string();
+        });
+        let payload = record.args();
         write!(w, "{{\"header\":{header},\"contents\":{payload}}}")
     }
 
@@ -144,10 +143,10 @@ pub mod logging {
         write!(
             w,
             "[{}] {} {} {}",
-            format!("{}", now.format(NOW_FMT)),
+            format_args!("{}", now.format(NOW_FMT)),
             dimmed.paint(format!("({APP_NAME})")),
             style(level).paint(format!("{:5}", level.to_string())),
-            bold.paint(format!("{}", &record.args())),
+            bold.paint(record.args().to_string()),
         )
     }
 
@@ -407,24 +406,24 @@ pub mod cmditem {
             // already had a cost in this terms
             let mut timed_out = false;
             let cres = comm.read_string();
-            if cres.is_err() {
-                if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
-                    let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
+            if let Err(e) = &cres {
+                if e.kind() == std::io::ErrorKind::TimedOut {
+                    let (co, ce) = e.capture.clone();
                     timed_out = true;
-                    if co.is_some() {
-                        out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
+                    if let Some(co) = co {
+                        out = Some(String::from_utf8(co).unwrap_or_default());
                     } else {
                         out = None;
                     }
-                    if ce.is_some() {
-                        err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
+                    if let Some(ce) = ce {
+                        err = Some(String::from_utf8(ce).unwrap_or_default());
                     } else {
                         err = None;
                     }
                 } else {
                     return Err(std::io::Error::new(
-                        cres.as_ref().unwrap_err().kind(),
-                        cres.as_ref().unwrap_err().to_string(),
+                        e.kind(),
+                        e.to_string(),
                     ));
                 }
             } else {
@@ -461,23 +460,23 @@ pub mod cmditem {
 
         // same as above
         let cres = comm.read_string();
-        if cres.is_err() {
-            if cres.as_ref().unwrap_err().kind() == std::io::ErrorKind::TimedOut {
-                let (co, ce) = cres.as_ref().unwrap_err().capture.clone();
-                if co.is_some() {
-                    out = Some(String::from_utf8(co.unwrap()).unwrap_or_default());
+        if let Err(e) = &cres {
+            if e.kind() == std::io::ErrorKind::TimedOut {
+                let (co, ce) = e.capture.clone();
+                if let Some(co) = co {
+                    out = Some(String::from_utf8(co).unwrap_or_default());
                 } else {
                     out = None;
                 }
-                if ce.is_some() {
-                    err = Some(String::from_utf8(ce.unwrap()).unwrap_or_default());
+                if let Some(ce) = ce {
+                    err = Some(String::from_utf8(ce).unwrap_or_default());
                 } else {
                     err = None;
                 }
             } else {
                 return Err(std::io::Error::new(
-                    cres.as_ref().unwrap_err().kind(),
-                    cres.as_ref().unwrap_err().to_string(),
+                    e.kind(),
+                    e.to_string(),
                 ));
             }
         } else {
@@ -1608,8 +1607,7 @@ pub mod dbusitem {
                             }
                             Signature::ObjectPath => {
                                 let k = zvariant::ObjectPath::try_from(self.as_str());
-                                if k.is_ok() {
-                                    let k = k.unwrap();
+                                if let Ok(k) = k {
                                     let res: Result<
                                         Option<zbus::zvariant::ObjectPath<'_>>,
                                         zvariant::Error,
@@ -1687,57 +1685,57 @@ pub mod dbusitem {
                     if rest == "true" || rest == "1" {
                         Some(zvariant::Value::Bool(true))
                     } else if rest == "false" || rest == "0" {
-                        return Some(zvariant::Value::Bool(false));
+                        Some(zvariant::Value::Bool(false))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\y") {
                     if let Ok(v) = rest.parse::<u8>() {
-                        return Some(zvariant::Value::U8(v));
+                        Some(zvariant::Value::U8(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\n") {
                     if let Ok(v) = rest.parse::<i16>() {
-                        return Some(zvariant::Value::I16(v));
+                        Some(zvariant::Value::I16(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\q") {
                     if let Ok(v) = rest.parse::<u16>() {
-                        return Some(zvariant::Value::U16(v));
+                        Some(zvariant::Value::U16(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\i") {
                     if let Ok(v) = rest.parse::<i32>() {
-                        return Some(zvariant::Value::I32(v));
+                        Some(zvariant::Value::I32(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\u") {
                     if let Ok(v) = rest.parse::<u32>() {
-                        return Some(zvariant::Value::U32(v));
+                        Some(zvariant::Value::U32(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\x") {
                     if let Ok(v) = rest.parse::<i64>() {
-                        return Some(zvariant::Value::I64(v));
+                        Some(zvariant::Value::I64(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\t") {
                     if let Ok(v) = rest.parse::<u64>() {
-                        return Some(zvariant::Value::U64(v));
+                        Some(zvariant::Value::U64(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\d") {
                     if let Ok(v) = rest.parse::<f64>() {
-                        return Some(zvariant::Value::F64(v));
+                        Some(zvariant::Value::F64(v))
                     } else {
-                        return None;
+                        None
                     }
                 } else if s.starts_with("\\s") {
                     Some(zvariant::Value::new(rest.clone()))
@@ -2122,7 +2120,7 @@ pub mod dbusitem {
                                     } else if ck.operator == ParamCheckOperator::Contains {
                                         match field_value {
                                             zvariant::Value::Array(_) => {
-                                                if _contained_in(b, &field_value) {
+                                                if _contained_in(b, field_value) {
                                                     verified = true;
                                                     if !checks_all {
                                                         break 'params;
@@ -2142,7 +2140,7 @@ pub mod dbusitem {
                                     } else if ck.operator == ParamCheckOperator::NotContains {
                                         match field_value {
                                             zvariant::Value::Array(_) => {
-                                                if !_contained_in(b, &field_value) {
+                                                if !_contained_in(b, field_value) {
                                                     verified = true;
                                                     if !checks_all {
                                                         break 'params;
@@ -2276,7 +2274,7 @@ pub mod dbusitem {
                                     }
                                     zvariant::Value::Array(_) => {
                                         if ck.operator == ParamCheckOperator::Contains {
-                                            if _contained_in(i, &field_value) {
+                                            if _contained_in(i, field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2288,7 +2286,7 @@ pub mod dbusitem {
                                                 }
                                             }
                                         } else if ck.operator == ParamCheckOperator::NotContains {
-                                            if !_contained_in(i, &field_value) {
+                                            if !_contained_in(i, field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2416,7 +2414,7 @@ pub mod dbusitem {
                                     }
                                     zvariant::Value::Array(_) => {
                                         if ck.operator == ParamCheckOperator::Contains {
-                                            if _contained_in(f, &field_value) {
+                                            if _contained_in(f, field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2428,7 +2426,7 @@ pub mod dbusitem {
                                                 }
                                             }
                                         } else if ck.operator == ParamCheckOperator::NotContains {
-                                            if !_contained_in(f, &field_value) {
+                                            if !_contained_in(f, field_value) {
                                                 verified = true;
                                                 if !checks_all {
                                                     break 'params;
@@ -2542,7 +2540,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     } else if ck.operator == ParamCheckOperator::Contains {
-                                        if _contained_in(s, &field_value) {
+                                        if _contained_in(s, field_value) {
                                             verified = true;
                                             if !checks_all {
                                                 break 'params;
@@ -2554,7 +2552,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     } else if ck.operator == ParamCheckOperator::NotContains {
-                                        if !_contained_in(s, &field_value) {
+                                        if !_contained_in(s, field_value) {
                                             verified = true;
                                             if !checks_all {
                                                 break 'params;

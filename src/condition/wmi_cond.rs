@@ -432,11 +432,7 @@ impl WmiQueryCondition {
                 }
                 // now that we have the full struct, we can add it to criteria
                 result_checks.push(ResultCheckTest {
-                    index: if let Some(i) = index {
-                        Some(i as usize)
-                    } else {
-                        None
-                    },
+                    index: index.map(|i| i as usize),
                     field,
                     operator,
                     value,
