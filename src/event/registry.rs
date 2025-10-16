@@ -972,6 +972,83 @@ impl EventRegistry {
         self.remove_event(name)
     }
 
+    /// Async event poller: loop through active events that are listened for
+    /// and fire related conditions whenever they happen
+    pub fn poll_events(&self) -> Result<bool> {
+        // WARNING: this is only a PoC, the locking should happen within the
+        // loop and at each event poll, in order to let other threads add or
+        // remove events from the list while the poller is running!
+        if let Ok(event_list) = self.event_list.read() {
+            futures::executor::block_on(async move {
+                for (event_name, event) in event_list.iter() {
+                    let event = event.read().unwrap();  // WARNING: this unwrap() may panic!
+                    let event_id = event.get_id();
+                    let cond_name = event.get_condition().expect("cannot retrieve condition name");
+                    if let Ok(e) = event.incoming().await {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_EVENT_REGISTRY,
+                            LOG_ACTION_EVENT_TRIGGER,
+                            Some((event_name, event_id)),
+                            LOG_WHEN_START,
+                            LOG_STATUS_MSG,
+                            &format!("incoming event"),
+                        );
+                        if e {
+                            if let Ok(res) = event.fire_condition() {
+                                if res {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_EVENT_REGISTRY,
+                                        LOG_ACTION_EVENT_TRIGGER,
+                                        Some((event_name, event_id)),
+                                        LOG_WHEN_END,
+                                        LOG_STATUS_MSG,
+                                        &format!("associated condition {cond_name} fired successfully"),
+                                    );
+                                } else {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_EVENT_REGISTRY,
+                                        LOG_ACTION_EVENT_TRIGGER,
+                                        Some((event_name, event_id)),
+                                        LOG_WHEN_END,
+                                        LOG_STATUS_FAIL,
+                                        &format!("associated condition {cond_name} not added to bucket"),
+                                    );
+                                }
+                            } else {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_EVENT_REGISTRY,
+                                    LOG_ACTION_EVENT_TRIGGER,
+                                    Some((event_name, event_id)),
+                                    LOG_WHEN_END,
+                                    LOG_STATUS_FAIL,
+                                    &format!("associated condition {cond_name} could not be fired"),
+                                );
+                            }
+                        } else {
+                            log(
+                                LogType::Trace,
+                                LOG_EMITTER_EVENT_REGISTRY,
+                                LOG_ACTION_EVENT_TRIGGER,
+                                Some((event_name, event_id)),
+                                LOG_WHEN_END,
+                                LOG_STATUS_FAIL,
+                                &format!("event signaled but not triggered"),
+                            );
+                        }
+                    }
+                }
+            });
+        } else {
+            return Err(Error::new(Kind::Busy, "cannot lock event registry for reading"));
+        }
+
+        Ok(true)
+    }
+
     /// Fire the condition associated to the named event.
     ///
     /// This version calls in turn the events `fire_condition()` method, but

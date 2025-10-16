@@ -5,8 +5,10 @@
 
 use futures::Stream;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{RwLock, mpsc};
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
+
+use async_trait::async_trait;
 
 use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, select};
 
@@ -259,6 +261,7 @@ impl WmiQueryEvent {
     }
 }
 
+#[async_trait]
 impl Event for WmiQueryEvent {
     fn set_id(&mut self, id: i64) {
         self.event_id = id;
@@ -549,6 +552,53 @@ impl Event for WmiQueryEvent {
                     ERR_EVENT_LISTENING_NOT_DETERMINED,
                 ))
             }
+        }
+    }
+
+    async fn incoming(&self) -> Result<bool> {
+        // the following are to enable the execution of a WMI async query
+        let com_lib = COMLibrary::new()?;
+        let conn = WMIConnection::new(com_lib)?;
+
+        let conn = Arc::new(conn);
+        let query = self.match_query.clone().unwrap();
+        let mut wmi_stream = conn.clone().exec_notification_query_async(query)?;
+        self.log(
+            LogType::Debug,
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            "successfully subscribed to WMI event",
+        );
+
+        if let Some(m) = wmi_stream.next().await {
+            match m {
+                Ok(_) => {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        "WMI event received",
+                    );
+                    Ok(true)
+                }
+                Err(e) => {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_ERR,
+                        "could not receive WMI event",
+                    );
+                    Err(Error::from(e))
+                }
+            }
+        } else {
+            self.log(
+                LogType::Warn,
+                LOG_WHEN_END,
+                LOG_STATUS_FAIL,
+                "WMI event not received",
+            );
+            Ok(false)
         }
     }
 

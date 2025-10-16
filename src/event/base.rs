@@ -15,6 +15,8 @@
 
 use std::sync::mpsc;
 
+use async_trait::async_trait;
+
 use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
@@ -22,6 +24,7 @@ use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
 
 #[allow(dead_code)]
+#[async_trait]
 pub trait Event: Send + Sync {
     /// Mandatory ID setter for registration.
     fn set_id(&mut self, id: i64);
@@ -212,6 +215,26 @@ pub trait Event: Send + Sync {
     /// require a listener, all other event type must reimplement it.
     fn thread_running(&self) -> Result<bool> {
         // no special thread is running for this kind of event
+        Ok(false)
+    }
+
+    // ### ASYNC ###
+    // WARNING: async dyn traits are not well supported, more information at:
+    //
+    // * https://smallcultfollowing.com/babysteps/series/dyn-async-traits/
+    // * https://rust-lang.github.io/async-fundamentals-initiative/explainer/async_fn_in_dyn_trait.html
+    //
+    // Async traits are handled in this crate:
+    //
+    // * https://crates.io/crates/async-trait
+    //
+    // which however doesn't seem to cover the dyn case.
+
+    /// An async function that returns `Ok(true)` when the event happens
+    /// and Ok(false) if it did not happen for some reason.
+    ///
+    /// The default implementation only returns `Ok(false)` when polled.
+    async fn incoming(&self) -> Result<bool> {
         Ok(false)
     }
 
