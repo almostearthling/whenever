@@ -57,6 +57,7 @@ wmi = "0.17.0"
 whoami = "1.4.1"
 itertools = "0.14.0"
 futures = "0.3"
+async-trait = "0.1.89"
 
 # user-idle can have a problem on wayland-based sessions: work around by using
 # user-idle = { version = "0.6.0", default-features = false, features = ["dbus"] }
