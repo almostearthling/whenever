@@ -25,7 +25,8 @@ use crate::constants::*;
 
 #[allow(dead_code)]
 #[async_trait]
-pub trait Event: Send + Sync {
+// pub trait Event: Send + Sync {
+pub trait Event: Sync {
     /// Mandatory ID setter for registration.
     fn set_id(&mut self, id: i64);
 

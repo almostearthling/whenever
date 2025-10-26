@@ -114,176 +114,176 @@ impl EventRegistry {
         let managed_registry = registry.clone();
 
         let handle = thread::spawn(move || {
-            log(
-                LogType::Trace,
-                LOG_EMITTER_EVENT_REGISTRY,
-                LOG_ACTION_MAIN_LISTENER,
-                None,
-                LOG_WHEN_START,
-                LOG_STATUS_OK,
-                "the main event service manager now handles event listeners",
-            );
-            futures::executor::block_on(async move {
-                loop {
-                    if let Some(msg) = smrx.next().await {
-                        match msg {
-                            ServiceManagerMessage::Start(name) => {
-                                let s0 = managed_services.lock().unwrap();
-                                let running = s0.contains(&name);
-                                drop(s0);
-                                if !running {
-                                    let r0 = managed_registry.clone();
-                                    let id = r0.lock().unwrap().event_id(&name).unwrap();
-                                    if r0.lock().unwrap().install_event_service(&name).is_ok() {
-                                        let mut s0 = managed_services.lock().unwrap();
-                                        s0.push(name.clone());
-                                        drop(s0);
-                                        log(
-                                            LogType::Debug,
-                                            LOG_EMITTER_EVENT_REGISTRY,
-                                            LOG_ACTION_INSTALL,
-                                            Some((&name, id)),
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_OK,
-                                            "event listener installed",
-                                        );
-                                    } else {
-                                        log(
-                                            LogType::Warn,
-                                            LOG_EMITTER_EVENT_REGISTRY,
-                                            LOG_ACTION_INSTALL,
-                                            Some((&name, id)),
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_FAIL,
-                                            "event listener could not be installed",
-                                        );
-                                    }
-                                } else {
-                                    let r0 = managed_registry.clone();
-                                    let id = r0.lock().unwrap().event_id(&name).unwrap();
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_EVENT_REGISTRY,
-                                        LOG_ACTION_INSTALL,
-                                        Some((&name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_FAIL,
-                                        "ignoring install request: event listener already running",
-                                    );
-                                }
-                            }
-                            ServiceManagerMessage::Stop(name) => {
-                                let s0 = managed_services.lock().unwrap();
-                                let running = s0.contains(&name);
-                                drop(s0);
-                                if running {
-                                    let r0 = managed_registry.clone();
-                                    let id = r0.lock().unwrap().event_id(&name).unwrap();
-                                    if r0.lock().unwrap().uninstall_event_service(&name).is_ok() {
-                                        let pos = managed_services
-                                            .lock()
-                                            .unwrap()
-                                            .iter()
-                                            .position(|x| x == &name)
-                                            .unwrap();
-                                        let mut s0 = managed_services.lock().unwrap();
-                                        s0.remove(pos);
-                                        drop(s0);
-                                        log(
-                                            LogType::Debug,
-                                            LOG_EMITTER_EVENT_REGISTRY,
-                                            LOG_ACTION_UNINSTALL,
-                                            Some((&name, id)),
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_OK,
-                                            "event listener uninstalled",
-                                        );
-                                    } else {
-                                        log(
-                                            LogType::Debug,
-                                            LOG_EMITTER_EVENT_REGISTRY,
-                                            LOG_ACTION_UNINSTALL,
-                                            Some((&name, id)),
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_FAIL,
-                                            "event listener could not be uninstalled",
-                                        );
-                                    }
-                                } else {
-                                    let r0 = managed_registry.clone();
-                                    let id = r0.lock().unwrap().event_id(&name).unwrap();
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_EVENT_REGISTRY,
-                                        LOG_ACTION_INSTALL,
-                                        Some((&name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_FAIL,
-                                        "ignoring uninstall request: event listener not running",
-                                    );
-                                }
-                            }
-                            ServiceManagerMessage::Quit => {
-                                log(
-                                    LogType::Trace,
-                                    LOG_EMITTER_EVENT_REGISTRY,
-                                    LOG_ACTION_MAIN_LISTENER,
-                                    None,
-                                    LOG_WHEN_END,
-                                    LOG_STATUS_OK,
-                                    "main event service manager terminating",
-                                );
-                                return;
-                            }
-                        }
-                    }
-                }
-            });
+        //     log(
+        //         LogType::Trace,
+        //         LOG_EMITTER_EVENT_REGISTRY,
+        //         LOG_ACTION_MAIN_LISTENER,
+        //         None,
+        //         LOG_WHEN_START,
+        //         LOG_STATUS_OK,
+        //         "the main event service manager now handles event listeners",
+        //     );
+        //     futures::executor::block_on(async move {
+        //         loop {
+        //             if let Some(msg) = smrx.next().await {
+        //                 match msg {
+        //                     ServiceManagerMessage::Start(name) => {
+        //                         let s0 = managed_services.lock().unwrap();
+        //                         let running = s0.contains(&name);
+        //                         drop(s0);
+        //                         if !running {
+        //                             let r0 = managed_registry.clone();
+        //                             let id = r0.lock().unwrap().event_id(&name).unwrap();
+        //                             if r0.lock().unwrap().install_event_service(&name).is_ok() {
+        //                                 let mut s0 = managed_services.lock().unwrap();
+        //                                 s0.push(name.clone());
+        //                                 drop(s0);
+        //                                 log(
+        //                                     LogType::Debug,
+        //                                     LOG_EMITTER_EVENT_REGISTRY,
+        //                                     LOG_ACTION_INSTALL,
+        //                                     Some((&name, id)),
+        //                                     LOG_WHEN_PROC,
+        //                                     LOG_STATUS_OK,
+        //                                     "event listener installed",
+        //                                 );
+        //                             } else {
+        //                                 log(
+        //                                     LogType::Warn,
+        //                                     LOG_EMITTER_EVENT_REGISTRY,
+        //                                     LOG_ACTION_INSTALL,
+        //                                     Some((&name, id)),
+        //                                     LOG_WHEN_PROC,
+        //                                     LOG_STATUS_FAIL,
+        //                                     "event listener could not be installed",
+        //                                 );
+        //                             }
+        //                         } else {
+        //                             let r0 = managed_registry.clone();
+        //                             let id = r0.lock().unwrap().event_id(&name).unwrap();
+        //                             log(
+        //                                 LogType::Debug,
+        //                                 LOG_EMITTER_EVENT_REGISTRY,
+        //                                 LOG_ACTION_INSTALL,
+        //                                 Some((&name, id)),
+        //                                 LOG_WHEN_PROC,
+        //                                 LOG_STATUS_FAIL,
+        //                                 "ignoring install request: event listener already running",
+        //                             );
+        //                         }
+        //                     }
+        //                     ServiceManagerMessage::Stop(name) => {
+        //                         let s0 = managed_services.lock().unwrap();
+        //                         let running = s0.contains(&name);
+        //                         drop(s0);
+        //                         if running {
+        //                             let r0 = managed_registry.clone();
+        //                             let id = r0.lock().unwrap().event_id(&name).unwrap();
+        //                             if r0.lock().unwrap().uninstall_event_service(&name).is_ok() {
+        //                                 let pos = managed_services
+        //                                     .lock()
+        //                                     .unwrap()
+        //                                     .iter()
+        //                                     .position(|x| x == &name)
+        //                                     .unwrap();
+        //                                 let mut s0 = managed_services.lock().unwrap();
+        //                                 s0.remove(pos);
+        //                                 drop(s0);
+        //                                 log(
+        //                                     LogType::Debug,
+        //                                     LOG_EMITTER_EVENT_REGISTRY,
+        //                                     LOG_ACTION_UNINSTALL,
+        //                                     Some((&name, id)),
+        //                                     LOG_WHEN_PROC,
+        //                                     LOG_STATUS_OK,
+        //                                     "event listener uninstalled",
+        //                                 );
+        //                             } else {
+        //                                 log(
+        //                                     LogType::Debug,
+        //                                     LOG_EMITTER_EVENT_REGISTRY,
+        //                                     LOG_ACTION_UNINSTALL,
+        //                                     Some((&name, id)),
+        //                                     LOG_WHEN_PROC,
+        //                                     LOG_STATUS_FAIL,
+        //                                     "event listener could not be uninstalled",
+        //                                 );
+        //                             }
+        //                         } else {
+        //                             let r0 = managed_registry.clone();
+        //                             let id = r0.lock().unwrap().event_id(&name).unwrap();
+        //                             log(
+        //                                 LogType::Debug,
+        //                                 LOG_EMITTER_EVENT_REGISTRY,
+        //                                 LOG_ACTION_INSTALL,
+        //                                 Some((&name, id)),
+        //                                 LOG_WHEN_PROC,
+        //                                 LOG_STATUS_FAIL,
+        //                                 "ignoring uninstall request: event listener not running",
+        //                             );
+        //                         }
+        //                     }
+        //                     ServiceManagerMessage::Quit => {
+        //                         log(
+        //                             LogType::Trace,
+        //                             LOG_EMITTER_EVENT_REGISTRY,
+        //                             LOG_ACTION_MAIN_LISTENER,
+        //                             None,
+        //                             LOG_WHEN_END,
+        //                             LOG_STATUS_OK,
+        //                             "main event service manager terminating",
+        //                         );
+        //                         return;
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     });
 
-            // terminating: all event listeners must be shut down
-            let managed_registry = registry.clone();
-            let managed_services = registry
-                .lock()
-                .unwrap()
-                .event_service_active_listeners
-                .clone();
-            let s0 = managed_services.lock().unwrap();
-            let items: Vec<String> = s0.iter().map(String::from).collect();
-            drop(s0);
-            for name in items {
-                let r0 = managed_registry.clone();
-                let id = r0.lock().unwrap().event_id(&name).unwrap();
-                if r0.lock().unwrap().uninstall_event_service(&name).is_ok() {
-                    let pos = managed_services
-                        .lock()
-                        .unwrap()
-                        .iter()
-                        .position(|x| x == &name)
-                        .unwrap();
-                    let mut s0 = managed_services.lock().unwrap();
-                    s0.remove(pos);
-                    drop(s0);
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_EVENT_REGISTRY,
-                        LOG_ACTION_UNINSTALL,
-                        Some((&name, id)),
-                        LOG_WHEN_END,
-                        LOG_STATUS_OK,
-                        "event listener uninstalled",
-                    );
-                } else {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_EVENT_REGISTRY,
-                        LOG_ACTION_UNINSTALL,
-                        Some((&name, id)),
-                        LOG_WHEN_END,
-                        LOG_STATUS_FAIL,
-                        "event listener could not be uninstalled",
-                    );
-                }
-            }
+        //     // terminating: all event listeners must be shut down
+        //     let managed_registry = registry.clone();
+        //     let managed_services = registry
+        //         .lock()
+        //         .unwrap()
+        //         .event_service_active_listeners
+        //         .clone();
+        //     let s0 = managed_services.lock().unwrap();
+        //     let items: Vec<String> = s0.iter().map(String::from).collect();
+        //     drop(s0);
+        //     for name in items {
+        //         let r0 = managed_registry.clone();
+        //         let id = r0.lock().unwrap().event_id(&name).unwrap();
+        //         if r0.lock().unwrap().uninstall_event_service(&name).is_ok() {
+        //             let pos = managed_services
+        //                 .lock()
+        //                 .unwrap()
+        //                 .iter()
+        //                 .position(|x| x == &name)
+        //                 .unwrap();
+        //             let mut s0 = managed_services.lock().unwrap();
+        //             s0.remove(pos);
+        //             drop(s0);
+        //             log(
+        //                 LogType::Debug,
+        //                 LOG_EMITTER_EVENT_REGISTRY,
+        //                 LOG_ACTION_UNINSTALL,
+        //                 Some((&name, id)),
+        //                 LOG_WHEN_END,
+        //                 LOG_STATUS_OK,
+        //                 "event listener uninstalled",
+        //             );
+        //         } else {
+        //             log(
+        //                 LogType::Debug,
+        //                 LOG_EMITTER_EVENT_REGISTRY,
+        //                 LOG_ACTION_UNINSTALL,
+        //                 Some((&name, id)),
+        //                 LOG_WHEN_END,
+        //                 LOG_STATUS_FAIL,
+        //                 "event listener could not be uninstalled",
+        //             );
+        //         }
+        //     }
             log(
                 LogType::Debug,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -702,49 +702,50 @@ impl EventRegistry {
 
             // the actual service thread
             let handle: JoinHandle<Result<bool>> = thread::spawn(move || {
-                let name = event_name.as_str();
+                // let name = event_name.as_str();
 
-                // this implements the listening service in current thread
-                let res = event.read().unwrap().run_service(Some(rx));
-                match res {
-                    Ok(ssres) => {
-                        if ssres {
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_EVENT_REGISTRY,
-                                LOG_ACTION_UNINSTALL,
-                                Some((name, id)),
-                                LOG_WHEN_END,
-                                LOG_STATUS_OK,
-                                "event listener terminated successfully",
-                            );
-                            Ok(true)
-                        } else {
-                            log(
-                                LogType::Error,
-                                LOG_EMITTER_EVENT_REGISTRY,
-                                LOG_ACTION_UNINSTALL,
-                                Some((name, id)),
-                                LOG_WHEN_END,
-                                LOG_STATUS_FAIL,
-                                "event listener terminated unsuccessfully",
-                            );
-                            Ok(false)
-                        }
-                    }
-                    Err(e) => {
-                        log(
-                            LogType::Error,
-                            LOG_EMITTER_EVENT_REGISTRY,
-                            LOG_ACTION_UNINSTALL,
-                            Some((name, id)),
-                            LOG_WHEN_END,
-                            LOG_STATUS_FAIL,
-                            &format!("event listener exited with error: {e}"),
-                        );
-                        Err(e)
-                    }
-                }
+                // // this implements the listening service in current thread
+                // let res = event.read().unwrap().run_service(Some(rx));
+                // match res {
+                //     Ok(ssres) => {
+                //         if ssres {
+                //             log(
+                //                 LogType::Debug,
+                //                 LOG_EMITTER_EVENT_REGISTRY,
+                //                 LOG_ACTION_UNINSTALL,
+                //                 Some((name, id)),
+                //                 LOG_WHEN_END,
+                //                 LOG_STATUS_OK,
+                //                 "event listener terminated successfully",
+                //             );
+                //             Ok(true)
+                //         } else {
+                //             log(
+                //                 LogType::Error,
+                //                 LOG_EMITTER_EVENT_REGISTRY,
+                //                 LOG_ACTION_UNINSTALL,
+                //                 Some((name, id)),
+                //                 LOG_WHEN_END,
+                //                 LOG_STATUS_FAIL,
+                //                 "event listener terminated unsuccessfully",
+                //             );
+                //             Ok(false)
+                //         }
+                //     }
+                //     Err(e) => {
+                //         log(
+                //             LogType::Error,
+                //             LOG_EMITTER_EVENT_REGISTRY,
+                //             LOG_ACTION_UNINSTALL,
+                //             Some((name, id)),
+                //             LOG_WHEN_END,
+                //             LOG_STATUS_FAIL,
+                //             &format!("event listener exited with error: {e}"),
+                //         );
+                //         Err(e)
+                //     }
+                // }
+                Ok(true)
             });
             Ok(Some(handle))
         } else {
