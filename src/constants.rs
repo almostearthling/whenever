@@ -223,4 +223,14 @@ lazy_static! {
     pub static ref RE_DBUS_ERROR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
 }
 
+#[cfg(feature = "wmi")]
+lazy_static! {
+    // The regular expression for WMI namespaces is inferred from lists that
+    // can be obtained from the command line using one of the methods found
+    // here: https://stackoverflow.com/questions/5332501/how-do-you-query-for-wmi-namespaces
+    // the check for the first part to be `ROOT\` is left to a frontend, we
+    // only check that a string that can be used as a namespace is provided
+    pub static ref RE_WMI_NAMESPACE: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\\[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
+}
+
 // end.

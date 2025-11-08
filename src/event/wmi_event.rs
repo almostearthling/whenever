@@ -14,7 +14,7 @@ use cfgmap::CfgMap;
 
 use async_std::task;
 
-use wmi::{COMLibrary, IWbemClassWrapper, WMIConnection, WMIResult};
+use wmi::{IWbemClassWrapper, WMIConnection, WMIResult};
 
 use super::base::Event;
 use crate::common::logging::{LogType, log};
@@ -45,6 +45,7 @@ pub struct WmiQueryEvent {
 
     // specific members
     // parameters
+    namespace: Option<String>,
     match_query: Option<String>,
 
     // internal values
@@ -64,6 +65,12 @@ impl Hash for WmiQueryEvent {
         // 0 is hashed on the else branch in order to avoid that adjacent
         // strings one of which is undefined allow for hash collisions
         if let Some(x) = &self.match_query {
+            x.hash(state);
+        } else {
+            0.hash(state);
+        }
+
+        if let Some(x) = &self.namespace {
             x.hash(state);
         } else {
             0.hash(state);
@@ -88,6 +95,7 @@ impl Clone for WmiQueryEvent {
 
             // specific members
             // parameters
+            namespace: self.namespace.clone(),
             match_query: self.match_query.clone(),
 
             // internal values
@@ -124,6 +132,7 @@ impl WmiQueryEvent {
 
             // specific members initialization
             // parameters
+            namespace: None,
             match_query: None,
 
             // internal values
@@ -133,14 +142,25 @@ impl WmiQueryEvent {
     }
 
     /// Set the match query to the provided value
-    pub fn set_match_query(&mut self, rule: &str) -> bool {
-        self.match_query = Some(String::from(rule));
+    pub fn set_match_query(&mut self, query: &str) -> bool {
+        self.match_query = Some(String::from(query));
         true
     }
 
-    /// Return an owned copy of the signal name
+    /// Return an owned copy of the match query
     pub fn match_query(&self) -> Option<String> {
         self.match_query.clone()
+    }
+
+    /// Set the namespace to the provided value
+    pub fn set_namespace(&mut self, ns: &str) -> bool {
+        self.namespace = Some(String::from(ns));
+        true
+    }
+
+    /// Return an owned copy of the namespace
+    pub fn namespace(&self) -> Option<String> {
+        self.namespace.clone()
     }
 
     /// Load a `WmiQueryEvent` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
@@ -154,7 +174,7 @@ impl WmiQueryEvent {
         cond_registry: &'static ConditionRegistry,
         bucket: &'static ExecutionBucket,
     ) -> Result<WmiQueryEvent> {
-        let check = vec!["type", "name", "tags", "condition", "query"];
+        let check = vec!["type", "name", "tags", "condition", "namespace", "query"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -204,7 +224,9 @@ impl WmiQueryEvent {
         }
 
         // specific optional parameter initialization
-        // (none here)
+        if let Some(v) = cfg_string_check_regex(cfgmap, "namespace", &RE_WMI_NAMESPACE)? {
+            new_event.namespace = Some(v);
+        }
 
         Ok(new_event)
     }
@@ -216,7 +238,7 @@ impl WmiQueryEvent {
     /// created and that a name is returned, which is the name of the item that
     /// _would_ be created via the equivalent call to `load_cfgmap`
     pub fn check_cfgmap(cfgmap: &CfgMap, available_conditions: &Vec<&str>) -> Result<String> {
-        let check = vec!["type", "name", "tags", "condition", "query"];
+        let check = vec!["type", "name", "tags", "condition", "namespace", "query"];
         cfg_check_keys(cfgmap, &check)?;
 
         // common mandatory parameter retrieval
@@ -253,7 +275,7 @@ impl WmiQueryEvent {
         }
 
         // specific optional parameter check
-        // (none here)
+        cfg_string_check_regex(cfgmap, "namespace", &RE_WMI_NAMESPACE)?;
 
         Ok(name)
     }
@@ -403,8 +425,11 @@ impl Event for WmiQueryEvent {
         });
 
         // the following are to enable the execution of a WMI async query
-        let com_lib = COMLibrary::new()?;
-        let conn = WMIConnection::new(com_lib)?;
+        let conn = if self.namespace.is_some() {
+            WMIConnection::with_namespace_path(self.namespace.as_ref().unwrap())?
+        } else {
+            WMIConnection::new()?
+        };
 
         let query = self.match_query.clone().unwrap();
         let mut wmi_stream = conn.exec_notification_query_async(query)?;
