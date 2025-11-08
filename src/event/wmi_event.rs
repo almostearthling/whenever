@@ -582,12 +582,16 @@ impl Event for WmiQueryEvent {
 
     async fn incoming(&self) -> Result<bool> {
         // the following are to enable the execution of a WMI async query
-        let com_lib = COMLibrary::new()?;
-        let conn = WMIConnection::new(com_lib)?;
+        let conn = if self.namespace.is_some() {
+            WMIConnection::with_namespace_path(self.namespace.as_ref().unwrap())?
+        } else {
+            WMIConnection::new()?
+        };
 
         let conn = Arc::new(conn);
         let query = self.match_query.clone().unwrap();
-        let mut wmi_stream = conn.clone().exec_notification_query_async(query)?;
+        let aconn = conn.clone();
+        let mut wmi_stream = aconn.exec_notification_query_async(query)?;
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
