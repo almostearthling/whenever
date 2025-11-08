@@ -247,7 +247,7 @@ parameter_check = [
 
 
 #############################################################################
-# DBus method invocation condition
+# WMI query condition
 [[condition]]
 name = "WMIQueryConditionName"
 type = "wmi"                        # mandatory value
@@ -263,6 +263,7 @@ suspended = true
 tasks = [ "Task1", "Task2" ]
 check_after = 60
 recur_after_failed_check = false
+namespace = 'root\cimv2'
 result_check = [
     { index = 0, field = "DeviceID", operator = "eq", value = "C:" }
 ]
@@ -315,6 +316,7 @@ parameter_check = [
 name = "WMIEventName"
 type = "wmi"                        # mandatory value
 condition = "AssignedConditionName"
+namespace = 'root\cimv2'
 query = """
     SELECT * FROM __InstanceModificationEvent
         WHERE TargetInstance ISA "Win32_LogicalDisk"

@@ -191,6 +191,9 @@ that has to be caught, including the possibility to specify any criteria regardi
 of an event in order to consider it verified. Thus **whenever** leaves to the *query* part of a
 *WMI* event definition the task of filtering the specific event for which it enables a listener.
 
+If a namespace other than the default ``ROOT\CIMV2`` is needed, it can be specified using the
+optional ``namespace`` configuration entry.
+
 .. _WML queries: https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications
 
 .. note::
@@ -209,6 +212,7 @@ An example of *WMI* based event configuration follows:
    name = "WMIEventName"
    type = "wmi"  # mandatory value
    condition = "AssignedConditionName"
+   namespace = "ROOT\\CIMV2"
    query = """
        SELECT * FROM __InstanceModificationEvent
            WHERE TargetInstance ISA "Win32_LogicalDisk"
@@ -236,6 +240,9 @@ details of the configuration entries are described in the table below:
    * - ``query``
      - N/A
      - the *WQL* query used specify what criteria must be satisfied for the event to occur
+   * - ``namespace``
+     - (empty)
+     - a specific WMI namespace to connect to, if different from the default one
 
 
 As with DBus *match rules*, **whenever** does not do any parsing or check on the provided query:

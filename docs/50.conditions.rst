@@ -871,6 +871,9 @@ as a freeform string using the mandatory ``query`` configuration entry. **whenev
 any parsing or check on the provided query, thus an incorrect query will only cause the condition
 test to always fail and log an error message, at least in the *debug* log level.
 
+If a namespace other than the default ``ROOT\CIMV2`` is needed, it can be specified using the
+optional ``namespace`` configuration entry.
+
 Since a *WMI* query returns a set of records, it is possible to filter the returned rows by
 providing criteria: this can be done using the _result\ *check* entry, provided as a list of
 dictionaries, each representing a check, having the following entries:
@@ -919,6 +922,7 @@ An example of *WMI Query* based condition configuration is the following:
    tasks = [ "Task1", "Task2" ]
    check_after = 60
    recur_after_failed_check = false
+   namespace = "ROOT\CIMV2"
    result_check = [
        { field = "FreeSpace", operator = "lt", value = 5_000_000_000 },
    ]
@@ -951,6 +955,9 @@ The specific parameters are described in the following table:
    * - ``query``
      - N/A
      - the *WQL* query used to inquire the system
+   * - ``namespace``
+     - (empty)
+     - a specific WMI namespace to connect to, if different from the default one
    * - ``result_check_all``
      - *false*
      - if *true*, all the provided criteria will have to be satisfied for the condition to

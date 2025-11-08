@@ -19,7 +19,7 @@ use cfgmap::CfgMap;
 use regex::Regex;
 use std::collections::HashMap;
 
-use wmi::{COMLibrary, Variant, WMIConnection};
+use wmi::{Variant, WMIConnection};
 
 use super::base::Condition;
 use crate::common::logging::{LogType, log};
@@ -59,6 +59,7 @@ pub struct WmiQueryCondition {
     // specific members
     // parameters
     query: Option<String>,
+    namespace: Option<String>,
     result_checks: Option<Vec<ResultCheckTest>>,
     result_checks_all: bool,
     recur_after_failed_check: bool,
@@ -90,6 +91,7 @@ impl Hash for WmiQueryCondition {
 
         // specific part
         self.query.hash(state);
+        self.namespace.hash(state);
         self.result_checks.hash(state);
         self.result_checks_all.hash(state);
         self.check_after.hash(state);
@@ -139,6 +141,7 @@ impl WmiQueryCondition {
             // parameters
             check_after: None,
             query: None,
+            namespace: None,
             result_checks: None,
             result_checks_all: false,
             recur_after_failed_check: false,
@@ -200,6 +203,17 @@ impl WmiQueryCondition {
         self.query.clone()
     }
 
+    /// Set the namespace to the provided value
+    pub fn set_namespace(&mut self, ns: &str) -> bool {
+        self.namespace = Some(String::from(ns));
+        true
+    }
+
+    /// Return an owned copy of the namespace
+    pub fn namespace(&self) -> Option<String> {
+        self.namespace.clone()
+    }
+
     /// Load a `WmiQueryCondition` from a [`CfgMap`](https://docs.rs/cfgmap/latest/)
     ///
     /// The `WmiQueryCondition` is initialized according to the values
@@ -229,6 +243,7 @@ impl WmiQueryCondition {
             "suspended",
             "check_after",
             "query",
+            "namespace",
             "result_check_all",
             "result_check",
             "recur_after_failed_check",
@@ -301,6 +316,9 @@ impl WmiQueryCondition {
         }
         if let Some(v) = cfg_bool(cfgmap, "recur_after_failed_check")? {
             new_condition.recur_after_failed_check = v;
+        }
+        if let Some(v) = cfg_string_check_regex(cfgmap, "namespace", &RE_WMI_NAMESPACE)? {
+            new_condition.namespace = Some(v);
         }
 
         // here the list of result checks is built
@@ -480,6 +498,7 @@ impl WmiQueryCondition {
             "suspended",
             "check_after",
             "query",
+            "namespace",
             "result_check_all",
             "result_check",
             "recur_after_failed_check",
@@ -527,6 +546,7 @@ impl WmiQueryCondition {
 
         cfg_int_check_above_eq(cfgmap, "check_after", 1)?;
         cfg_bool(cfgmap, "recur_after_failed_check")?;
+        cfg_string_check_regex(cfgmap, "namespace", &RE_WMI_NAMESPACE)?;
 
         // here the list of result checks is verified
         let check = ["index", "field", "operator", "value"];
@@ -843,8 +863,11 @@ impl Condition for WmiQueryCondition {
         // executed anyway, even in case no checks have been provided, because
         // it still can produce an error or an empty result, where the latter
         // case is considered a failure
-        let com_lib = COMLibrary::new()?;
-        let conn = WMIConnection::new(com_lib)?;
+        let conn = if self.namespace.is_some() {
+            WMIConnection::with_namespace_path(self.namespace.as_ref().unwrap())?
+        } else {
+            WMIConnection::new()?
+        };
 
         let query = self.query.clone().unwrap();
         let results: Vec<HashMap<String, Variant>> = conn.raw_query(query)?;

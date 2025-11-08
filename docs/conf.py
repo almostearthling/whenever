@@ -9,7 +9,7 @@
 project = "The Whenever Scheduler"
 author = "Francesco Garosi"
 copyright = "2023-%Y, Francesco Garosi"
-release = "0.4.12"
+release = "0.4.13"
 
 html_logo = "graphics/metronome.png"
 
