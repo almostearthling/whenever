@@ -318,7 +318,7 @@ impl WmiQueryCondition {
             new_condition.recur_after_failed_check = v;
         }
         if let Some(v) = cfg_string_check_regex(cfgmap, "namespace", &RE_WMI_NAMESPACE)? {
-            new_condition.namespace = Some(v);
+            new_condition.namespace = Some(v.replace("/", "\\"));
         }
 
         // here the list of result checks is built

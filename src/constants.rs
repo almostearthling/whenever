@@ -230,7 +230,7 @@ lazy_static! {
     // here: https://stackoverflow.com/questions/5332501/how-do-you-query-for-wmi-namespaces
     // the check for the first part to be `ROOT\` is left to a frontend, we
     // only check that a string that can be used as a namespace is provided
-    pub static ref RE_WMI_NAMESPACE: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*(\\[a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
+    pub static ref RE_WMI_NAMESPACE: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*([/\\][a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
 }
 
 // end.

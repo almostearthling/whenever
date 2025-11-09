@@ -225,7 +225,7 @@ impl WmiQueryEvent {
 
         // specific optional parameter initialization
         if let Some(v) = cfg_string_check_regex(cfgmap, "namespace", &RE_WMI_NAMESPACE)? {
-            new_event.namespace = Some(v);
+            new_event.namespace = Some(v.replace("/", "\\"));
         }
 
         Ok(new_event)
