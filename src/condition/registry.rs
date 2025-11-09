@@ -669,7 +669,18 @@ impl ConditionRegistry {
                         Ok(None)
                     }
                 }
-                Err(e) => Err(e),
+                Err(e) => {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_CONDITION_REGISTRY,
+                        LOG_ACTION_TICK,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_ERR,
+                        &format!("error testing condition {name}: `{e}`"),
+                    );
+                    Err(e)
+                },
             };
 
             // same as above regarding direct scope control
