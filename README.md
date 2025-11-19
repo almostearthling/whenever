@@ -83,8 +83,6 @@ Detailed [documentation](https://almostearthling.github.io/whenever/index.html) 
 * [Tutorial](https://almostearthling.github.io/when-command/tutorial.html)
 * [Manual](https://almostearthling.github.io/when-command/main.html)
 
-**When** is also helpful to instruct **whenever** to start at the beginning of a session.
-
 Note that the documentation generally refers to the version of **whenever** currently in the _main_ branch, that is, the latest stable version: it is usually published as a release as well, although sometimes the latest published release might still be some steps behind. Please check the version that the documentation refers to on the [index](https://almostearthling.github.io/whenever/index.html) page.
 
 
