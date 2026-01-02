@@ -283,7 +283,8 @@ impl WmiQueryCondition {
         }
 
         // retrieve task list and try to directly add each task
-        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+        let cur_key = "tasks";
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, cur_key, &RE_TASK_NAME)? {
             for s in v {
                 if !new_condition.add_task(&s)? {
                     return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
@@ -529,7 +530,8 @@ impl WmiQueryCondition {
         }
 
         // check configuration task list against the provided ones
-        if let Some(v) = cfg_vec_string_check_regex(cfgmap, "tasks", &RE_TASK_NAME)? {
+        let cur_key = "tasks";
+        if let Some(v) = cfg_vec_string_check_regex(cfgmap, cur_key, &RE_TASK_NAME)? {
             for s in v {
                 if !available_tasks.contains(&s.as_str()) {
                     return Err(cfg_err_invalid_config(cur_key, &s, ERR_INVALID_TASK));
