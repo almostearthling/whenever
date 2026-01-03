@@ -228,10 +228,6 @@ impl Event for ManualCommandEvent {
         s.finish()
     }
 
-    fn requires_thread(&self) -> bool {
-        false
-    }
-
     fn triggerable(&self) -> bool {
         true
     } // this is the only one

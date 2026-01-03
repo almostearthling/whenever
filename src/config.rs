@@ -12,7 +12,7 @@ use crate::constants::*;
 
 // bring the registries in scope
 use crate::condition::registry::ConditionRegistry;
-use crate::event::registry::StelEventRegistry as EventRegistry;
+use crate::event::registry::EventRegistry;
 use crate::task::registry::TaskRegistry;
 
 use crate::condition;
@@ -1120,7 +1120,7 @@ fn configure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event.stel_prepare_listener()? {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1148,7 +1148,7 @@ fn configure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event.stel_prepare_listener()? {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1177,7 +1177,7 @@ fn configure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event.stel_prepare_listener()? {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1204,7 +1204,7 @@ fn configure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event.stel_prepare_listener()? {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,

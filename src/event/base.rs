@@ -14,7 +14,6 @@
 //! is independent from the particular implementation of the waiting service.
 
 use async_trait::async_trait;
-use std::sync::mpsc;
 
 use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Kind, Result};
@@ -42,9 +41,6 @@ pub trait Event: Send + Sync {
 
     /// Mandatory condition registry getter.
     fn condition_registry(&self) -> Option<&'static ConditionRegistry>;
-
-    /// Must return `true` if the service requires a separate thread.
-    fn requires_thread(&self) -> bool;
 
     /// Must return `false` if the event cannot be manually triggered:
     /// this is the default, and only manually triggerable events should
@@ -98,22 +94,6 @@ pub trait Event: Send + Sync {
         } else {
             panic!("condition registry not set");
         }
-    }
-
-    /// Assign a quit signal sender before the service starts.
-    ///
-    /// The default implementation is only suitable for events that do not
-    /// require a listener, all other event type must reimplement it.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the event has not been registered.
-    fn assign_quit_sender(&mut self, _sr: mpsc::Sender<()>) {
-        assert!(
-            self.get_id() != 0,
-            "event {} not registered",
-            self.get_name()
-        );
     }
 
     /// Fire the assigned condition by tossing it into the execution bucket
@@ -174,44 +154,10 @@ pub trait Event: Send + Sync {
         );
     }
 
-    /// The worker function for the event service: might require a separate
-    /// thread (see above) or not; in the former case the service installer
-    /// spawns the thread and returns a handle to join, and in the latter
-    /// the installer just returns `None`. This method must return a boolean
-    /// for possible outcome information, or fail with an error. In case it
-    /// requires a separate thread, the receiving end of a channel must be
-    /// passed to the service, over which a unit value will be sent in order
-    /// to let the service know it must stop: the running thread must obey
-    /// receiving a `()` over the channel and leave immediately as soon as
-    /// it happens.
-    ///
-    /// **Note**: the worker function must be self-contained, in the sense that
-    /// it must _not_ modify the internals of the structure, apart from a flag
-    /// that states that the service thread is running.
-    ///
-    /// The default implementation is only suitable for events that do not
-    /// require a listener, all other event type must reimplement it.
-    fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
-        // in this case the service exits immediately without errors
-        assert!(
-            qrx.is_none(),
-            "quit signal channel provided for event without listener"
-        );
-        Ok(true)
-    }
-
-    /// This must be called to stop the event listening service.
-    ///
-    /// The default implementation is only suitable for events that do not
-    /// require a listener, all other event type must reimplement it.
-    fn stop_service(&self) -> Result<bool> {
-        Ok(true)
-    }
-
     /// This function is a wrapper for the actual asynchronous event receiver:
     /// it returns the name of the event that triggered, mostly in order for
     /// the registry to issue a log line, or None for non triggered events
-    async fn stel_event_triggered(&mut self) -> Result<Option<String>> {
+    async fn event_triggered(&mut self) -> Result<Option<String>> {
         self.fire_condition()?;
         Ok(Some(self.get_name()))
     }
@@ -221,16 +167,8 @@ pub trait Event: Send + Sync {
     /// event to be fired. A successful initialization will return _true_,
     /// while a failing one (or no initialization at all) will return
     /// _false_. All erratic conditions should forward a suitable error.
-    fn stel_prepare_listener(&mut self) -> Result<bool> {
+    fn prepare_listener(&mut self) -> Result<bool> {
         // the default implementation returns Ok(false) as it does nothing
-        Ok(false)
-    }
-
-    /// This tells whether the service thread (if any) is active or not.
-    /// The default implementation is only suitable for events that do not
-    /// require a listener, all other event types must reimplement it.
-    fn thread_running(&self) -> Result<bool> {
-        // no special thread is running for this kind of event
         Ok(false)
     }
 

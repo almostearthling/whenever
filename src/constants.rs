@@ -44,12 +44,7 @@ pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition whil
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
 pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
 pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
-pub const ERR_EVENTREG_CANNOT_STOP_SERVICE_MGR: &str =
-    "could not request the event service manager to shut down";
-pub const ERR_EVENTREG_SERVICE_NOT_INSTALLED: &str = "event listening service not installed";
-pub const ERR_EVENTREG_SERVICE_NOT_UNINSTALLED: &str = "event listening service not uninstalled";
-pub const ERR_EVENTREG_LISTENER_NOT_REACHABLE: &str =
-    "communication with event listener not established";
+pub const ERR_EVENTREG_CANNOT_STOP_LISTENER: &str = "could not shut down the event listener";
 
 pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
 pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";

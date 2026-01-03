@@ -29,7 +29,7 @@ mod constants;
 
 // bring the registries in scope
 use condition::registry::ConditionRegistry;
-use event::registry::StelEventRegistry as EventRegistry;
+use event::registry::EventRegistry;
 use task::registry::TaskRegistry;
 
 use condition::bucket_cond::ExecutionBucket;
