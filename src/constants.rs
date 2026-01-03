@@ -90,6 +90,7 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
+pub const ERR_EVENT_CAUGHT_INVALID: &str = "invalid event caught";
 pub const ERR_EVENT_LISTENING_NOT_DETERMINED: &str =
     "could not determine whether the service is running";
 

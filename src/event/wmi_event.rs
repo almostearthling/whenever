@@ -13,6 +13,7 @@ use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, se
 use cfgmap::CfgMap;
 
 use async_std::task;
+use async_trait::async_trait;
 
 use wmi::{IWbemClassWrapper, WMIConnection, WMIResult};
 
@@ -281,6 +282,8 @@ impl WmiQueryEvent {
     }
 }
 
+
+#[async_trait(?Send)]
 impl Event for WmiQueryEvent {
     fn set_id(&mut self, id: i64) {
         self.event_id = id;
@@ -576,6 +579,88 @@ impl Event for WmiQueryEvent {
             }
         }
     }
+
+    async fn stel_event_triggered(&mut self) -> Result<Option<String>> {
+        let name = self.get_name();
+        assert!(
+            self.match_query.is_some(),
+            "match_query not set for WmiQueryEvent {name}",
+        );
+
+        // the following are to enable the execution of a WMI async query
+        let conn = if self.namespace.is_some() {
+            WMIConnection::with_namespace_path(self.namespace.as_ref().unwrap())?
+        } else {
+            WMIConnection::new()?
+        };
+
+        let query = self.match_query.clone().unwrap();
+        let mut event_receiver = conn.exec_notification_query_async(query)?;
+        self.log(
+            LogType::Trace,
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            "successfully subscribed/resubscribed to WMI event",
+        );
+
+        while let Some(evt) = event_receiver.next().await {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("event received through WMI communication channel"),
+            );
+            if let Err(e) = evt {
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_ERR,
+                    &format!("WMI error received: {e}"),
+                );
+                return Ok(None);
+            } else {
+                match self.fire_condition() {
+                    Ok(res) => {
+                        if res {
+                            self.log(
+                                LogType::Debug,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                "condition fired successfully",
+                            );
+                        } else {
+                            self.log(
+                                LogType::Trace,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                "condition already fired: further schedule skipped",
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("error firing condition: {e}"),
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(Some(name))
+    }
+
+    // because of the nature of the WMI library, a connection and the related
+    // event stream cannot be sent safely across threads, so this stateful
+    // part will be created directly in the async event poller: it costs some
+    // extra effort each time an event poller is reinstated; therefore the
+    // preparation step is left as the default implementation
+    // fn stel_prepare_listener(&mut self) -> Result<bool> {
+    //     // the default implementation returns Ok(false) as it does nothing
+    //     Ok(false)
+    // }
 
     fn thread_running(&self) -> Result<bool> {
         match self.thread_running.read() {

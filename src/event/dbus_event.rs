@@ -17,6 +17,8 @@ use futures::{FutureExt, SinkExt, StreamExt, channel::mpsc::channel, pin_mut, se
 use cfgmap::{CfgMap, CfgValue};
 
 use async_std::task;
+use async_trait::async_trait;
+
 use zbus::{self, AsyncDrop, Message, MessageStream};
 
 use std::str::FromStr;
@@ -64,6 +66,7 @@ pub struct DbusMessageEvent {
     // internal values
     thread_running: RwLock<bool>,
     quit_tx: Option<mpsc::Sender<()>>,
+    stream: Option<zbus::MessageStream>,
 }
 
 // implement the hash protocol
@@ -132,6 +135,7 @@ impl Clone for DbusMessageEvent {
             // internal values
             thread_running: RwLock::new(false),
             quit_tx: None,
+            stream: None,
         }
     }
 }
@@ -171,6 +175,7 @@ impl DbusMessageEvent {
             // internal values
             thread_running: RwLock::new(false),
             quit_tx: None,
+            stream: None,
         }
     }
 
@@ -684,6 +689,7 @@ impl DbusMessageEvent {
     }
 }
 
+#[async_trait(?Send)]
 impl Event for DbusMessageEvent {
     fn set_id(&mut self, id: i64) {
         self.event_id = id;
@@ -1097,6 +1103,162 @@ impl Event for DbusMessageEvent {
                 ))
             }
         }
+    }
+
+    async fn stel_event_triggered(&mut self) -> Result<Option<String>> {
+        let name = self.get_name();
+        assert!(
+            self.stream.is_some(),
+            "message stream not initialized for event {name}",
+        );
+
+        let bus = self.bus.clone().unwrap();
+        let mut event_receiver = self.stream.clone().unwrap();
+        while let Some(evt) = event_receiver.next().await {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("subscribed message received on bus `{bus}`"),
+            );
+
+            // check message parameters against provided criteria
+            let message = evt?;
+            let verified;
+            if let Some(checks) = &self.param_checks {
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_MSG,
+                    &format!("parameter checks specified: {} checks must be verified", {
+                        if self.param_checks_all { "all" } else { "some" }
+                    }),
+                );
+
+                let severity;
+                let log_when;
+                let log_status;
+                let log_message;
+
+                (verified, severity, log_when, log_status, log_message) =
+                    dbus_check_message(&message, checks, self.param_checks_all);
+                self.log(severity, log_when, log_status, &log_message);
+            } else {
+                // otherwise no parameters have been specified in
+                // the configuration file, check always positive
+                verified = true;
+            }
+
+            if verified {
+                match self.fire_condition() {
+                    Ok(res) => {
+                        if res {
+                            self.log(
+                                LogType::Debug,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                "condition fired successfully",
+                            );
+                        } else {
+                            self.log(
+                                LogType::Trace,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                "condition already fired: further schedule skipped",
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("error firing condition: {e}"),
+                        );
+                    }
+                }
+            } else {
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_MSG,
+                    "parameter check failed: condition not fired",
+                );
+                return Ok(None);
+            }
+        }
+
+        Ok(Some(name))
+    }
+
+    fn stel_prepare_listener(&mut self) -> Result<bool> {
+        assert!(
+            self.bus.is_some(),
+            "bus not set for DbusMessageEvent {}",
+            self.get_name(),
+        );
+        assert!(
+            self.match_rule.is_some(),
+            "match rule not set for DbusMessageEvent {}",
+            self.get_name(),
+        );
+
+        // panic here if the bus name is incorrect: should have been fixed
+        // when the event was configured and constructed
+        async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
+            let connection;
+            if bus == ":session" {
+                connection = zbus::Connection::session().await;
+            } else if bus == ":system" {
+                connection = zbus::Connection::system().await;
+            } else {
+                panic!("specified bus `{bus}` not supported for event");
+            }
+            connection
+        }
+
+        // provide the message stream we subscribed to through the filter; note
+        // that the rule is moved here since this will be the only consumer
+        async fn _get_stream(
+            rule: zbus::MatchRule<'_>,
+            conn: zbus::Connection,
+        ) -> zbus::Result<zbus::MessageStream> {
+            zbus::MessageStream::for_match_rule(rule, &conn, None).await
+        }
+
+        // create the base for the listener, that is a filtered connection
+        let bus = self.bus.as_ref().unwrap();
+        let rule_s = self.match_rule.as_ref().unwrap();
+        let rule = zbus::MatchRule::try_from(rule_s.as_str())?;
+        let conn = task::block_on(async {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening connection to bus `{bus}`"),
+            );
+            _get_connection(&bus).await
+        })?;
+        let stream = task::block_on(async {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening message stream on bus `{bus}`"),
+            );
+            _get_stream(rule, conn).await
+        })?;
+
+        // save the stream so that we can poll events
+        self.stream = Some(stream);
+        self.log(
+            LogType::Debug,
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("successfully subscribed to message on bus `{bus}`"),
+        );
+
+        Ok(true)
     }
 
     fn thread_running(&self) -> Result<bool> {

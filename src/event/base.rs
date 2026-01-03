@@ -13,6 +13,7 @@
 //! and so on. The purpose of the trait is to provide a common interface that
 //! is independent from the particular implementation of the waiting service.
 
+use async_trait::async_trait;
 use std::sync::mpsc;
 
 use crate::common::logging::{LogType, log};
@@ -21,6 +22,7 @@ use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
 
+#[async_trait(?Send)]
 #[allow(dead_code)]
 pub trait Event: Send + Sync {
     /// Mandatory ID setter for registration.
@@ -206,10 +208,27 @@ pub trait Event: Send + Sync {
         Ok(true)
     }
 
+    /// This function is a wrapper for the actual asynchronous event receiver:
+    /// it returns the name of the event that triggered, mostly in order for
+    /// the registry to issue a log line, or None for non triggered events
+    async fn stel_event_triggered(&mut self) -> Result<Option<String>> {
+        self.fire_condition()?;
+        Ok(Some(self.get_name()))
+    }
+
+    /// Prepare the listener initializing all internals if necessary: this
+    /// must always be called before starting the loop that tests for the
+    /// event to be fired. A successful initialization will return _true_,
+    /// while a failing one (or no initialization at all) will return
+    /// _false_. All erratic conditions should forward a suitable error.
+    fn stel_prepare_listener(&mut self) -> Result<bool> {
+        // the default implementation returns Ok(false) as it does nothing
+        Ok(false)
+    }
+
     /// This tells whether the service thread (if any) is active or not.
-    ///
     /// The default implementation is only suitable for events that do not
-    /// require a listener, all other event type must reimplement it.
+    /// require a listener, all other event types must reimplement it.
     fn thread_running(&self) -> Result<bool> {
         // no special thread is running for this kind of event
         Ok(false)

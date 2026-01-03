@@ -12,9 +12,11 @@ use std::thread;
 use std::time::Duration;
 
 use async_std::task;
+use async_trait::async_trait;
+
 use futures::{
     SinkExt, StreamExt,
-    channel::mpsc::{Sender, channel},
+    channel::mpsc::{Receiver, Sender, channel},
 };
 
 use cfgmap::CfgMap;
@@ -39,6 +41,7 @@ const DEFAULT_FSCHANGE_POLL_SECONDS: u64 = 2;
 /// cross-platform [`notify`](https://crates.io/crates/notify) crate to achieve
 /// this. Reactions are allowed only for changing events, that is: pure access
 /// will not fire any condition.
+#[allow(dead_code)]
 pub struct FilesystemChangeEvent {
     // common members
     // parameters
@@ -59,6 +62,9 @@ pub struct FilesystemChangeEvent {
     // internal values
     thread_running: RwLock<bool>,
     quit_tx: Option<mpsc::Sender<()>>,
+    quit_rx: Option<Receiver<()>>,
+    event_rx: Option<Receiver<notify::Result<notify::Event>>>,
+    event_watcher: Option<notify::ReadDirectoryChangesWatcher>,
 }
 
 // implement the hash protocol
@@ -107,6 +113,9 @@ impl Clone for FilesystemChangeEvent {
             // internal values
             thread_running: RwLock::new(false),
             quit_tx: None,
+            quit_rx: None,
+            event_rx: None,
+            event_watcher: None,
         }
     }
 }
@@ -144,6 +153,9 @@ impl FilesystemChangeEvent {
             // internal values
             thread_running: RwLock::new(false),
             quit_tx: None,
+            quit_rx: None,
+            event_rx: None,
+            event_watcher: None,
         }
     }
 
@@ -322,6 +334,7 @@ impl FilesystemChangeEvent {
     }
 }
 
+#[async_trait(?Send)]
 impl Event for FilesystemChangeEvent {
     fn set_id(&mut self, id: i64) {
         self.event_id = id;
@@ -373,7 +386,7 @@ impl Event for FilesystemChangeEvent {
         assert!(
             self.get_id() != 0,
             "event {} not registered",
-            self.get_name()
+            self.get_name(),
         );
         self.quit_tx = Some(sr);
     }
@@ -381,11 +394,11 @@ impl Event for FilesystemChangeEvent {
     fn run_service(&self, qrx: Option<mpsc::Receiver<()>>) -> Result<bool> {
         assert!(
             qrx.is_some(),
-            "quit signal channel receiver must be provided"
+            "quit signal channel receiver must be provided",
         );
         assert!(
             self.quit_tx.is_some(),
-            "quit signal channel transmitter not initialized"
+            "quit signal channel transmitter not initialized",
         );
 
         // unified event type that will be sent over an async channel by
@@ -676,6 +689,173 @@ impl Event for FilesystemChangeEvent {
                 ))
             }
         }
+    }
+
+    // this function is a wrapper for the actual asynchronous event receiver
+    async fn stel_event_triggered(&mut self) -> Result<Option<String>> {
+        let name = self.get_name();
+        assert!(
+            self.event_rx.is_some(),
+            "uninitialized event notification channel for FilesystemChangeEvent {name}",
+        );
+        assert!(
+            self.event_watcher.is_some(),
+            "uninitialized event notifier for FilesystemChangeEvent {name}",
+        );
+        let event_receiver = self.event_rx.as_mut().unwrap();
+
+        // this already returns the selected value
+        while let Some(evt) = event_receiver.next().await {
+            // ignore access events
+            let evt = evt?;
+            if !evt.kind.is_access() {
+                let evt_s = if evt.kind.is_create() {
+                    "CREATE"
+                } else if evt.kind.is_modify() {
+                    "MODIFY"
+                } else if evt.kind.is_remove() {
+                    "REMOVE"
+                } else if evt.kind.is_other() {
+                    "OTHER"
+                } else {
+                    "UNKNOWN"
+                };
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("event notification caught: {evt_s}"),
+                );
+                match self.fire_condition() {
+                    Ok(res) => {
+                        if res {
+                            self.log(
+                                LogType::Debug,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                "condition fired successfully",
+                            );
+                        } else {
+                            self.log(
+                                LogType::Trace,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_MSG,
+                                "condition already fired: further schedule skipped",
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("error firing condition: {e}"),
+                        );
+                        return Err(Error::from(e));
+                    }
+                }
+                break;
+            } else {
+                // an access only notification is a non triggered event
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("access-only event notification caught"),
+                );
+                return Ok(None);
+            }
+        }
+
+        Ok(Some(name))
+    }
+
+    fn stel_prepare_listener(&mut self) -> Result<bool> {
+        assert!(
+            self.event_rx.is_none(),
+            "event listening channel for FilesystemChangeEvent {} is already initialized",
+            self.get_name(),
+        );
+
+        // bail out if no location to watch has been provided
+        if self.watched_locations.is_none() {
+            self.log(
+                LogType::Error,
+                LOG_WHEN_START,
+                LOG_STATUS_FAIL,
+                "watch locations not specified",
+            );
+            return Ok(false);
+        }
+
+        // see: https://github.com/notify-rs/notify/blob/main/examples/async_monitor.rs
+        fn _build_watcher(
+            notify_cfg: notify::Config,
+        ) -> notify::Result<(
+            notify::RecommendedWatcher,
+            Receiver<notify::Result<notify::Event>>,
+        )> {
+            let (mut tx, rx) = channel(EVENT_CHANNEL_SIZE);
+
+            let watcher = notify::RecommendedWatcher::new(
+                move |res| {
+                    futures::executor::block_on(async {
+                        tx.send(res).await.unwrap();
+                    })
+                },
+                notify_cfg,
+            )?;
+            Ok((watcher, rx))
+        }
+
+        // build a configuration
+        let notify_cfg =
+            notify::Config::default().with_poll_interval(Duration::from_secs(self.poll_seconds));
+
+        // choose directory recursive mode
+        let recmode = if self.recursive {
+            notify::RecursiveMode::Recursive
+        } else {
+            notify::RecursiveMode::NonRecursive
+        };
+
+        // and now build the watcher and the receiving channel to be saved
+        let (mut watcher, event_rx) = _build_watcher(notify_cfg)?;
+
+        let wl = self.watched_locations.clone().unwrap();
+        for p in wl {
+            match watcher.watch(&p, recmode) {
+                Ok(_) => {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_START,
+                        LOG_STATUS_OK,
+                        &format!(
+                            "successfully added `{}` to watched paths",
+                            p.as_os_str().to_string_lossy()
+                        ),
+                    );
+                }
+                Err(e) => {
+                    self.log(
+                        LogType::Warn,
+                        LOG_WHEN_START,
+                        LOG_STATUS_FAIL,
+                        &format!(
+                            "could not add `{}` to watched paths: {e}",
+                            p.as_os_str().to_string_lossy()
+                        ),
+                    );
+                }
+            }
+        }
+
+        // now that everything is set up, assign correct channels to the
+        // event and preserve the watcher from destruction
+        self.event_rx = Some(event_rx);
+        self.event_watcher = Some(watcher);
+
+        Ok(true)
     }
 
     fn thread_running(&self) -> Result<bool> {

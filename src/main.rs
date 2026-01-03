@@ -6,7 +6,7 @@
 use std::io::{BufRead, Stdin, stdin};
 use std::sync::{Mutex, RwLock};
 use std::thread;
-use std::thread::JoinHandle;
+// use std::thread::JoinHandle;
 use std::time::Duration;
 
 use lazy_static::lazy_static;
@@ -29,7 +29,7 @@ mod constants;
 
 // bring the registries in scope
 use condition::registry::ConditionRegistry;
-use event::registry::EventRegistry;
+use event::registry::StelEventRegistry as EventRegistry;
 use task::registry::TaskRegistry;
 
 use condition::bucket_cond::ExecutionBucket;
@@ -54,7 +54,10 @@ lazy_static! {
     static ref EXECUTION_BUCKET: ExecutionBucket = ExecutionBucket::new();
 
     // single instance name
-    static ref INSTANCE_GUID: String = format!("{APP_NAME}-{}-{APP_GUID}", username());
+    static ref INSTANCE_GUID: String = format!(
+        "{APP_NAME}-{}-{APP_GUID}",
+        { if let Ok(s) = username() { s } else { String::from(STR_UNKNOWN_VALUE) }},
+    );
 
     // set this if the application must exit
     static ref APPLICATION_MUST_EXIT: RwLock<bool> = RwLock::new(false);
@@ -1202,10 +1205,10 @@ fn main() {
     // the event registry must be started, so that all configured event
     // services can be enqueued for startup at the beginning; this could
     // actually take place also after the configuration step
-    let mut _handles: Vec<JoinHandle<std::result::Result<bool, std::io::Error>>> = Vec::new();
-    if let Ok(h) = event::registry::EventRegistry::run_event_service_manager(&EVENT_REGISTRY) {
-        _handles.push(h);
-    }
+    // let mut _handles: Vec<JoinHandle<std::result::Result<bool, std::io::Error>>> = Vec::new();
+    // if let Ok(h) = event::registry::EventRegistry::run_event_service_manager(&EVENT_REGISTRY) {
+    //     _handles.push(h);
+    // }
 
     // set the unique command runner for internal command based tasks
     exit_if_fails!(args.quiet, set_command_runner(run_command));
@@ -1317,10 +1320,9 @@ fn main() {
                         break;
                     }
                 }
-                // stop the event service manager
-                if let Err(e) =
-                    event::registry::EventRegistry::stop_event_service_manager(&EVENT_REGISTRY)
-                {
+
+                // stop the event listener
+                if let Err(e) = EVENT_REGISTRY.stop_event_listener() {
                     log(
                         LogType::Debug,
                         LOG_EMITTER_MAIN,
@@ -1328,12 +1330,8 @@ fn main() {
                         None,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
-                        &format!("error stopping event service manager: {e}"),
+                        &format!("error stopping event listener: {e}"),
                     );
-                }
-                // join all active thread handles and exit gracefully
-                for h in _handles {
-                    let _ = h.join();
                 }
                 break;
             }
