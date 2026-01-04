@@ -62,7 +62,7 @@ pub struct DbusMessageEvent {
     param_checks_all: bool,
 
     // internal values
-    stream: Option<zbus::MessageStream>,
+    // (none here)
 }
 
 // implement the hash protocol
@@ -129,7 +129,7 @@ impl Clone for DbusMessageEvent {
             param_checks_all: self.param_checks_all,
 
             // internal values
-            stream: None,
+            // (none here)
         }
     }
 }
@@ -167,7 +167,7 @@ impl DbusMessageEvent {
             param_checks_all: false,
 
             // internal values
-            stream: None,
+            // (none here)
         }
     }
 
@@ -728,12 +728,60 @@ impl Event for DbusMessageEvent {
     async fn event_triggered(&mut self) -> Result<Option<String>> {
         let name = self.get_name();
         assert!(
-            self.stream.is_some(),
-            "message stream not initialized for event {name}",
+            self.bus.is_some(),
+            "bus not set for DbusMessageEvent {name}",
+        );
+        assert!(
+            self.match_rule.is_some(),
+            "match rule not set for DbusMessageEvent {name}",
         );
 
-        let bus = self.bus.clone().unwrap();
-        let mut event_receiver = self.stream.clone().unwrap();
+        // panic here if the bus name is incorrect: should have been fixed
+        // when the event was configured and constructed
+        async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
+            let connection;
+            if bus == ":session" {
+                connection = zbus::Connection::session().await;
+            } else if bus == ":system" {
+                connection = zbus::Connection::system().await;
+            } else {
+                panic!("specified bus `{bus}` not supported for event");
+            }
+            connection
+        }
+
+        // provide the message stream we subscribed to through the filter; note
+        // that the rule is moved here since this will be the only consumer
+        async fn _get_stream(
+            rule: zbus::MatchRule<'_>,
+            conn: zbus::Connection,
+        ) -> zbus::Result<zbus::MessageStream> {
+            zbus::MessageStream::for_match_rule(rule, &conn, None).await
+        }
+
+        // create the base for the listener, that is a filtered connection
+        let bus = self.bus.as_ref().unwrap();
+        let rule_s = self.match_rule.as_ref().unwrap();
+        let rule = zbus::MatchRule::try_from(rule_s.as_str())?;
+        let conn = task::block_on(async {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening connection to bus `{bus}`"),
+            );
+            _get_connection(&bus).await
+        })?;
+        let mut event_receiver = task::block_on(async {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening message stream on bus `{bus}`"),
+            );
+            _get_stream(rule, conn).await
+        })?;
+
         while let Some(evt) = event_receiver.next().await {
             self.log(
                 LogType::Debug,
@@ -811,75 +859,15 @@ impl Event for DbusMessageEvent {
         Ok(Some(name))
     }
 
-    fn prepare_listener(&mut self) -> Result<bool> {
-        assert!(
-            self.bus.is_some(),
-            "bus not set for DbusMessageEvent {}",
-            self.get_name(),
-        );
-        assert!(
-            self.match_rule.is_some(),
-            "match rule not set for DbusMessageEvent {}",
-            self.get_name(),
-        );
-
-        // panic here if the bus name is incorrect: should have been fixed
-        // when the event was configured and constructed
-        async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
-            let connection;
-            if bus == ":session" {
-                connection = zbus::Connection::session().await;
-            } else if bus == ":system" {
-                connection = zbus::Connection::system().await;
-            } else {
-                panic!("specified bus `{bus}` not supported for event");
-            }
-            connection
-        }
-
-        // provide the message stream we subscribed to through the filter; note
-        // that the rule is moved here since this will be the only consumer
-        async fn _get_stream(
-            rule: zbus::MatchRule<'_>,
-            conn: zbus::Connection,
-        ) -> zbus::Result<zbus::MessageStream> {
-            zbus::MessageStream::for_match_rule(rule, &conn, None).await
-        }
-
-        // create the base for the listener, that is a filtered connection
-        let bus = self.bus.as_ref().unwrap();
-        let rule_s = self.match_rule.as_ref().unwrap();
-        let rule = zbus::MatchRule::try_from(rule_s.as_str())?;
-        let conn = task::block_on(async {
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_START,
-                LOG_STATUS_MSG,
-                &format!("opening connection to bus `{bus}`"),
-            );
-            _get_connection(&bus).await
-        })?;
-        let stream = task::block_on(async {
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_START,
-                LOG_STATUS_MSG,
-                &format!("opening message stream on bus `{bus}`"),
-            );
-            _get_stream(rule, conn).await
-        })?;
-
-        // save the stream so that we can poll events
-        self.stream = Some(stream);
-        self.log(
-            LogType::Debug,
-            LOG_WHEN_START,
-            LOG_STATUS_OK,
-            &format!("successfully subscribed to message on bus `{bus}`"),
-        );
-
-        Ok(true)
-    }
+    // don't prepare the listener here and accept the default implementation
+    // so that the listening stream is reset every time a signal is caught:
+    // this is because the signal continues to be present in the stream, which
+    // causes the event to be fired again; instead, the message channel is
+    // rebuilt so that we start listening for new events of the same type
+    // fn prepare_listener(&mut self) -> Result<bool> {
+    //     // the default implementation returns Ok(false) as it does nothing
+    //     Ok(false)
+    // }
 }
 
 // end.
