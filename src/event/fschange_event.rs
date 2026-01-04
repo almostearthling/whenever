@@ -61,7 +61,7 @@ pub struct FilesystemChangeEvent {
     // quit_tx: Option<mpsc::Sender<()>>,
     // quit_rx: Option<Receiver<()>>,
     event_rx: Option<Receiver<notify::Result<notify::Event>>>,
-    event_watcher: Option<notify::ReadDirectoryChangesWatcher>,
+    event_watcher: Option<notify::RecommendedWatcher>,
 }
 
 // implement the hash protocol
