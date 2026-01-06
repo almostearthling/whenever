@@ -133,9 +133,7 @@ impl EventRegistry {
 
         // create the stream used to send the quit message and assign it to the registry
         let (qtx, qrx) = futures::channel::mpsc::channel::<()>(EVENT_QUIT_CHANNEL_SIZE);
-        let r0 = managed_registry
-            .lock()
-            .expect("cannot lock event registry");
+        let r0 = managed_registry.lock().expect("cannot lock event registry");
         let m0 = r0.listener_quit_messenger.clone();
         let mut m1 = m0
             .lock()
