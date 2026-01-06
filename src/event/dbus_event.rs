@@ -8,6 +8,7 @@
 #![cfg(feature = "dbus")]
 
 use regex::Regex;
+use std::str::FromStr;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use futures::StreamExt;
@@ -18,8 +19,6 @@ use async_std::task;
 use async_trait::async_trait;
 
 use zbus;
-
-use std::str::FromStr;
 
 use super::base::Event;
 use crate::common::dbusitem::*;

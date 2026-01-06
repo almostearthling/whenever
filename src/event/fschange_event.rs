@@ -10,17 +10,16 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use async_trait::async_trait;
-
 use futures::{
     SinkExt, StreamExt,
     channel::mpsc::{Receiver, channel},
 };
 
 use cfgmap::CfgMap;
+
 use notify::{self, Watcher};
 
 use super::base::Event;
-
 use crate::common::logging::{LogType, log};
 use crate::common::wres::{Error, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
