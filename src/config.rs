@@ -1114,18 +1114,13 @@ fn configure_events(
                     let event_type = event_type.as_str().unwrap();
                     match event_type.as_str() {
                         "fschange" => {
-                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
+                            let mut event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(Error::new(
-                                    Kind::Invalid,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if event_registry.listen_for(&event_name).is_ok() {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1134,10 +1129,11 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)",
+                                        "initialization skipped for event {event_name}",
                                     ),
                                 )
-                            } else {
+                            }
+                            if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1146,18 +1142,13 @@ fn configure_events(
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                            let mut event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(Error::new(
-                                    Kind::Invalid,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if event_registry.listen_for(&event_name).is_ok() {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1166,10 +1157,11 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)",
+                                        "initialization skipped for event {event_name}",
                                     ),
                                 )
-                            } else {
+                            }
+                            if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1179,18 +1171,13 @@ fn configure_events(
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
+                            let mut event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(Error::new(
-                                    Kind::Invalid,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if event_registry.listen_for(&event_name).is_ok() {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1199,10 +1186,11 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)",
+                                        "initialization skipped for event {event_name}",
                                     ),
                                 )
-                            } else {
+                            }
+                            if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1210,18 +1198,13 @@ fn configure_events(
                             }
                         }
                         "cli" => {
-                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
+                            let mut event = event::manual_event::ManualCommandEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.add_event(Box::new(event))? {
-                                return Err(Error::new(
-                                    Kind::Invalid,
-                                    ERR_EVENTREG_EVENT_NOT_ADDED,
-                                ));
-                            } else if event_registry.listen_for(&event_name).is_ok() {
+                            if !event.prepare_listener()? {
                                 log(
                                     LogType::Trace,
                                     LOG_EMITTER_CONFIGURATION,
@@ -1230,10 +1213,11 @@ fn configure_events(
                                     LOG_WHEN_INIT,
                                     LOG_STATUS_MSG,
                                     &format!(
-                                        "service installed for event {event_name} (dedicated thread)",
+                                        "initialization skipped for event {event_name}",
                                     ),
                                 )
-                            } else {
+                            }
+                            if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1252,6 +1236,7 @@ fn configure_events(
         }
     }
 
+    event_registry.run_event_listener()?;
     Ok(())
 }
 
@@ -1262,6 +1247,9 @@ fn reconfigure_events(
     cond_registry: &'static ConditionRegistry,
     bucket: &'static ExecutionBucket,
 ) -> Result<()> {
+    // first of all, stop event listener while reconfiguring
+    event_registry.stop_event_listener()?;
+
     let mut to_remove: Vec<String> = Vec::new();
     if let Some(e) = event_registry.event_names() {
         to_remove = e.clone();
@@ -1278,7 +1266,7 @@ fn reconfigure_events(
                     let event_type = event_type.as_str().unwrap();
                     match event_type.as_str() {
                         "fschange" => {
-                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
+                            let mut event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1287,8 +1275,10 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
-                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                    && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
                                         LogType::Trace,
@@ -1297,27 +1287,23 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening"),
+                                        &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
-                                    return Err(Error::new(
-                                        Kind::Invalid,
-                                        ERR_EVENTREG_EVENT_NOT_ADDED,
-                                    ));
-                                } else if event_registry.listen_for(&event_name).is_ok() {
+                                if !event.prepare_listener()? {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
                                         LOG_ACTION_MAIN_LISTENER,
                                         None,
-                                        LOG_WHEN_PROC,
+                                        LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!(
-                                            "service installed for event {event_name} (dedicated thread)",
+                                            "initialization skipped for event {event_name}",
                                         ),
-                                    );
-                                } else {
+                                    )
+                                }
+                                if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1353,7 +1339,7 @@ fn reconfigure_events(
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                            let mut event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1362,8 +1348,10 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
-                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                    && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
                                         LogType::Trace,
@@ -1372,27 +1360,23 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening"),
+                                        &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
-                                    return Err(Error::new(
-                                        Kind::Invalid,
-                                        ERR_EVENTREG_EVENT_NOT_ADDED,
-                                    ));
-                                } else if event_registry.listen_for(&event_name).is_ok() {
+                                if !event.prepare_listener()? {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
                                         LOG_ACTION_MAIN_LISTENER,
                                         None,
-                                        LOG_WHEN_PROC,
+                                        LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!(
-                                            "service installed for event {event_name} (dedicated thread)",
+                                            "initialization skipped for event {event_name}",
                                         ),
-                                    );
-                                } else {
+                                    )
+                                }
+                                if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1429,7 +1413,7 @@ fn reconfigure_events(
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
+                            let mut event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1438,8 +1422,10 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
-                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                    && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
                                         LogType::Trace,
@@ -1448,27 +1434,23 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening"),
+                                        &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
-                                    return Err(Error::new(
-                                        Kind::Invalid,
-                                        ERR_EVENTREG_EVENT_NOT_ADDED,
-                                    ));
-                                } else if event_registry.listen_for(&event_name).is_ok() {
+                                if !event.prepare_listener()? {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
                                         LOG_ACTION_MAIN_LISTENER,
                                         None,
-                                        LOG_WHEN_PROC,
+                                        LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
                                         &format!(
-                                            "service installed for event {event_name} (dedicated thread)",
+                                            "initialization skipped for event {event_name}",
                                         ),
-                                    );
-                                } else {
+                                    )
+                                }
+                                if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1503,7 +1485,7 @@ fn reconfigure_events(
                             }
                         }
                         "cli" => {
-                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
+                            let mut event = event::manual_event::ManualCommandEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1512,8 +1494,10 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
-                                    && event_registry.unlisten_and_remove(&event_name).is_err()
+                                    && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
                                         LogType::Trace,
@@ -1522,25 +1506,23 @@ fn reconfigure_events(
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_FAIL,
-                                        &format!("service for event {event_name} still listening"),
+                                        &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
-                                    return Err(Error::new(
-                                        Kind::Invalid,
-                                        ERR_EVENTREG_EVENT_NOT_ADDED,
-                                    ));
-                                } else if event_registry.listen_for(&event_name).is_ok() {
+                                if !event.prepare_listener()? {
                                     log(
                                         LogType::Trace,
                                         LOG_EMITTER_CONFIGURATION,
                                         LOG_ACTION_MAIN_LISTENER,
                                         None,
-                                        LOG_WHEN_PROC,
+                                        LOG_WHEN_INIT,
                                         LOG_STATUS_MSG,
-                                        &format!("service installed for event {event_name}"),
-                                    );
-                                } else {
+                                        &format!(
+                                            "initialization skipped for event {event_name}",
+                                        ),
+                                    )
+                                }
+                                if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1595,9 +1577,9 @@ fn reconfigure_events(
             None,
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
-            &format!("terminating listening service for event {name}"),
+            &format!("removing deleted event {name}"),
         );
-        if event_registry.unlisten_and_remove(&name).is_err() {
+        if event_registry.remove_event(&name).is_err() {
             // this condition is expected, because
             // event listeners do not terminate
             // synchronously
@@ -1608,11 +1590,12 @@ fn reconfigure_events(
                 None,
                 LOG_WHEN_PROC,
                 LOG_STATUS_FAIL,
-                &format!("service for removed event {name} still listening"),
+                &format!("could not remove deleted event {name}"),
             );
         }
     }
 
+    event_registry.run_event_listener()?;
     Ok(())
 }
 
