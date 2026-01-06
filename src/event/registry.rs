@@ -135,11 +135,11 @@ impl EventRegistry {
         let (qtx, qrx) = futures::channel::mpsc::channel::<()>(EVENT_QUIT_CHANNEL_SIZE);
         let r0 = managed_registry
             .lock()
-            .expect("cannot acquire event registry");
+            .expect("cannot lock event registry");
         let m0 = r0.listener_quit_messenger.clone();
         let mut m1 = m0
             .lock()
-            .expect("cannot acquire quit messenger for initialization");
+            .expect("cannot lock quit messenger for initialization");
         *m1 = Some(qtx);
         drop(m1);
         drop(m0);
@@ -289,6 +289,15 @@ impl EventRegistry {
         drop(m0);
         let mut messenger = messenger.lock().expect("cannot acquire listener messenger");
         if messenger.is_some() {
+            log(
+                LogType::Trace,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_MAIN_LISTENER,
+                None,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                "requesting the event listener to stop",
+            );
             let messenger = messenger.as_mut().unwrap();
             futures::executor::block_on(async move {
                 messenger.send(()).await.unwrap();

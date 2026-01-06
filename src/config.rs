@@ -1247,13 +1247,13 @@ fn reconfigure_events(
     cond_registry: &'static ConditionRegistry,
     bucket: &'static ExecutionBucket,
 ) -> Result<()> {
+    // first of all, stop event listener while reconfiguring
+    event_registry.stop_event_listener()?;
+
     let mut to_remove: Vec<String> = Vec::new();
     if let Some(e) = event_registry.event_names() {
         to_remove = e.clone();
     }
-
-    // stop event listener while reconfiguring
-    event_registry.stop_event_listener()?;
 
     if let Some(event_map) = cfgmap.get("event") {
         if !event_map.is_list() {
@@ -1266,7 +1266,7 @@ fn reconfigure_events(
                     let event_type = event_type.as_str().unwrap();
                     match event_type.as_str() {
                         "fschange" => {
-                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
+                            let mut event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1275,6 +1275,8 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
@@ -1287,6 +1289,19 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
+                                }
+                                if !event.prepare_listener()? {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!(
+                                            "initialization skipped for event {event_name}",
+                                        ),
+                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1324,7 +1339,7 @@ fn reconfigure_events(
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                            let mut event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1333,6 +1348,8 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
@@ -1345,6 +1362,19 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
+                                }
+                                if !event.prepare_listener()? {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!(
+                                            "initialization skipped for event {event_name}",
+                                        ),
+                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1383,7 +1413,7 @@ fn reconfigure_events(
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
+                            let mut event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1392,6 +1422,8 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
@@ -1404,6 +1436,19 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
+                                }
+                                if !event.prepare_listener()? {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!(
+                                            "initialization skipped for event {event_name}",
+                                        ),
+                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1440,7 +1485,7 @@ fn reconfigure_events(
                             }
                         }
                         "cli" => {
-                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
+                            let mut event = event::manual_event::ManualCommandEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1449,6 +1494,8 @@ fn reconfigure_events(
                             if !event_registry.has_event(&event_name)
                                 || !event_registry.has_event_eq(&event)
                             {
+                                // the following call to remove_event puts the
+                                // received event out of scope after the block
                                 if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
@@ -1461,6 +1508,19 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
+                                }
+                                if !event.prepare_listener()? {
+                                    log(
+                                        LogType::Trace,
+                                        LOG_EMITTER_CONFIGURATION,
+                                        LOG_ACTION_MAIN_LISTENER,
+                                        None,
+                                        LOG_WHEN_INIT,
+                                        LOG_STATUS_MSG,
+                                        &format!(
+                                            "initialization skipped for event {event_name}",
+                                        ),
+                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
