@@ -328,8 +328,21 @@ impl Event for WmiQueryEvent {
 
         // the following are to enable the execution of a WMI async query
         let conn = if self.namespace.is_some() {
-            WMIConnection::with_namespace_path(self.namespace.as_ref().unwrap())?
+            let namespace = self.namespace.as_ref().unwrap();
+            self.log(
+                LogType::Trace,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("opening WMI connection to namespace `{namespace}`"),
+            );
+            WMIConnection::with_namespace_path(namespace)?
         } else {
+            self.log(
+                LogType::Trace,
+                LOG_WHEN_PROC,
+                LOG_STATUS_OK,
+                &format!("opening WMI connection to default namespace"),
+            );
             WMIConnection::new()?
         };
 
@@ -337,7 +350,7 @@ impl Event for WmiQueryEvent {
         let mut event_receiver = conn.exec_notification_query_async(query)?;
         self.log(
             LogType::Trace,
-            LOG_WHEN_START,
+            LOG_WHEN_PROC,
             LOG_STATUS_OK,
             "successfully subscribed/resubscribed to WMI event",
         );

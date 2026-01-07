@@ -61,7 +61,7 @@ pub struct DbusMessageEvent {
     param_checks_all: bool,
 
     // internal values
-    // (none here)
+    connection: Option<zbus::Connection>,
 }
 
 // implement the hash protocol
@@ -128,7 +128,7 @@ impl Clone for DbusMessageEvent {
             param_checks_all: self.param_checks_all,
 
             // internal values
-            // (none here)
+            connection: None,
         }
     }
 }
@@ -166,7 +166,7 @@ impl DbusMessageEvent {
             param_checks_all: false,
 
             // internal values
-            // (none here)
+            connection: None,
         }
     }
 
@@ -734,47 +734,29 @@ impl Event for DbusMessageEvent {
             self.match_rule.is_some(),
             "match rule not set for DbusMessageEvent {name}",
         );
-
-        // panic here if the bus name is incorrect: should have been fixed
-        // when the event was configured and constructed
-        async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
-            let connection;
-            if bus == ":session" {
-                connection = zbus::Connection::session().await;
-            } else if bus == ":system" {
-                connection = zbus::Connection::system().await;
-            } else {
-                panic!("specified bus `{bus}` not supported for event");
-            }
-            connection
-        }
+        assert!(
+            self.connection.is_some(),
+            "connection not initialized for DbusMessageEvent {name}",
+        );
 
         // provide the message stream we subscribed to through the filter; note
         // that the rule is moved here since this will be the only consumer
         async fn _get_stream(
             rule: zbus::MatchRule<'_>,
-            conn: zbus::Connection,
+            conn: &zbus::Connection,
         ) -> zbus::Result<zbus::MessageStream> {
-            zbus::MessageStream::for_match_rule(rule, &conn, None).await
+            zbus::MessageStream::for_match_rule(rule, conn, None).await
         }
 
         // create the base for the listener, that is a filtered connection
         let bus = self.bus.as_ref().unwrap();
         let rule_s = self.match_rule.as_ref().unwrap();
         let rule = zbus::MatchRule::try_from(rule_s.as_str())?;
-        let conn = task::block_on(async {
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_START,
-                LOG_STATUS_MSG,
-                &format!("opening connection to bus `{bus}`"),
-            );
-            _get_connection(&bus).await
-        })?;
+        let conn = self.connection.as_ref().unwrap();
         let mut event_receiver = task::block_on(async {
             self.log(
                 LogType::Debug,
-                LOG_WHEN_START,
+                LOG_WHEN_PROC,
                 LOG_STATUS_MSG,
                 &format!("opening message stream on bus `{bus}`"),
             );
@@ -858,15 +840,46 @@ impl Event for DbusMessageEvent {
         Ok(Some(name))
     }
 
-    // don't prepare the listener here and accept the default implementation
-    // so that the listening stream is reset every time a signal is caught:
-    // this is because the signal continues to be present in the stream, which
-    // causes the event to be fired again; instead, the message channel is
-    // rebuilt so that we start listening for new events of the same type
-    // fn prepare_listener(&mut self) -> Result<bool> {
-    //     // the default implementation returns Ok(false) as it does nothing
-    //     Ok(false)
-    // }
+    // the DBus connection is initialized here, while the stream is created
+    // in the event poller, in order to have a clean stream with no dupe
+    // message after one is received
+    fn prepare_listener(&mut self) -> Result<bool> {
+        assert!(
+            self.bus.is_some(),
+            "bus not set for DbusMessageEvent {}",
+            self.get_name(),
+        );
+
+        // panic here if the bus name is incorrect: should have been fixed
+        // when the event was configured and constructed
+        async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
+            let connection;
+            if bus == ":session" {
+                connection = zbus::Connection::session().await;
+            } else if bus == ":system" {
+                connection = zbus::Connection::system().await;
+            } else {
+                panic!("specified bus `{bus}` not supported for event");
+            }
+            connection
+        }
+
+        // create the base for the listener, that is a filtered connection
+        let bus = self.bus.as_ref().unwrap();
+        let conn = task::block_on(async {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("opening DBus connection to bus `{bus}`"),
+            );
+            _get_connection(&bus).await
+        })?;
+
+        self.connection = Some(conn);
+
+        Ok(true)
+    }
 }
 
 // end.
