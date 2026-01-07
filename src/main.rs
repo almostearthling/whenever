@@ -6,14 +6,13 @@
 use std::io::{BufRead, Stdin, stdin};
 use std::sync::{Mutex, RwLock};
 use std::thread;
-// use std::thread::JoinHandle;
 use std::time::Duration;
+use rand::{RngCore, rng};
 
 use lazy_static::lazy_static;
 
 use cfgmap::CfgValue;
 use clokwerk::{Scheduler, TimeUnits};
-use rand::{RngCore, rng};
 use single_instance::SingleInstance;
 use whoami::username;
 
