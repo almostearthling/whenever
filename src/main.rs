@@ -1200,15 +1200,6 @@ fn main() {
         .as_bool()
         .unwrap_or(&DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS);
 
-    // before actual configuration the event service manager provided by
-    // the event registry must be started, so that all configured event
-    // services can be enqueued for startup at the beginning; this could
-    // actually take place also after the configuration step
-    // let mut _handles: Vec<JoinHandle<std::result::Result<bool, std::io::Error>>> = Vec::new();
-    // if let Ok(h) = event::registry::EventRegistry::run_event_service_manager(&EVENT_REGISTRY) {
-    //     _handles.push(h);
-    // }
-
     // set the unique command runner for internal command based tasks
     exit_if_fails!(args.quiet, set_command_runner(run_command));
 
