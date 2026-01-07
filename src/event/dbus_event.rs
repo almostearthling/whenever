@@ -8,8 +8,8 @@
 #![cfg(feature = "dbus")]
 
 use regex::Regex;
-use std::str::FromStr;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::str::FromStr;
 
 use futures::StreamExt;
 

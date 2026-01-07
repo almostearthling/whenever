@@ -110,12 +110,12 @@ pub trait Event: Send + Sync {
         assert!(
             self.get_id() != 0,
             "event {} not registered",
-            self.get_name()
+            self.get_name(),
         );
         assert!(self.get_condition().is_some(), "no condition assigned");
         assert!(
             self.condition_bucket().is_some(),
-            "execution bucket not set"
+            "execution bucket not set",
         );
 
         let cond_name = self.get_condition().unwrap();

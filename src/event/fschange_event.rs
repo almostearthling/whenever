@@ -56,9 +56,6 @@ pub struct FilesystemChangeEvent {
     recursive: bool,
 
     // internal values
-    // thread_running: RwLock<bool>,
-    // quit_tx: Option<mpsc::Sender<()>>,
-    // quit_rx: Option<Receiver<()>>,
     event_rx: Option<Receiver<notify::Result<notify::Event>>>,
     event_watcher: Option<notify::RecommendedWatcher>,
 }
@@ -107,9 +104,6 @@ impl Clone for FilesystemChangeEvent {
             recursive: self.recursive,
 
             // internal values
-            // thread_running: RwLock::new(false),
-            // quit_tx: None,
-            // quit_rx: None,
             event_rx: None,
             event_watcher: None,
         }
@@ -147,9 +141,6 @@ impl FilesystemChangeEvent {
             recursive: false,
 
             // internal values
-            // thread_running: RwLock::new(false),
-            // quit_tx: None,
-            // quit_rx: None,
             event_rx: None,
             event_watcher: None,
         }
@@ -165,7 +156,7 @@ impl FilesystemChangeEvent {
                 LOG_STATUS_OK,
                 &format!(
                     "found valid item to watch: `{}`",
-                    p.as_os_str().to_string_lossy()
+                    p.as_os_str().to_string_lossy(),
                 ),
             );
             if self.watched_locations.is_none() {
@@ -181,7 +172,7 @@ impl FilesystemChangeEvent {
                 LOG_STATUS_FAIL,
                 &format!(
                     "refusing non-existent item: `{}`",
-                    p.as_os_str().to_string_lossy()
+                    p.as_os_str().to_string_lossy(),
                 ),
             );
             return Ok(false);
@@ -515,7 +506,7 @@ impl Event for FilesystemChangeEvent {
                         LOG_STATUS_OK,
                         &format!(
                             "successfully added `{}` to watched paths",
-                            p.as_os_str().to_string_lossy()
+                            p.as_os_str().to_string_lossy(),
                         ),
                     );
                 }
@@ -526,7 +517,7 @@ impl Event for FilesystemChangeEvent {
                         LOG_STATUS_FAIL,
                         &format!(
                             "could not add `{}` to watched paths: {e}",
-                            p.as_os_str().to_string_lossy()
+                            p.as_os_str().to_string_lossy(),
                         ),
                     );
                 }

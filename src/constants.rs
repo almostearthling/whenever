@@ -42,7 +42,6 @@ pub const ERR_CONDREG_COND_RESET_BUSY: &str = "attempt to reset condition while 
 pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition while busy";
 pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition while busy";
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
-pub const ERR_EVENTREG_CANNOT_PULL_EVENT: &str = "could not pull event out from the registry";
 pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
 pub const ERR_EVENTREG_CANNOT_STOP_LISTENER: &str = "could not shut down the event listener";
 
@@ -169,7 +168,6 @@ pub const DEFAULT_RANDOMIZE_CHECKS_WITHIN_TICKS: bool = false;
 
 // operational values
 pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100; // default: 100
-pub const MAIN_EVENT_REGISTRY_MGMT_MILLISECONDS: u64 = 100; // default: 100
 
 // channel sizes
 pub const EVENT_QUIT_CHANNEL_SIZE: usize = 10; // default: 10

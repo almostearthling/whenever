@@ -3,9 +3,7 @@
 //! `event::registry` implements the main registry for `Event` objects.
 //!
 //! Implements the event registry which is created as the static repository of
-//! all events in the main program. This ensures that all the configured events
-//! are instanced and have a lifetime that lasts for the whole time in which
-//! the main program is running.
+//! all the events that are listened for in the main program.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -56,8 +54,7 @@ pub struct EventRegistry {
     // event on its ability to be manually triggered
     triggerable_events: RwLock<HashMap<String, bool>>,
 
-    // the queues of events whose services need to be installed/removed
-    // communication channel serving the event service mnager
+    // the channel over which a request to stop the listener can be sent
     listener_quit_messenger: Arc<Mutex<Option<futures::channel::mpsc::Sender<()>>>>,
 
     // the service handle for the event listener
@@ -91,7 +88,7 @@ impl EventRegistry {
         // via an async function that builds the Target message for us
         async fn next_event(registry: Arc<Mutex<&EventRegistry>>) -> TriggeredOrQuitMessage {
             let r0 = registry.clone();
-            let r0 = r0.lock().expect("cannot acquire registry");
+            let r0 = r0.lock().expect("cannot lock event registry");
             let el0 = r0.events.clone();
             drop(r0);
 
@@ -100,7 +97,7 @@ impl EventRegistry {
             // to occcur; this can be a problem when the list should changed,
             // generally because of a reconfiguration; however the listener is
             // stopped and restarted in that case, which should limit problems
-            let mut el0 = el0.lock().expect("cannot acquire event list");
+            let mut el0 = el0.lock().expect("cannot lock event list");
             let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
 
             // only the first item of the tuple is needed for our purposes
@@ -267,7 +264,7 @@ impl EventRegistry {
         let managed_registry = managed_registry.clone();
         let managed_registry = managed_registry
             .lock()
-            .expect("cannot acquire event registry");
+            .expect("cannot lock event registry");
 
         let h0 = managed_registry.listener_handle.clone();
         let mut h0 = h0.lock().unwrap();
@@ -298,13 +295,23 @@ impl EventRegistry {
             );
             let messenger = messenger.as_mut().unwrap();
             futures::executor::block_on(async move {
-                messenger.send(()).await.unwrap();
+                if messenger.send(()).await.is_err() {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_MAIN_LISTENER,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_FAIL,
+                        "an error occurred while requesting to stop the event listener",
+                    );
+                }
             });
         }
 
         // take ownership of the service handle and replace it with `None`
         let m0 = managed_registry.clone();
-        let m0 = m0.lock().expect("cannot acquire event registry");
+        let m0 = m0.lock().expect("cannot lock event registry");
         let h0 = m0.listener_handle.clone();
         let mut h0 = h0.lock().unwrap();
 
@@ -318,7 +325,7 @@ impl EventRegistry {
                 None,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
-                "an error occurred while stopping the listener",
+                "an error occurred while stopping the event listener",
             );
             return Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_STOP_LISTENER));
         }
