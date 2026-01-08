@@ -615,10 +615,16 @@ impl ConditionRegistry {
     ///
     /// # Panics
     ///
-    /// May panic if the condition registry could not be locked for extraction
-    /// and if the provided name is not found in the registry: in no way the
-    /// `tick` function should be invoked with unknown conditions.
+    /// May panic if the condition registry can not be locked for extraction.
     pub fn tick(&self, name: &str) -> Result<Option<bool>> {
+        // the named condition might have disappeared due to a reconfiguration
+        // while still being known to the main thread
+        if !self.has_condition(name) {
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("condition {name} not found in registry"),
+            ));
+        }
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved

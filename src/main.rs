@@ -218,6 +218,16 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
                         );
                     }
                 }
+            } else {
+                log(
+                    LogType::Debug,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_SCHEDULER_TICK,
+                    None,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_FAIL,
+                    &format!("condition {name} could not be tested"),
+                );
             }
         });
     }
