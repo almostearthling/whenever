@@ -843,7 +843,7 @@ impl Event for DbusMessageEvent {
     // the DBus connection is initialized here, while the stream is created
     // in the event poller, in order to have a clean stream with no dupe
     // message after one is received
-    fn prepare_listener(&mut self) -> Result<bool> {
+    fn initial_setup(&mut self) -> Result<bool> {
         assert!(
             self.bus.is_some(),
             "bus not set for DbusMessageEvent {}",
@@ -877,6 +877,29 @@ impl Event for DbusMessageEvent {
         })?;
 
         self.connection = Some(conn);
+
+        Ok(true)
+    }
+
+    // this type of event actually needs a cleanup method in order to close
+    // the connection and free the event itself
+    fn final_cleanup(&mut self) -> Result<bool> {
+        if self.connection.is_some() {
+            let conn = self.connection.as_mut().unwrap();
+            task::block_on(async {
+                conn.clone().close().await.unwrap();
+            });
+            let _ = self.connection.take();
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!(
+                    "closed DBus connection to bus `{}`",
+                    self.bus.as_ref().unwrap()
+                ),
+            );
+        }
 
         Ok(true)
     }

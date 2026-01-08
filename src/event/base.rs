@@ -162,12 +162,20 @@ pub trait Event: Send + Sync {
         Ok(Some(self.get_name()))
     }
 
-    /// Prepare the listener initializing all internals if necessary: this
+    /// Setup for the listener initializing all internals if necessary: this
     /// must always be called before starting the loop that tests for the
     /// event to be fired. A successful initialization will return _true_,
     /// while a failing one (or no initialization at all) will return
     /// _false_. All erratic conditions should forward a suitable error.
-    fn prepare_listener(&mut self) -> Result<bool> {
+    fn initial_setup(&mut self) -> Result<bool> {
+        // the default implementation returns Ok(false) as it does nothing
+        Ok(false)
+    }
+
+    /// Perform final cleanup if necessary. A successful cleanup will return
+    /// _true_, while a failing one (or no initialization at all) will return
+    /// _false_.
+    fn final_cleanup(&mut self) -> Result<bool> {
         // the default implementation returns Ok(false) as it does nothing
         Ok(false)
     }

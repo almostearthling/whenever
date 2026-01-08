@@ -409,7 +409,7 @@ impl Event for WmiQueryEvent {
     // part will be created directly in the async event poller: it costs some
     // extra effort each time an event poller is reinstated; therefore the
     // preparation step is left as the default implementation
-    // fn stel_prepare_listener(&mut self) -> Result<bool> {
+    // fn initial_setup(&mut self) -> Result<bool> {
     //     // the default implementation returns Ok(false) as it does nothing
     //     Ok(false)
     // }

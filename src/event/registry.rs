@@ -262,9 +262,7 @@ impl EventRegistry {
         });
 
         let managed_registry = managed_registry.clone();
-        let managed_registry = managed_registry
-            .lock()
-            .expect("cannot lock event registry");
+        let managed_registry = managed_registry.lock().expect("cannot lock event registry");
 
         let h0 = managed_registry.listener_handle.clone();
         let mut h0 = h0.lock().unwrap();
@@ -409,6 +407,17 @@ impl EventRegistry {
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
+        if !boxed_event.initial_setup()? {
+            log(
+                LogType::Trace,
+                LOG_EMITTER_EVENT_REGISTRY,
+                LOG_ACTION_INSTALL,
+                None,
+                LOG_WHEN_INIT,
+                LOG_STATUS_MSG,
+                &format!("initialization skipped for event {name}",),
+            );
+        }
         self.triggerable_events
             .write()
             .expect("cannot write to triggerable event registry")
@@ -468,6 +477,17 @@ impl EventRegistry {
                     // };
                     // let mut event = event.into_inner().expect("cannot extract locked event");
                     let mut event = e;
+                    if !event.final_cleanup()? {
+                        log(
+                            LogType::Trace,
+                            LOG_EMITTER_EVENT_REGISTRY,
+                            LOG_ACTION_UNINSTALL,
+                            None,
+                            LOG_WHEN_INIT,
+                            LOG_STATUS_MSG,
+                            &format!("cleanup skipped for event {name}",),
+                        );
+                    }
                     event.set_id(0);
                     Ok(Some(event))
                 }

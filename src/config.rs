@@ -1114,25 +1114,11 @@ fn configure_events(
                     let event_type = event_type.as_str().unwrap();
                     match event_type.as_str() {
                         "fschange" => {
-                            let mut event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
+                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
-                            let event_name = event.get_name();
-                            if !event.prepare_listener()? {
-                                log(
-                                    LogType::Trace,
-                                    LOG_EMITTER_CONFIGURATION,
-                                    LOG_ACTION_MAIN_LISTENER,
-                                    None,
-                                    LOG_WHEN_INIT,
-                                    LOG_STATUS_MSG,
-                                    &format!(
-                                        "initialization skipped for event {event_name}",
-                                    ),
-                                )
-                            }
                             if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
@@ -1142,25 +1128,11 @@ fn configure_events(
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            let mut event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
-                            let event_name = event.get_name();
-                            if !event.prepare_listener()? {
-                                log(
-                                    LogType::Trace,
-                                    LOG_EMITTER_CONFIGURATION,
-                                    LOG_ACTION_MAIN_LISTENER,
-                                    None,
-                                    LOG_WHEN_INIT,
-                                    LOG_STATUS_MSG,
-                                    &format!(
-                                        "initialization skipped for event {event_name}",
-                                    ),
-                                )
-                            }
                             if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
@@ -1171,25 +1143,11 @@ fn configure_events(
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            let mut event = event::wmi_event::WmiQueryEvent::load_cfgmap(
+                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
-                            let event_name = event.get_name();
-                            if !event.prepare_listener()? {
-                                log(
-                                    LogType::Trace,
-                                    LOG_EMITTER_CONFIGURATION,
-                                    LOG_ACTION_MAIN_LISTENER,
-                                    None,
-                                    LOG_WHEN_INIT,
-                                    LOG_STATUS_MSG,
-                                    &format!(
-                                        "initialization skipped for event {event_name}",
-                                    ),
-                                )
-                            }
                             if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
@@ -1198,25 +1156,11 @@ fn configure_events(
                             }
                         }
                         "cli" => {
-                            let mut event = event::manual_event::ManualCommandEvent::load_cfgmap(
+                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
                             )?;
-                            let event_name = event.get_name();
-                            if !event.prepare_listener()? {
-                                log(
-                                    LogType::Trace,
-                                    LOG_EMITTER_CONFIGURATION,
-                                    LOG_ACTION_MAIN_LISTENER,
-                                    None,
-                                    LOG_WHEN_INIT,
-                                    LOG_STATUS_MSG,
-                                    &format!(
-                                        "initialization skipped for event {event_name}",
-                                    ),
-                                )
-                            }
                             if !event_registry.add_event(Box::new(event))? {
                                 return Err(Error::new(
                                     Kind::Invalid,
@@ -1236,7 +1180,6 @@ fn configure_events(
         }
     }
 
-    event_registry.run_event_listener()?;
     Ok(())
 }
 
@@ -1247,9 +1190,6 @@ fn reconfigure_events(
     cond_registry: &'static ConditionRegistry,
     bucket: &'static ExecutionBucket,
 ) -> Result<()> {
-    // first of all, stop event listener while reconfiguring
-    event_registry.stop_event_listener()?;
-
     let mut to_remove: Vec<String> = Vec::new();
     if let Some(e) = event_registry.event_names() {
         to_remove = e.clone();
@@ -1266,7 +1206,7 @@ fn reconfigure_events(
                     let event_type = event_type.as_str().unwrap();
                     match event_type.as_str() {
                         "fschange" => {
-                            let mut event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
+                            let event = event::fschange_event::FilesystemChangeEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1289,19 +1229,6 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
-                                }
-                                if !event.prepare_listener()? {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_CONFIGURATION,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!(
-                                            "initialization skipped for event {event_name}",
-                                        ),
-                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1339,7 +1266,7 @@ fn reconfigure_events(
                         }
                         #[cfg(feature = "dbus")]
                         "dbus" => {
-                            let mut event = event::dbus_event::DbusMessageEvent::load_cfgmap(
+                            let event = event::dbus_event::DbusMessageEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1362,19 +1289,6 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
-                                }
-                                if !event.prepare_listener()? {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_CONFIGURATION,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!(
-                                            "initialization skipped for event {event_name}",
-                                        ),
-                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1413,7 +1327,7 @@ fn reconfigure_events(
                         #[cfg(windows)]
                         #[cfg(feature = "wmi")]
                         "wmi" => {
-                            let mut event = event::wmi_event::WmiQueryEvent::load_cfgmap(
+                            let event = event::wmi_event::WmiQueryEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1436,19 +1350,6 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
-                                }
-                                if !event.prepare_listener()? {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_CONFIGURATION,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!(
-                                            "initialization skipped for event {event_name}",
-                                        ),
-                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1485,7 +1386,7 @@ fn reconfigure_events(
                             }
                         }
                         "cli" => {
-                            let mut event = event::manual_event::ManualCommandEvent::load_cfgmap(
+                            let event = event::manual_event::ManualCommandEvent::load_cfgmap(
                                 entry.as_map().unwrap(),
                                 cond_registry,
                                 bucket,
@@ -1508,19 +1409,6 @@ fn reconfigure_events(
                                         LOG_STATUS_FAIL,
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
-                                }
-                                if !event.prepare_listener()? {
-                                    log(
-                                        LogType::Trace,
-                                        LOG_EMITTER_CONFIGURATION,
-                                        LOG_ACTION_MAIN_LISTENER,
-                                        None,
-                                        LOG_WHEN_INIT,
-                                        LOG_STATUS_MSG,
-                                        &format!(
-                                            "initialization skipped for event {event_name}",
-                                        ),
-                                    )
                                 }
                                 if !event_registry.add_event(Box::new(event))? {
                                     return Err(Error::new(
@@ -1577,12 +1465,10 @@ fn reconfigure_events(
             None,
             LOG_WHEN_PROC,
             LOG_STATUS_MSG,
-            &format!("removing deleted event {name}"),
+            &format!("removing event {name} from registry"),
         );
         if event_registry.remove_event(&name).is_err() {
-            // this condition is expected, because
-            // event listeners do not terminate
-            // synchronously
+            // this condition should actually be unreachable
             log(
                 LogType::Warn,
                 LOG_EMITTER_CONFIGURATION,
@@ -1590,12 +1476,11 @@ fn reconfigure_events(
                 None,
                 LOG_WHEN_PROC,
                 LOG_STATUS_FAIL,
-                &format!("could not remove deleted event {name}"),
+                &format!("could not remove event {name} from registry"),
             );
         }
     }
 
-    event_registry.run_event_listener()?;
     Ok(())
 }
 
@@ -1611,6 +1496,10 @@ pub fn configure_items(
     configure_tasks(cfgmap, task_registry)?;
     configure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
     configure_events(cfgmap, event_registry, cond_registry, bucket)?;
+
+    // start the listener now that it is safe
+    event_registry.run_event_listener()?;
+
     Ok(())
 }
 
@@ -1623,9 +1512,17 @@ pub fn reconfigure_items(
     bucket: &'static ExecutionBucket,
     tick_secs: u64,
 ) -> Result<()> {
+    // first of all, stop event listener while reconfiguring
+    event_registry.stop_event_listener()?;
+
+    // reconfigure all items
     reconfigure_tasks(cfgmap, task_registry)?;
     reconfigure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
     reconfigure_events(cfgmap, event_registry, cond_registry, bucket)?;
+
+    // restart the listener now that it is safe
+    event_registry.run_event_listener()?;
+
     Ok(())
 }
 

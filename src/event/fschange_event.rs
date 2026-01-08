@@ -444,7 +444,7 @@ impl Event for FilesystemChangeEvent {
         Ok(Some(name))
     }
 
-    fn prepare_listener(&mut self) -> Result<bool> {
+    fn initial_setup(&mut self) -> Result<bool> {
         assert!(
             self.event_rx.is_none(),
             "event listening channel for FilesystemChangeEvent {} is already initialized",
