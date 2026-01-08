@@ -41,6 +41,7 @@ pub const ERR_CONDREG_CANNOT_PULL_COND: &str = "could not pull condition out fro
 pub const ERR_CONDREG_COND_RESET_BUSY: &str = "attempt to reset condition while busy";
 pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition while busy";
 pub const ERR_CONDREG_COND_RESUME_BUSY: &str = "attempt to resume condition while busy";
+pub const ERR_CONDREG_COND_TICK_NOEXIST: &str = "attempt to test non existent condition skipped";
 pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the registry";
 pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
 pub const ERR_EVENTREG_CANNOT_STOP_LISTENER: &str = "could not shut down the event listener";

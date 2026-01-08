@@ -620,12 +620,8 @@ impl ConditionRegistry {
         // the named condition might have disappeared due to a reconfiguration
         // while still being known to the main thread
         if !self.has_condition(name) {
-            return Err(Error::new(
-                Kind::Invalid,
-                &format!("condition {name} not found in registry"),
-            ));
+            return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_TICK_NOEXIST));
         }
-        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -686,7 +682,7 @@ impl ConditionRegistry {
                         &format!("error testing condition {name}: `{e}`"),
                     );
                     Err(e)
-                },
+                }
             };
 
             // same as above regarding direct scope control
