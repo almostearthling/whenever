@@ -86,9 +86,11 @@ Detailed [documentation](https://almostearthling.github.io/whenever/index.html) 
 Note that the documentation generally refers to the version of **whenever** currently in the _main_ branch, that is, the latest stable version: it is usually published as a release as well, although sometimes the latest published release might still be some steps behind. Please check the version that the documentation refers to on the [index](https://almostearthling.github.io/whenever/index.html) page.
 
 
+<!--
 ## :radioactive: Issues and Breaking Changes
 
-**Breaking change:** The _0.4_ series of **whenever** introduces an incompatibility in terms of configuration file with early versions of the _0.3_ series, as it ultimately drops support for embedded JSON strings to define parameter checks for _DBus_: using JSON has been deprecated in version _0.3.8_ (a log warning is issued if JSON is found), in favor of pure TOML dictionaries. Pure TOML is obviously easier to read and manage especially using small inline tables, one for each check, and JSON support is dropped in order to reclaim some memory.
+There are no breaking changes between the two most recent versions, therefore this section is skipped in the rendered version of the repository front page.
+-->
 
 
 ## :lady_beetle: Bug Reporting
