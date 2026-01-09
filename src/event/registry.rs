@@ -95,14 +95,21 @@ impl EventRegistry {
             // WARNING: the event list is acquired and locked here, this means
             // that it cannot be modified while we are waiting for any event
             // to occcur; this can be a problem when the list should changed,
-            // generally because of a reconfiguration; however the listener is
-            // stopped and restarted in that case, which should limit problems
+            // generally because of a reconfiguration, however the listener is
+            // stopped and restarted in that case, this should limit problems;
+            // also, check that the list of futures is not empty (which would
+            // cause a panic), and if empty return None as data, which is just
+            // a no-op in the event poller
             let mut el0 = el0.lock().expect("cannot lock event list");
-            let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
+            if el0.is_empty() {
+                TriggeredOrQuitMessage::Triggered(Ok(None))
+            } else {
+                let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
 
-            // only the first item of the tuple is needed for our purposes
-            let res = select_all(catch_events).await;
-            TriggeredOrQuitMessage::Triggered(res.0)
+                // only the first item of the tuple is needed for our purposes
+                let res = select_all(catch_events).await;
+                TriggeredOrQuitMessage::Triggered(res.0)
+            }
         }
 
         // simplify collection of ToQMs sent through `listener_quit_messenger`
