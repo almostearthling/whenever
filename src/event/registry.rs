@@ -146,6 +146,37 @@ impl EventRegistry {
         // the only existing service thread, which listens for both events
         // and quit messages: no other threads are spawned in this version
         let handle = thread::spawn(move || {
+            let r0 = registry.clone();
+            let r0 = r0.lock().expect("cannot lock event registry");
+            let el0 = r0.events.clone();
+            let mut el0 = el0.lock().expect("cannot lock event list");
+
+            for (name, event) in el0.iter_mut() {
+                if !event.initial_setup()? {
+                    log(
+                        LogType::Trace,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_INSTALL,
+                        None,
+                        LOG_WHEN_INIT,
+                        LOG_STATUS_MSG,
+                        &format!("initialization skipped for event {name}",),
+                    );
+                } else {
+                    log(
+                        LogType::Trace,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_INSTALL,
+                        None,
+                        LOG_WHEN_INIT,
+                        LOG_STATUS_MSG,
+                        &format!("event {name} successfully initialized",),
+                    );
+                }
+            }
+            drop(el0);
+            drop(r0);
+
             log(
                 LogType::Trace,
                 LOG_EMITTER_EVENT_REGISTRY,
@@ -248,6 +279,37 @@ impl EventRegistry {
                     }
                 }
             });
+
+            let r0 = registry.clone();
+            let r0 = r0.lock().expect("cannot lock event registry");
+            let el0 = r0.events.clone();
+            let mut el0 = el0.lock().expect("cannot lock event list");
+
+            for (name, event) in el0.iter_mut() {
+                if !event.final_cleanup()? {
+                    log(
+                        LogType::Trace,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_INSTALL,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_MSG,
+                        &format!("cleanup skipped for event {name}",),
+                    );
+                } else {
+                    log(
+                        LogType::Trace,
+                        LOG_EMITTER_EVENT_REGISTRY,
+                        LOG_ACTION_INSTALL,
+                        None,
+                        LOG_WHEN_END,
+                        LOG_STATUS_MSG,
+                        &format!("event {name} successfully cleaned up",),
+                    );
+                }
+            }
+            drop(el0);
+            drop(r0);
 
             log(
                 LogType::Debug,
@@ -407,17 +469,6 @@ impl EventRegistry {
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
-        if !boxed_event.initial_setup()? {
-            log(
-                LogType::Trace,
-                LOG_EMITTER_EVENT_REGISTRY,
-                LOG_ACTION_INSTALL,
-                None,
-                LOG_WHEN_INIT,
-                LOG_STATUS_MSG,
-                &format!("initialization skipped for event {name}",),
-            );
-        }
         self.triggerable_events
             .write()
             .expect("cannot write to triggerable event registry")
@@ -477,17 +528,6 @@ impl EventRegistry {
                     // };
                     // let mut event = event.into_inner().expect("cannot extract locked event");
                     let mut event = e;
-                    if !event.final_cleanup()? {
-                        log(
-                            LogType::Trace,
-                            LOG_EMITTER_EVENT_REGISTRY,
-                            LOG_ACTION_UNINSTALL,
-                            None,
-                            LOG_WHEN_INIT,
-                            LOG_STATUS_MSG,
-                            &format!("cleanup skipped for event {name}",),
-                        );
-                    }
                     event.set_id(0);
                     Ok(Some(event))
                 }
