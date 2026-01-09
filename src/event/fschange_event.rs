@@ -445,13 +445,11 @@ impl Event for FilesystemChangeEvent {
     }
 
     fn initial_setup(&mut self) -> Result<bool> {
-        // if the receive channel is already initialized, this means that
-        // this event is simply restarted with no configuration change,
-        // otherwise it would have been built from scratch: in such case
-        // just skip the initialization step
-        if self.event_rx.is_some() {
-            return Ok(false);
-        }
+        assert!(
+            self.event_rx.is_none(),
+            "event listening channel for FilesystemChangeEvent {} is already initialized",
+            self.get_name(),
+        );
 
         // see: https://github.com/notify-rs/notify/blob/main/examples/async_monitor.rs
         fn _build_watcher(
@@ -531,6 +529,25 @@ impl Event for FilesystemChangeEvent {
         self.event_watcher = Some(watcher);
 
         Ok(true)
+    }
+
+    fn final_cleanup(&mut self) -> Result<bool> {
+        // destroy both the the receive channel and the watcher
+        if self.event_rx.is_some() {
+            let c = self.event_rx.take().unwrap();
+            drop(c);
+        }
+        if self.event_watcher.is_some() {
+            let w = self.event_watcher.take().unwrap();
+            drop(w);
+        }
+        self.log(
+            LogType::Debug,
+            LOG_WHEN_START,
+            LOG_STATUS_MSG,
+            "filesystem change event notifier has been reset",
+        );
+        Ok(false)
     }
 }
 
