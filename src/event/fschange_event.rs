@@ -451,17 +451,6 @@ impl Event for FilesystemChangeEvent {
             self.get_name(),
         );
 
-        // bail out if no location to watch has been provided
-        if self.watched_locations.is_none() {
-            self.log(
-                LogType::Error,
-                LOG_WHEN_START,
-                LOG_STATUS_FAIL,
-                "watch locations not specified",
-            );
-            return Ok(false);
-        }
-
         // see: https://github.com/notify-rs/notify/blob/main/examples/async_monitor.rs
         fn _build_watcher(
             notify_cfg: notify::Config,
@@ -496,30 +485,40 @@ impl Event for FilesystemChangeEvent {
         // and now build the watcher and the receiving channel to be saved
         let (mut watcher, event_rx) = _build_watcher(notify_cfg)?;
 
-        let wl = self.watched_locations.clone().unwrap();
-        for p in wl {
-            match watcher.watch(&p, recmode) {
-                Ok(_) => {
-                    self.log(
-                        LogType::Debug,
-                        LOG_WHEN_START,
-                        LOG_STATUS_OK,
-                        &format!(
-                            "successfully added `{}` to watched paths",
-                            p.as_os_str().to_string_lossy(),
-                        ),
-                    );
-                }
-                Err(e) => {
-                    self.log(
-                        LogType::Warn,
-                        LOG_WHEN_START,
-                        LOG_STATUS_FAIL,
-                        &format!(
-                            "could not add `{}` to watched paths: {e}",
-                            p.as_os_str().to_string_lossy(),
-                        ),
-                    );
+        // add watched locations if any, or just log that none was specified
+        if self.watched_locations.is_none() {
+            self.log(
+                LogType::Warn,
+                LOG_WHEN_START,
+                LOG_STATUS_ERR,
+                "watch locations not specified",
+            );
+        } else {
+            let wl = self.watched_locations.clone().unwrap();
+            for p in wl {
+                match watcher.watch(&p, recmode) {
+                    Ok(_) => {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_START,
+                            LOG_STATUS_OK,
+                            &format!(
+                                "successfully added `{}` to watched paths",
+                                p.as_os_str().to_string_lossy(),
+                            ),
+                        );
+                    }
+                    Err(e) => {
+                        self.log(
+                            LogType::Warn,
+                            LOG_WHEN_START,
+                            LOG_STATUS_FAIL,
+                            &format!(
+                                "could not add `{}` to watched paths: {e}",
+                                p.as_os_str().to_string_lossy(),
+                            ),
+                        );
+                    }
                 }
             }
         }
