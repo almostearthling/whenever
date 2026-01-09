@@ -218,10 +218,8 @@ impl EventRegistry {
                         m = wait_event => {
                             match m {
                                 TriggeredOrQuitMessage::Triggered(res) => {
-                                    if res.is_ok() {
-                                        let res = res.unwrap();
-                                        if res.is_some() {
-                                            let name = res.unwrap();
+                                    if let Ok(res) = res {
+                                        if let Some(name) = res {
                                             log(
                                                 LogType::Trace,
                                                 LOG_EMITTER_EVENT_REGISTRY,
@@ -242,7 +240,7 @@ impl EventRegistry {
                                             LOG_STATUS_ERR,
                                             &format!(
                                                 "an error occurred: `{}`",
-                                                res.unwrap_err().to_string(),
+                                                res.unwrap_err(),
                                             ),
                                         );
                                     }
@@ -262,7 +260,7 @@ impl EventRegistry {
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
-                                        &format!("request received to stop the event listener"),
+                                        "request received to stop the event listener",
                                     );
                                     break;
                                 },
@@ -274,7 +272,7 @@ impl EventRegistry {
                                         None,
                                         LOG_WHEN_PROC,
                                         LOG_STATUS_OK,
-                                        &format!("error receiving a request to stop the event listener: exiting anyway"),
+                                        "error receiving a request to stop the event listener: exiting anyway",
                                     );
                                     break;
                                 },

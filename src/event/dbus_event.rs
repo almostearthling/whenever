@@ -873,7 +873,7 @@ impl Event for DbusMessageEvent {
                 LOG_STATUS_MSG,
                 &format!("opening DBus connection to bus `{bus}`"),
             );
-            _get_connection(&bus).await
+            _get_connection(bus).await
         })?;
 
         self.connection = Some(conn);

@@ -341,7 +341,7 @@ impl Event for WmiQueryEvent {
                 LogType::Trace,
                 LOG_WHEN_PROC,
                 LOG_STATUS_OK,
-                &format!("opening WMI connection to default namespace"),
+                "opening WMI connection to default namespace",
             );
             WMIConnection::new()?
         };
@@ -360,7 +360,7 @@ impl Event for WmiQueryEvent {
                 LogType::Debug,
                 LOG_WHEN_PROC,
                 LOG_STATUS_OK,
-                &format!("event received through WMI communication channel"),
+                "event received through WMI communication channel",
             );
             if let Err(e) = evt {
                 self.log(

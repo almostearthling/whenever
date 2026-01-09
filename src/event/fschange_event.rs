@@ -21,7 +21,7 @@ use notify::{self, Watcher};
 
 use super::base::Event;
 use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Result};
+use crate::common::wres::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -378,7 +378,8 @@ impl Event for FilesystemChangeEvent {
         );
         let event_receiver = self.event_rx.as_mut().unwrap();
 
-        // this already returns the selected value
+        // this already returns the selected value; the `while let` form is
+        // used only for style consistency: this loop actually never loops
         while let Some(evt) = event_receiver.next().await {
             // ignore access events
             let evt = evt?;
@@ -425,7 +426,7 @@ impl Event for FilesystemChangeEvent {
                             LOG_STATUS_FAIL,
                             &format!("error firing condition: {e}"),
                         );
-                        return Err(Error::from(e));
+                        return Err(e);
                     }
                 }
                 break;
@@ -435,7 +436,7 @@ impl Event for FilesystemChangeEvent {
                     LogType::Debug,
                     LOG_WHEN_PROC,
                     LOG_STATUS_OK,
-                    &format!("access-only event notification caught"),
+                    "access-only event notification caught",
                 );
                 return Ok(None);
             }
