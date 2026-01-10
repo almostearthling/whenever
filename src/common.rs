@@ -1892,7 +1892,6 @@ pub mod dbusitem {
         let mut ref_log_status: &str = LOG_STATUS_OK;
         let mut log_message: String = String::from("message or return parameter check ended");
 
-        // !!!! if let Ok(mbody) = message.body() {
         let b = message.body();
         let bs = b.deserialize::<zvariant::Structure>();
         if let Ok(mbody) = bs {
@@ -2649,6 +2648,7 @@ pub mod dbusitem {
                 }
             }
         } else {
+            verified = false;
             severity = LogType::Warn;
             ref_log_when = LOG_WHEN_PROC;
             ref_log_status = LOG_STATUS_FAIL;
