@@ -410,10 +410,6 @@ impl EventRegistry {
     /// # Arguments
     ///
     /// * name - the name of the event to check for registration
-    ///
-    /// # Panics
-    ///
-    /// May panic if the event registry could not be locked for enquiry.
     pub fn has_event(&self, name: &str) -> Result<bool> {
         Ok(self.events.clone().lock()?.contains_key(name))
     }
@@ -423,11 +419,6 @@ impl EventRegistry {
     /// # Arguments
     ///
     /// * event - the reference to an event to check for registration
-    ///
-    /// # Panics
-    ///
-    /// May panic if the event registry could not be locked for enquiry
-    /// or the contained event cannot be locked for comparison.
     pub fn has_event_eq(&self, event: &dyn Event) -> Result<bool> {
         let name = event.get_name();
         if self.has_event(name.as_str())? {
@@ -465,10 +456,6 @@ impl EventRegistry {
     /// released (and given back stored in a `Box`) using the `remove_event`
     /// function. Also, although the possible outcomes include an error
     /// condition, `Err(_)` is never returned.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the event registry could not be locked for insertion.
     pub fn add_event(&self, mut boxed_event: EventRef) -> Result<bool> {
         let name = boxed_event.get_name();
         if self.has_event(&name)? {
@@ -506,12 +493,6 @@ impl EventRegistry {
     /// * `Error(Kind::Failed, _)` - the event could not be removed
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success
-    ///
-    /// # Panics
-    ///
-    /// May panic if the event registry could not be locked for extraction,
-    /// or if an attempt is made to extract an event that is in use (FIXME:
-    /// maybe it should return an error in this case?).
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
         if self.has_event(name)? {
             match self.events.clone().lock()?.remove(name) {
@@ -539,10 +520,6 @@ impl EventRegistry {
     ///
     /// Return a vector containing the names of all the events that have been
     /// registered, as `String` elements.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the event registry could not be locked for extraction.
     pub fn event_names(&self) -> Result<Option<Vec<String>>> {
         let mut res = Vec::new();
 

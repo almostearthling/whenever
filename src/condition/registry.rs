@@ -93,11 +93,6 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// * cond - the reference to a condition to check for registration
-    ///
-    /// # Panics
-    ///
-    /// May panic if the condition registry could not be locked for enquiry
-    /// or the contained condition cannot be locked for comparison.
     pub fn has_condition_eq(&self, cond: &dyn Condition) -> Result<bool> {
         let name = cond.get_name();
         if self.has_condition(name.as_str())? {
@@ -117,10 +112,6 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// * name - the name of the condition
-    ///
-    /// # Panics
-    ///
-    /// May panic if the condition registry could not be locked for enquiry.
     pub fn condition_type(&self, name: &str) -> Result<Option<String>> {
         if self.has_condition(name)? {
             let cond = self.condition_list.read()?;
@@ -159,10 +150,6 @@ impl ConditionRegistry {
     /// released (and given back stored in a `Box`) using the `remove_condition`
     /// function. Also, although the possible outcomes include an error
     /// condition, `Err(_)` is never returned.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the condition registry could not be locked for insertion.
     pub fn add_condition(&self, mut boxed_condition: ConditionRef) -> Result<bool> {
         let name = boxed_condition.get_name();
         if self.has_condition(&name)? {
@@ -572,10 +559,6 @@ impl ConditionRegistry {
     /// Report an unsigned integer corresponding to how many conditions are
     /// busy at the time of invocation: when the result is `Ok(Some(0))` there
     /// are no active condition tests and no active tasks.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the busy condition count could not be locked.
     pub fn conditions_busy(&self) -> Result<Option<u64>> {
         let res: u64 = *self.conditions_busy.clone().lock()?;
         Ok(Some(res))
@@ -592,10 +575,6 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// `name` - the name of the condition to check
-    ///
-    /// # Panics
-    ///
-    /// May panic if the condition registry can not be locked for extraction.
     pub fn tick(&self, name: &str) -> Result<Option<bool>> {
         // the named condition might have disappeared due to a reconfiguration
         // while still being known to the main thread

@@ -78,10 +78,6 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * name - the name of the task to check for registration
-    ///
-    /// # Panics
-    ///
-    /// May panic if the task registry could not be locked for enquiry.
     pub fn has_task(&self, name: &str) -> Result<bool> {
         Ok(self.task_list.read()?.contains_key(name))
     }
@@ -91,11 +87,6 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * name - the name of the task to check for registration
-    ///
-    /// # Panics
-    ///
-    /// May panic if the task registry could not be locked for enquiry
-    /// or the contained task cannot be locked for comparison.
     pub fn has_task_eq(&self, task: &dyn Task) -> Result<bool> {
         let name = task.get_name();
         if self.has_task(name.as_str())? {
@@ -151,10 +142,6 @@ impl TaskRegistry {
     /// released (and given back stored in a `Box`) using the `remove_task`
     /// function. Also, although the possible outcomes include an error
     /// condition, `Err(_)` is never returned.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the task registry could not be locked for insertion.
     pub fn add_task(&self, mut boxed_task: TaskRef) -> Result<bool> {
         let name = boxed_task.get_name();
         if self.has_task(&name)? {
@@ -342,8 +329,7 @@ impl TaskRegistry {
     ///
     /// If one or more task names are not in the registry the function panics:
     /// in no way there should be the option that this function is invoked with
-    /// task names that are unknown. Also, it panics when the registry could
-    /// not be locked for task retrieval.
+    /// task names that are unknown.
     pub fn run_tasks_seq(
         &self,
         trigger_name: &str,
@@ -552,8 +538,7 @@ impl TaskRegistry {
     ///
     /// If one or more task names are not in the registry the function panics:
     /// in no way there should be the option that this function is invoked with
-    /// task names that are unknown. Also, it panics when the registry could
-    /// not be locked for task retrieval.
+    /// task names that are unknown.
     pub fn run_tasks_par(
         &self,
         trigger_name: &str,

@@ -260,7 +260,6 @@ pub trait Condition: Send {
             );
             Ok(None)
         } else if self.has_succeeded() && !self.recurring() && !self.any_tasks_failed() {
-            // TODO: check that all cases are actually taken into account
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
@@ -269,7 +268,6 @@ pub trait Condition: Send {
             );
             Ok(None)
         } else if self.has_succeeded() && !self.recurring() && !self.can_retry() {
-            // TODO: check that all cases are actually taken into account
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
