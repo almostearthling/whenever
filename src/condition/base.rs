@@ -363,7 +363,7 @@ pub trait Condition: Send {
         // check for presence in registry and issue an error if not
         match self.task_registry() {
             Some(r) => {
-                if !r.has_task(name) {
+                if !r.has_task(name)? {
                     self.log(
                         LogType::Error,
                         LOG_WHEN_PROC,
@@ -488,7 +488,7 @@ pub trait Condition: Send {
                 &names.iter().map(|s| s.as_str()).collect(),
                 self.break_on_failure(),
                 self.break_on_success(),
-            )
+            )?
         } else {
             self.log(
                 LogType::Info,
@@ -499,7 +499,7 @@ pub trait Condition: Send {
             registry.run_tasks_par(
                 &self.get_name(),
                 &names.iter().map(|s| s.as_str()).collect(),
-            )
+            )?
         };
 
         let mut some_failed = false;

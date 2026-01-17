@@ -85,10 +85,16 @@ impl EventRegistry {
         }
 
         // simplify collection of ToQMs sent by events, that is, just Targets
-        // via an async function that builds the Target message for us
+        // via an async function that builds the Target message for us; note
+        // that if any of the synchronized resources cannot be acquired, a no
+        // operation signal is returned
         async fn next_event(registry: Arc<Mutex<&EventRegistry>>) -> TriggeredOrQuitMessage {
             let r0 = registry.clone();
-            let r0 = r0.lock().expect("cannot lock event registry");
+            let r0 = r0.lock();
+            if r0.is_err() {
+                return TriggeredOrQuitMessage::Triggered(Ok(None));
+            }
+            let r0 = r0.unwrap();
             let el0 = r0.events.clone();
             drop(r0);
 
@@ -100,15 +106,18 @@ impl EventRegistry {
             // also, check that the list of futures is not empty (which would
             // cause a panic), and if empty return None as data, which is just
             // a no-op in the event poller
-            let mut el0 = el0.lock().expect("cannot lock event list");
-            if el0.is_empty() {
-                TriggeredOrQuitMessage::Triggered(Ok(None))
-            } else {
-                let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
+            if let Ok(mut el0) = el0.lock() {
+                if el0.is_empty() {
+                    TriggeredOrQuitMessage::Triggered(Ok(None))
+                } else {
+                    let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
 
-                // only the first item of the tuple is needed for our purposes
-                let res = select_all(catch_events).await;
-                TriggeredOrQuitMessage::Triggered(res.0)
+                    // only the first item of the tuple is needed for our purposes
+                    let res = select_all(catch_events).await;
+                    TriggeredOrQuitMessage::Triggered(res.0)
+                }
+            } else {
+                TriggeredOrQuitMessage::Triggered(Ok(None))
             }
         }
 
@@ -137,11 +146,9 @@ impl EventRegistry {
 
         // create the stream used to send the quit message and assign it to the registry
         let (qtx, qrx) = futures::channel::mpsc::channel::<()>(EVENT_QUIT_CHANNEL_SIZE);
-        let r0 = managed_registry.lock().expect("cannot lock event registry");
+        let r0 = managed_registry.lock()?;
         let m0 = r0.listener_quit_messenger.clone();
-        let mut m1 = m0
-            .lock()
-            .expect("cannot lock quit messenger for initialization");
+        let mut m1 = m0.lock()?;
         *m1 = Some(qtx);
         drop(m1);
         drop(m0);
@@ -154,9 +161,9 @@ impl EventRegistry {
         // and quit messages: no other threads are spawned in this version
         let handle = thread::spawn(move || {
             let r0 = registry.clone();
-            let r0 = r0.lock().expect("cannot lock event registry");
+            let r0 = r0.lock()?;
             let el0 = r0.events.clone();
-            let mut el0 = el0.lock().expect("cannot lock event list");
+            let mut el0 = el0.lock()?;
 
             for (name, event) in el0.iter_mut() {
                 if !event.initial_setup()? {
@@ -286,9 +293,9 @@ impl EventRegistry {
             });
 
             let r0 = registry.clone();
-            let r0 = r0.lock().expect("cannot lock event registry");
+            let r0 = r0.lock()?;
             let el0 = r0.events.clone();
-            let mut el0 = el0.lock().expect("cannot lock event list");
+            let mut el0 = el0.lock()?;
 
             for (name, event) in el0.iter_mut() {
                 if !event.final_cleanup()? {
@@ -329,10 +336,10 @@ impl EventRegistry {
         });
 
         let managed_registry = managed_registry.clone();
-        let managed_registry = managed_registry.lock().expect("cannot lock event registry");
+        let managed_registry = managed_registry.lock()?;
 
         let h0 = managed_registry.listener_handle.clone();
-        let mut h0 = h0.lock().unwrap();
+        let mut h0 = h0.lock()?;
         *h0 = Some(handle);
         drop(h0);
 
@@ -344,10 +351,10 @@ impl EventRegistry {
         let managed_registry = Arc::new(Mutex::new(self));
 
         let m0 = managed_registry.clone();
-        let m0 = m0.lock().expect("cannot acquire event registry");
+        let m0 = m0.lock()?;
         let messenger = m0.listener_quit_messenger.clone();
         drop(m0);
-        let mut messenger = messenger.lock().expect("cannot acquire listener messenger");
+        let mut messenger = messenger.lock()?;
         if messenger.is_some() {
             log(
                 LogType::Trace,
@@ -376,9 +383,9 @@ impl EventRegistry {
 
         // take ownership of the service handle and replace it with `None`
         let m0 = managed_registry.clone();
-        let m0 = m0.lock().expect("cannot lock event registry");
+        let m0 = m0.lock()?;
         let h0 = m0.listener_handle.clone();
-        let mut h0 = h0.lock().unwrap();
+        let mut h0 = h0.lock()?;
 
         let handle = h0.take();
         let res = handle.unwrap().join();
@@ -407,12 +414,13 @@ impl EventRegistry {
     /// # Panics
     ///
     /// May panic if the event registry could not be locked for enquiry.
-    pub fn has_event(&self, name: &str) -> bool {
-        self.events
-            .clone()
-            .lock()
-            .expect("cannot lock event registry")
-            .contains_key(name)
+    pub fn has_event(&self, name: &str) -> Result<bool> {
+        Ok(
+            self.events
+                .clone()
+                .lock()?
+                .contains_key(name)
+        )
     }
 
     /// Check whether or not the provided event is in the registry.
@@ -425,17 +433,17 @@ impl EventRegistry {
     ///
     /// May panic if the event registry could not be locked for enquiry
     /// or the contained event cannot be locked for comparison.
-    pub fn has_event_eq(&self, event: &dyn Event) -> bool {
+    pub fn has_event_eq(&self, event: &dyn Event) -> Result<bool> {
         let name = event.get_name();
-        if self.has_event(name.as_str()) {
+        if self.has_event(name.as_str())? {
             let el0 = self.events.clone();
-            let el0 = el0.lock().expect("cannot lock event registry");
+            let el0 = el0.lock()?;
             let found_event = el0.get(name.as_str()).unwrap();
             let equals = found_event.eq(event);
-            return equals;
+            return Ok(equals);
         }
 
-        false
+        Ok(false)
     }
 
     /// Add an already-boxed `Event` if its name is not present in the
@@ -468,20 +476,18 @@ impl EventRegistry {
     /// May panic if the event registry could not be locked for insertion.
     pub fn add_event(&self, mut boxed_event: EventRef) -> Result<bool> {
         let name = boxed_event.get_name();
-        if self.has_event(&name) {
+        if self.has_event(&name)? {
             return Ok(false);
         }
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
         self.triggerable_events
-            .write()
-            .expect("cannot write to triggerable event registry")
+            .write()?
             .insert(name.clone(), boxed_event.triggerable());
         self.events
             .clone()
-            .lock()
-            .expect("cannot lock event registry")
+            .lock()?
             .insert(name, boxed_event);
         Ok(true)
     }
@@ -515,12 +521,11 @@ impl EventRegistry {
     /// or if an attempt is made to extract an event that is in use (FIXME:
     /// maybe it should return an error in this case?).
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
-        if self.has_event(name) {
+        if self.has_event(name)? {
             match self
                 .events
                 .clone()
-                .lock()
-                .expect("cannot lock event registry")
+                .lock()?
                 .remove(name)
             {
                 Some(e) => {
@@ -568,7 +573,7 @@ impl EventRegistry {
 
     /// Return the id of the specified event.
     pub fn event_id(&self, name: &str) -> Option<i64> {
-        if self.has_event(name) {
+        if self.has_event(name).unwrap() { // TO_FIX
             let el0 = self.events.clone();
             let el0 = el0.lock().expect("cannot lock event registry");
             let event = el0.get(name).expect("cannot retrieve event");
@@ -581,7 +586,7 @@ impl EventRegistry {
 
     /// Tell whether or not an event is triggerable, `None` if event not found.
     pub fn event_triggerable(&self, name: &str) -> Option<bool> {
-        if self.has_event(name) {
+        if self.has_event(name).unwrap() { // TO_FIX
             let triggerable = *self
                 .triggerable_events
                 .read()
@@ -605,7 +610,7 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn trigger_event(&self, name: &str) -> Result<bool> {
-        assert!(self.has_event(name), "event {name} not in registry");
+        assert!(self.has_event(name)?, "event {name} not in registry");
         assert!(
             self.event_triggerable(name).unwrap(),
             "event {name} cannot be manually triggered",
@@ -616,7 +621,7 @@ impl EventRegistry {
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
         let el0 = self.events.clone();
-        let el0 = el0.lock().expect("cannot lock event registry");
+        let el0 = el0.lock()?;
         let event = el0.get(name).expect("cannot retrieve event for triggering");
 
         log(
@@ -678,15 +683,15 @@ impl EventRegistry {
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    fn fire_condition_for(&self, name: &str) {
-        assert!(self.has_event(name), "event {name} not in registry");
+    fn fire_condition_for(&self, name: &str) -> Result<()> {
+        assert!(self.has_event(name)?, "event {name} not in registry");
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name).unwrap();
         let el0 = self.events.clone();
-        let el0 = el0.lock().expect("cannot lock event registry");
+        let el0 = el0.lock()?;
         let event = el0.get(name).expect("cannot retrieve event for activation");
 
         if let Ok(res) = event.fire_condition() {
@@ -722,6 +727,9 @@ impl EventRegistry {
                 &format!("condition for event {name} failed to fire"),
             );
         }
+
+        // possible failures have been logged
+        Ok(())
     }
 }
 

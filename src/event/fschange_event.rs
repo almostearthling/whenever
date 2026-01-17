@@ -235,7 +235,7 @@ impl FilesystemChangeEvent {
 
         let cur_key = "condition";
         if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
-            if !new_event.condition_registry.unwrap().has_condition(&v) {
+            if !new_event.condition_registry.unwrap().has_condition(&v)? {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     &v,

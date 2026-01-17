@@ -27,6 +27,7 @@ pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440";
 // error messages
 pub const ERR_OK: &str = "OK";
 pub const ERR_FAILED: &str = "failed";
+pub const ERR_LOCK_FAILED: &str = "could not lock resource";
 pub const ERR_INVALID_CONFIG_FILE: &str = "invalid configuration file";
 pub const ERR_INVALID_TASK_CONFIG: &str = "invalid task configuration";
 pub const ERR_INVALID_COND_CONFIG: &str = "invalid condition configuration";

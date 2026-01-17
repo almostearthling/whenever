@@ -51,7 +51,7 @@ lazy_static! {
 // this setter is accessible from outside
 #[allow(dead_code)]
 pub fn set_command_runner(f: CommandRunnerFunction) -> Result<()> {
-    let mut runner = COMMAND_RUNNER.lock().unwrap();
+    let mut runner = COMMAND_RUNNER.lock()?;
     runner.set_runner(f);
     Ok(())
 }
@@ -196,7 +196,7 @@ impl Task for InternalTask {
     /// the command could not be run, Ok(true) on success.
     fn _run(&mut self, trigger_name: &str) -> Result<Option<bool>> {
         // the None case would simply be a mistake, therefore the assertion
-        let cr = COMMAND_RUNNER.lock().unwrap();
+        let cr = COMMAND_RUNNER.lock()?;
         assert!(cr.command_runner.is_some(), "command runner not set");
 
         // log the beginning

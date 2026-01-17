@@ -155,7 +155,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
 
     for name in CONDITION_REGISTRY.condition_names().unwrap() {
         // go away if condition is busy
-        if CONDITION_REGISTRY.condition_busy(&name) {
+        if CONDITION_REGISTRY.condition_busy(&name)? {
             log(
                 LogType::Debug,
                 LOG_EMITTER_MAIN,
@@ -257,7 +257,7 @@ macro_rules! exit_if_fails {
 // reset the conditions whose names are provided in a vector of &str
 fn reset_conditions(names: &[String]) -> Result<bool> {
     for name in names {
-        if !CONDITION_REGISTRY.has_condition(name) {
+        if !CONDITION_REGISTRY.has_condition(name)? {
             log(
                 LogType::Error,
                 LOG_EMITTER_MAIN,
@@ -321,7 +321,7 @@ fn reset_conditions(names: &[String]) -> Result<bool> {
 
 // set the suspended state for a condition identified by its name
 fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
-    if !CONDITION_REGISTRY.has_condition(name) {
+    if !CONDITION_REGISTRY.has_condition(name)? {
         log(
             LogType::Error,
             LOG_EMITTER_MAIN,
@@ -603,9 +603,7 @@ fn trigger_event(name: &str) -> Result<bool> {
 // this function actually interprets and runs a command, passed as a string
 pub fn run_command(line: &str) -> Result<bool> {
     // first of all, lock the command execution feature to avoid overlaps
-    let _l = INPUT_COMMAND_LOCK
-        .lock()
-        .expect("cannot lock command executor");
+    let _l = INPUT_COMMAND_LOCK.lock()?;
 
     let buffer_save = String::from(line);
     let v: Vec<&str> = line.split_whitespace().collect();

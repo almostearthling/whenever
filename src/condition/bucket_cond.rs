@@ -12,8 +12,7 @@
 
 use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use cfgmap::CfgMap;
@@ -46,48 +45,51 @@ impl ExecutionBucket {
     }
 
     /// Return `true` if the condition name is in the bucket
-    pub fn has_condition(&self, name: &str) -> bool {
-        self.execution_list
-            .clone()
-            .lock()
-            .unwrap()
-            .contains(&String::from(name))
+    pub fn has_condition(&self, name: &str) -> Result<bool> {
+        Ok(
+            self.execution_list
+                .clone()
+                .lock()?
+                .contains(&String::from(name))
+        )
     }
 
     /// Try to insert the condition in the bucket, return `false` if the name
     /// is already present, in which case the condition is not inserted
-    pub fn insert_condition(&self, name: &str) -> bool {
-        if !self.has_condition(name) {
-            self.execution_list
-                .clone()
-                .lock()
-                .unwrap()
-                .insert(String::from(name))
+    pub fn insert_condition(&self, name: &str) -> Result<bool> {
+        if !self.has_condition(name)? {
+            Ok(
+                self.execution_list
+                    .clone()
+                    .lock()?
+                    .insert(String::from(name))
+            )
         } else {
-            false
+            Ok(false)
         }
     }
 
     /// Remove a condition if present and return `true`, `false` if not present
-    pub fn remove_condition(&self, name: &str) -> bool {
-        if self.has_condition(name) {
-            self.execution_list
-                .clone()
-                .lock()
-                .unwrap()
-                .remove(&String::from(name))
+    pub fn remove_condition(&self, name: &str) -> Result<bool> {
+        if self.has_condition(name)? {
+            Ok(
+                self.execution_list
+                    .clone()
+                    .lock()?
+                    .remove(&String::from(name))
+            )
         } else {
-            false
+            Ok(false)
         }
     }
 
     /// Clear the execution list (result can be ignored)
-    pub fn clear(&self) -> bool {
-        if self.execution_list.clone().lock().unwrap().is_empty() {
-            false
+    pub fn clear(&self) -> Result<bool> {
+        if self.execution_list.clone().lock()?.is_empty() {
+            Ok(false)
         } else {
-            self.execution_list.clone().lock().unwrap().clear();
-            true
+            self.execution_list.clone().lock()?.clear();
+            Ok(true)
         }
     }
 }
@@ -580,8 +582,8 @@ impl Condition for BucketCondition {
         );
         if let Some(bucket) = self.execution_bucket {
             let name = self.get_name();
-            if bucket.has_condition(&name) {
-                bucket.remove_condition(&name);
+            if bucket.has_condition(&name)? {
+                bucket.remove_condition(&name)?;
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,

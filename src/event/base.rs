@@ -126,7 +126,7 @@ pub trait Event: Send + Sync {
             LOG_STATUS_OK,
             &format!("condition {cond_name} firing"),
         );
-        Ok(bucket.insert_condition(&cond_name))
+        Ok(bucket.insert_condition(&cond_name)?)
     }
 
     /// Log a message in the specific `Event` format.

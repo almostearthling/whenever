@@ -2918,9 +2918,9 @@ pub mod wmiitem {
 #[allow(dead_code)]
 pub mod wres {
     use notify;
-    use std::{self, fmt};
+    use std::{self, fmt, sync::PoisonError};
 
-    use crate::constants::ERR_FAILED;
+    use crate::constants::{ERR_FAILED, ERR_LOCK_FAILED};
 
     /// Types of specific errors
     #[non_exhaustive]
@@ -2970,6 +2970,7 @@ pub mod wres {
         Unit,
         StdIo,
         Notify,
+        Sync,
 
         #[cfg(feature = "dbus")]
         DBus,
@@ -2992,6 +2993,7 @@ pub mod wres {
                     Origin::Unit => "unit",
                     Origin::StdIo => "io",
                     Origin::Notify => "fschange",
+                    Origin::Sync => "sync",
 
                     #[cfg(feature = "dbus")]
                     Origin::DBus => "dbus",
@@ -3093,6 +3095,17 @@ pub mod wres {
                 kind,
                 origin: Origin::Wmi,
                 message: e.to_string(),
+            }
+        }
+    }
+
+    // resource locking errors
+    impl<T> From<PoisonError<T>> for Error {
+        fn from(_: PoisonError<T>) -> Self {
+            Self {
+                kind: Kind::Failed,
+                origin: Origin::Sync,
+                message: ERR_LOCK_FAILED.to_owned(),
             }
         }
     }
