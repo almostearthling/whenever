@@ -83,11 +83,7 @@ impl TaskRegistry {
     ///
     /// May panic if the task registry could not be locked for enquiry.
     pub fn has_task(&self, name: &str) -> Result<bool> {
-        Ok(
-            self.task_list
-                .read()?
-                .contains_key(name)
-        )
+        Ok(self.task_list.read()?.contains_key(name))
     }
 
     /// Check whether or not the provided task is in the registry.
@@ -288,30 +284,30 @@ impl TaskRegistry {
     ///
     /// Return a vector containing the names of all the tasks that have been
     /// registered, as `String` elements.
-    pub fn task_names(&self) -> Option<Vec<String>> {
+    pub fn task_names(&self) -> Result<Option<Vec<String>>> {
         let mut res = Vec::new();
 
-        for name in self
-            .task_list
-            .read()
-            .expect("cannot read task registry")
-            .keys()
-        {
+        for name in self.task_list.read()?.keys() {
             res.push(name.clone())
         }
-        if res.is_empty() { None } else { Some(res) }
+        if res.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(res))
+        }
     }
 
     /// Return the id of the specified task
-    pub fn task_id(&self, name: &str) -> Option<i64> {
-        if self.has_task(name).unwrap() {   // TO_FIX
-            let tl0 = self.task_list.read().expect("cannot read task registry");
+    pub fn task_id(&self, name: &str) -> Result<Option<i64>> {
+        if self.has_task(name).unwrap() {
+            // TO_FIX
+            let tl0 = self.task_list.read()?;
             let task = tl0.get(name).expect("cannot retrieve task").clone();
             drop(tl0);
-            let id = task.lock().expect("cannot lock task").get_id();
-            Some(id)
+            let id = task.lock()?.get_id();
+            Ok(Some(id))
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -379,7 +375,7 @@ impl TaskRegistry {
         // fact there might be other branches accessing the registry right at
         // the same moment when this sequence is running
         for name in names.iter() {
-            let id = self.task_id(name).unwrap();
+            let id = self.task_id(name)?.unwrap();
             let mut breaks = false;
             let task;
             let tl0 = self.task_list.read()?;
@@ -478,7 +474,7 @@ impl TaskRegistry {
                         if let Some(boxed_item) = queue.pop() {
                             let name = boxed_item.get_name();
                             if let Ok(res) = self.add_task(boxed_item) {
-                                let id = self.task_id(&name).unwrap();
+                                let id = self.task_id(&name)?.unwrap();
                                 if res {
                                     log(
                                         LogType::Debug,
@@ -702,7 +698,7 @@ impl TaskRegistry {
                         if let Some(boxed_item) = queue.pop() {
                             let name = boxed_item.get_name();
                             if let Ok(res) = self.add_task(boxed_item) {
-                                let id = self.task_id(&name).unwrap();
+                                let id = self.task_id(&name)?.unwrap();
                                 if res {
                                     log(
                                         LogType::Debug,

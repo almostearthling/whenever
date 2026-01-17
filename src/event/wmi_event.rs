@@ -44,7 +44,6 @@ pub struct WmiQueryEvent {
     // parameters
     namespace: Option<String>,
     match_query: Option<String>,
-
     // internal values
     // (none here)
 }
@@ -93,7 +92,6 @@ impl Clone for WmiQueryEvent {
             // parameters
             namespace: self.namespace.clone(),
             match_query: self.match_query.clone(),
-
             // internal values
             // (none here)
         }
@@ -129,7 +127,6 @@ impl WmiQueryEvent {
             // parameters
             namespace: None,
             match_query: None,
-
             // internal values
             // (none here)
         }

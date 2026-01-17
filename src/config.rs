@@ -394,7 +394,7 @@ fn configure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Res
 // reconfigure tasks according to the provided configuration map
 fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<()> {
     let mut to_remove: Vec<String> = Vec::new();
-    if let Some(e) = task_registry.task_names() {
+    if let Some(e) = task_registry.task_names()? {
         to_remove = e.clone();
     }
 
@@ -684,7 +684,7 @@ fn reconfigure_conditions(
     tick_secs: u64,
 ) -> Result<()> {
     let mut to_remove: Vec<String> = Vec::new();
-    if let Some(e) = cond_registry.condition_names() {
+    if let Some(e) = cond_registry.condition_names()? {
         to_remove = e.clone();
     }
 
@@ -1191,7 +1191,7 @@ fn reconfigure_events(
     bucket: &'static ExecutionBucket,
 ) -> Result<()> {
     let mut to_remove: Vec<String> = Vec::new();
-    if let Some(e) = event_registry.event_names() {
+    if let Some(e) = event_registry.event_names()? {
         to_remove = e.clone();
     }
 

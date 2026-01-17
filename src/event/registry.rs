@@ -415,12 +415,7 @@ impl EventRegistry {
     ///
     /// May panic if the event registry could not be locked for enquiry.
     pub fn has_event(&self, name: &str) -> Result<bool> {
-        Ok(
-            self.events
-                .clone()
-                .lock()?
-                .contains_key(name)
-        )
+        Ok(self.events.clone().lock()?.contains_key(name))
     }
 
     /// Check whether or not the provided event is in the registry.
@@ -485,10 +480,7 @@ impl EventRegistry {
         self.triggerable_events
             .write()?
             .insert(name.clone(), boxed_event.triggerable());
-        self.events
-            .clone()
-            .lock()?
-            .insert(name, boxed_event);
+        self.events.clone().lock()?.insert(name, boxed_event);
         Ok(true)
     }
 
@@ -522,12 +514,7 @@ impl EventRegistry {
     /// maybe it should return an error in this case?).
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
         if self.has_event(name)? {
-            match self
-                .events
-                .clone()
-                .lock()?
-                .remove(name)
-            {
+            match self.events.clone().lock()?.remove(name) {
                 Some(e) => {
                     // in this case if the event cannot be extracted from the list
                     // no reference to the event is returned, but an error instead
@@ -556,46 +543,39 @@ impl EventRegistry {
     /// # Panics
     ///
     /// May panic if the event registry could not be locked for extraction.
-    pub fn event_names(&self) -> Option<Vec<String>> {
+    pub fn event_names(&self) -> Result<Option<Vec<String>>> {
         let mut res = Vec::new();
 
-        for name in self
-            .events
-            .clone()
-            .lock()
-            .expect("cannot lock event registry")
-            .keys()
-        {
+        for name in self.events.clone().lock()?.keys() {
             res.push(name.clone())
         }
-        if res.is_empty() { None } else { Some(res) }
+        if res.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(res))
+        }
     }
 
     /// Return the id of the specified event.
-    pub fn event_id(&self, name: &str) -> Option<i64> {
-        if self.has_event(name).unwrap() { // TO_FIX
+    pub fn event_id(&self, name: &str) -> Result<Option<i64>> {
+        if self.has_event(name)? {
             let el0 = self.events.clone();
-            let el0 = el0.lock().expect("cannot lock event registry");
+            let el0 = el0.lock()?;
             let event = el0.get(name).expect("cannot retrieve event");
             let id = event.get_id();
-            Some(id)
+            Ok(Some(id))
         } else {
-            None
+            Ok(None)
         }
     }
 
     /// Tell whether or not an event is triggerable, `None` if event not found.
-    pub fn event_triggerable(&self, name: &str) -> Option<bool> {
-        if self.has_event(name).unwrap() { // TO_FIX
-            let triggerable = *self
-                .triggerable_events
-                .read()
-                .expect("cannot read triggerable event registry")
-                .get(name)
-                .unwrap();
-            Some(triggerable)
+    pub fn event_triggerable(&self, name: &str) -> Result<Option<bool>> {
+        if self.has_event(name)? {
+            let triggerable = *self.triggerable_events.read()?.get(name).unwrap();
+            Ok(Some(triggerable))
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -612,14 +592,14 @@ impl EventRegistry {
     pub fn trigger_event(&self, name: &str) -> Result<bool> {
         assert!(self.has_event(name)?, "event {name} not in registry");
         assert!(
-            self.event_triggerable(name).unwrap(),
+            self.event_triggerable(name)?.unwrap(),
             "event {name} cannot be manually triggered",
         );
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
-        let id = self.event_id(name).unwrap();
+        let id = self.event_id(name)?.unwrap();
         let el0 = self.events.clone();
         let el0 = el0.lock()?;
         let event = el0.get(name).expect("cannot retrieve event for triggering");
@@ -689,7 +669,7 @@ impl EventRegistry {
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
-        let id = self.event_id(name).unwrap();
+        let id = self.event_id(name)?.unwrap();
         let el0 = self.events.clone();
         let el0 = el0.lock()?;
         let event = el0.get(name).expect("cannot retrieve event for activation");

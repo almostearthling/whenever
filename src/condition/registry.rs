@@ -85,11 +85,7 @@ impl ConditionRegistry {
     ///
     /// May panic if the condition registry could not be locked for enquiry.
     pub fn has_condition(&self, name: &str) -> Result<bool> {
-        Ok(
-            self.condition_list
-                .read()?
-                .contains_key(name)
-        )
+        Ok(self.condition_list.read()?.contains_key(name))
     }
 
     /// Check whether or not a condition is in the registry.
@@ -105,9 +101,7 @@ impl ConditionRegistry {
     pub fn has_condition_eq(&self, cond: &dyn Condition) -> Result<bool> {
         let name = cond.get_name();
         if self.has_condition(name.as_str())? {
-            let conditions = self
-                .condition_list
-                .read()?;
+            let conditions = self.condition_list.read()?;
             let found_condition = conditions.get(name.as_str()).unwrap();
             let c0 = found_condition.clone();
             let locked_condition = c0.lock()?;
@@ -127,21 +121,16 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// May panic if the condition registry could not be locked for enquiry.
-    pub fn condition_type(&self, name: &str) -> Option<String> {
-        if self.has_condition(name).unwrap() {  // TO_FIX
-            self.condition_list
-                .read()
-                .expect("cannot read condition registry")
-                .get(name)
-                .map(|r| {
-                    r.clone()
-                        .lock()
-                        .expect("cannot lock condition to retrieve type")
-                        .get_type()
-                        .to_string()
-                })
+    pub fn condition_type(&self, name: &str) -> Result<Option<String>> {
+        if self.has_condition(name)? {
+            let cond = self.condition_list.read()?;
+            let cond = cond.get(name).unwrap();
+            let cond = cond.clone();
+            let cond = cond.lock()?;
+            let cond_type = cond.get_type().to_string();
+            Ok(Some(cond_type))
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -325,7 +314,10 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry");
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        );
 
         if !wait && !self.condition_is_free(name)? {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_RESET_BUSY))
@@ -348,7 +340,10 @@ impl ConditionRegistry {
     /// Queue a condition for reset: the current policy is that the
     /// reset status will be set only when there are no busy condiions
     pub fn queue_reset_condition(&self, name: &str) -> Result<()> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry");
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        );
 
         let mxq0 = self.conditions_to_reset.clone();
         let mut queue = mxq0.lock()?;
@@ -379,7 +374,10 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry");
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        );
 
         if !wait && !self.condition_is_free(name)? {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_SUSPEND_BUSY))
@@ -404,7 +402,10 @@ impl ConditionRegistry {
     /// Queue a condition for suspension: the current policy is that the
     /// suspended flag will be set only when there are no busy condiions
     pub fn queue_suspend_condition(&self, name: &str) -> Result<()> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry");
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        );
 
         let mxq0 = self.conditions_to_suspend.clone();
         let mut queue = mxq0.lock()?;
@@ -435,7 +436,10 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry");
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        );
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
         // parameter should not even be implemented here; however, since the
@@ -466,33 +470,29 @@ impl ConditionRegistry {
     ///
     /// Return a vector containing the names of all the conditions that have
     /// been registered, as `String` elements.
-    pub fn condition_names(&self) -> Option<Vec<String>> {
+    pub fn condition_names(&self) -> Result<Option<Vec<String>>> {
         let mut res = Vec::new();
 
-        for name in self
-            .condition_list
-            .read()
-            .expect("cannot read condition registry")
-            .keys()
-        {
+        for name in self.condition_list.read()?.keys() {
             res.push(name.clone())
         }
-        if res.is_empty() { None } else { Some(res) }
+        if res.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(res))
+        }
     }
 
     /// Return the id of the specified condition
-    pub fn condition_id(&self, name: &str) -> Option<i64> {
-        if self.has_condition(name).unwrap() {  // TO_FIX
-            let cl0 = self
-                .condition_list
-                .read()
-                .expect("cannot read condition registry");
+    pub fn condition_id(&self, name: &str) -> Result<Option<i64>> {
+        if self.has_condition(name)? {
+            let cl0 = self.condition_list.read()?;
             let cond = cl0.get(name).expect("cannot retrieve condition").clone();
             drop(cl0);
-            let id = cond.lock().unwrap().get_id(); // TO_FIX
-            Some(id)
+            let id = cond.lock()?.get_id();
+            Ok(Some(id))
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -512,7 +512,10 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry
     pub fn condition_busy(&self, name: &str) -> Result<bool> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry"); // TO_FIX
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        ); // TO_FIX
 
         // since we return after trying to lock the condition, the possibly
         // acquired lock is immediately released
@@ -543,7 +546,10 @@ impl ConditionRegistry {
 
     /// Check whether the condition can be locked (private use only)
     fn condition_is_free(&self, name: &str) -> Result<bool> {
-        assert!(self.has_condition(name)?, "condition {name} not in registry");
+        assert!(
+            self.has_condition(name)?,
+            "condition {name} not in registry"
+        );
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -571,10 +577,7 @@ impl ConditionRegistry {
     ///
     /// May panic if the busy condition count could not be locked.
     pub fn conditions_busy(&self) -> Result<Option<u64>> {
-        let res: u64 = *self
-            .conditions_busy
-            .clone()
-            .lock()?;
+        let res: u64 = *self.conditions_busy.clone().lock()?;
         Ok(Some(res))
     }
 
@@ -603,7 +606,7 @@ impl ConditionRegistry {
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
-        let id = self.condition_id(name).unwrap();
+        let id = self.condition_id(name)?.unwrap();
         let cl0 = self.condition_list.read()?;
         let cond = cl0
             .get(name)
@@ -674,8 +677,7 @@ impl ConditionRegistry {
             // the moment, removal is still treated as a special case, similar
             // to insertion)
             let mxq0 = self.conditions_to_reset.clone();
-            let mut queue = mxq0
-                .lock()?;
+            let mut queue = mxq0.lock()?;
             if queue.contains(&sname) {
                 if cond.reset().is_ok() {
                     log(
@@ -786,7 +788,7 @@ impl ConditionRegistry {
                     if let Some(boxed_item) = queue.pop() {
                         let name = boxed_item.get_name();
                         if let Ok(res) = self.add_condition(boxed_item) {
-                            let id = self.condition_id(&name).unwrap();
+                            let id = self.condition_id(&name)?.unwrap();
                             if res {
                                 log(
                                     LogType::Debug,

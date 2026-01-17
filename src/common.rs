@@ -424,10 +424,7 @@ pub mod cmditem {
                         err = None;
                     }
                 } else {
-                    return Err(std::io::Error::new(
-                        e.kind(),
-                        e.to_string(),
-                    ));
+                    return Err(std::io::Error::new(e.kind(), e.to_string()));
                 }
             } else {
                 (out, err) = cres.unwrap();
@@ -477,10 +474,7 @@ pub mod cmditem {
                     err = None;
                 }
             } else {
-                return Err(std::io::Error::new(
-                    e.kind(),
-                    e.to_string(),
-                ));
+                return Err(std::io::Error::new(e.kind(), e.to_string()));
             }
         } else {
             (out, err) = cres.unwrap();

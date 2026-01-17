@@ -46,24 +46,22 @@ impl ExecutionBucket {
 
     /// Return `true` if the condition name is in the bucket
     pub fn has_condition(&self, name: &str) -> Result<bool> {
-        Ok(
-            self.execution_list
-                .clone()
-                .lock()?
-                .contains(&String::from(name))
-        )
+        Ok(self
+            .execution_list
+            .clone()
+            .lock()?
+            .contains(&String::from(name)))
     }
 
     /// Try to insert the condition in the bucket, return `false` if the name
     /// is already present, in which case the condition is not inserted
     pub fn insert_condition(&self, name: &str) -> Result<bool> {
         if !self.has_condition(name)? {
-            Ok(
-                self.execution_list
-                    .clone()
-                    .lock()?
-                    .insert(String::from(name))
-            )
+            Ok(self
+                .execution_list
+                .clone()
+                .lock()?
+                .insert(String::from(name)))
         } else {
             Ok(false)
         }
@@ -72,12 +70,11 @@ impl ExecutionBucket {
     /// Remove a condition if present and return `true`, `false` if not present
     pub fn remove_condition(&self, name: &str) -> Result<bool> {
         if self.has_condition(name)? {
-            Ok(
-                self.execution_list
-                    .clone()
-                    .lock()?
-                    .remove(&String::from(name))
-            )
+            Ok(self
+                .execution_list
+                .clone()
+                .lock()?
+                .remove(&String::from(name)))
         } else {
             Ok(false)
         }

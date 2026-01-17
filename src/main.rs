@@ -3,11 +3,11 @@
 //! A lightweight multiplatform background job launcher based upon
 //! verification of various types of conditions.
 
+use rand::{RngCore, rng};
 use std::io::{BufRead, Stdin, stdin};
 use std::sync::{Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
-use rand::{RngCore, rng};
 
 use lazy_static::lazy_static;
 
@@ -153,7 +153,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
         return Ok(false);
     }
 
-    for name in CONDITION_REGISTRY.condition_names().unwrap() {
+    for name in CONDITION_REGISTRY.condition_names()?.unwrap() {
         // go away if condition is busy
         if CONDITION_REGISTRY.condition_busy(&name)? {
             log(
@@ -173,12 +173,17 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
         // attempt to lock the condition registry, thus wait for it to be
         // released by the previous owner
         std::thread::spawn(move || {
-            if !NO_DELAY_CONDITIONS.contains(&CONDITION_REGISTRY.condition_type(&name).unwrap()) {
-                if let Some(ms) = rand_millis_range {
-                    let mut rng = rng();
-                    let rms = rng.next_u64() % ms;
-                    let dur = std::time::Duration::from_millis(rms);
-                    std::thread::sleep(dur);
+            let cond_type = CONDITION_REGISTRY.condition_type(&name);
+            if cond_type.is_ok() {
+                if let Some(cond_type) = cond_type.unwrap() {
+                    if !NO_DELAY_CONDITIONS.contains(&cond_type) {
+                        if let Some(ms) = rand_millis_range {
+                            let mut rng = rng();
+                            let rms = rng.next_u64() % ms;
+                            let dur = std::time::Duration::from_millis(rms);
+                            std::thread::sleep(dur);
+                        }
+                    }
                 }
             }
             if let Ok(outcome) = CONDITION_REGISTRY.tick(&name) {
@@ -522,7 +527,7 @@ fn reconfigure(config_file: &str) -> Result<()> {
 
 // attempt to trigger an event
 fn trigger_event(name: &str) -> Result<bool> {
-    if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
+    if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name)? {
         if triggerable {
             log(
                 LogType::Debug,
@@ -782,7 +787,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                         LOG_STATUS_MSG,
                         "no names provided: attempt to reset all conditions",
                     );
-                    if let Some(v) = CONDITION_REGISTRY.condition_names() {
+                    if let Some(v) = CONDITION_REGISTRY.condition_names()? {
                         if !v.is_empty() {
                             let _ = reset_conditions(v.as_slice());
                             Ok(true)

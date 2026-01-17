@@ -32,7 +32,6 @@ pub struct ManualCommandEvent {
     // internal values
     condition_registry: Option<&'static ConditionRegistry>,
     condition_bucket: Option<&'static ExecutionBucket>,
-
     // specific members
     // parameters
     // (none here)
@@ -69,7 +68,6 @@ impl Clone for ManualCommandEvent {
             // internal values
             condition_registry: None,
             condition_bucket: None,
-
             // specific members initialization
             // parameters
 
@@ -102,7 +100,6 @@ impl ManualCommandEvent {
             // internal values
             condition_registry: None,
             condition_bucket: None,
-
             // specific members initialization
             // parameters
 

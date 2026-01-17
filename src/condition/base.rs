@@ -453,6 +453,10 @@ pub trait Condition: Send {
             "condition {} not registered",
             self.get_name()
         );
+        assert!(
+            self.task_registry().is_some(),
+            "task registry not initialized",
+        );
 
         let registry = self.task_registry().unwrap();
         let mut s_task_names = String::new();

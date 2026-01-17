@@ -81,7 +81,7 @@ pub trait Event: Send + Sync {
     /// has not been set: each would indicate an error in the program flow.
     fn assign_condition(&mut self, cond_name: &str) -> Result<bool> {
         if let Some(cond_registry) = self.condition_registry() {
-            if let Some(s) = cond_registry.condition_type(cond_name) {
+            if let Some(s) = cond_registry.condition_type(cond_name)? {
                 if s == "bucket" || s == "event" {
                     self._assign_condition(cond_name);
                     Ok(true)
@@ -126,7 +126,7 @@ pub trait Event: Send + Sync {
             LOG_STATUS_OK,
             &format!("condition {cond_name} firing"),
         );
-        Ok(bucket.insert_condition(&cond_name)?)
+        bucket.insert_condition(&cond_name)
     }
 
     /// Log a message in the specific `Event` format.
