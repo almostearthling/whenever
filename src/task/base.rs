@@ -13,20 +13,20 @@ use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
 use crate::constants::*;
 
-/// Define the interface for `Task` objects.
+/// Define the interface for `Task` objects
 ///
 /// **Note**: the methods prefixed with an underscore must be defined in
 /// the types implementing the trait, but *must not* be used by the trait
 /// object users.
 #[allow(dead_code)]
 pub trait Task: Send {
-    /// Mandatory ID setter for registration.
+    /// Mandatory ID setter for registration
     fn set_id(&mut self, id: i64);
 
-    /// Return the name of the `Task` as an _owned_ `String`.
+    /// Return the name of the `Task` as an _owned_ `String`
     fn get_name(&self) -> String;
 
-    /// Return the ID of the `Task`.
+    /// Return the ID of the `Task`
     fn get_id(&self) -> i64;
 
     /// Tell whether or not another `Task` is equal to this
@@ -44,10 +44,10 @@ pub trait Task: Send {
     /// take place very seldomly, near to almost never
     fn _hash(&self) -> u64;
 
-    /// Internally called to actually execute the `Task`.
+    /// Internally called to actually execute the `Task`
     fn _run(&mut self, trigger_name: &str) -> Result<Option<bool>>;
 
-    /// Log a message in the specific `Task` format.
+    /// Log a message in the specific `Task` format
     ///
     /// This utility is provided so that all tasks can log in a consistent
     /// format, and has to be used for logging avoiding other kinds of output.
@@ -72,7 +72,7 @@ pub trait Task: Send {
         );
     }
 
-    /// Execute this `Task`.
+    /// Execute this `Task`
     ///
     /// Executes the main `Task` function, returning an outcome. The outcome
     /// _must_ have the form of a `Result`:

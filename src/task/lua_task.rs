@@ -180,18 +180,21 @@ impl LuaTask {
         self
     }
 
-    /// Constructor modifier that states that all variable values has to be
-    /// matched for success. Default behaviour is that if at least one of the
-    /// checks succeed then the result is successful.
+    /// Constructor modifier to check all return variables
+    ///
+    /// All provided variable values must be matched for success if set to
+    /// `true`. Default behaviour is that if at least one of the checks succeeds
+    /// then the result is successful.
     pub fn checks_all(mut self, yes: bool) -> Self {
         self.expect_all = yes;
         self
     }
 
-    /// Constructor modifier to specify that the task should not set the
-    /// context variables that specify the task name and the condition that
-    /// triggered the task, when set to `false`. The default behaviour is to
-    /// export those variables.
+    /// Constructor modifier to set specific variables
+    ///
+    /// Specifies that the task should not set the context variables that
+    /// report the task name and the condition that triggered the task when
+    /// set to `false`. The default behaviour is to set those variables.
     pub fn sets_vars(mut self, yes: bool) -> Self {
         self.set_vars = yes;
         self

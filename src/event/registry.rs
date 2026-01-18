@@ -63,7 +63,7 @@ pub struct EventRegistry {
 
 #[allow(dead_code)]
 impl EventRegistry {
-    /// Create a new, empty `EventRegistry`.
+    /// Create a new, empty `EventRegistry`
     pub fn new() -> Self {
         EventRegistry {
             events: Arc::new(Mutex::new(HashMap::new())),
@@ -405,20 +405,20 @@ impl EventRegistry {
     }
 
     /// Check whether or not an event with the provided name is in the
-    /// registry.
+    /// registry
     ///
     /// # Arguments
     ///
-    /// * name - the name of the event to check for registration
+    /// * name - the name of the event to check for registration.
     pub fn has_event(&self, name: &str) -> Result<bool> {
         Ok(self.events.clone().lock()?.contains_key(name))
     }
 
-    /// Check whether or not the provided event is in the registry.
+    /// Check whether or not the provided event is in the registry
     ///
     /// # Arguments
     ///
-    /// * event - the reference to an event to check for registration
+    /// * event - the reference to an event to check for registration.
     pub fn has_event_eq(&self, event: &dyn Event) -> Result<bool> {
         let name = event.get_name();
         if self.has_event(name.as_str())? {
@@ -433,7 +433,7 @@ impl EventRegistry {
     }
 
     /// Add an already-boxed `Event` if its name is not present in the
-    /// registry.
+    /// registry
     ///
     /// The `Box` ensures that the enclosed event is transferred as a
     /// reference and stored as-is in the registry. Note that for the
@@ -454,8 +454,7 @@ impl EventRegistry {
     ///
     /// **Note**: the event is _moved_ into the registry, and can only be
     /// released (and given back stored in a `Box`) using the `remove_event`
-    /// function. Also, although the possible outcomes include an error
-    /// condition, `Err(_)` is never returned.
+    /// function.
     pub fn add_event(&self, mut boxed_event: EventRef) -> Result<bool> {
         let name = boxed_event.get_name();
         if self.has_event(&name)? {
@@ -471,7 +470,7 @@ impl EventRegistry {
         Ok(true)
     }
 
-    /// Remove a named event from the list and give it back stored in a Box.
+    /// Remove a named event from the list and give it back stored in a Box
     ///
     /// The returned `Event` can be modified and stored back in the
     /// registry: before returning, the boxed `Event` is 'uninitialized'
@@ -492,19 +491,11 @@ impl EventRegistry {
     ///
     /// * `Error(Kind::Failed, _)` - the event could not be removed
     /// * `Ok(None)` - condition not found in registry
-    /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success
+    /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success.
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
         if self.has_event(name)? {
             match self.events.clone().lock()?.remove(name) {
                 Some(e) => {
-                    // in this case if the event cannot be extracted from the list
-                    // no reference to the event is returned, but an error instead
-                    // WARNING: the reference is dropped in that case!
-                    // let e = Arc::try_unwrap(e);
-                    // let Ok(event) = e else {
-                    //     return Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_PULL_EVENT));
-                    // };
-                    // let mut event = event.into_inner().expect("cannot extract locked event");
                     let mut event = e;
                     event.set_id(0);
                     Ok(Some(event))
@@ -516,7 +507,7 @@ impl EventRegistry {
         }
     }
 
-    /// Return the list of event names as owned strings.
+    /// Return the list of event names as owned strings
     ///
     /// Return a vector containing the names of all the events that have been
     /// registered, as `String` elements.
@@ -533,7 +524,7 @@ impl EventRegistry {
         }
     }
 
-    /// Return the id of the specified event.
+    /// Return the id of the specified event
     pub fn event_id(&self, name: &str) -> Result<Option<i64>> {
         if self.has_event(name)? {
             let el0 = self.events.clone();
@@ -546,7 +537,7 @@ impl EventRegistry {
         }
     }
 
-    /// Tell whether or not an event is triggerable, `None` if event not found.
+    /// Tell whether or not an event is triggerable, `None` if event not found
     pub fn event_triggerable(&self, name: &str) -> Result<Option<bool>> {
         if self.has_event(name)? {
             let triggerable = *self.triggerable_events.read()?.get(name).unwrap();
@@ -556,7 +547,7 @@ impl EventRegistry {
         }
     }
 
-    /// Trigger an event.
+    /// Trigger an event
     ///
     /// If the event can be manually triggered, fire its associated condition
     /// and return the result of the call to the event `fire_condition()` call,

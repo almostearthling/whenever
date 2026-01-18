@@ -21,38 +21,43 @@ use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
 
+/// Define the interface for `Event` objects
+///
+/// **Note**: the methods prefixed with an underscore must be defined in
+/// the types implementing the trait, but *must not* be used by the trait
+/// object users.
 #[async_trait(?Send)]
 #[allow(dead_code)]
 pub trait Event: Send + Sync {
-    /// Mandatory ID setter for registration.
+    /// Mandatory ID setter for registration
     fn set_id(&mut self, id: i64);
 
-    /// Return the name of the `Event` as an _owned_ `String`.
+    /// Return the name of the `Event` as an _owned_ `String`
     fn get_name(&self) -> String;
 
-    /// Return the ID of the `Event`.
+    /// Return the ID of the `Event`
     fn get_id(&self) -> i64;
 
-    /// Retrieve the name of the assigned condition as an _owned_ `String`.
+    /// Retrieve the name of the assigned condition as an _owned_ `String`
     fn get_condition(&self) -> Option<String>;
 
-    /// Mandatory condition registry setter.
+    /// Mandatory condition registry setter
     fn set_condition_registry(&mut self, reg: &'static ConditionRegistry);
 
-    /// Mandatory condition registry getter.
+    /// Mandatory condition registry getter
     fn condition_registry(&self) -> Option<&'static ConditionRegistry>;
 
     /// Must return `false` if the event cannot be manually triggered:
     /// this is the default, and only manually triggerable events should
-    /// override this function.
+    /// override this function
     fn triggerable(&self) -> bool {
         false
     }
 
-    /// Assign the condition bucket to put verified conditions into.
+    /// Assign the condition bucket to put verified conditions into
     fn set_condition_bucket(&mut self, bucket: &'static ExecutionBucket);
 
-    /// Condition bucket getter.
+    /// Condition bucket getter
     fn condition_bucket(&self) -> Option<&'static ExecutionBucket>;
 
     /// Tell whether or not another `Event` is equal to this
@@ -129,7 +134,7 @@ pub trait Event: Send + Sync {
         bucket.insert_condition(&cond_name)
     }
 
-    /// Log a message in the specific `Event` format.
+    /// Log a message in the specific `Event` format
     ///
     /// This utility is provided so that all conditions can log in a consistent
     /// format, and has to be used for logging avoiding other kinds of output.
@@ -162,8 +167,9 @@ pub trait Event: Send + Sync {
         Ok(Some(self.get_name()))
     }
 
-    /// Setup for the listener initializing all internals if necessary: this
-    /// must always be called before starting the loop that tests for the
+    /// Setup for the listener initializing all internals if necessary
+    ///
+    /// this must always be called before starting the loop that tests for the
     /// event to be fired. A successful initialization will return _true_,
     /// while a failing one (or no initialization at all) will return
     /// _false_. All erratic conditions should forward a suitable error.
@@ -172,15 +178,16 @@ pub trait Event: Send + Sync {
         Ok(false)
     }
 
-    /// Perform final cleanup if necessary. A successful cleanup will return
-    /// _true_, while a failing one (or no initialization at all) will return
-    /// _false_.
+    /// Perform final cleanup if necessary
+    ///
+    /// A successful cleanup will return_true_, while a failing one (or no
+    /// initialization at all) will return_false_.
     fn final_cleanup(&mut self) -> Result<bool> {
         // the default implementation returns Ok(false) as it does nothing
         Ok(false)
     }
 
-    /// Internal condition assignment function.
+    /// Internal condition assignment function
     fn _assign_condition(&mut self, cond_name: &str);
 }
 

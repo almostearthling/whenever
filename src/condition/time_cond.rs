@@ -107,7 +107,7 @@ impl TimeSpecification {
         }
     }
 
-    /// returns the resulting date and time using the fields of the `now`
+    /// Return the resulting date and time using the fields of the `now`
     /// parameter for the missing values
     pub fn as_datetime(&self, now: DateTime<Local>) -> Result<DateTime<Local>> {
         let year;
@@ -1038,7 +1038,7 @@ impl Condition for TimeCondition {
         }
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
     /// This function actually performs the test: if at least `self.interval`
     /// time has passed since last successful check (which may be the initial

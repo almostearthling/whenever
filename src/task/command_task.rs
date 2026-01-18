@@ -216,119 +216,130 @@ impl CommandTask {
     }
 
     /// Set a variable in the custom environment that the command base task
-    /// provides to the spawned process.
+    /// provides to the spawned process
     ///
     /// # Arguments
     ///
     /// * `var` - the variable name
-    /// * `value` - the value assigned to the named variable
+    /// * `value` - the value assigned to the named variable.
     pub fn set_variable(&mut self, var: &str, value: &str) -> Option<String> {
         self.environment_vars
             .insert(String::from(var), String::from(value))
     }
 
     /// Unset a variable in the custom environment that the command base task
-    /// provides to the spawned process.
+    /// provides to the spawned process
     ///
     /// # Arguments
     ///
-    /// * `var` - the name of the variable to be unset
+    /// * `var` - the name of the variable to be unset.
     pub fn unset_variable(&mut self, var: &str) -> Option<String> {
         self.environment_vars.remove(var)
     }
 
-    /// Constructor modifier to include or exclude existing environment: if
-    /// the parameter is set to `false`, the original environment is not passed
-    /// to the spawned process. Default behaviour is to pass the environment.
+    /// Constructor modifier to include or exclude existing environment
+    ///
+    /// If the parameter is set to `false`, the original environment is not
+    /// passed to the spawned process. Default behaviour is to pass the
+    /// environment.
     pub fn includes_env(mut self, yes: bool) -> Self {
         self.include_env = yes;
         self
     }
 
-    /// Constructor modifier to specify that the values to match against the
-    /// output of the spawned process have to be considered as regular
-    /// expressions when the argument is set to `true`. The default behaviour
-    /// is to consider them as simple strings.
+    /// Constructor modifier to match against regular expressions
+    ///
+    /// Specifies that the values to match against the output of the spawned
+    /// process have to be considered as regular expressions when the argument
+    /// is set to `true`. The default behaviour is to consider them as simple
+    /// strings.
     pub fn matches_regexp(mut self, yes: bool) -> Self {
         self.match_regexp = yes;
         self
     }
 
-    /// Constructor modifier to specify that the entire output of the spawned
-    /// process must match against the provided value, when the argument is set
-    /// to `true`. The default behaviour is to _partially_ match the output.
+    /// Constructor modifier exactly match against a string
+    ///
+    /// Specifies that the entire output of the spawned process must match
+    /// against the provided value, when the argument is set to `true`. The
+    /// default behaviour is to _partially_ match the output.
     pub fn matches_exact(mut self, yes: bool) -> Self {
         self.match_exact = yes;
         self
     }
 
-    /// Constructor modifier to specify that the matching against the output of
-    /// the spawned command is to be performed case-sensitively when set to
-    /// `true`. The default behaviour is to match ignoring case.
+    /// Constructor modifier for case-sensitive match
+    ///
+    /// Specifies that the matching against the output of the spawned command
+    /// is to be performed case-sensitively when set to `true`. The default
+    /// behaviour is to ignore case.
     pub fn matches_case(mut self, yes: bool) -> Self {
         self.case_sensitive = yes;
         self
     }
 
-    /// Constructor modifier to specify that the task should not set the
-    /// environment variables that specify the task name and the condition that
-    /// triggered the task, when set to `false`. The default behaviour is to
-    /// export those variables.
+    /// Constructor modifier to set environment variables
+    ///
+    /// Specifies that the task should not set the environment variables that
+    /// report the task name and the condition that triggered the task, when
+    /// set to `false`. The default behaviour is to export those variables.
     pub fn sets_envvars(mut self, yes: bool) -> Self {
         self.set_envvars = yes;
         self
     }
 
-    /// Constructor modifier to possibly set the values that have to match
-    /// the spawned process' standard output in order for the execution to be
-    /// considered successful: this can be a simple string or a regular
-    /// expression pattern, according to the value provided with the
-    /// `matches_regexp` constructor modifier.
+    /// Constructor modifier to match against stdout
+    ///
+    /// Specifies that the provided check values must match the spawned
+    /// process' standard output in order for the execution to be considered
+    /// successful.
     pub fn expects_stdout(mut self, s: &str) -> Self {
         self.success_stdout = Some(s.to_string());
         self
     }
 
-    /// Constructor modifier to possibly set the values that have to match
-    /// the spawned process' standard error in order for the execution to be
-    /// considered successful: this can be a simple string or a regular
-    /// expression pattern, according to the value provided with the
-    /// `matches_regexp` constructor modifier.
+    /// Constructor modifier to match against stderr
+    ///
+    /// Specifies that the provided check values must match the spawned
+    /// process' standard error in order for the execution to be considered
+    /// successful.
     pub fn expects_stderr(mut self, s: &str) -> Self {
         self.success_stderr = Some(s.to_string());
         self
     }
 
-    /// Constructor modifier to possibly set the values that have to match
-    /// the spawned process' standard output in order for the execution to be
-    /// considered failed: this can be a simple string or a regular expression
-    /// pattern, according to the value provided with the `matches_regexp`
-    /// constructor modifier.
+    /// Constructor modifier to not match against stdout
+    ///
+    /// Specifies that the provided check values must not match the spawned
+    /// process' standard output in order for the execution to be considered
+    /// successful.
     pub fn rejects_stdout(mut self, s: &str) -> Self {
         self.failure_stdout = Some(s.to_string());
         self
     }
 
-    /// Constructor modifier to possibly set the values that have to match
-    /// the spawned process' standard error in order for the execution to be
-    /// considered failed: this can be a simple string or a regular expression
-    /// pattern, according to the value provided with the `matches_regexp`
-    /// constructor modifier.
+    /// Constructor modifier to not match against stderr
+    ///
+    /// Specifies that the provided check values must not match the spawned
+    /// process' standard error in order for the execution to be considered
+    /// successful.
     pub fn rejects_stderr(mut self, s: &str) -> Self {
         self.failure_stderr = Some(s.to_string());
         self
     }
 
-    /// Constructor modifier to possibly set the value that have to match
-    /// the spawned process' exit code in order for the execution to be
+    /// Constructor modifier to expect exit code
+    ///
+    /// Provide an exit code that must be matched for the execution to be
     /// considered successful.
     pub fn expects_exitcode(mut self, c: u32) -> Self {
         self.success_status = Some(c);
         self
     }
 
-    /// Constructor modifier to possibly set the value that have to match
-    /// the spawned process' exit code in order for the execution to be
+    /// Constructor modifier to reject exit code
+    ///
+    /// Provide an exit code that must be matched for the execution to be
     /// considered failed.
     pub fn rejects_exitcode(mut self, c: u32) -> Self {
         self.failure_status = Some(c);

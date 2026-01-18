@@ -476,7 +476,7 @@ impl Condition for IntervalCondition {
         }
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
     /// This function actually performs the test: if at least `self.interval`
     /// time has passed since last successful check (which may be the initial

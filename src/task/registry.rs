@@ -100,17 +100,15 @@ impl TaskRegistry {
         Ok(false)
     }
 
-    /// Check whether all tasks in a list are in the registry (**Note**: this
-    /// function is mostly used internally for verification), returns `true`
-    /// only if _all_ tasks in the list are found in the registry.
+    /// Check whether all tasks in a list are in the registry
+    ///
+    /// **Note**: this function is mostly used internally for verification,
+    /// it returns `true` only if _all_ tasks in the list are found in the
+    /// registry.
     ///
     /// # Arguments
     ///
-    /// * names - a list of task names (as a vector)
-    ///
-    /// # Panics
-    ///
-    /// May panic if the task registry could not be locked for enquiry.
+    /// * names - a list of task names (as a vector).
     pub fn has_all_tasks(&self, names: &Vec<&str>) -> Result<bool> {
         for name in names {
             if !self.task_list.read()?.contains_key(*name) {
@@ -140,8 +138,7 @@ impl TaskRegistry {
     ///
     /// **Note**: the task is _moved_ into the registry, and can only be
     /// released (and given back stored in a `Box`) using the `remove_task`
-    /// function. Also, although the possible outcomes include an error
-    /// condition, `Err(_)` is never returned.
+    /// function.
     pub fn add_task(&self, mut boxed_task: TaskRef) -> Result<bool> {
         let name = boxed_task.get_name();
         if self.has_task(&name)? {
@@ -214,19 +211,15 @@ impl TaskRegistry {
     ///
     /// * `Error(Kind::Failed, _)` - the task could not be removed
     /// * `Ok(None)` - task not found in registry
-    /// * `Ok(Task)` - the removed (_pulled out_) `Task` on success
-    ///
-    /// # Panics
-    ///
-    /// May panic if the task registry could not be locked for extraction.
+    /// * `Ok(Task)` - the removed (_pulled out_) `Task` on success.
     pub fn remove_task(&self, name: &str) -> Result<Option<TaskRef>> {
         if self.has_task(name)? {
             match self.task_list.write()?.remove(name) {
                 Some(r) => {
                     let Ok(mx) = Arc::try_unwrap(r) else {
-                        panic!("attempt to extract referenced task {name}")
+                        return Err(Error::new(Kind::Failed, ERR_ACCESS_FAILED));
                     };
-                    let mut task = mx.into_inner().expect("cannot extract locked task");
+                    let mut task = mx.into_inner()?;
                     task.set_id(0);
                     Ok(Some(task))
                 }
@@ -267,7 +260,7 @@ impl TaskRegistry {
         }
     }
 
-    /// Return the list of task names as owned strings.
+    /// Return the list of task names as owned strings
     ///
     /// Return a vector containing the names of all the tasks that have been
     /// registered, as `String` elements.
@@ -298,7 +291,7 @@ impl TaskRegistry {
         }
     }
 
-    /// Run a list of tasks sequentially.
+    /// Run a list of tasks sequentially
     ///
     /// Executes a list of tasks, provided as reference to a `Vec` of names, in
     /// the order in which the names are stored in the list. The execution may
@@ -511,7 +504,7 @@ impl TaskRegistry {
         Ok(res)
     }
 
-    /// Run a list of tasks simultaneously.
+    /// Run a list of tasks simultaneously
     ///
     /// Executes all the tasks in the provided list simultaneously, each in a
     /// separate thread, and waiting for all tasks to finish. The name of a

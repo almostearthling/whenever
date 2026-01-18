@@ -29,29 +29,29 @@ use crate::common::wres::{Error, Kind, Result};
 use crate::constants::*;
 use crate::task::registry::TaskRegistry;
 
-/// Define the interface for `Condition` objects.
+/// Define the interface for `Condition` objects
 ///
 /// **Note**: the methods prefixed with an underscore must be defined in
 /// the types implementing the trait, but *must not* be used by the trait
 /// object users.
 #[allow(dead_code)]
 pub trait Condition: Send {
-    /// Mandatory ID setter for registration.
+    /// Mandatory ID setter for registration
     fn set_id(&mut self, id: i64);
 
-    /// Return the name of the `Condition` as an _owned_ `String`.
+    /// Return the name of the `Condition` as an _owned_ `String`
     fn get_name(&self) -> String;
 
-    /// Return the ID of the `Condition`.
+    /// Return the ID of the `Condition`
     fn get_id(&self) -> i64;
 
-    /// Get the condition type as a string reference.
+    /// Get the condition type as a string reference
     fn get_type(&self) -> &str;
 
-    /// Mandatory task registry setter.
+    /// Mandatory task registry setter
     fn set_task_registry(&mut self, reg: &'static TaskRegistry);
 
-    /// Mandatory task registry getter.
+    /// Mandatory task registry getter
     fn task_registry(&self) -> Option<&'static TaskRegistry>;
 
     /// Tell whether or not another `Condition` is equal to this
@@ -69,52 +69,52 @@ pub trait Condition: Send {
     /// take place very seldomly, near to almost never
     fn _hash(&self) -> u64;
 
-    /// Return `true` if the condition is _suspended_.
+    /// Return `true` if the condition is _suspended_
     fn suspended(&self) -> bool;
 
-    /// Return `true` if the condition is _recurring_, otherwise a one-shot.
+    /// Return `true` if the condition is _recurring_, otherwise a one-shot
     fn recurring(&self) -> bool;
 
-    /// Return `true` if the condition succeeded the last time it was tested.
+    /// Return `true` if the condition succeeded the last time it was tested
     fn has_succeeded(&self) -> bool;
 
-    /// Return `true` if associated tasks should run sequentially.
+    /// Return `true` if associated tasks should run sequentially
     fn exec_sequence(&self) -> bool;
 
-    /// Return `true` if associated task sequence should break on first success.
+    /// Return `true` if associated task sequence should break on first success
     fn break_on_success(&self) -> bool;
 
-    /// Return `true` if associated task sequence should break on first failure.
+    /// Return `true` if associated task sequence should break on first failure
     fn break_on_failure(&self) -> bool;
 
-    /// Return last test time (if any).
+    /// Return last test time (if any)
     fn last_checked(&self) -> Option<Instant>;
 
-    /// Return last success time (if any).
+    /// Return last success time (if any)
     fn last_succeeded(&self) -> Option<Instant>;
 
-    /// Return the time in which condition tests were started (if they were).
+    /// Return the time in which condition tests were started (if they were)
     fn startup_time(&self) -> Option<Instant>;
 
-    /// Set the internal _checked_ state to `true`.
+    /// Set the internal _checked_ state to `true`
     fn set_checked(&mut self) -> Result<bool>;
 
-    /// Set the internal _succeeded_ state to `true`.
+    /// Set the internal _succeeded_ state to `true`
     fn set_succeeded(&mut self) -> Result<bool>;
 
-    /// Set the internal _succeeded_ state to `false`.
+    /// Set the internal _succeeded_ state to `false`
     fn reset_succeeded(&mut self) -> Result<bool>;
 
-    /// Fully reset internal state of the condition.
+    /// Fully reset internal state of the condition
     fn reset(&mut self) -> Result<bool>;
 
-    /// Return how many times the tasks can be retried, `None` means forever.
+    /// Return how many times the tasks can be retried, `None` means forever
     fn left_retries(&self) -> Option<i64>;
 
-    /// Consume a retry.
+    /// Consume a retry
     fn set_retried(&mut self);
 
-    /// Shortcut to test whether a condition can retry or not.
+    /// Shortcut to test whether a condition can retry or not
     fn can_retry(&self) -> bool {
         if let Some(c) = self.left_retries() {
             c > 0
@@ -123,30 +123,30 @@ pub trait Condition: Send {
         }
     }
 
-    /// Set the startup time to `Instant::now()`.
+    /// Set the startup time to `Instant::now()`
     fn start(&mut self) -> Result<bool>;
 
-    /// Set the internal _suspended_ state to `true`.
+    /// Set the internal _suspended_ state to `true`
     fn suspend(&mut self) -> Result<bool>;
 
-    /// Set the internal _suspended_ state to `false`.
+    /// Set the internal _suspended_ state to `false`
     fn resume(&mut self) -> Result<bool>;
 
-    /// Get a list of task names as owned strings.
+    /// Get a list of task names as owned strings
     fn task_names(&self) -> Result<Vec<String>>;
 
-    /// Check whether or not there are associated tasks.
+    /// Check whether or not there are associated tasks
     fn has_tasks(&self) -> Result<bool> {
         Ok(!self.task_names()?.is_empty())
     }
 
-    /// Check whether any tasks failed in the last run.
+    /// Check whether any tasks failed in the last run
     fn any_tasks_failed(&self) -> bool;
 
-    /// Inform the condition that some tasks failed or that all succeeded.
+    /// Inform the condition that some tasks failed or that all succeeded
     fn set_tasks_failed(&mut self, failed: bool);
 
-    /// Verify last outcome after checking the `Condition`.
+    /// Verify last outcome after checking the `Condition`
     ///
     /// Reports whether or not the result of last check was a success, in
     /// which case `Ok(true)` is returned. Otherwise returns `Ok(false)`.
@@ -164,7 +164,7 @@ pub trait Condition: Send {
         Ok(false)
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
     /// This function, in objects implementing the `Condition` trait, actually
     /// performs the check, and must return a successfulness value in the form
@@ -187,7 +187,7 @@ pub trait Condition: Send {
     /// Mandatory to remove task names: should return `Ok(true)` on success
     fn _remove_task(&mut self, name: &str) -> Result<bool>;
 
-    /// Log a message in the specific `Condition` format.
+    /// Log a message in the specific `Condition` format
     ///
     /// This utility is provided so that all conditions can log in a consistent
     /// format, and has to be used for logging avoiding other kinds of output.
@@ -212,7 +212,7 @@ pub trait Condition: Send {
         );
     }
 
-    /// Interface to condition checks.
+    /// Interface to condition checks
     ///
     /// This method calls the provided check function (`_check_condition`) and
     /// returns the check result. The possible return  values are:
@@ -342,7 +342,7 @@ pub trait Condition: Send {
         }
     }
 
-    /// Add a task to this `Condition`.
+    /// Add a task to this `Condition`
     ///
     /// Associate a task to the condition: the task name is _appended_ to the
     /// list of associated tasks, thus determining the execution order if the
@@ -403,7 +403,7 @@ pub trait Condition: Send {
         Ok(outcome)
     }
 
-    /// Remove a task from this `Condition`.
+    /// Remove a task from this `Condition`
     ///
     /// Deassociate a task from the condition: the task name is removed from
     /// the list of associated tasks. Returns `Ok(true)` if the task could be
@@ -430,7 +430,7 @@ pub trait Condition: Send {
         Ok(outcome)
     }
 
-    /// Run the associated tasks.
+    /// Run the associated tasks
     ///
     /// The assocaiated tasks are run, either sequentially or simultaneously
     /// according to condition configuration. Task execution is logged as well

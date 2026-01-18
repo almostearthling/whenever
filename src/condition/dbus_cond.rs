@@ -231,9 +231,10 @@ impl DbusMethodCondition {
         self
     }
 
-    /// Constructor modifier to specify that the condition is verified on
-    /// check success only if there has been at least one failure after the
-    /// last successful test
+    /// Constructor modifier to recur only after failure
+    ///
+    /// Specifies that the condition is verified on check success only if
+    /// there has been at least one failure after the last successful test.
     pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
         self.recur_after_failed_check = yes;
         self
@@ -1132,7 +1133,7 @@ impl Condition for DbusMethodCondition {
         }
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
     /// This function actually performs the test.
     fn _check_condition(&mut self) -> Result<Option<bool>> {

@@ -476,7 +476,7 @@ impl Condition for IdleCondition {
         }
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
     /// This function actually performs the test; check for the idle time to
     /// be longer than the configured idle time, and if so return `true` after

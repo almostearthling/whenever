@@ -188,7 +188,7 @@ impl Task for InternalTask {
         s.finish()
     }
 
-    /// Execute this `LuaTask`
+    /// Execute this `InternalTask`
     ///
     /// This implementation of the trait `run()` function obeys to the main
     /// trait's constraints, and returns an error if any error happened while

@@ -212,6 +212,17 @@ impl LuaCondition {
         self
     }
 
+    /// State that the first check and possible following tests are to be
+    /// performed after a certain amount of time
+    ///
+    /// This option is present in this type of condition because the test
+    /// itself can be both time and resource consuming, and an user may choose
+    /// to avoid to perform it at every tick.
+    pub fn checks_after(mut self, delta: Duration) -> Self {
+        self.check_after = Some(delta);
+        self
+    }
+
     /// Add a variable to check for a string value
     pub fn add_check_string(mut self, varname: &str, value: &str) -> Self {
         self.expected
@@ -260,38 +271,32 @@ impl LuaCondition {
         self
     }
 
-    /// Constructor modifier that states that all variable values has to be
-    /// matched for success. Default behaviour is that if at least one of the
-    /// checks succeed then the result is successful.
+    /// Constructor modifier to check all return variables
+    ///
+    /// All provided variable values must be matched for success if set to
+    /// `true`. Default behaviour is that if at least one of the checks succeeds
+    /// then the result is successful.
     pub fn checks_all(mut self, yes: bool) -> Self {
         self.expect_all = yes;
         self
     }
 
-    /// Constructor modifier to specify that the condition should not set the
-    /// context variables that specify the task name and the condition that
-    /// triggered the task, when set to `false`. The default behaviour is to
-    /// export those variables.
+    /// Constructor modifier to set specific variable
+    ///
+    /// Specifies that the task should not set the context variables that
+    /// report the condition name to the script when set to `false`. The
+    /// default behaviour is to set those variables.
     pub fn sets_vars(mut self, yes: bool) -> Self {
         self.set_vars = yes;
         self
     }
 
-    /// Constructor modifier to specify that the condition is verified on
-    /// check success only if there has been at least one failure after the
-    /// last successful test
+    /// Constructor modifier to recur only after failure
+    ///
+    /// Specifies that the condition is verified on check success only if
+    /// there has been at least one failure after the last successful test.
     pub fn recurs_after_check_failure(mut self, yes: bool) -> Self {
         self.recur_after_failed_check = yes;
-        self
-    }
-
-    /// State that the first check and possible following tests are to be
-    /// performed after a certain amount of time. This option is present in
-    /// this type of condition because the test itself can be both time and
-    /// resource consuming, and an user may choose to avoid to perform it
-    /// at every tick.
-    pub fn checks_after(mut self, delta: Duration) -> Self {
-        self.check_after = Some(delta);
         self
     }
 
@@ -875,10 +880,33 @@ impl Condition for LuaCondition {
         }
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
-    /// This function actually performs the test: if the underlying OS command
-    /// exits and the success criteria are met, the condition is verified.
+    /// This implementation of the trait `run()` function obeys to the main
+    /// trait's constraints, and returns
+    ///
+    /// * `Ok(Some(true))` on success
+    /// * `Ok(Some(false))` on check failure or script error
+    /// * `Ok(None)` when the script didn't check for result
+    /// * `Err(_)` never
+    ///
+    /// The interpreter loads the whole standard library prior to execution
+    /// of the script. Moreover a `log` table is provided containing the
+    /// following functions:
+    ///
+    /// * `debug`
+    /// * `trace`
+    /// * `info`
+    /// * `warn`
+    /// * `error`
+    ///
+    /// that can be used to directly log from the _Lua_ script. Note that
+    /// the resulting log will anyway comply to the application format, that
+    /// means for example that it will be prefixed with the context. All of
+    /// these functions take a _Lua_ string as input and write it to the log
+    /// with appropriate severity: in case a certain severity level is
+    /// configured for the log, only messages above that severity level are
+    /// logged.
     ///
     /// **NOTE**: this is an _almost exact_ copy of the `_run()` method in
     /// the _Lua_ script based `LuaTask` task structure.

@@ -79,11 +79,7 @@ impl ConditionRegistry {
     ///
     /// # Arguments
     ///
-    /// * name - the name of the condition to check for registration
-    ///
-    /// # Panics
-    ///
-    /// May panic if the condition registry could not be locked for enquiry.
+    /// * name - the name of the condition to check for registration.
     pub fn has_condition(&self, name: &str) -> Result<bool> {
         Ok(self.condition_list.read()?.contains_key(name))
     }
@@ -92,7 +88,7 @@ impl ConditionRegistry {
     ///
     /// # Arguments
     ///
-    /// * cond - the reference to a condition to check for registration
+    /// * cond - the reference to a condition to check for registration.
     pub fn has_condition_eq(&self, cond: &dyn Condition) -> Result<bool> {
         let name = cond.get_name();
         if self.has_condition(name.as_str())? {
@@ -111,7 +107,7 @@ impl ConditionRegistry {
     ///
     /// # Arguments
     ///
-    /// * name - the name of the condition
+    /// * name - the name of the condition.
     pub fn condition_type(&self, name: &str) -> Result<Option<String>> {
         if self.has_condition(name)? {
             let cond = self.condition_list.read()?;
@@ -225,14 +221,7 @@ impl ConditionRegistry {
     ///
     /// * `Error(Kind::Failed, _)` - the condition could not be removed
     /// * `Ok(None)` - condition not found in registry
-    /// * `Ok(Condition)` - the removed (_pulled out_) `Condition` on success
-    ///
-    /// # Panics
-    ///
-    /// May panic if the condition registry could not be locked for extraction,
-    /// or if an attempt is made to extract a condition that is in use (FIXME:
-    /// maybe it should return an error in this case? for now the scheduler is
-    /// suspended while reconfiguring, the only actual case for removal).
+    /// * `Ok(Condition)` - the removed (_pulled out_) `Condition` on success.
     pub fn remove_condition(&self, name: &str) -> Result<Option<ConditionRef>> {
         if self.has_condition(name)? {
             let mut cl0 = self.condition_list.write()?;
@@ -240,10 +229,9 @@ impl ConditionRegistry {
                 Some(c0) => {
                     drop(cl0);
                     let Ok(mxc0) = Arc::try_unwrap(c0) else {
-                        panic!("cannot extract referenced condition {name}")
+                        return Err(Error::new(Kind::Failed, ERR_ACCESS_FAILED));
                     };
-
-                    let mut condition = mxc0.into_inner().expect("cannot extract locked condition"); // <- may have to fix this
+                    let mut condition = mxc0.into_inner()?;
                     condition.set_id(0);
                     Ok(Some(condition))
                 }
@@ -256,7 +244,7 @@ impl ConditionRegistry {
 
     /// Remove a named condition from the list operating on a running
     /// registry: if any conditions are busy all modifications to the
-    /// registry are deferred
+    /// registry are deferred.
     pub fn dynamic_remove_condition(&self, name: &str) -> Result<bool> {
         if self.has_condition(name)? {
             let busy = self.conditions_busy.clone();
@@ -299,7 +287,7 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// This function panics when called upon a name that does not exist in
-    /// the registry
+    /// the registry.
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool> {
         assert!(
             self.has_condition(name)?,
@@ -359,7 +347,7 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// This function panics when called upon a name that does not exist in
-    /// the registry
+    /// the registry.
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool> {
         assert!(
             self.has_condition(name)?,
@@ -387,7 +375,7 @@ impl ConditionRegistry {
     }
 
     /// Queue a condition for suspension: the current policy is that the
-    /// suspended flag will be set only when there are no busy condiions
+    /// suspended flag will be set only when there are no busy condiions.
     pub fn queue_suspend_condition(&self, name: &str) -> Result<()> {
         assert!(
             self.has_condition(name)?,
@@ -421,7 +409,7 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// This function panics when called upon a name that does not exist in
-    /// the registry
+    /// the registry.
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool> {
         assert!(
             self.has_condition(name)?,
@@ -497,7 +485,7 @@ impl ConditionRegistry {
     /// # Panics
     ///
     /// This function panics when called upon a name that does not exist in
-    /// the registry
+    /// the registry.
     pub fn condition_busy(&self, name: &str) -> Result<bool> {
         assert!(
             self.has_condition(name)?,
@@ -574,7 +562,7 @@ impl ConditionRegistry {
     ///
     /// # Arguments
     ///
-    /// `name` - the name of the condition to check
+    /// `name` - the name of the condition to check.
     pub fn tick(&self, name: &str) -> Result<Option<bool>> {
         // the named condition might have disappeared due to a reconfiguration
         // while still being known to the main thread

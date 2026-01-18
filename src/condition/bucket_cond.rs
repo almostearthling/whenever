@@ -563,7 +563,7 @@ impl Condition for BucketCondition {
         }
     }
 
-    /// Mandatory check function.
+    /// Mandatory check function
     ///
     /// This function actually performs the test by verifying whether or not
     /// its name is present in the common execution bucket: if present the
