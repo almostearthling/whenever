@@ -17,6 +17,7 @@ html_logo = "graphics/metronome.png"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['myst_parser', 'sphinx_favicon']
+myst_enable_extensions = ["colon_fence"]
 source_suffix = ['.rst', '.md']
 
 # templates_path = ['_templates']
