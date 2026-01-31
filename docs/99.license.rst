@@ -3,7 +3,9 @@
 License
 =======
 
-This tool is licensed under the LGPL v2.1::
+This tool is licensed under the LGPL v2.1:
+
+.. code-block:: text
 
                    GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
@@ -511,4 +513,4 @@ This tool is licensed under the LGPL v2.1::
    That's all there is to it!
 
 .. note::
-  The license may change to LGPL v3 in the future.
+    The license may change to LGPL v3 in the future.

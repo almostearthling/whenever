@@ -37,7 +37,6 @@ By invoking **whenever** and specifying ``--help`` as argument, the output is th
 
 The only elements that should be highlighted are the following:
 
-
 * **whenever** also suppresses errors in *quiet* mode, it is recommended to at least specify a log
   file
 * it is possible to suppress colors when logging to console, by specifying ``--log-plain`` as an
@@ -69,4 +68,4 @@ either a :ref:`command <70-intcli-input-commands>` must be used or it must be ex
 
 .. [#fn-1] Executables compiled in *debug mode*, however, do not consider an active release
            instance as running, and the instance check option will only report an active debug
-           instance to a deb ug instance, and an active release instance to a release instance.
+           instance to a debug instance, and an active release instance to a release instance.

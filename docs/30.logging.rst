@@ -19,7 +19,6 @@ enabling logging just for warnings and errors.
 
 A short description of the log levels follows:
 
-
 #. **trace**: every single step is logged, some messages can be redundant because if an
    acknowledgement or an issue takes place in more than one context of the program, each of the
    involved parts may decide to log about what happened. Sometimes, for example, the same error
@@ -48,9 +47,7 @@ As mentioned above, just after the *context*, in the message *payload*, a string
 ``[WHEN/STATUS]`` appears that can be used to better identify the reason why the message has
 been issued, where
 
-
 * *WHEN* represents the *nature* of the log entry, and can be one of
-
 
   * ``INIT`` when the message is related to an initialization phase (mostly around startup)
   * ``START`` when the message is issued when *starting* something, for instance a check or a new

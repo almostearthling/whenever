@@ -155,11 +155,11 @@ If ``set_environment_variables`` is *true*, **whenever** sets the following envi
 for scripts or other executables that might be aware of **whenever**.
 
 .. tip::
-   Many times the success or failure status can be disregarded, especially in situations where
-   a condition causes a single task to be executed. When an execution flow must be respected,
-   providing the correct parameters to identify success or failure becomes substantial, as well
-   as in cases when the associated condition is set to retry the task (or a sequence where it
-   is contained) until it succeeds.
+    Many times the success or failure status can be disregarded, especially in situations where
+    a condition causes a single task to be executed. When an execution flow must be respected,
+    providing the correct parameters to identify success or failure becomes substantial, as well
+    as in cases when the associated condition is set to retry the task (or a sequence where it
+    is contained) until it succeeds.
 
 
 .. _40-tasks-lua:
@@ -235,19 +235,18 @@ and the following table provides a detailed description of the entries:
      - the path to an optional initialization script to be executed before the provided one
 
 .. tip::
-
-   The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
-   user-provided items, since the execution of an extra script can be performed at the script
-   level and global variables can be set up at the beginning of the script. A *frontend*, on
-   the other hand, can benefit of the combination of global variables and an initialization
-   script to change the interpreter behavior, for instance by setting the ``package.path`` and
-   ``package.cpath`` settings programmatically, possibly according to the current setup.
+    The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
+    user-provided items, since the execution of an extra script can be performed at the script
+    level and global variables can be set up at the beginning of the script. A *frontend*, on
+    the other hand, can benefit of the combination of global variables and an initialization
+    script to change the interpreter behavior, for instance by setting the ``package.path`` and
+    ``package.cpath`` settings programmatically, possibly according to the current setup.
 
 .. warning::
-   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
-   due to the fact that safety is enforced at build time, and loading an external library is
-   considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
-   since any attempt to load a binary module will always result in a runtime error.
+    The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
+    due to the fact that safety is enforced at build time, and loading an external library is
+    considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
+    since any attempt to load a binary module will always result in a runtime error.
 
 Note that *triple single quotes* have been used to embed the script: this allows to use escapes
 and quotes in the script itself. Although the script should be embedded in the configuration file,
@@ -271,15 +270,14 @@ The Lua interpreter is initialized at each run by
 exactly in this order.
 
 .. note::
-
-   Each *Lua* based item (either task or condition) initializes its own instance of the
-   interpreter: this means that the global variables are set and the initialization script is run
-   every time the item is executed. At the end of the execution, the interpreter instance is
-   destroyed and its resources are freed. In fact, this means that at each run **whenever** has
-   to do some extra work to initialize the interpreter context; on the other hand, this allows
-   for multiple instances of *Lua* to run concurrently, and to be initialized with different
-   global variables and different startup scripts, as suggested by the *per item* configuration
-   options.
+    Each *Lua* based item (either task or condition) initializes its own instance of the
+    interpreter: this means that the global variables are set and the initialization script is run
+    every time the item is executed. At the end of the execution, the interpreter instance is
+    destroyed and its resources are freed. In fact, this means that at each run **whenever** has
+    to do some extra work to initialize the interpreter context; on the other hand, this allows
+    for multiple instances of *Lua* to run concurrently, and to be initialized with different
+    global variables and different startup scripts, as suggested by the *per item* configuration
+    options.
 
 
 .. _40-tasks-internal:
@@ -299,12 +297,11 @@ implemented to be used by wrapper applications. This means that the scheduler:
 and so on upon verification of a condition.
 
 .. note::
-  No security concern is raised here, as **whenever** is designed with the intention to
-  run without administration rights; obviously every kind of automation tool, which performs
-  unattended operations, might execute malicious actions under the hood, however the absence of
-  particular privileges when running and the ability to read the configuration file without the
-  need of specific tools, allow for complete control on what **whenever** does.
-
+    No security concern is raised here, as **whenever** is designed with the intention to
+    run without administration rights; obviously every kind of automation tool, which performs
+    unattended operations, might execute malicious actions under the hood, however the absence of
+    particular privileges when running and the ability to read the configuration file without the
+    need of specific tools, allow for complete control on what **whenever** does.
 
 The configuration for such a type of task is simple, as it only requires to set the ``command``
 parameter in addition to the name and type. An example internal command based task is the
@@ -336,7 +333,6 @@ of the parameter entries follows:
      - N/A
      - the internal command to be run, as a single string that includes its parameters
 
-
 As mentioned above, a comprehensivew list of possible internal commands can be found in the
 appropriate :ref:`section <70-intcli-input-commands>`.
 
@@ -347,8 +343,8 @@ and simpler configuration element: an example could be the use of the *org.freed
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
 .. warning::
-   The provided command will *not* be checked upon configuration, it will *fail* instead causing
-   a warning to be logged in case it is invalid or malformed.
+    The provided command will *not* be checked upon configuration, it will *fail* instead causing
+    a warning to be logged in case it is invalid or malformed.
 
 
 .. [#fn-7] In fact, there is the option to include the *unsafe* version of the *Lua* interpreter

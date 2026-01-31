@@ -89,7 +89,6 @@ The configuration entries are:
      - generally not used, can be needed on systems where the notification service is unavailable
 
 
-
 .. _60-events-dbus:
 
 DBus signals (optional)
@@ -101,8 +100,7 @@ subscribe to these signals, so that when the *return parameters* match the provi
 then the event occurs and the associated condition is fired.
 
 .. note::
-   This type of item is only available when the ``dbus`` feature is enabled.
-
+    This type of item is only available when the ``dbus`` feature is enabled.
 
 Subscription is performed by providing a *watch expression* in the same form that is used by the
 `dbus-monitor <https://dbus.freedesktop.org/doc/dbus-monitor.1.html>` utility. The criteria
@@ -172,12 +170,10 @@ that may arise during checks will cause the check itself to yield *false*.
 If no parameter checks are provided, the event arises simply when the signal is caught.
 
 .. warning::
-   Before version *0.4.x*, **whenever** used to accept the check criteria (that is, the
-   ``parameter_check`` entry) as a JSON encoded string: this is not supported anymore, and the
-   entry *must* be specified as a TOML list. `When`_ can be used to convert an old configuration
-   file to the new format, by using    the ``when tool --fix-config`` tool from the command line.
-
-.. _When: https://github.com/almostearthling/when-command
+    Before version *0.4.x*, **whenever** used to accept the check criteria (that is, the
+    ``parameter_check`` entry) as a JSON encoded string: this is not supported anymore, and the
+    entry *must* be specified as a TOML list. `When`_ can be used to convert an old configuration
+    file to the new format, by using    the ``when tool --fix-config`` tool from the command line.
 
 
 .. _60-events-wmi:
@@ -194,10 +190,8 @@ of an event in order to consider it verified. Thus **whenever** leaves to the *q
 If a namespace other than the default ``ROOT\CIMV2`` is needed, it can be specified using the
 optional ``namespace`` configuration entry.
 
-.. _WML queries: https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications
-
 .. note::
-   This type of item is only available when the ``wmi`` feature is enabled.
+    This type of item is only available when the ``wmi`` feature is enabled.
 
 As a result, the configuration of a *WMI* based event is much simpler than the one of *DBus signal*
 based ones, by only having to specify a mandatory ``query`` entry, whose syntax and semantic is
@@ -244,7 +238,6 @@ details of the configuration entries are described in the table below:
      - (empty)
      - a specific WMI namespace to connect to, if different from the default one
 
-
 As with DBus *match rules*, **whenever** does not do any parsing or check on the provided query:
 an incorrect query will only cause the event registration to fail and log an error message, at
 least in the *debug* log level.
@@ -253,7 +246,7 @@ Every event returned by the system matches the criteria specified in the *query*
 the assigned condition to fire.
 
 .. warning::
-   Some antimalware tools might detect event subscriptions as suspicious.
+    Some antimalware tools might detect event subscriptions as suspicious.
 
 
 .. _60-events-cli:
@@ -292,7 +285,9 @@ and the details of the configuration entries are described in the table below:
      - N/A
      - the name of the associated *event* based condition (mandatory)
 
-
 No listening service is installed, so the impact on resource consumption and performance is almost
 unnoticeable.
 
+
+.. _When: https://github.com/almostearthling/when-command
+.. _WML queries: https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications

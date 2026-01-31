@@ -29,7 +29,6 @@ binaries that are normally available in the published releases:
 
    cargo build --release --no-default-features --features dbus
 
-
 2. on Windows:
 
 .. code-block:: shell

@@ -45,7 +45,6 @@ common to all conditions, that is:
      - ``[]``
      - a list of task names that will be executed upon condition verification
 
-
 When ``execute_sequence`` is set to *false*, the associated tasks are started concurrently in the
 same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented,
 allowing the sequence to be interrupted after the first success or failure in task execution. Note
@@ -56,9 +55,8 @@ The ``type`` entry can be one of: ``"interval"``, ``"time"``, ``"idle"``, ``"com
 configuration error.
 
 .. note::
-   The ``"dbus"`` and ``"wmi"`` values will be considered an error if the respective features are
-   not available.
-
+    The ``"dbus"`` and ``"wmi"`` values will be considered an error if the respective features are
+    not available.
 
 For conditions that should be periodically checked and whose associated task list has to be run
 *whenever* they occur (and not just after the first occurrence), the ``recurring`` entry can be set
@@ -165,7 +163,6 @@ The specific parameters for this type of condition are:
      - N/A
      - the number of seconds to wait for the condition to be verified (mandatory)
 
-
 The check for this type of condition is never randomized.
 
 
@@ -191,7 +188,6 @@ year, month, date) may cause the event to never occur if that particular date do
 that specific week day. Normally a day of the month will be specified, and then a time of the day,
 or a weekday and a time of the day. However full freedom is given in specifying or omitting part of
 the date:
-
 
 * missing parts in the date will be considered verified at every change of each of them (years,
   months, days, and weekdays)
@@ -241,7 +237,6 @@ parameters are:
      - ``{}``
      - a list of *partial* time specifications, as inline tables consisting of the above described
        entries (mandatory)
-
 
 The check for this type of condition is never randomized.
 
@@ -293,7 +288,6 @@ table below describes the specific configuration entries:
      - the number of idle seconds to be waited for in order to consider the condition verified
        (mandatory)
 
-
 The check for this type of condition is never randomized.
 
 
@@ -317,20 +311,20 @@ any given success rule are identified as failures. On the other hand, if a failu
 then outcomes that match that rule are considered failures: any other outcome is successful.
 
 .. tip::
-   Setting both success and failure rules is actually possible, however it is not really useful
-   because of the priority that is used when checking for success or failure in the execution
-   of a command. Success is checked first, and in the following order:
+    Setting both success and failure rules is actually possible, however it is not really useful
+    because of the priority that is used when checking for success or failure in the execution
+    of a command. Success is checked first, and in the following order:
 
-   * exit code correspondance
-   * standard input search or match
-   * standard error search or match
+    * exit code correspondance
+    * standard input search or match
+    * standard error search or match
 
-   and then, if none of these rules (if provided) is matched, failure is checked in the same
-   order. Therefore, if one or more success rules are given, not matching them is considered
-   a failure anyway and the failure rules are simply skipped.
+    and then, if none of these rules (if provided) is matched, failure is checked in the same
+    order. Therefore, if one or more success rules are given, not matching them is considered
+    a failure anyway and the failure rules are simply skipped.
 
-   Most of the times it is useful to just provide one or two criteria, either on the success
-   or on the failure side only.
+    Most of the times it is useful to just provide one or two criteria, either on the success
+    or on the failure side only.
 
 As for command based tasks, it is not mandatory to follow the usual conventions -- this means,
 for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a
@@ -554,19 +548,18 @@ The specific parameters are described in the following table:
      - the path to an optional initialization script to be executed before the provided one
 
 .. tip::
-
-   The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
-   user-provided items, since the execution of an extra script can be performed at the script
-   level and global variables can be set up at the beginning of the script. A *frontend*, on
-   the other hand, can benefit of the combination of global variables and an initialization
-   script to change the interpreter behavior, for instance by setting the ``package.path`` and
-   ``package.cpath`` settings programmatically, possibly according to the current setup.
+    The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
+    user-provided items, since the execution of an extra script can be performed at the script
+    level and global variables can be set up at the beginning of the script. A *frontend*, on
+    the other hand, can benefit of the combination of global variables and an initialization
+    script to change the interpreter behavior, for instance by setting the ``package.path`` and
+    ``package.cpath`` settings programmatically, possibly according to the current setup.
 
 .. warning::
-   The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
-   due to the fact that safety is enforced at build time, and loading an external library is
-   considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
-   since any attempt to load a binary module will always result in a runtime error.
+    The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
+    due to the fact that safety is enforced at build time, and loading an external library is
+    considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
+    since any attempt to load a binary module will always result in a runtime error.
 
 The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
 *Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,
@@ -593,15 +586,14 @@ The Lua interpreter is initialized at each run by
 exactly in this order.
 
 .. note::
-
-   Each *Lua* based item (either task or condition) initializes its own instance of the
-   interpreter: this means that the global variables are set and the initialization script is run
-   every time the item is executed. At the end of the execution, the interpreter instance is
-   destroyed and its resources are freed. In fact, this means that at each run **whenever** has
-   to do some extra work to initialize the interpreter context; on the other hand, this allows
-   for multiple instances of *Lua* to run concurrently, and to be initialized with different
-   global variables and different startup scripts, as suggested by the *per item* configuration
-   options.
+    Each *Lua* based item (either task or condition) initializes its own instance of the
+    interpreter: this means that the global variables are set and the initialization script is run
+    every time the item is executed. At the end of the execution, the interpreter instance is
+    destroyed and its resources are freed. In fact, this means that at each run **whenever** has
+    to do some extra work to initialize the interpreter context; on the other hand, this allows
+    for multiple instances of *Lua* to run concurrently, and to be initialized with different
+    global variables and different startup scripts, as suggested by the *per item* configuration
+    options.
 
 External scripts can be executed via ``dofile("/path/to/script.lua")`` or by using the ``require``
 function. While a successful execution is always determined by matching the provided criteria, an
@@ -630,7 +622,7 @@ especially for what concerns the parameters to be passed to the method, and in t
 how to test the result.\ [#fn-3]_
 
 .. note::
-   This type of item is only available when the ``dbus`` feature is enabled.
+    This type of item is only available when the ``dbus`` feature is enabled.
 
 So, as a rule of thumb:\ [#fn-4]_
 
@@ -659,11 +651,11 @@ So, as a rule of thumb:\ [#fn-4]_
   * ``"value"``: the second operand for the specified operator.
 
 .. note::
-   The first element of the ``"index"`` field is always a *zero-based integer*:
-   this ia because a *message* is supposed to consist of an array of numbered *fields*:
-   if a single value is returned, which can also be as complex as a nested dictionary,
-   it is considered to be the first field (having 0 as index) of the return message,
-   thus *0* must be specified as the first value in the index.
+    The first element of the ``"index"`` field is always a *zero-based integer*:
+    this ia because a *message* is supposed to consist of an array of numbered *fields*:
+    if a single value is returned, which can also be as complex as a nested dictionary,
+    it is considered to be the first field (having 0 as index) of the return message,
+    thus *0* must be specified as the first value in the index.
 
 
 Please notice that not all types of operand are supported for all operators: comparisons
@@ -833,13 +825,11 @@ least one unsuccessful condition check (in which, of course, the tasks are not e
 following successful one the task run is performed again.
 
 .. warning::
-   Before version *0.4.x*, **whenever** used to accept parameters to be sent to a method (the
-   ``parameter_call`` entry) and the result criteria (the ``parameter_check`` entry) as JSON
-   encoded strings: this is not supported anymore, and the entries *must* be specified as TOML
-   lists. `When`_ can be used to convert an old configuration file to the new format, by using
-   the ``when tool --fix-config`` tool from the command line.
-
-.. _When: https://github.com/almostearthling/when-command
+    Before version *0.4.x*, **whenever** used to accept parameters to be sent to a method (the
+    ``parameter_call`` entry) and the result criteria (the ``parameter_check`` entry) as JSON
+    encoded strings: this is not supported anymore, and the entries *must* be specified as TOML
+    lists. `When`_ can be used to convert an old configuration file to the new format, by using
+    the ``when tool --fix-config`` tool from the command line.
 
 For this type of conditions the actual test can be performed at a random time within the tick interval.
 
@@ -858,7 +848,7 @@ where every component has a name. For analogy with database operations and queri
 will refer the returned compound values as *rows* or *records*, and their components as *fields*.
 
 .. note::
-   This type of item is only available when the ``wmi`` feature is enabled.
+    This type of item is only available when the ``wmi`` feature is enabled.
 
 *WMI* inquiries are somewhat simpler than their *DBus* counterparts, mostly because the query
 language is more structured and allows for more complex filtering at the query level. Because of
@@ -1030,6 +1020,8 @@ These conditions are associated to *events* for verification, no other criteria 
 For this type of conditions the actual test can be performed at a random time within the tick
 interval.
 
+
+.. _When: https://github.com/almostearthling/when-command
 
 .. [#fn-1] In this case the execution will continue as long as the outcome is *undefined* until
            the first success or failure happens.

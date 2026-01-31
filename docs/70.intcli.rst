@@ -76,15 +76,14 @@ reload only affects *item* configurations: in order to reset the global paramete
 application must be fully restarted.
 
 .. note::
-   *Resetting* the internal state of a condition indicates that, after the operation, the
-   condition has the same state as when the scheduler just started. It mostly has effect on
-   :ref:`interval <50-conditions-interval>` based conditions, conditions that are *not recurring*
-   -- especially when the ``max_tasks_retries`` parameter is specified, as the number of
-   available retries is set back to the provided value. In the first case, the condition
-   operates as if the interval counter had started in the instant of its reset. The second case
-   is actually more interesting, as the success state is taken back to an undetermined state,
-   and thus the scheduler starts checking the condition again even if it had succeeded before.
-   A condition that is resumed using the ``resume_condition`` command also receives a ``reset``,
-   so that conditions that depend on waiting for a certain amount of time to fire do not count
-   the time spent in suspended state as part of the time to wait for.
-
+    *Resetting* the internal state of a condition indicates that, after the operation, the
+    condition has the same state as when the scheduler just started. It mostly has effect on
+    :ref:`interval <50-conditions-interval>` based conditions, conditions that are *not recurring*
+    -- especially when the ``max_tasks_retries`` parameter is specified, as the number of
+    available retries is set back to the provided value. In the first case, the condition
+    operates as if the interval counter had started in the instant of its reset. The second case
+    is actually more interesting, as the success state is taken back to an undetermined state,
+    and thus the scheduler starts checking the condition again even if it had succeeded before.
+    A condition that is resumed using the ``resume_condition`` command also receives a ``reset``,
+    so that conditions that depend on waiting for a certain amount of time to fire do not count
+    the time spent in suspended state as part of the time to wait for.

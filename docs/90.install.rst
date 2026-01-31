@@ -108,7 +108,5 @@ file.
 
 
 .. _When: https://github.com/almostearthling/when-command
-
 .. _whenever_tray: https://github.com/almostearthling/whenever_tray
-
 .. _glogg: https://glogg.bonnefon.org/
