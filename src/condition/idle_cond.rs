@@ -511,7 +511,6 @@ impl Condition for IdleCondition {
                     }
                     Ok(Some(false))
                 }
-
             }
             Err(e) => {
                 // in case of error, consider the condition NOT verified, but
