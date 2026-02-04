@@ -47,26 +47,13 @@ Build Issues
 
 On Linux, the build process might complain that some packages are missing: it mainly occurs because
 the "essential build tools" and the *development* versions of some packages are not installed by
-default. Taking Debian as an example, the following packages must be installed:
+default. Taking Debian as an example, the following packages should be installed:
 
 
 * *pkg-config*
 * *libx11-dev*
-* *libdbus-1-dev*
-* *libxss-dev*
-* *xscreensaver* (not always necessary).
+* *libxss-dev*.
 
-With these packages installed, the scheduler compiles without errors. However, since not all Linux
-distributions come with *Xscreensaver* support (which is used to determine idle time), the related
-condition might not be checked and never fire. There is a *DBus* based workaround, that allows to
-use :ref:`idle session <50-conditions-idle>` conditions on Linux: the idle time, in this case, is
-counted as the amount of seconds after the screen has been locked. To enable this workaround, just
-edit the *Cargo.toml* file by uncommenting the second of the following lines:
-
-.. code-block:: toml
-
-   # user-idle has a problem on wayland-based sessions: work around by using
-   user-idle = { version = "0.5.3", default-features = false, features = ["dbus"] }  # <-- this line must be uncommented
-   # user-idle = "0.5.3"                                                             # <-- this line must be commented
-
-and commenting the line below.
+In fact, *X11* libraries are optional, and all features are now supported on Wayland desktops as
+well; however, in particular, *idle time detection* can fail on Wayland desktops if *X11* support
+is not available.
