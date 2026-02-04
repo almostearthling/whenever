@@ -9,7 +9,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::{Duration, Instant};
 
 use cfgmap::CfgMap;
-use user_idle::UserIdle;
+use system_idle_time::get_idle_time;
 
 use super::base::Condition;
 use crate::common::logging::{LogType, log};
@@ -484,7 +484,7 @@ impl Condition for IdleCondition {
     /// below the configured interval. In that case reset the internal state
     /// to start over checking (if _recurring_).
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-        if let Ok(idle) = UserIdle::get_time() {
+        if let Ok(idle) = get_idle_time() {
             // last_tested has already been set by trait to Instant::now()
             self.log(
                 LogType::Debug,
@@ -493,19 +493,19 @@ impl Condition for IdleCondition {
                 &format!(
                     "checking idle time based condition{} (test: {}<{}?)",
                     { if self.idle_verified { " [idle]" } else { "" } },
-                    idle.as_seconds(),
+                    idle.as_secs(),
                     self.idle_seconds.as_secs(),
                 ),
             );
             if !self.idle_verified {
-                if idle.duration() > self.idle_seconds {
+                if idle > self.idle_seconds {
                     self.idle_verified = true;
                     Ok(Some(true))
                 } else {
                     Ok(Some(false))
                 }
             } else {
-                if idle.duration() <= self.idle_seconds {
+                if idle <= self.idle_seconds {
                     self.idle_verified = false;
                 }
                 Ok(Some(false))
