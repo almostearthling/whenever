@@ -484,36 +484,49 @@ impl Condition for IdleCondition {
     /// below the configured interval. In that case reset the internal state
     /// to start over checking (if _recurring_).
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-        if let Ok(idle) = get_idle_time() {
-            // last_tested has already been set by trait to Instant::now()
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_PROC,
-                LOG_STATUS_MSG,
-                &format!(
-                    "checking idle time based condition{} (test: {}<{}?)",
-                    { if self.idle_verified { " [idle]" } else { "" } },
-                    idle.as_secs(),
-                    self.idle_seconds.as_secs(),
-                ),
-            );
-            if !self.idle_verified {
-                if idle > self.idle_seconds {
-                    self.idle_verified = true;
-                    Ok(Some(true))
+        match get_idle_time() {
+            Ok(idle) => {
+                // last_tested has already been set by trait to Instant::now()
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_MSG,
+                    &format!(
+                        "checking idle time based condition{} (test: {}<{}?)",
+                        { if self.idle_verified { " [idle]" } else { "" } },
+                        idle.as_secs(),
+                        self.idle_seconds.as_secs(),
+                    ),
+                );
+                if !self.idle_verified {
+                    if idle > self.idle_seconds {
+                        self.idle_verified = true;
+                        Ok(Some(true))
+                    } else {
+                        Ok(Some(false))
+                    }
                 } else {
+                    if idle <= self.idle_seconds {
+                        self.idle_verified = false;
+                    }
                     Ok(Some(false))
                 }
-            } else {
-                if idle <= self.idle_seconds {
-                    self.idle_verified = false;
-                }
+
+            }
+            Err(e) => {
+                // in case of error, consider the condition NOT verified, but
+                // with no side effects on internal status
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_ERR,
+                    &format!(
+                        "error while checking idle time based condition{}: {e}",
+                        { if self.idle_verified { " [idle]" } else { "" } },
+                    ),
+                );
                 Ok(Some(false))
             }
-        } else {
-            // in case of error, consider the condition NOT verified, but
-            // with no side effects on internal status
-            Ok(Some(false))
         }
     }
 }
