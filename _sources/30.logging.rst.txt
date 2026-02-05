@@ -1,0 +1,147 @@
+.. _30-logging:
+
+Logging
+=======
+
+Log messages are not dissimilar to the ones provided by servers and other applications running
+in the background: a date/time specification is reported, as well as the name of the application
+(*whenever*), the logging level to which the message line is pertinent, and then a message
+(the so-called *payload*). The message itself is structured: it consists of a short *context*
+specification, followed by a string enclosed in square brackets describing the nature of the
+message (for instance if the message is referred to the start or to the end of a process, and
+whether the message indicates a normal condition or something that went wrong). The context can
+be either the *MAIN* control program (or one of its threads), a *TASK*, a *CONDITION*, an
+*EVENT* or a *REGISTRY* -- there are many registries in **whenever**, used by the main control
+program to reach the *item* collections.
+
+Logging is quite verbose in **whenever** at the *trace* log level, and can be very brief when
+enabling logging just for warnings and errors.
+
+A short description of the log levels follows:
+
+#. **trace**: every single step is logged, some messages can be redundant because if an
+   acknowledgement or an issue takes place in more than one context of the program, each of the
+   involved parts may decide to log about what happened. Sometimes, for example, the same error
+   may be reported by a condition that is checked and by the registry that has been used to reach
+   this condition. Also, *history* messages are issued only at the trace level: *wrappers* will
+   want to use the *trace* level in order to catch these messages and calculate, for instance,
+   the execution time for a particular task.
+#. **debug**: there is plenty of informational messages at each execution step, however
+   redundant messages are not emitted. In particular, *history* messages are not present at this
+   level.
+#. **info**: a reduced amount of informational messages is emitted, mostly related to the outcome
+   of conditions and execution of related tasks; information about what is being checked is less
+   verbose. Very reduced logging is performed at this level by the main control program, thus most
+   of the logging is left to items.
+#. **warn**: **warnings** are logged, that is erratic situations that can be handled by
+   **whenever** without having to stop or abort -- note that termination requests are logged as
+   **warnings** instead of **errors**, even though they could be considered normal causes for
+   the scheduler to stop and exit.
+#. **error**: only **errors** are reported, which are erratic situations that may prevent
+   **whenever** to perform the requested operations or, in some cases, to keep running correctly.
+
+Note that, since *Lua* scripts are allowed to log at each of the above described levels, lines
+emitted by *Lua* script might not always correspond to what is illustrated above.
+
+As mentioned above, just after the *context*, in the message *payload*, a string of the form
+``[WHEN/STATUS]`` appears that can be used to better identify the reason why the message has
+been issued, where
+
+* *WHEN* represents the *nature* of the log entry, and can be one of
+
+  * ``INIT`` when the message is related to an initialization phase (mostly around startup)
+  * ``START`` when the message is issued when *starting* something, for instance a check or a new
+    process
+  * ``PROC`` when the message is issued in the middle of something, for instance while executing
+    a check
+  * ``END`` when the message is emitted at the end of something, before returning control
+  * ``HIST`` when the message is intended for some receiver (generally a wrapper) that keeps track
+    of the history: in this case the *outcome* is either ``START`` or ``END``
+  * ``BUSY`` when the message is intended for a receiver (generally a wrapper) that might show
+    whether the scheduler is busy\ [#fn-1]_ or not: *outcome* is here ``YES`` or ``NO``
+  * ``PAUSE`` when the message is intended for a receiver (generally a wrapper) that might show
+    whether the scheduler has been paused\ [#fn-2]_ or resumed: *outcome* is here ``YES`` or
+    ``NO``.
+
+* *STATUS* holds the *outcome* of the current activity, and is one of the following:
+
+  * ``OK`` for expected behaviours
+  * ``FAIL`` for unexpected behaviours
+  * ``IND`` when the outcome of an operation is undetermined
+  * ``MSG`` when the message is merely informational
+  * ``ERR`` when an operation fails with an error
+  * ``START``\ /\ ``END`` are pseudo-outcomes that only occur when the *nature* is ``HIST``, to
+    mark the beginning or the end of an activity
+  * ``YES``\ /\ ``NO`` are pseudo-outcomes that only occur when the *nature* is one of ``BUSY`` or
+    ``PAUSE``, according to the actual busy state or to the fact that the scheduler has been
+    paused or resumed respectively.
+
+This string appears *before* a human-readable message, so that it can be used by a wrapper to
+filter or highlight an entry when displaying the log -- completely or partially. Sometimes it might
+seem that the expression in square bracket conflicts with the message body, a notable example being
+a message similar to
+
+.. code-block:: text
+
+   [2023-06-20T21:53:45.089] (whenever) INFO  CONDITION Cond_INTERVAL/6: [END/OK] failure: condition checked with negative outcome
+
+while in fact this kind of message is absolutely legitimate: a negative outcome in condition
+checking is expected quite often, this is the reason why the message documenting a failed check
+is reported as a positive (``[END/OK]``) log entry.
+
+There is an option that can be specified on the :ref:`command line <20-cli>`,
+that forces the log lines to be emitted in the JSON format: this allows to separate the parts
+more easily into a header (``"header"`` field) that holds
+
+* the log timestamp (``"time"``)
+* the application name (``"application"``)
+* log level (``"level"``)
+
+followed by the actual log contents, consisting of
+
+* context (``"context"``), which contains
+
+  * the part of the scheduler that emits the message (``"emitter"``)
+  * the action that is being performed, or the indication that an item is active (``"action"``)
+  * the name and unique id of the item, if the message concerns an activated item (``"item"``
+    and ``"item_id"``)
+
+* the message type (``"message_type"``), consisting of
+
+  * the nature of the message (``"when"``)
+  * the current outcome (``"status"``)
+
+* a human readable message (``"message"``)
+
+in order to better handle the logs and to provide feedback to the user. A sample JSON record is
+shown below:
+
+.. code-block:: json
+
+   {
+       "header": {
+           "application": "whenever",
+           "level": "TRACE",
+           "time": "2023-11-04T11:17:25.257970"
+       },
+       "contents": {
+           "context": {
+               "action": "scheduler_tick",
+               "emitter": "MAIN",
+               "item": null,
+               "item_id": null
+           },
+           "message": "condition Cond_TIME tested with no outcome (tasks not executed)",
+           "message_type": {
+               "status": "MSG",
+               "when": "PROC"
+           }
+       }
+   }
+
+The actual log record, also in JSON format, is emitted in the form of a single text line.
+
+
+.. [#fn-1] that is, checking one or more conditions and/or running their related tasks.
+.. [#fn-2] the *PAUSE* line will be issued just once when the ``pause`` input command is invoked,
+           and once when the ``resume`` input command is issued.
