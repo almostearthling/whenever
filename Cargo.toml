@@ -43,7 +43,7 @@ toml = "1.0"
 serde = "1.0"
 lazy_static = "1.4.0"
 subprocess = "0.2.9"
-ctrlc = { version = "3.2", features = ["termination"] }
+ctrlc = { version = "3.5.1", features = ["termination"] }
 cfgmap = { version = "0.4.0", features = ["from_toml", "from_json"] }
 clap = { version = "4.1.4", features = ["derive"] }
 mlua = { version = "0.11.1", features = ["lua54", "vendored"] }
@@ -54,7 +54,7 @@ notify = "8.1.0"
 async-std = "1.12.0"
 zbus = "5.9.0"
 wmi = "0.18.0"
-whoami = "2.0.0"
+whoami = "2.1.1"
 itertools = "0.14.0"
 futures = "0.3"
 async-trait = "0.1.89"

@@ -3,7 +3,7 @@
 //! A lightweight multiplatform background job launcher based upon
 //! verification of various types of conditions.
 
-use rand::{RngCore, rng};
+use rand::{Rng, rng};
 use std::io::{BufRead, Stdin, stdin};
 use std::sync::{Mutex, RwLock};
 use std::thread;
