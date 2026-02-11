@@ -1,6 +1,6 @@
 [package]
 name = "whenever"
-description = "Lightweight task scheduler and automation tool"
+description = "Whenever Automation Tool"
 readme = "README.md"
 license = "LGPL-2.1-or-later"
 version = "1.1.0"
