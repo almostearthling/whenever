@@ -43,7 +43,7 @@ toml = "1.0"
 serde = "1.0"
 lazy_static = "1.4.0"
 subprocess = "0.2.9"
-ctrlc = { version = "3.2.5", features = ["termination"] }
+ctrlc = { version = "3.2", features = ["termination"] }
 cfgmap = { version = "0.4.0", features = ["from_toml", "from_json"] }
 clap = { version = "4.1.4", features = ["derive"] }
 mlua = { version = "0.11.1", features = ["lua54", "vendored"] }
