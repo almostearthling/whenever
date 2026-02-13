@@ -42,7 +42,7 @@ listenfd = "1.0.1"
 toml = "1.0"
 serde = "1.0"
 lazy_static = "1.4.0"
-subprocess = "0.2.9"
+subprocess = "0.2.15"
 ctrlc = { version = "3.5.1", features = ["termination"] }
 cfgmap = { version = "0.4.0", features = ["from_toml", "from_json"] }
 clap = { version = "4.1.4", features = ["derive"] }
