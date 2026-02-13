@@ -56,9 +56,9 @@ fn main() {
                 // ...
                 // ^^^ other Windows specific actions should be added above here
             }
-            // "linux" => {
-            //
-            // }
+            "linux" => {
+            
+            }
             // ...
             // ^^^ other supported platforms should be added above here
             _ => {
