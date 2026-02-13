@@ -1,5 +1,5 @@
-The Whenever Scheduler
-======================
+The Whenever Automation Tool
+============================
 
 :Version: |release|
 

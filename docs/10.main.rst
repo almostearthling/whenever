@@ -3,7 +3,7 @@
 The **whenever** Documentation
 ==============================
 
-**whenever** is a lightweight task scheduler capable of executing *tasks* (in particular, OS
+**whenever** is a lightweight automation tool capable of executing *tasks* (in particular, OS
 commands and *Lua* scripts) according to specific *conditions*. Conditions are of various types:
 depending on time (both intervals or specific more-or-less defined instants), execution of OS
 commands or *Lua* scripts, changes in specific files and directories, session inactivity, DBus
