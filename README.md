@@ -25,7 +25,7 @@ while _tasks_ mostly consist in the execution of OS commands and _Lua_ scripts. 
 
 ## :sparkles: Purpose
 
-**whenever** works on both Linux and Windows: on Linux it allows for a more flexible way of automating actions compared to the traditional _cron_ method, and on Windows it offers a more streamlined way to schedule activities, compared to the system-provided _Time Scheduler_ which is available through the system management console.
+**whenever** works on both Linux and Windows: on Linux it allows for a more flexible way of automating actions compared to the traditional _cron_ method, and on Windows it offers a more streamlined way to schedule activities, compared to the system-provided _Task Scheduler_ which is available through the system management console.
 
 The ability to inspect [_DBus_](https://www.freedesktop.org/wiki/Software/dbus/) and [_WMI_](https://learn.microsoft.com/it-it/windows/win32/wmisdk/wmi-start-page) as well as react to the respective signals and events, and to use system commands to check their status and output, allows for conditions to be activated virtually at every possible change in the system status.
 
