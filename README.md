@@ -1,4 +1,4 @@
-# The Whenever Task Scheduler
+# The Whenever Automation Tool
 
 ![HeaderImage](docs/graphics/banner.png)
 
