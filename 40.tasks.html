@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tasks &mdash; Whenever 1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=58fbf978"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Conditions" href="50.conditions.html" />
+    <link rel="prev" title="Globals" href="35.globals.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="10.main.html">The <strong>whenever</strong> Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="20.cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tasks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#command">Command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lua-script">Lua script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-input-command">Internal input command</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="50.conditions.html">Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1"><a class="reference internal" href="70.intcli.html">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1"><a class="reference internal" href="90.install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Tasks</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/40.tasks.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tasks">
+<span id="id1"></span><h1>Tasks<a class="headerlink" href="#tasks" title="Link to this heading"></a></h1>
+<p><em>Tasks</em> are handled first in this document, because <em>conditions</em> must mandatorily specify the
+tasks to be executed upon verification. There are three types of task, each of which is described
+in detail in its specific subsection.</p>
+<p>Tasks are defined via a dedicated table, which means that every task definition must start with the
+TOML <code class="docutils literal notranslate"><span class="pre">[[task]]</span></code> section header.</p>
+<p>Task names are mandatory, and must be provided as alphanumeric strings (may include underscores),
+beginning with a letter. The task type must be one of <code class="docutils literal notranslate"><span class="pre">&quot;command&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lua&quot;</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">&quot;internal&quot;</span></code> according to what has to be configured, and any other value is considered a
+configuration error. There is another optional entry, namely <code class="docutils literal notranslate"><span class="pre">tags</span></code>, that is accepted in item
+configuration: this entry is ignored by <strong>whenever</strong> itself, however it is checked for correctness
+at startup and the configuration is refused if not set to an array (of strings) or a table.</p>
+<section id="command">
+<span id="tasks-command"></span><h2>Command<a class="headerlink" href="#command" title="Link to this heading"></a></h2>
+<p><em>Command</em> based tasks actually execute commands at the OS level: they might have a <em>positive</em> as
+well as a <em>negative</em> outcome, depending on user-provided criteria. As said above, these criteria
+may not just depend on the exit code of the executed command, but also on checks performed on its
+output taking either the standard output or the standard error channels into account. By default
+no check is performed, but the user can choose, for instance, to consider a zero exit code as a
+successful execution (quite common for OS commands). It is possible to consider another exit code
+as successful, or the zero exit code as a failure (for example, if a file should not be found,
+performing <code class="docutils literal notranslate"><span class="pre">ls</span></code> on it would have the zero exit code as an <em>undesirable</em> outcome). Also, a
+particular substring can be sought in the standard output or standard error streams both as
+expected or as unexpected. The two streams can be matched against a provided <em>regular expression</em>
+if just seeking a certain substring is not fine-grained enough. Both substrings and regular
+expressions can be respectively sought or matched either case-sensitively or case-insensitively.</p>
+<p>A sample configuration for a command based task is the following:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[task]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;CommandTaskName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+<span class="n">startup_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/some/startup/directory&quot;</span><span class="w">    </span><span class="c1"># must exist</span>
+<span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;executable_name&quot;</span>
+<span class="n">command_arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;arg1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;arg2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">match_exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">match_regular_expression</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">success_stdout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;expected&quot;</span>
+<span class="n">success_stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;expected_error&quot;</span>
+<span class="n">success_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="n">failure_stdout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;unexpected&quot;</span>
+<span class="n">failure_stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;unexpected_error&quot;</span>
+<span class="n">failure_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span>
+<span class="n">timeout_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">case_sensitive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">include_environment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">set_environment_variables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">environment_variables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">VARNAME1</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;value1&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">VARNAME2</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;value2&quot;</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>and the following table provides a detailed description of the entries:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the unique name of the task (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>must be set to <code class="docutils literal notranslate"><span class="pre">&quot;command&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">startup_path</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the directory in which the command is started</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">command</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>path to the executable (mandatory; if the path is omitted, the executable should be found
+in the search <em>PATH</em>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">command_arguments</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>arguments to pass to the executable: can be an empty list, <code class="docutils literal notranslate"><span class="pre">[]</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">match_exact</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, the entire output is matched instead of searching for a substring</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">match_regular_expression</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, the match strings are considered regular expressions instead of substrings</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">case_sensitive</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, substring search or match and regular expressions match is performed
+case-sensitively</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timeout_seconds</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>if set, the number of seconds to wait before the command is terminated (with
+unsuccessful outcome)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">success_status</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>if set, when the execution ends with the provided exit code the task is considered
+successful</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">failure_status</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>if set, when the execution ends with the provided exit code the task is considered failed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">success_stdout</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stdout</em> to consider the task successful</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">success_stderr</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stderr</em> to consider the task successful</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">failure_stdout</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stdout</em> to consider the task failed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">failure_stderr</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stderr</em> to consider the task failed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">include_environment</span></code></p></td>
+<td><p><em>true</em></p></td>
+<td><p>if <em>true</em>, the command is executed in the same environment in which <strong>whenever</strong> was
+started</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">set_environment_variables</span></code></p></td>
+<td><p><em>true</em></p></td>
+<td><p>if <em>true</em>, <strong>whenever</strong> sets environment variables reporting the names of the task and the
+condition</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">environment_variables</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>extra variables that might have to be set in the environment in which the provided command
+runs</p></td>
+</tr>
+</tbody>
+</table>
+<p>The priority used by <strong>whenever</strong> to determine success or failure in the task is the one in which
+the related parameters appear in the above table: first exit codes are checked, then both <em>stdout</em>
+and <em>stderr</em> are checked for substrings or regular expressions that identify success, and finally
+the same check is performed on values that indicate a failure. Note that the command execution is
+not considered successful with a zero exit code by default, nor a failure on a nonzero exit code:
+both assumptions have to be explicitly configured by setting either <code class="docutils literal notranslate"><span class="pre">success_status</span></code> or
+<code class="docutils literal notranslate"><span class="pre">failure_status</span></code>.</p>
+<p>If a command is known to have the possibility to hang, a timeout can be configured by specifying
+the maximum number of seconds to wait for the process to exit: after this amount of time the
+process is terminated and fails.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">set_environment_variables</span></code> is <em>true</em>, <strong>whenever</strong> sets the following environment variables:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">WHENEVER_TASK</span></code> to the unique name of the task</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WHENEVER_CONDITION</span></code> to the unique name of the condition that triggered the task</p></li>
+</ul>
+<p>for scripts or other executables that might be aware of <strong>whenever</strong>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Many times the success or failure status can be disregarded, especially in situations where
+a condition causes a single task to be executed. When an execution flow must be respected,
+providing the correct parameters to identify success or failure becomes substantial, as well
+as in cases when the associated condition is set to retry the task (or a sequence where it
+is contained) until it succeeds.</p>
+</div>
+</section>
+<section id="lua-script">
+<span id="tasks-lua"></span><h2>Lua script<a class="headerlink" href="#lua-script" title="Link to this heading"></a></h2>
+<p>Tasks based on <a class="reference external" href="https://www.lua.org/">Lua</a> scripts might be useful when an action has to be
+performed that requires a non-trivial sequence of operations, but for which it would be excessive to
+write a specific script to be run as a command. The script to be run is embedded directly in the
+configuration file – TOML helps in this sense, by allowing multiline strings by specification.</p>
+<p><em>Lua</em> based tasks can be considered more lightweight than <em>command</em> tasks, as the interpreter is
+embedded in <strong>whenever</strong>. Also, the embedded <em>Lua</em> interpreter is enriched with library functions
+that allow to write to the <strong>whenever</strong> log, at all logging levels (<em>error</em>, <em>warn</em>, <em>info</em>,
+<em>debug</em>, <em>trace</em>). The library functions are the following:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">log.error</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.warn</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.info</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.debug</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.trace</span></code></p></li>
+</ul>
+<p>and take a single string as their argument.</p>
+<p>The configuration of <em>Lua</em> based tasks has the following form:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[task]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;LuaTaskName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lua&quot;</span>
+<span class="n">script</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    log.info(&quot;hello from &quot; .. name);</span>
+<span class="s1">    result = 10;</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">expect_all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">variables_to_set</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;Lua&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="n">expected_results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>and the following table provides a detailed description of the entries:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the unique name of the task (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>must be set to <code class="docutils literal notranslate"><span class="pre">&quot;lua&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">script</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the <em>Lua</em> code that has to be executed by the internal interpreter (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">expect_all</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, all the expected results have to be matched to consider the task successful,
+otherwise at least one</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">variables_to_set</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>a dictionary of variable names and the values to which they will be set as globals in
+the interpreter before running the script</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">expected_results</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>a dictionary of variable names and their expected values to be checked after execution</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">init_script_path</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the path to an optional initialization script to be executed before the provided one</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">variables_to_set</span></code> and <code class="docutils literal notranslate"><span class="pre">init_script_path</span></code> settings are generally of little use for
+user-provided items, since the execution of an extra script can be performed at the script
+level and global variables can be set up at the beginning of the script. A <em>frontend</em>, on
+the other hand, can benefit of the combination of global variables and an initialization
+script to change the interpreter behavior, for instance by setting the <code class="docutils literal notranslate"><span class="pre">package.path</span></code> and
+<code class="docutils literal notranslate"><span class="pre">package.cpath</span></code> settings programmatically, possibly according to the current setup.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The embedded <em>Lua</em> interpreter is not able to load <em>Lua C (binary) modules</em>:<a class="footnote-reference brackets" href="#fn-7" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> this is
+due to the fact that safety is enforced at build time, and loading an external library is
+considered unsafe. This also means that the <code class="docutils literal notranslate"><span class="pre">package.cpath</span></code> setting will never have effect,
+since any attempt to load a binary module will always result in a runtime error.</p>
+</div>
+<p>Note that <em>triple single quotes</em> have been used to embed the script: this allows to use escapes
+and quotes in the script itself. Although the script should be embedded in the configuration file,
+it is possible to execute external scripts via <code class="docutils literal notranslate"><span class="pre">dofile(&quot;/path/to/script.lua&quot;)</span></code> or by using the
+<code class="docutils literal notranslate"><span class="pre">require</span></code> function. While a successful execution is always determined by matching the provided
+criteria, an error in the script is always considered a failure.</p>
+<p>From the embedded <em>Lua</em> interpreter there are two values set that can be accessed:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">whenever_task</span></code> is the name of the task that executes the script</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">whenever_condition</span></code> is the name of the condition that triggered the task.</p></li>
+</ul>
+<p>which might be useful if the scripts are aware of being run within <strong>whenever</strong>.</p>
+<p>The Lua interpreter is initialized at each run by</p>
+<ul class="simple">
+<li><p>setting the additional variables, including the ones implicitly provided by <strong>whenever</strong>,</p></li>
+<li><p>implementing the extra log functionality, and</p></li>
+<li><p>executing the startup script,</p></li>
+</ul>
+<p>exactly in this order.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each <em>Lua</em> based item (either task or condition) initializes its own instance of the
+interpreter: this means that the global variables are set and the initialization script is run
+every time the item is executed. At the end of the execution, the interpreter instance is
+destroyed and its resources are freed. In fact, this means that at each run <strong>whenever</strong> has
+to do some extra work to initialize the interpreter context; on the other hand, this allows
+for multiple instances of <em>Lua</em> to run concurrently, and to be initialized with different
+global variables and different startup scripts, as suggested by the <em>per item</em> configuration
+options.</p>
+</div>
+</section>
+<section id="internal-input-command">
+<span id="tasks-internal"></span><h2>Internal input command<a class="headerlink" href="#internal-input-command" title="Link to this heading"></a></h2>
+<p>This type of task is useful in case the ability of <strong>whenever</strong> to unattendendly do something is
+needed to control the running instance of <strong>whenever</strong> itself: it is possible in fact to instruct
+the scheduler to execute one of the <a class="reference internal" href="70.intcli.html#intcli-input-commands"><span class="std std-ref">commands</span></a> that have been
+implemented to be used by wrapper applications. This means that the scheduler:</p>
+<ul class="simple">
+<li><p>can automatically reset one or more conditions</p></li>
+<li><p>can pause itself or shut itself down: in both cases there is no automatic way back</p></li>
+<li><p>can reload its configuration file</p></li>
+</ul>
+<p>and so on upon verification of a condition.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>No security concern is raised here, as <strong>whenever</strong> is designed with the intention to
+run without administration rights; obviously every kind of automation tool, which performs
+unattended operations, might execute malicious actions under the hood, however the absence of
+particular privileges when running and the ability to read the configuration file without the
+need of specific tools, allow for complete control on what <strong>whenever</strong> does.</p>
+</div>
+<p>The configuration for such a type of task is simple, as it only requires to set the <code class="docutils literal notranslate"><span class="pre">command</span></code>
+parameter in addition to the name and type. An example internal command based task is the
+following:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[task]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;InternalTaskName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;internal&quot;</span>
+<span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;reset_conditions Cond1 Cond2&quot;</span>
+</pre></div>
+</div>
+<p>which resets the conditions named <code class="docutils literal notranslate"><span class="pre">Cond1</span></code> and <code class="docutils literal notranslate"><span class="pre">Cond2</span></code>, if they exist. A detailed description
+of the parameter entries follows:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the unique name of the task (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>must be set to <code class="docutils literal notranslate"><span class="pre">&quot;internal&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">command</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the internal command to be run, as a single string that includes its parameters</p></td>
+</tr>
+</tbody>
+</table>
+<p>As mentioned above, a comprehensivew list of possible internal commands can be found in the
+appropriate <a class="reference internal" href="70.intcli.html#intcli-input-commands"><span class="std std-ref">section</span></a>.</p>
+<p>This type of item is mostly intended as a way to automate part of the behavior of <strong>whenever</strong>
+during a session on behalf of a wrapper, that might expose part of the configuration implemented
+as a combination of internally managed conditions and specific tasks (even of this type) as single
+and simpler configuration element: an example could be the use of the <em>org.freedesktop.UPower</em>
+interface in DBus to catch a <em>system resume</em> event in order to reset all the conditions.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The provided command will <em>not</em> be checked upon configuration, it will <em>fail</em> instead causing
+a warning to be logged in case it is invalid or malformed.</p>
+</div>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="fn-7" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">1</a><span class="fn-bracket">]</span></span>
+<p>In fact, there is the option to include the <em>unsafe</em> version of the <em>Lua</em> interpreter
+in <strong>whenever</strong>: it is still experimental and not well supported, and loading binary
+modules often leads to runtime errors in this case too.</p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="35.globals.html" class="btn btn-neutral float-left" title="Globals" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="50.conditions.html" class="btn btn-neutral float-right" title="Conditions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

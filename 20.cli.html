@@ -1,0 +1,183 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Command Line Interface &mdash; Whenever 1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=58fbf978"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Logging" href="30.logging.html" />
+    <link rel="prev" title="The whenever Documentation" href="10.main.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="10.main.html">The <strong>whenever</strong> Documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="40.tasks.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="50.conditions.html">Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1"><a class="reference internal" href="70.intcli.html">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1"><a class="reference internal" href="90.install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Command Line Interface</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/20.cli.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="command-line-interface">
+<span id="cli"></span><h1>Command Line Interface<a class="headerlink" href="#command-line-interface" title="Link to this heading"></a></h1>
+<p>The command can be directly invoked as a foreground process from the command line. This is
+particularly useful (especially with full logging enabled) to debug the configuration.
+<strong>whenever</strong> either logs to the console or to a specified file. When logging to the console,
+different colors are used by default to visually accentuate messages related to different
+logging levels.</p>
+<p>By invoking <strong>whenever</strong> and specifying <code class="docutils literal notranslate"><span class="pre">--help</span></code> as argument, the output is the following:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>~$ whenever --help
+A lightweight task scheduler and automation tool
+
+Usage: whenever [OPTIONS] &lt;CONFIG&gt;
+
+Arguments:
+  &lt;CONFIG&gt;  Path to configuration file
+
+Options:
+  -q, --quiet              Suppress all output
+  -p, --pause              Start in paused mode
+  -r, --check-running      Check whether an instance is running
+  -O, --options            Provide the list of available optional features
+  -l, --log &lt;LOGFILE&gt;      Specify the log file
+  -L, --log-level &lt;LEVEL&gt;  Specify the log level [default: warn] [possible values: trace, debug, info, warn, error]
+  -a, --log-append         Append to an existing log file if found
+  -P, --log-plain          No colors when logging (default when logging to file)
+  -C, --log-color          Use colors when logging (default, ignored when logging to file)
+  -J, --log-json           Use JSON format for logging
+  -h, --help               Print help
+  -V, --version            Print version
+</pre></div>
+</div>
+<p>The only elements that should be highlighted are the following:</p>
+<ul class="simple">
+<li><p><strong>whenever</strong> also suppresses errors in <em>quiet</em> mode, it is recommended to at least specify a log
+file</p></li>
+<li><p>it is possible to suppress colors when logging to console, by specifying <code class="docutils literal notranslate"><span class="pre">--log-plain</span></code> as an
+argument</p></li>
+<li><p>when run within a wrapper, <strong>whenever</strong> can emit log messages in the JSON format, to make it
+easier for the wrapper to interpret and classify them</p></li>
+<li><p><strong>whenever</strong> can be started in paused mode</p></li>
+<li><p>when checking for another running instance, the <code class="docutils literal notranslate"><span class="pre">whenever</span> <span class="pre">--check-running</span></code> command exits
+immediately with a <code class="docutils literal notranslate"><span class="pre">0</span></code> exit code if another instance is found, <code class="docutils literal notranslate"><span class="pre">1</span></code> otherwise: it also writes
+an answer to the standard output that can be suppressed using the <code class="docutils literal notranslate"><span class="pre">--quiet</span></code> switch.<a class="footnote-reference brackets" href="#fn-1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></li>
+</ul>
+<p>When debugging a configuration file, it might be useful to set the log level at least to <em>debug</em>,
+if not to <em>trace</em> which also emits some redundant messages.</p>
+<p>An important thing to notice is that configuration errors will cause <strong>whenever</strong> to abort, by
+issuing a very brief message on the console.</p>
+<p>Also, <strong>whenever</strong> will refuse to start when another instance is running for the same user (that
+is, most of the times in the same session): the <code class="docutils literal notranslate"><span class="pre">--check-running</span></code> switch has been introduced to
+possibly allow a launcher to perform a test before attempting to actually start the scheduler. On
+the same host, however, different users can launch instances of <strong>whenever</strong>, which are
+considered different.</p>
+<p>To exit from <strong>whenever</strong> (when running as a CLI program from an interactive shell) che usual
+<em>Ctrl+C</em> key combination can be used. This will however wait for all currently running activities,
+be it condition checks or tasks, to finish. In order to force <strong>whenever</strong> to exit abruptly,
+either a <a class="reference internal" href="70.intcli.html#intcli-input-commands"><span class="std std-ref">command</span></a> must be used or it must be explicitly killed.</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="fn-1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Executables compiled in <em>debug mode</em>, however, do not consider an active release
+instance as running, and the instance check option will only report an active debug
+instance to a debug instance, and an active release instance to a release instance.</p>
+</aside>
+</aside>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="10.main.html" class="btn btn-neutral float-left" title="The whenever Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="30.logging.html" class="btn btn-neutral float-right" title="Logging" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1185 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conditions &mdash; Whenever 1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=58fbf978"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Events" href="60.events.html" />
+    <link rel="prev" title="Tasks" href="40.tasks.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="10.main.html">The <strong>whenever</strong> Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="20.cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="40.tasks.html">Tasks</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#interval">Interval</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#time">Time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conditions-idle">Idle session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#command">Command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lua-script">Lua script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dbus-method-optional">DBus method (optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#wmi-query-optional-windows-only">WMI Query (optional, Windows only)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#event">Event</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1"><a class="reference internal" href="70.intcli.html">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1"><a class="reference internal" href="90.install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Conditions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/50.conditions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="conditions">
+<span id="id1"></span><h1>Conditions<a class="headerlink" href="#conditions" title="Link to this heading"></a></h1>
+<p><em>Conditions</em> are at the heart of <strong>whenever</strong>, by triggering the execution of tasks. As
+mentioned before, several types of condition are supported. Part of the configuration is
+common to all conditions, that is:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the unique name of the condition (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>string describing the type of condition (mandatory, one of the possible values)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recurring</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>false</em>, the condition is not checked anymore after first successful verification</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_tasks_retries</span></code></p></td>
+<td><p>0</p></td>
+<td><p>how many times the tasks will be retried, when at least one of them fails, in non recurring
+conditions</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">execute_sequence</span></code></p></td>
+<td><p><em>true</em></p></td>
+<td><p>if <em>true</em> the associated tasks are executed one after the other, in the order in which they
+are listed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">break_on_success</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, task execution stops after the first successfully executed task (when
+<code class="docutils literal notranslate"><span class="pre">execute_sequence</span></code> is <em>true</em>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">break_on_failure</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, task execution stops after the first failed task (when <code class="docutils literal notranslate"><span class="pre">execute_sequence</span></code> is
+<em>true</em>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">suspended</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, the condition will not be checked nor the associated tasks executed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tasks</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[]</span></code></p></td>
+<td><p>a list of task names that will be executed upon condition verification</p></td>
+</tr>
+</tbody>
+</table>
+<p>When <code class="docutils literal notranslate"><span class="pre">execute_sequence</span></code> is set to <em>false</em>, the associated tasks are started concurrently in the
+same instant, and task outcomes are ignored. Otherwise a minimal control flow is implemented,
+allowing the sequence to be interrupted after the first success or failure in task execution. Note
+that it is possible to set both <code class="docutils literal notranslate"><span class="pre">break_on_success</span></code> and <code class="docutils literal notranslate"><span class="pre">break_on_failure</span></code> to <em>true</em>.<a class="footnote-reference brackets" href="#fn-1" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p>
+<p>The <code class="docutils literal notranslate"><span class="pre">type</span></code> entry can be one of: <code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;time&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;idle&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;command&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;lua&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;event&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;dbus&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;wmi&quot;</span></code>. Any other value is considered a
+configuration error.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;dbus&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;wmi&quot;</span></code> values will be considered an error if the respective features are
+not available.</p>
+</div>
+<p>For conditions that should be periodically checked and whose associated task list has to be run
+<em>whenever</em> they occur (and not just after the first occurrence), the <code class="docutils literal notranslate"><span class="pre">recurring</span></code> entry can be set
+to <em>true</em>. Conditions with no associated tasks (eg. when the user comments out all the associated
+tasks in the configuration file) are not checked.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">max_tasks_retries</span></code> field indicates how many times the execution of a failed task, or a set
+of tasks of which <em>at least one</em> has failed, will be retried in non recurring conditions when the
+condition check is successful: a value of <em>N</em> indicates that the check will be performed at most
+<em>N</em> times after the first failure in tasks before giving up checking. If all the tasks succeed at
+the first time or within the provided number of retries, the non recurring condition will cease
+its checks anyway. A provided value of <code class="docutils literal notranslate"><span class="pre">-1</span></code> instructs <strong>whenever</strong> that the checks must continue
+indefinitely until all the associated tasks succeed, a value of <code class="docutils literal notranslate"><span class="pre">0</span></code> indicates that there should
+be no retries after the first unsuccessful run. Values below <code class="docutils literal notranslate"><span class="pre">-1</span></code> are not admitted. This
+parameter is ignored in recurring conditions. Tasks whose outcome is not checked do <strong>not</strong> count
+as unsuccessful. If <code class="docutils literal notranslate"><span class="pre">break_on_success</span></code> is <em>true</em> and the first task in a sequence has a positive
+oucome, the entire sequence is considered successful: in other words, only tasks that have been
+executed count for outcome verification.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">suspended</span></code> entry can assume a <em>true</em> value for conditions for which the user does not want
+to remove the configuration but should be (at least temporarily) prevented. However, a condition
+that is suspended by configuration can be awakened using an interactive command (usually by a
+wrapper): <a class="reference internal" href="70.intcli.html#intcli-input-commands"><span class="std std-ref">input commands</span></a> passed via the <em>stdin</em> based interface
+can be used to suspend and resume condition checks when the scheduler is running.</p>
+<p>There is another optional entry, namely <code class="docutils literal notranslate"><span class="pre">tags</span></code>, that is accepted in item configuration: this
+entry is ignored by <strong>whenever</strong> itself, however it is checked for correctness at startup and the
+configuration is refused if not set to an array (of strings) or a table.</p>
+<p>Another entry is common to several condition types, that is <cite>check_after</cite>: it can be set to the
+number of seconds that <strong>whenever</strong> has to wait after startup (and after the last check for
+_recurring_ conditions) for a subsequent check: this is useful for conditions that can run on a
+more relaxed schedule, or whose check process has a significant cost in terms of resources, or
+whose associated task sequence might take a long time to finish. Simpler conditions and conditions
+based on time do not accept this entry.</p>
+<p>Some condition types can set the <code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code> flag: it allows for avoidance of
+multiple subsequent task runs in case of a persistent situation that causes <em>recurring</em> condition
+checks to be successful: the associated tasks are run as soon as the check is successful for the
+first time, then task execution is prevented as long as this status persists. After at least one
+unsuccessful condition check (in which, of course, the tasks are not executed), at the following
+successful one the task run is performed again.</p>
+<p>While a condition check or the execution of an associated task sequence is underway, the condition
+is marked as <em>busy</em>, and while a condition is in this state no further checks are performed. The
+condition is released from its <em>busy</em> state only after all checks and tasks have been performed.
+This is important when long-running checks and tasks are requested, as this flag ensures that
+checks and tasks for a single long-running and recurring activity cannot overlap.</p>
+<p>Note that all listed tasks must be defined, otherwise an error is raised and <strong>whenever</strong> will not
+start.</p>
+<p>The following paragraphs describe in detail each condition type. For the sake of brevity, only
+specific configuration entries will be described for each type.</p>
+<p>All <em>condition</em> definition sections must start with the TOML <code class="docutils literal notranslate"><span class="pre">[[condition]]</span></code> header.</p>
+<section id="interval">
+<span id="conditions-interval"></span><h2>Interval<a class="headerlink" href="#interval" title="Link to this heading"></a></h2>
+<p><em>Interval</em> based conditions are verified after a certain amount of time has passed, either since
+startup or after the last successful check. This type of condition is useful for tasks that should
+be executed periodically, thus most of the times <code class="docutils literal notranslate"><span class="pre">recurring</span></code> will be set to <em>true</em> for this type
+of condition. The following is an example of interval based condition:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;IntervalConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;interval&quot;</span>
+<span class="n">interval_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3600</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">max_tasks_retries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Task2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+</pre></div>
+</div>
+<p>describing a condition that is verified one hour after <strong>whenever</strong> has started, and not anymore
+after the first occurrence – because <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is <em>false</em> here and no retries are allowed.
+Were it <em>true</em>, the condition would be verified <em>every</em> hour.</p>
+<p>The specific parameters for this type of condition are:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">interval_seconds</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the number of seconds to wait for the condition to be verified (mandatory)</p></td>
+</tr>
+</tbody>
+</table>
+<p>The check for this type of condition is never randomized.</p>
+</section>
+<section id="time">
+<span id="conditions-time"></span><h2>Time<a class="headerlink" href="#time" title="Link to this heading"></a></h2>
+<p><em>Time</em> based conditions occur just after one of the provided time specifications has been reached.
+Time specifications are given as a list of tables, each of which can contain one or more of the
+following entries:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">hour</span></code>: the hour, as an integer between 0 and 23</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">minute</span></code>: the minute, as an integer between 0 and 59</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">second</span></code>: the second, as an integer between 0 and 59</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">year</span></code>: an integer expressing the (full) year</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">month</span></code>: an integer expressing the month, between 1 (January) and 12 (December)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">day</span></code>: an integer expressing the day of the month, between 1 and 31</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">weekday</span></code>: the name of the weekday in English, either whole or abbreviated to three letters.</p></li>
+</ul>
+<p>Not all the entries must be specified: for instance, specifying the day of week and a full date (as
+year, month, date) may cause the event to never occur if that particular date does not occur on
+that specific week day. Normally a day of the month will be specified, and then a time of the day,
+or a weekday and a time of the day. However full freedom is given in specifying or omitting part of
+the date:</p>
+<ul class="simple">
+<li><p>missing parts in the date will be considered verified at every change of each of them (years,
+months, days, and weekdays)</p></li>
+<li><p>a missing hour specification will be considered verified at every hour</p></li>
+<li><p>a missing minute or second specification will be considered verified respectively at the first
+minute of the hour and first second of the minute.</p></li>
+</ul>
+<p>Of course, all the time specifications in the provided list will be checked at each tick: this
+allows complex configurations for actions that must be performed at specific times.</p>
+<p>A sample configuration section follows:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;TimeConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;time&quot;</span><span class="w">                               </span><span class="c1"># mandatory value</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">time_specifications</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">hour</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span><span class="w"> </span><span class="n">minute</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">30</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">hour</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="n">minute</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">weekday</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;wed&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Task2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+</pre></div>
+</div>
+<p>for a condition that is verified everyday at 5:30PM and every Wednesday at noon. The specific
+parameters are:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;time&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time_specifications</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>a list of <em>partial</em> time specifications, as inline tables consisting of the above described
+entries (mandatory)</p></td>
+</tr>
+</tbody>
+</table>
+<p>The check for this type of condition is never randomized.</p>
+</section>
+<section id="conditions-idle">
+<span id="idle-session"></span><h2>Idle session<a class="headerlink" href="#conditions-idle" title="Link to this heading"></a></h2>
+<p>Conditions of the <em>idle</em> type are verified after the session has been idle (that is, without user
+interaction), for the specified number of seconds.<a class="footnote-reference brackets" href="#fn-2" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> This does normally not interfere with
+other idle time based actions provided by the environment such as screensavers, and automatic
+session lock. The following is a sample configuration for this type of condition:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;IdleConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;idle&quot;</span>
+<span class="n">idle_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3600</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Task2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+</pre></div>
+</div>
+<p>for a condition that will be verified each time that an hour has passed since the user has been
+away from the mouse and the keyboard. For tasks that usually occur only once per session when the
+workstation is idle (such as backups, for instance), <code class="docutils literal notranslate"><span class="pre">recurring</span></code> can be set to <em>false</em>. The
+table below describes the specific configuration entries:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;idle&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">idle_seconds</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the number of idle seconds to be waited for in order to consider the condition verified
+(mandatory)</p></td>
+</tr>
+</tbody>
+</table>
+<p>The check for this type of condition is never randomized.</p>
+</section>
+<section id="command">
+<span id="conditions-command"></span><h2>Command<a class="headerlink" href="#command" title="Link to this heading"></a></h2>
+<p>This type of condition gives the possibility to execute an OS <em>command</em> and decide whether or not
+the condition is verified testing the command exit code and/or what the command writes on its
+standard output or standard error channel. The available checks are of the same type as the ones
+available for command based tasks. In fact it is possible to:</p>
+<ul class="simple">
+<li><p>identify a provided exit code as a failure or as a success</p></li>
+<li><p>specify that the presence of a substring or matching a regular expression in what the command
+provides as output (on both <em>stdout</em> and <em>stderr</em>) corresponds to either a failure or a success.</p></li>
+</ul>
+<p>When a success rule is specified (that is, one of the parameters with the <code class="docutils literal notranslate"><span class="pre">success_</span></code> prefix),
+the verification of that rule is considered a successful outcome, and outcomes that do not satisfy
+any given success rule are identified as failures. On the other hand, if a failure rule is set,
+then outcomes that match that rule are considered failures: any other outcome is successful.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Setting both success and failure rules is actually possible, however it is not really useful
+because of the priority that is used when checking for success or failure in the execution
+of a command. Success is checked first, and in the following order:</p>
+<ul class="simple">
+<li><p>exit code correspondance</p></li>
+<li><p>standard input search or match</p></li>
+<li><p>standard error search or match</p></li>
+</ul>
+<p>and then, if none of these rules (if provided) is matched, failure is checked in the same
+order. Therefore, if one or more success rules are given, not matching them is considered
+a failure anyway and the failure rules are simply skipped.</p>
+<p>Most of the times it is useful to just provide one or two criteria, either on the success
+or on the failure side only.</p>
+</div>
+<p>As for command based tasks, it is not mandatory to follow the usual conventions – this means,
+for instance, that a zero exit code can be identified as a failure and a non-zero exit code as a
+success.</p>
+<p>If a command is known to have the possibility to hang, a timeout can be configured by specifying
+the maximum number of seconds to wait for the process to exit: after this amount of time the
+process is terminated and fails.</p>
+<p>An example of command based condition follows:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;CommandConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="w">                            </span><span class="c1"># mandatory value</span>
+
+<span class="n">startup_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/some/startup/directory&quot;</span><span class="w">    </span><span class="c1"># must exist</span>
+<span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;executable_name&quot;</span>
+<span class="n">command_arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;arg1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;arg2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">max_tasks_retries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Task2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="n">check_after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+<span class="n">recur_after_failed_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">match_exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">match_regular_expression</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">success_stdout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;expected&quot;</span>
+<span class="n">success_stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;expected_error&quot;</span>
+<span class="n">success_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="n">failure_stdout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;unexpected&quot;</span>
+<span class="n">failure_stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;unexpected_error&quot;</span>
+<span class="n">failure_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span>
+<span class="n">timeout_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">case_sensitive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">include_environment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">set_environment_variables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">environment_variables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">VARNAME1</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;value1&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">VARNAME2</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;value2&quot;</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">recurring</span></code> flag is <code class="docutils literal notranslate"><span class="pre">false</span></code>, and <code class="docutils literal notranslate"><span class="pre">max_tasks_retries</span></code> is set to <em>3</em>: this
+means that the check will be performed <em>three more times</em> after the first unsuccessful run of
+the associated tasks.</p>
+<p>The following table illustrates the parameters specific to <em>command</em> based conditions:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;interval&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">check_after</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>number of seconds that have to pass before the condition is checked the first time or
+further times if <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is <em>true</em></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if set to <em>true</em> and <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is also <em>true</em>, persistent successful checks after
+the first one do not run associated tasks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">startup_path</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the directory in which the command is started (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">command</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>path to the executable (mandatory; if the path is omitted, the executable should be
+found in the search <em>PATH</em>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">command_arguments</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>arguments to pass to the executable: can be an empty list, <code class="docutils literal notranslate"><span class="pre">[]</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">match_exact</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, the entire output is matched instead of searching for a substring</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">match_regular_expression</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, the match strings are considered regular expressions instead of substrings</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">case_sensitive</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, substring search or match and regular expressions match is performed
+case-sensitively</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timeout_seconds</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>if set, the number of seconds to wait before the command is terminated (with
+unsuccessful outcome)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">success_status</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>if set, when the execution ends with the provided exit code the condition is
+considered verified</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">failure_status</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>if set, when the execution ends with the provided exit code the condition is
+considered failed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">success_stdout</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stdout</em> to consider the task successful</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">success_stderr</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stderr</em> to consider the task successful</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">failure_stdout</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stdout</em> to consider the task failed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">failure_stderr</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the substring or RE to be found or matched on <em>stderr</em> to consider the task failed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">include_environment</span></code></p></td>
+<td><p><em>true</em></p></td>
+<td><p>if <em>true</em>, the command is executed in the same environment in which <strong>whenever</strong> was
+started</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">set_environment_variables</span></code></p></td>
+<td><p><em>true</em></p></td>
+<td><p>if <em>true</em>, <strong>whenever</strong> sets environment variables reporting the names of the task
+and the condition</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">environment_variables</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>extra variables that might have to be set in the environment in which the provided
+command runs</p></td>
+</tr>
+</tbody>
+</table>
+<p>If <code class="docutils literal notranslate"><span class="pre">set_environment_variables</span></code> is <em>true</em>, <strong>whenever</strong> sets the following environment variable:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">WHENEVER_CONDITION</span></code> to the unique name of the condition that is currently being tested</p></li>
+</ul>
+<p>for scripts or other executables used in checks that might be aware of <strong>whenever</strong>.</p>
+<p>For this type of condition the actual test can be performed at a random time within the tick
+interval.</p>
+</section>
+<section id="lua-script">
+<span id="conditions-lua"></span><h2>Lua script<a class="headerlink" href="#lua-script" title="Link to this heading"></a></h2>
+<p>A <a class="reference external" href="https://www.lua.org/">Lua</a> script can be used to determine the verification of a condition:
+after the execution of the script, one or more variables can be checked against expected values
+and thus decide whether or not the associated tasks have to be run. Given the power of <em>Lua</em> and
+its standard library, this type of condition can constitute a lightweight alternative to complex
+scripts to call to implement a <em>command</em> based condition. The definition of a <em>Lua</em> condition is
+actually much simpler:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;LuaConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lua&quot;</span><span class="w">                                </span><span class="c1"># mandatory value</span>
+<span class="n">script</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    log.info(&quot;hello from &quot; .. name);</span>
+<span class="s1">    result = 10;</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">max_tasks_retries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Task2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="n">check_after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+<span class="n">recur_after_failed_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">expect_all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">variables_to_set</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;Lua&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="n">expected_results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="p">}</span>
+<span class="n">init_script_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/etc/lua/init.lua&quot;</span>
+</pre></div>
+</div>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">recurring</span></code> flag is <code class="docutils literal notranslate"><span class="pre">false</span></code>, and <code class="docutils literal notranslate"><span class="pre">max_tasks_retries</span></code> is set to <em>-1</em>: this
+means that the check will be performed until <strong>all</strong> the associated tasks are executed
+successfully.</p>
+<p>The specific parameters are described in the following table:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;lua&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">check_after</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>number of seconds that have to pass before the condition is checked the first time
+or further times if <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is <em>true</em></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if set to <em>true</em> and <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is also <em>true</em>, persistent successful checks after
+the first one do not run associated tasks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">script</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the <em>Lua</em> code that has to be executed by the internal interpreter (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">expect_all</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, all the expected results have to be matched to consider the task successful,
+otherwise at least one</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">variables_to_set</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>a dictionary of variable names and the values to which they will be set as globals in
+the interpreter before running the script</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">expected_results</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{}</span></code></p></td>
+<td><p>a dictionary of variable names and their expected values to be checked after execution</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">init_script_path</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>the path to an optional initialization script to be executed before the provided one</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">variables_to_set</span></code> and <code class="docutils literal notranslate"><span class="pre">init_script_path</span></code> settings are generally of little use for
+user-provided items, since the execution of an extra script can be performed at the script
+level and global variables can be set up at the beginning of the script. A <em>frontend</em>, on
+the other hand, can benefit of the combination of global variables and an initialization
+script to change the interpreter behavior, for instance by setting the <code class="docutils literal notranslate"><span class="pre">package.path</span></code> and
+<code class="docutils literal notranslate"><span class="pre">package.cpath</span></code> settings programmatically, possibly according to the current setup.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The embedded <em>Lua</em> interpreter is not able to load <em>Lua C (binary) modules</em>:<a class="footnote-reference brackets" href="#fn-7" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> this is
+due to the fact that safety is enforced at build time, and loading an external library is
+considered unsafe. This also means that the <code class="docutils literal notranslate"><span class="pre">package.cpath</span></code> setting will never have effect,
+since any attempt to load a binary module will always result in a runtime error.</p>
+</div>
+<p>The same rules and possibilities seen for <em>Lua</em> based tasks also apply to conditions: the embedded
+<em>Lua</em> interpreter is enriched with library functions that allow to write to the <strong>whenever</strong> log,
+at all logging levels (<em>error</em>, <em>warn</em>, <em>info</em>, <em>debug</em>, <em>trace</em>). The library
+functions are the following:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">log.error</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.warn</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.info</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.debug</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.trace</span></code></p></li>
+</ul>
+<p>and take a single string as their argument. Also, from the embedded <em>Lua</em> interpreter there is a
+value that can be accessed:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">whenever_condition</span></code> is the name of the condition being checked.</p></li>
+</ul>
+<p>The Lua interpreter is initialized at each run by</p>
+<ul class="simple">
+<li><p>setting the additional variables, including the ones implicitly provided by <strong>whenever</strong>,</p></li>
+<li><p>implementing the extra log functionality, and</p></li>
+<li><p>executing the startup script,</p></li>
+</ul>
+<p>exactly in this order.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each <em>Lua</em> based item (either task or condition) initializes its own instance of the
+interpreter: this means that the global variables are set and the initialization script is run
+every time the item is executed. At the end of the execution, the interpreter instance is
+destroyed and its resources are freed. In fact, this means that at each run <strong>whenever</strong> has
+to do some extra work to initialize the interpreter context; on the other hand, this allows
+for multiple instances of <em>Lua</em> to run concurrently, and to be initialized with different
+global variables and different startup scripts, as suggested by the <em>per item</em> configuration
+options.</p>
+</div>
+<p>External scripts can be executed via <code class="docutils literal notranslate"><span class="pre">dofile(&quot;/path/to/script.lua&quot;)</span></code> or by using the <code class="docutils literal notranslate"><span class="pre">require</span></code>
+function. While a successful execution is always determined by matching the provided criteria, an
+error in the script is always considered a failure.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code> flag allows for avoidance of multiple subsequent task runs in case
+of a persistent situation that cause the condition checks to be successful if the condition is
+marked as <em>recurring</em>: the associated tasks are run as soon as the check is successful for the
+first time, then the tasks are not executed anymore as long as this status persists. After at least
+one unsuccessful condition check (in which, of course, the tasks are not executed), at the
+following successful one the task run is performed again.</p>
+<p>For this type of condition the actual test can be performed at a random time within the tick
+interval.</p>
+</section>
+<section id="dbus-method-optional">
+<span id="conditions-dbus"></span><h2>DBus method (optional)<a class="headerlink" href="#dbus-method-optional" title="Link to this heading"></a></h2>
+<p>The return message of a <em>DBus method invocation</em> is used to determine the execution of the tasks
+associated to this type of condition. Due to the nature of DBus, the configuration of a <em>DBus</em>
+based condition is quite complex, both in terms of definition of the method to be invoked,
+especially for what concerns the parameters to be passed to the method, and in terms of specifying
+how to test the result.<a class="footnote-reference brackets" href="#fn-3" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This type of item is only available when the <code class="docutils literal notranslate"><span class="pre">dbus</span></code> feature is enabled.</p>
+</div>
+<p>So, as a rule of thumb:<a class="footnote-reference brackets" href="#fn-4" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a></p>
+<ul class="simple">
+<li><p>arguments to be passed to the DBus method are specified in a list</p></li>
+<li><p>criteria to determine expected return values (aka <em>messages</em>, which can be complex structures)
+are expressed a list of tables of three elements each (inline tables can be used for readability),
+that is:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;index&quot;</span></code>: a list of elements, which can be either integers or strings representing each a
+positional 0-based index or a string (or <em>object path</em>) key in a dictionary; this allows to
+index deeply nested structures in which part of the nested elements are dictionaries</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;operator&quot;</span></code>: one of the following strings</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;eq&quot;</span></code> for <em>equality</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;neq&quot;</span></code> for <em>inequality</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;gt&quot;</span></code> meaning <em>greater than</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;ge&quot;</span></code> meaning <em>greater or equal to</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;lt&quot;</span></code> meaning <em>less than</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;le&quot;</span></code> meaning <em>less or equal to</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;match&quot;</span></code> to indicate that the second operand has to be intended as a <em>regular expression</em>
+to be matched</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;contains&quot;</span></code> to indicate that the second operand <em>is contained</em> in the first operand
+(see below)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;ncontains&quot;</span></code> to indicate that the second operand <em>is not contained</em> in the first operand</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;value&quot;</span></code>: the second operand for the specified operator.</p></li>
+</ul>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The first element of the <code class="docutils literal notranslate"><span class="pre">&quot;index&quot;</span></code> field is always a <em>zero-based integer</em>:
+this ia because a <em>message</em> is supposed to consist of an array of numbered <em>fields</em>:
+if a single value is returned, which can also be as complex as a nested dictionary,
+it is considered to be the first field (having 0 as index) of the return message,
+thus <em>0</em> must be specified as the first value in the index.</p>
+</div>
+<p>Please notice that not all types of operand are supported for all operators: comparisons
+(<em>greater</em> and <em>greater or equal</em>, <em>less</em> and <em>less or equal</em>) are only supported
+for numbers, and matching is only supported for strings. The <code class="docutils literal notranslate"><span class="pre">&quot;contains&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;ncontains&quot;</span></code>
+operators support non-structured types for the second operand (booleans, numbers, and strings)
+and either strings (and object paths) or arrays and dictionaries for the first one: if the first
+operand is an array the second operand is searched in the list and the check is true when it is
+found, in case it is a dictionary then the second operand (which should be a string) is searched
+among the <em>keys</em> of the dictionary, and if the first operand is either a string or an object path,
+the check is true when the second one is a substring. Also, <em>comparisons always fail for
+incompatible operands</em>: integers can only be compared with integers, floating point numbers with
+floating point numbers and strings with strings – no automatic type conversion is performed. This
+also yields for attempts to find a value in an array: an integer will never be found in an array of
+floating point numbers, and so on. To be consistent with the rule of unsuccessfulness on incompatible
+operands, the <code class="docutils literal notranslate"><span class="pre">&quot;ncontains&quot;</span></code> operator too <em>is unsuccessful when the operands cannot be compared</em>,
+even though, from another point of view, the opposite could have been seen as appropriate.</p>
+<p>A further difficulty is due to the fact that, while DBus is strictly typed and supports all the
+basic types supported by <em>C</em> and <em>C++</em>, TOML does not. TOML has instead more generic types, which
+are listed below along with the DBus type to which <strong>whenever</strong> converts them in method invocation:</p>
+<ul class="simple">
+<li><p><em>Boolean</em>: <code class="docutils literal notranslate"><span class="pre">BOOLEAN</span></code></p></li>
+<li><p><em>Integer</em>: <code class="docutils literal notranslate"><span class="pre">I64</span></code></p></li>
+<li><p><em>Float</em>: <code class="docutils literal notranslate"><span class="pre">F64</span></code></p></li>
+<li><p><em>String</em>: <code class="docutils literal notranslate"><span class="pre">STRING</span></code></p></li>
+<li><p><em>List</em>: <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code></p></li>
+<li><p><em>Map</em>: <code class="docutils literal notranslate"><span class="pre">DICTIONARY</span></code></p></li>
+</ul>
+<p>This means that there are a lot of value types that are not directly derived from the native TOML
+types. <strong>whenever</strong> comes to help by allowing to express strictly typed values by using specially
+crafted strings. These string must begin with a backslash, <code class="docutils literal notranslate"><span class="pre">\</span></code> (in the TOML representation it
+has to be doubled in order to escape it, or a literal string must be used), followed by the
+<em>signature</em> character (<em>ASCII Type Code</em> in the basic type table<a class="footnote-reference brackets" href="#fn-5" id="id7" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a>) identifying the
+type. For example, the string <code class="docutils literal notranslate"><span class="pre">'\y42'</span></code> indicates a <code class="docutils literal notranslate"><span class="pre">BYTE</span></code> parameter holding <em>42</em> as the value,
+while <code class="docutils literal notranslate"><span class="pre">'\o/com/example/MusicPlayer1'</span></code> indicates an <code class="docutils literal notranslate"><span class="pre">OBJECT_PATH</span></code><a class="footnote-reference brackets" href="#fn-6" id="id8" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> containing the value
+<em>/com/example/MusicPlayer1</em>. A specially crafted string will be translated into a specific value of
+a specific type <em>only</em> when a supported <em>ASCII Type Code</em> is used, in all other cases the string is
+interpreted literally: for instance, <code class="docutils literal notranslate"><span class="pre">'\w100'</span></code> is translated into a <code class="docutils literal notranslate"><span class="pre">STRING</span></code> holding the value
+<em>w100</em>.</p>
+<p>For return values, while the structure of complex entities received from DBus is kept, all values
+are automatically converted to more generic types: a returned <code class="docutils literal notranslate"><span class="pre">BYTE</span></code> is converted to a TOML
+<em>Integer</em>, and a returned <code class="docutils literal notranslate"><span class="pre">OBJECT_PATH</span></code> is consdered a TOML <em>String</em> which, as a side effect,
+supports the <code class="docutils literal notranslate"><span class="pre">&quot;match&quot;</span></code> operator.</p>
+<p>An example of <em>DBus</em> method based condition follows:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;DbusMethodConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;dbus&quot;</span><span class="w">                       </span><span class="c1"># mandatory value</span>
+<span class="n">bus</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;:session&quot;</span><span class="w">                    </span><span class="c1"># either &quot;:session&quot; or &quot;:system&quot;</span>
+<span class="n">service</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;org.freedesktop.DBus&quot;</span>
+<span class="n">object_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/org/freedesktop/DBus&quot;</span>
+<span class="n">interface</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;org.freedesktop.DBus&quot;</span>
+<span class="n">method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;NameHasOwner&quot;</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Task2&quot;</span><span class="w"> </span><span class="p">]</span>
+<span class="n">check_after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">recur_after_failed_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">parameter_call</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;SomeObject&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="p">[</span><span class="mi">42</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;a structured parameter&quot;</span><span class="p">],</span>
+<span class="w">        </span><span class="p">[</span><span class="s2">&quot;the following is an u64&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">t42&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="n">parameter_check_all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">parameter_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">         </span><span class="p">{</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">operator</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;eq&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">},</span>
+<span class="w">         </span><span class="p">{</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">],</span><span class="w"> </span><span class="n">operator</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;neq&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">operator</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;forbidden&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">         </span><span class="p">{</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mapidx&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">],</span><span class="w"> </span><span class="n">operator</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;match&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;^[A-Z][a-zA-Z0-9_]*$&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">]</span>
+</pre></div>
+</div>
+<p>As shown below, <code class="docutils literal notranslate"><span class="pre">parameter_check</span></code> is the list of criteria against which the <em>return message parameters</em>
+(the invocation results are often referred to with this terminology in DBus jargon): for what has
+been explained above, the checks are performed like this:</p>
+<ol class="arabic simple">
+<li><p>the first element (thus with 0 as index) of the returned array is expected to be a boolean and
+to be <em>false</em></p></li>
+<li><p>the second element is considered to be an array, whose sixth element (with index 5) must not be
+the string <em>“forbidden”</em></p></li>
+<li><p>the third element is highly nested, containing a map whose element with key <em>“mapidx”</em> is an
+array, containing a string at its sixth position, which should be alphanumeric and begin with a
+capital letter, and may contain underscores (that is, matches the <em>regular expression</em>
+<code class="docutils literal notranslate"><span class="pre">^[A-Z][a-zA-Z0-9_]*$</span></code>).</p></li>
+</ol>
+<p>Note that the first check shows a <code class="docutils literal notranslate"><span class="pre">0</span></code> index not embedded in a list: if a returned parameter is
+not an array or a dictionary and its value is required directly, the square brackets around this
+single index can be omitted and <strong>whenever</strong> does not complain. Since this is probably the most
+frequent use case, this is a way to make configuration more readable and concise in such cases.</p>
+<p>Since <code class="docutils literal notranslate"><span class="pre">parameter_check_all</span></code> is <em>false</em>, satisfaction of one of the provided criteria is
+sufficient to determine the success of the condition.</p>
+<p>The specific parameters are described in the following table:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;dbus&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">check_after</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>number of seconds that have to pass before the condition is checked the first time or further
+times if <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is <em>true</em></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if set to <em>true</em> and <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is also <em>true</em>, persistent successful checks after the
+first one do not run associated tasks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bus</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the bus on which the method is invoked: must be either <code class="docutils literal notranslate"><span class="pre">&quot;:system&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;:session&quot;</span></code>,
+including the starting colon (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">service</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the name of the <em>service</em> that exposes the required <em>object</em> and the <em>interface</em> to invoke or
+query (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">object_path</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the <em>object</em> exposing the <em>interface</em> to invoke or query (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">interface</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the <em>interface</em> to invoke or query (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">method</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the name of the <em>method</em> to be invoked (mandatory)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parameter_call</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>a structure, expressed as a list, containing exactly the parameters that shall be passed to
+the method</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parameter_check_all</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, all the provided criteria will have to be satisfied for the condition to be
+successful, otherwise one is enough</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parameter_check</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>a list of maps having the structure explained above</p></td>
+</tr>
+</tbody>
+</table>
+<p>The value corresponding to the <code class="docutils literal notranslate"><span class="pre">service</span></code> entry is often referred to as <em>bus name</em> in various
+documents: here <em>service</em> is preferred to avoid confusing it with the actual bus, which is
+either the <em>session bus</em> or the <em>system bus</em>.</p>
+<p>Methods resulting in an error will <em>always</em> be considered as failed: therefore it is possible
+to avoid to provide return value criteria, and just consider a successful invocation as a success
+and an error as a failure. Also, any errors that may arise during checks will cause the check
+itself to yield <em>false</em>.</p>
+<p>Note that DBus based conditions are supported on Windows, however DBus should be running for such
+conditions to be useful – which is very unlikely to say the least.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code> flag allows for avoidance of multiple subsequent task runs in
+case of a persistent situation that cause the condition checks to be successful if the condition
+is marked as <em>recurring</em>: the associated tasks are run as soon as the check is successful for the
+first time, then the tasks are not executed anymore as long as this status persists. After at
+least one unsuccessful condition check (in which, of course, the tasks are not executed), at the
+following successful one the task run is performed again.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Before version <em>0.4.x</em>, <strong>whenever</strong> used to accept parameters to be sent to a method (the
+<code class="docutils literal notranslate"><span class="pre">parameter_call</span></code> entry) and the result criteria (the <code class="docutils literal notranslate"><span class="pre">parameter_check</span></code> entry) as JSON
+encoded strings: this is not supported anymore, and the entries <em>must</em> be specified as TOML
+lists. <a class="reference external" href="https://github.com/almostearthling/when-command">When</a> can be used to convert an old configuration file to the new format, by using
+the <code class="docutils literal notranslate"><span class="pre">when</span> <span class="pre">tool</span> <span class="pre">--fix-config</span></code> tool from the command line.</p>
+</div>
+<p>For this type of conditions the actual test can be performed at a random time within the tick interval.</p>
+</section>
+<section id="wmi-query-optional-windows-only">
+<span id="conditions-wmi"></span><h2>WMI Query (optional, Windows only)<a class="headerlink" href="#wmi-query-optional-windows-only" title="Link to this heading"></a></h2>
+<p>On Windows, <strong>whenever</strong> allows to directly query the
+<a class="reference external" href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-start-page">WMI</a> subsystem, which is a
+powerful way to retrieve information. <em>WMI</em> is accessed via a query language called
+<a class="reference external" href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi">WQL</a>, which is
+syntactically and semantically close to <em>SQL</em>. Queries normally return lists of compound values
+where every component has a name. For analogy with database operations and queries, this document
+will refer the returned compound values as <em>rows</em> or <em>records</em>, and their components as <em>fields</em>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This type of item is only available when the <code class="docutils literal notranslate"><span class="pre">wmi</span></code> feature is enabled.</p>
+</div>
+<p><em>WMI</em> inquiries are somewhat simpler than their <em>DBus</em> counterparts, mostly because the query
+language is more structured and allows for more complex filtering at the query level. Because of
+that, and since a query can be crafted in order to directly return the values of interest without
+having to deeply inspect returned <em>objects</em>, <strong>whenever</strong> will only inspect fields containing
+simple values (numbers, booleans, and strings) in a query result.</p>
+<p>The main part of a <em>WMI Query</em> based condition is obviously the <em>query</em> itself, which is provided
+as a freeform string using the mandatory <code class="docutils literal notranslate"><span class="pre">query</span></code> configuration entry. <strong>whenever</strong> does not do
+any parsing or check on the provided query, thus an incorrect query will only cause the condition
+test to always fail and log an error message, at least in the <em>debug</em> log level.</p>
+<p>If a namespace other than the default <code class="docutils literal notranslate"><span class="pre">ROOT\CIMV2</span></code> is needed, it can be specified using the
+optional <code class="docutils literal notranslate"><span class="pre">namespace</span></code> configuration entry.</p>
+<p>Since a <em>WMI</em> query returns a set of records, it is possible to filter the returned rows by
+providing criteria: this can be done using the _result<em>check</em> entry, provided as a list of
+dictionaries, each representing a check, having the following entries:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">index</span></code> is the index of the row in the result set that will be checked (this sub-entry is
+optional, leaving it out means <em>any</em> row)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">field</span></code> indicates which record <em>field</em> is checked, and must be a string</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operator</span></code> is the check operator, a string of the ones shown below</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">value</span></code> is the value that the field is checked against, and its type must be compatible with
+the field value.</p></li>
+</ul>
+<p>Operators resemble the ones used for <em>DBus</em> return message value comparisons, with the exception
+that, since no complex values such as arrays or dictionaries are expected to be tested, operators
+that check for inclusion are not available. The supported operators are, therefore:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;eq&quot;</span></code> for <em>equality</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;neq&quot;</span></code> for <em>inequality</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;gt&quot;</span></code> meaning <em>greater than</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;ge&quot;</span></code> meaning <em>greater or equal to</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;lt&quot;</span></code> meaning <em>less than</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;le&quot;</span></code> meaning <em>less or equal to</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;match&quot;</span></code> to indicate that the second operand has to be intended as a <em>regular expression</em> to
+be matched.</p></li>
+</ul>
+<p>and work for all supported values in the usual way, taking out <code class="docutils literal notranslate"><span class="pre">&quot;match&quot;</span></code> that can obviously only
+be applied to strings. Note that integers and floating point numbers can be compared to each other,
+with all the known issues related to this kind of comparison.</p>
+<p>An example of <em>WMI Query</em> based condition configuration is the following:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;WMIQueryConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;wmi&quot;</span><span class="w">  </span><span class="c1"># mandatory value</span>
+<span class="n">query</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    SELECT * FROM Win32_LogicalDisk WHERE FileSystem = &#39;NTFS&#39;</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Task2&quot;</span><span class="w"> </span><span class="p">]</span>
+<span class="n">check_after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">recur_after_failed_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">namespace</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ROOT</span><span class="se">\C</span><span class="s2">IMV2&quot;</span>
+<span class="n">result_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;FreeSpace&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">operator</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;lt&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">5_000_000_000</span><span class="w"> </span><span class="p">},</span>
+<span class="p">]</span>
+<span class="n">result_check_all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+</pre></div>
+</div>
+<p>The above condition definition queries the <em>WMI</em> subsystem to report basic information about the
+logical drives handled by the system, and is successful if any of them has roughly less than 5GB
+left. The test is performed every minute. Of course, the <code class="docutils literal notranslate"><span class="pre">result_check</span></code> part coul also be
+incorporated in the query itself, using an <em>AND</em> clause.</p>
+<p>The specific parameters are described in the following table:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;wmi&quot;</span></code> (mandatory)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">check_after</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>number of seconds that have to pass before the condition is checked the first time or
+further times if <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is <em>true</em></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recur_after_failed_check</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if set to <em>true</em> and <code class="docutils literal notranslate"><span class="pre">recurring</span></code> is also <em>true</em>, persistent successful checks after
+the first one do not run associated tasks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">query</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>the <em>WQL</em> query used to inquire the system</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">namespace</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>a specific WMI namespace to connect to, if different from the default one</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">result_check_all</span></code></p></td>
+<td><p><em>false</em></p></td>
+<td><p>if <em>true</em>, all the provided criteria will have to be satisfied for the condition to
+be successful, otherwise one is enough</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_check</span></code></p></td>
+<td><p>(empty)</p></td>
+<td><p>a list of maps having the structure explained above</p></td>
+</tr>
+</tbody>
+</table>
+<p>Note that it is not mandatory to provide criteria to filter the query result: their omission causes
+the condition to be successful if the query <em>returns at least one row</em>. Also, omitting the index on
+a check causes <em>that single check</em> to be performed on every returned row: this means that, for
+instance, if all the provided checks omit the row index, even though <strong>whenever</strong> is instructed to
+consider the test successful when <em>all</em> the provided criteria are satisfied (setting the
+<code class="docutils literal notranslate"><span class="pre">result_check_all</span></code> entry to <em>true</em>), the test will be successful if there is at least one row
+satisfying each check – and not just one row satisfying <em>all</em> the checks. This is because the tests
+that <strong>whenever</strong> applies to the result sets are intended to be simple in order to keep the
+configuration file as readable as possible (and the configuration of <em>DBus</em> inquiries is a failure
+in this sense). However, more complex and fine-grained criteria can be kept at the query level.</p>
+<p>As said above, any error will cause the condition to be evaluated as unsuccessful.</p>
+</section>
+<section id="event">
+<span id="conditions-event"></span><h2>Event<a class="headerlink" href="#event" title="Link to this heading"></a></h2>
+<p>Conditions that are fired by <em>events</em> are referred to here both as <em>event</em> conditions and as
+<em>bucket</em> conditions. The reason for the second name is that every time that <strong>whenever</strong> catches
+an event that has been required to be monitored, it tosses the associated condition in a sort of
+<em>execution bucket</em>, that is checked by the scheduler at every tick: the scheduler withdraws
+every condition found in the bucket and runs the associated tasks. In facts, these conditions
+only exist as a connection between the events, that occur asynchronously, and the scheduler. Their
+configuration is therefore very simple, as seen in this example:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;BucketConditionName&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;bucket&quot;</span><span class="w">         </span><span class="c1"># &quot;bucket&quot; or &quot;event&quot; are the allowed values</span>
+
+<span class="c1"># optional parameters (if omitted, defaults are used)</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">max_tasks_retries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="n">execute_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">break_on_failure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">break_on_success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">suspended</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Task1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Task2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+</pre></div>
+</div>
+<p>that is, these conditions have no specific fields, if not for the mandatory <code class="docutils literal notranslate"><span class="pre">type</span></code> that should
+be either <code class="docutils literal notranslate"><span class="pre">&quot;bucket&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;event&quot;</span></code> (with no operational difference, at least for the moment
+being):</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>has to be set to <code class="docutils literal notranslate"><span class="pre">&quot;bucket&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;event&quot;</span></code> (mandatory)</p></td>
+</tr>
+</tbody>
+</table>
+<p>These conditions are associated to <em>events</em> for verification, no other criteria can be specified.</p>
+<p>For this type of conditions the actual test can be performed at a random time within the tick
+interval.</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="fn-1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">1</a><span class="fn-bracket">]</span></span>
+<p>In this case the execution will continue as long as the outcome is <em>undefined</em> until
+the first success or failure happens.</p>
+</aside>
+<aside class="footnote brackets" id="fn-2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">2</a><span class="fn-bracket">]</span></span>
+<p>Except on <em>Wayland</em> based Linux systems (e.g. Ubuntu), on which the idle time starts
+<em>after the session has been locked</em>.</p>
+</aside>
+<aside class="footnote brackets" id="fn-7" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">3</a><span class="fn-bracket">]</span></span>
+<p>In fact, there is the option to include the <em>unsafe</em> version of the <em>Lua</em> interpreter
+in <strong>whenever</strong>: it is still experimental and not well supported, and loading binary
+modules often leads to runtime errors in this case too.</p>
+</aside>
+<aside class="footnote brackets" id="fn-3" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">4</a><span class="fn-bracket">]</span></span>
+<p>In fact, in the original <em>When</em> the DBus based conditions and events were considered
+an advanced feature: even the dialog box that allowed the configuration of user-defined
+DBus events was only available through a specific invocation using the command line.</p>
+</aside>
+<aside class="footnote brackets" id="fn-4" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">5</a><span class="fn-bracket">]</span></span>
+<p>DBus parameters and criteria can still be expressed in <a class="reference external" href="https://www.json.org/">JSON</a>
+format for compatibility reasons, but this support will be eventually removed.</p>
+</aside>
+<aside class="footnote brackets" id="fn-5" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id7">6</a><span class="fn-bracket">]</span></span>
+<p>See the <a class="reference external" href="https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types">DBus Specification</a> for the
+complete list of supported types, and the ASCII character that identifies each of them.</p>
+</aside>
+<aside class="footnote brackets" id="fn-6" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id8">7</a><span class="fn-bracket">]</span></span>
+<p>In DBus, strings and object paths are considered different types.</p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="40.tasks.html" class="btn btn-neutral float-left" title="Tasks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="60.events.html" class="btn btn-neutral float-right" title="Events" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

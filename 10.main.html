@@ -1,0 +1,304 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The whenever Documentation &mdash; Whenever 1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=58fbf978"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Command Line Interface" href="20.cli.html" />
+    <link rel="prev" title="The Whenever Automation Tool" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The <strong>whenever</strong> Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#features">Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="20.cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="40.tasks.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="50.conditions.html">Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1"><a class="reference internal" href="70.intcli.html">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1"><a class="reference internal" href="90.install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">The <strong>whenever</strong> Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/10.main.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="the-whenever-documentation">
+<span id="main"></span><h1>The <strong>whenever</strong> Documentation<a class="headerlink" href="#the-whenever-documentation" title="Link to this heading"></a></h1>
+<p><strong>whenever</strong> is a lightweight automation tool capable of executing <em>tasks</em> (in particular, OS
+commands and <em>Lua</em> scripts) according to specific <em>conditions</em>. Conditions are of various types:
+depending on time (both intervals or specific more-or-less defined instants), execution of OS
+commands or <em>Lua</em> scripts, changes in specific files and directories, session inactivity, DBus
+and WMI signals or property checks.<a class="footnote-reference brackets" href="#fn-1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> The scheduler intends to be as lightweight as
+possible in terms of used computational resources, and to run at a low priority level.</p>
+<p>Configuration is provided to the scheduler via a <a class="reference external" href="https://toml.io/">TOML</a> file, which must
+contain all definitions for conditions and associated tasks, as well as events that the scheduler
+should listen to.</p>
+<p>Although a command line application, it is designed for desktops – therefore it should be
+executed via a controlling GUI wrapper.</p>
+<section id="introduction">
+<span id="main-introduction"></span><h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>The purpose of <strong>whenever</strong> is to provide the user, possibly without administrative credentials,
+with the ability to define conditions that do not only depend on time, but also on particular
+states of the session, result of commands run in a shell, execution of <em>Lua</em> scripts, or other
+events that may occur while the system is being used. This scheduler is a terminal (or console,
+on Windows) application, however it is meant to run in the background without interaction with
+the user. The application is able to produce detailed logs, so that the user can review what the
+application is doing or has done.</p>
+<p>The <strong>whenever</strong> scheduler might overlap, to some extent, with the standard <em>cron</em> scheduler on
+Unix, and with the <em>Task Scheduler</em> on Windows. However this tool tries to be more flexible –
+although possibly less precise than <em>cron</em> – and to function as an alternative to more complex
+solutions that could be implemented using the system-provided schedulers. The <strong>whenever</strong>
+approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means
+that the tasks might not be performed <em>exactly</em> in the instant that marks the condition
+verification, but <em>after</em> such verification instead. Thus this tool is not intended as a
+replacement for the utilities provided by the operating system: it aims at representing an easy
+solution for those who need to automate some actions depending on other situations or events that
+may occur.</p>
+<p>Also, <strong>whenever</strong> aims at being cross-platform: most features are available on all supported
+operating systems, with the exception of</p>
+<ul class="simple">
+<li><p><em>DBus support</em>, which is available on both Linux and Windows, but is of little or no use on
+the Windows platform, and is therefore not included in the prebuilt binaries, and</p></li>
+<li><p><em>WMI support</em>, which is only available on Windows.</p></li>
+</ul>
+<p><strong>whenever</strong> tries to be conservative in terms of resource cosumption (especially CPU and RAM),
+and, since it does not interact with the user normally, it should be able to run at low priority.
+Therefore, <strong>whenever</strong> does not implement a GUI by itself: on the contrary, it offers a
+<a class="reference internal" href="70.intcli.html#intcli-input-commands"><span class="std std-ref">simple stdin-based interface</span></a> that is mostly aimed at interacting
+with an independent <em>wrapper</em>.</p>
+<p>The actions to be performed are loaded every time at startup by means of a single configuration
+file that, as many modern tools do, uses the well known TOML format.</p>
+<p>A very lightweight cross-platform wrapper, namely <a class="reference external" href="https://github.com/almostearthling/whenever_tray">whenever_tray</a>, is available for both Linux
+and Windows. Developed in C++ and using the <a class="reference external" href="https://www.wxwidgets.org/">WxWidgets</a> GUI
+library, it has been designed to implement the bare minimum of functionality and to just show an
+icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume
+the condition checks and therefore the execution of tasks that would derive from them. The
+minimalistic wrapper also hides the console window on Windows environments. Due to the use of
+<em>stdin</em>/<em>stdout</em> for communication, it is possible to build more elaborate wrappers in any
+language that supports the possibility to spawn a process and control its I/O, at the expense of
+a larger resource occupation but possibly without drawbacks in terms of performance, as the
+scheduler runs in a separate process anyway. The original <em>Python</em> based <a class="reference external" href="https://github.com/almostearthling/when-command">When</a> application had
+an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file,
+and could noticeably use the CPU.</p>
+<p>This version, written in the <a class="reference external" href="https://www.rust-lang.org/">Rust</a> programming language, uses
+around 2MB of RAM on Windows<a class="footnote-reference brackets" href="#fn-2" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> with a reasonable configuration file that uses <em>tasks</em>,
+<em>conditions</em>, and <em>events</em> supported on the platform. Although small in footprint, <strong>whenever</strong>
+is fully multithreaded, condition checks have no influence on each other and, when needed, may
+run concurrently. Consequential task execution also takes place with full parallelism – with the
+exception of those tasks that, per configuration, are set to run sequentially.</p>
+<p>The former version of <a class="reference external" href="https://github.com/almostearthling/when-command">When</a> itself has currently been converted to a frontend wrapper for
+<strong>whenever</strong>: see the specific repository and documentation for details.</p>
+</section>
+<section id="features">
+<span id="main-features"></span><h2>Features<a class="headerlink" href="#features" title="Link to this heading"></a></h2>
+<p><strong>whenever</strong> can perform the following types of <a class="reference internal" href="40.tasks.html#tasks"><span class="std std-ref">task</span></a>:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="40.tasks.html#tasks-command"><span class="std std-ref">Running OS executables</span></a>, either binaries or scripts,
+checking their exit code or output (both on <em>stdout</em> and <em>stderr</em>) for expected or undesired
+results</p></li>
+<li><p><a class="reference internal" href="40.tasks.html#tasks-lua"><span class="std std-ref">Running Lua scripts</span></a>, using an embedded
+interpreter, with the possibility of checking the contents of <em>Lua</em> variables for expected
+outcomes</p></li>
+<li><p><a class="reference internal" href="40.tasks.html#tasks-internal"><span class="std std-ref">Running internal input commands</span></a>, to
+modify the internal scheduler status at the verification of specific conditions</p></li>
+</ul>
+<p>as the consequence of the verification of a <em>condition</em>. The concepts of tasks and conditions
+are inherited from the <em>Python</em> based <a class="reference external" href="https://github.com/almostearthling/when-command">When</a> scheduler.</p>
+<p>The supported types of <a class="reference internal" href="50.conditions.html#conditions"><span class="std std-ref">condition</span></a> are the following:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="50.conditions.html#conditions-interval"><span class="std std-ref">Interval based</span></a>: the <em>periodic</em> conditions are verified after
+a certain time interval has passed since <strong>whenever</strong> has started, and may be verified
+again after the same amount of time if the condition is set to be <em>recurring</em></p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-time"><span class="std std-ref">Time based</span></a>: one or more instants in time can be provided for the
+condition to be verified</p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-idle"><span class="std std-ref">Idle user session</span></a>: this type of condition is verified after the
+session has been idle for the specified amount of time</p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-command"><span class="std std-ref">Command execution</span></a>: an available executable (be it a script,
+a batch file on Windows, a binary) is run, its exit code or output is checked and, when an
+expected outcome is found, the condition is considered verified - or failed on an explicitly
+undesired outcome</p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-lua"><span class="std std-ref">Lua script execution</span></a>: a <em>Lua</em> script is run using the embedded
+interpreter, and if the contents of one or more variables meet the specified expectations
+the condition is considered verified</p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-dbus"><span class="std std-ref">DBus inspection (optional)</span></a>: a <em>DBus</em> method is called and the result
+is checked against some criteria provided in the configuration file</p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-wmi"><span class="std std-ref">WMI query (optional, Windows only)</span></a>: a <em>WMI</em> query is executed and
+the result is checked against some criteria provided in the configuration file</p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions-event"><span class="std std-ref">Event based</span></a>: are verified when a certain event occurs that fires
+the condition.</p></li>
+</ul>
+<p>The <a class="reference internal" href="60.events.html#events"><span class="std std-ref">events</span></a> that can fire <em>event</em> based conditions are:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="60.events.html#events-fschange"><span class="std std-ref">Filesystem changes</span></a>, that is, changes in files and/or directories
+that are set to be monitored</p></li>
+<li><p><a class="reference internal" href="60.events.html#events-dbus"><span class="std std-ref">DBus signals (optional)</span></a>, that may be filtered for an expected payload</p></li>
+<li><p><a class="reference internal" href="60.events.html#events-wmi"><span class="std std-ref">WMI events (optional, Windows only)</span></a>, subscribed via specific <em>WQL</em> queries</p></li>
+<li><p><a class="reference internal" href="60.events.html#events-cli"><span class="std std-ref">Command line</span></a>, that are manually triggered by writing to <strong>whenever</strong>
+standard input.</p></li>
+</ul>
+<p>Note that <em>DBus</em> events and conditions are also supported on Windows, being one of the <em>DBus</em> target
+platforms, and enabled by default.  <em>WMI</em> events and conditions, on the contrary, are only supported
+on Windows platforms. Both <em>DBus</em> and <em>WMI</em> support can be <strong>disabled</strong> on build, by respectively
+removing <code class="docutils literal notranslate"><span class="pre">dbus</span></code> and/or <code class="docutils literal notranslate"><span class="pre">wmi</span></code> from the default features in the <em>Cargo.toml</em> file, or by building
+the application with the <code class="docutils literal notranslate"><span class="pre">--no-default-features</span></code> command line flag (in this case, other desired
+features have to be specifically enabled using the <code class="docutils literal notranslate"><span class="pre">--features</span></code> option). <strong>whenever</strong> can provide
+the list of the available optional features by invoking <code class="docutils literal notranslate"><span class="pre">whenever</span> <span class="pre">--options</span></code> from the command line.</p>
+<p>All of the above listed items are fully configurable via a TOML configuration file, that <em>must</em> be
+specified as the only mandatory argument on the command line. The syntax of the configuration file
+is described in the following sections.</p>
+<p>Every type of check is performed periodically, even the ones involving <em>event</em> based
+conditions<a class="footnote-reference brackets" href="#fn-3" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a>: the periodic time interval at which the conditions are checked is referred
+here as <em>tick</em>, and the tick interval can be specified in the configuration file – defaulting at
+5 seconds. Note that, since performing all checks in the same instant at every tick could cause
+usage peaks in terms of computational resources, there is the option to attempt to randomly
+distribute some of the checks within the tick interval, by explicitly specifying this behavior in
+the configuration file.</p>
+<p>The configuration can be also modified while the scheduler application is running, using a specific
+<a class="reference internal" href="70.intcli.html#intcli-input-commands"><span class="std std-ref">command</span></a>, in a dynamic fashion that does not reset the items
+whose configuration is unchanged.</p>
+</section>
+<section id="configuration">
+<span id="main-configuration"></span><h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>The configuration file is strictly based on the current TOML specification: therefore it can be
+implemented by hand, or automatically written (for example, by a GUI based utility) using a library
+capable of writing well-formed TOML files. This section describes the exact format of this file, in
+all of its components.</p>
+<p>The configuration has a <a class="reference internal" href="35.globals.html#globals"><span class="std std-ref">global section</span></a> for parameters that affect the scheduler
+behavior globally, and sections for the various configuration items described above, that is</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="40.tasks.html#tasks"><span class="std std-ref">Tasks</span></a></p></li>
+<li><p><a class="reference internal" href="50.conditions.html#conditions"><span class="std std-ref">Conditions</span></a></p></li>
+<li><p><a class="reference internal" href="60.events.html#events"><span class="std std-ref">Events</span></a></p></li>
+</ul>
+<p>In configuration files generated by tools such as the current version of <a class="reference external" href="https://github.com/almostearthling/when-command">When</a>, a special
+<code class="docutils literal notranslate"><span class="pre">[[tags]]</span></code> section may appear in several places, which generally contains configuration specific
+to the tool itself.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If <strong>whenever</strong> has been compiled without support for one or more optional features, entries
+for items depending on that feature are considered configuration errors and cause <strong>whenever</strong>
+to exit.</p>
+</div>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="fn-1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Although DBus support is available on Windows too, it is mostly useful on Linux
+desktops: in fact it might be appropriate to disable it when compiling the
+application for Windows, in order to save resources. Binaries released for Windows
+ship <em>without</em> DBus support.</p>
+</aside>
+<aside class="footnote brackets" id="fn-2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>When run alone, with no wrapper: using the minimal provided wrapper, both programs
+together use less than 4MB of RAM and the combined CPU consumption in rare occasions
+reaches the 0.2% – as reported by the Windows <em>Task Manager</em>.</p>
+</aside>
+<aside class="footnote brackets" id="fn-3" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">3</a><span class="fn-bracket">]</span></span>
+<p>The occurrence of an <em>event</em>, in fact, raises a flag that specifies that the
+associated condition will be considered as verified at the following tick: the condition
+is said to be thrown in a sort of “execution bucket”, from which it is withdrawn by the
+scheduler that executes the related tasks. Therefore <em>event</em> based conditions are also
+referred to as <em>bucket</em> conditions.</p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="The Whenever Automation Tool" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="20.cli.html" class="btn btn-neutral float-right" title="Command Line Interface" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

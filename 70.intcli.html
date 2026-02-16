@@ -1,0 +1,213 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Input Commands &mdash; Whenever 1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=58fbf978"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Building whenever" href="80.build.html" />
+    <link rel="prev" title="Events" href="60.events.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="10.main.html">The <strong>whenever</strong> Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="20.cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="40.tasks.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="50.conditions.html">Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1"><a class="reference internal" href="90.install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Input Commands</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/70.intcli.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="input-commands">
+<span id="intcli-input-commands"></span><h1>Input Commands<a class="headerlink" href="#input-commands" title="Link to this heading"></a></h1>
+<p>As said above, <strong>whenever</strong> accepts commands (in the form of <em>command lines</em>) through the
+standard input. Actually, no prompt is shown, and the console log will keep showing up
+continuously even when an user types any interactive command: in fact the <em>stdin</em> based
+interface is mainly aimed at wrapping <strong>whenever</strong> into a graphical shell that could use these
+commands to control the scheduler.</p>
+<p>A <em>command line</em> is intended here as one of the commands in the table below, possibly followed
+by one or more arguments, when supported, separated by whitespace and terminated by a
+<em>carriage return</em> – meaning that <code class="docutils literal notranslate"><span class="pre">'\n'</span></code> must be used at the end of the line when sending a
+command from the wrapper. Unsupported commands or arguments cause <strong>whenever</strong> to log an error,
+however the offending <em>command line</em> is just ignored with no other side effects.</p>
+<p>The available commands are:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Command</p></th>
+<th class="head"><p>Arguments</p></th>
+<th class="head"><p>Action</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pause</span></code></p></td>
+<td><p><em>none</em></p></td>
+<td><p>the scheduler keeps running, but all checks are suspended</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">resume</span></code></p></td>
+<td><p><em>none</em></p></td>
+<td><p>resume from a paused state: enabled conditions are checked again</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">exit</span></code> (or <code class="docutils literal notranslate"><span class="pre">quit</span></code>)</p></td>
+<td><p><em>none</em></p></td>
+<td><p>shut down <strong>whenever</strong>, waiting for running activity to finish</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">kill</span></code></p></td>
+<td><p><em>none</em></p></td>
+<td><p>shut down <strong>whenever</strong> immediately, terminating all current activity</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reset_conditions</span></code></p></td>
+<td><p>[Cond1 [Cond2 […]]]</p></td>
+<td><p>reset the state of specified conditions: the <em>optional</em> arguments are names of conditions
+to be reset (all by default)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">suspend_condition</span></code></p></td>
+<td><p>Condition</p></td>
+<td><p>suspend the specified condition: the condition name argument is mandatory</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">resume_condition</span></code></p></td>
+<td><p>Condition</p></td>
+<td><p>resume the specified condition from a suspended state: the condition name argument is
+mandatory</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">trigger</span></code></p></td>
+<td><p>Event</p></td>
+<td><p>trigger the specified event causing the associated conditions to fire</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">configure</span></code></p></td>
+<td><p><em>valid path</em></p></td>
+<td><p>load a new configuration from the file located at the provided path</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <code class="docutils literal notranslate"><span class="pre">pause</span></code> command is ignored in paused state, and <code class="docutils literal notranslate"><span class="pre">resume</span></code> is ignored otherwise. Attempts
+to suspend conditions that are already suspended or to resume already active conditions are also
+ignored. Typing <code class="docutils literal notranslate"><span class="pre">exit</span></code> or <code class="docutils literal notranslate"><span class="pre">quit</span></code> followed by a <em>carriage return</em> on the console window where
+<strong>whenever</strong> is running has almost the same effect as hitting <em>Ctrl+C</em>. The <code class="docutils literal notranslate"><span class="pre">reset_conditions</span></code>
+command resets the internal state of all configured conditions when no arguments are provided.
+The <code class="docutils literal notranslate"><span class="pre">trigger</span></code> command can only receive the name of a <a class="reference internal" href="60.events.html#events-cli"><span class="std std-ref">command based</span></a>
+event as an argument: other uses will cause the command to be ignored and an error or a warning
+to be logged.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">configure</span></code> command can be used to load a new configuration (or reload a modified one) while
+the scheduler is running: in case some of the items are already present in the configuration <em>and</em>
+they are <strong>identical</strong> to the originally loaded ones in terms of provided parameters, the original
+ones are left in their status – this means, in particular, that unchanged conditions are <em>not</em>
+reset, and unchanged event listening services are <em>not</em> restarted when reloading a configuration.
+It is important to notice that <strong>all characters beginning from the first non-blank up to the last
+non-blank</strong> following the <code class="docutils literal notranslate"><span class="pre">configure</span></code> command are considered part of the provided file name,
+including spaces other blank characters. Possible errors are detected and leave the application
+status unchanged. Also, neither environment variable nor <em>tilde</em> expansions are performed, and
+both quotes (either single or double) and backslashes are interpreted literally. A configuration
+reload only affects <em>item</em> configurations: in order to reset the global parameters, the scheduler
+application must be fully restarted.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><em>Resetting</em> the internal state of a condition indicates that, after the operation, the
+condition has the same state as when the scheduler just started. It mostly has effect on
+<a class="reference internal" href="50.conditions.html#conditions-interval"><span class="std std-ref">interval</span></a> based conditions, conditions that are <em>not recurring</em>
+– especially when the <code class="docutils literal notranslate"><span class="pre">max_tasks_retries</span></code> parameter is specified, as the number of
+available retries is set back to the provided value. In the first case, the condition
+operates as if the interval counter had started in the instant of its reset. The second case
+is actually more interesting, as the success state is taken back to an undetermined state,
+and thus the scheduler starts checking the condition again even if it had succeeded before.
+A condition that is resumed using the <code class="docutils literal notranslate"><span class="pre">resume_condition</span></code> command also receives a <code class="docutils literal notranslate"><span class="pre">reset</span></code>,
+so that conditions that depend on waiting for a certain amount of time to fire do not count
+the time spent in suspended state as part of the time to wait for.</p>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="60.events.html" class="btn btn-neutral float-left" title="Events" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="80.build.html" class="btn btn-neutral float-right" title="Building whenever" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

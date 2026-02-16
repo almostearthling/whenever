@@ -1,0 +1,218 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation &mdash; Whenever 1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=58fbf978"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="License" href="99.license.html" />
+    <link rel="prev" title="Building whenever" href="80.build.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="10.main.html">The <strong>whenever</strong> Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="20.cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="40.tasks.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="50.conditions.html">Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1"><a class="reference internal" href="70.intcli.html">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#minimal-frontend">Minimal Frontend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#complete-frontend">Complete Frontend</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/90.install.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="installation">
+<span id="install"></span><h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
+<p><strong>whenever</strong> does not really need an installation: the binary files that result from the
+<a class="reference internal" href="80.build.html#build"><span class="std std-ref">build</span></a> process are self-contained, and only need to be moved in a directory
+mentioned in the <em>PATH</em> environment variable, or just to be directly invoked using the full
+path to the executable.</p>
+<p>Running <strong>whenever</strong> from the command line, though, is not really useful – if not in order
+to test a configuration file, especially if it has not been produced by means of a configuration
+utility such as <a class="reference external" href="https://github.com/almostearthling/when-command">When</a>. The tool, in fact, is designed to be launched by a GUI application, to
+hide the console window and to issue appropriate commands to control the scheduler execution.</p>
+<p>There are two frontend applications available for <strong>whenever</strong>: the former is minimal, takes only
+about 4MB of RAM while running, and does little more than executing the scheduler in background
+and giving the user the possibility to stop it gracefully. The latter is a full-featured frontend,
+that manages the scheduler configuration, runs it in the background, provides user interaction
+with it, and exploits some of the advanced features of <strong>whenever</strong> to provide a more effective
+interface and some specific configuration items (tasks, conditions and events) for the platform
+it is running on.</p>
+<section id="minimal-frontend">
+<span id="install-minimal"></span><h2>Minimal Frontend<a class="headerlink" href="#minimal-frontend" title="Link to this heading"></a></h2>
+<p>The <em>minimal</em> frontend is <a class="reference external" href="https://github.com/almostearthling/whenever_tray">whenever_tray</a>: the installation procedure is manual, and can be
+fulfilled following these steps:</p>
+<ol class="arabic" start="0">
+<li><p>on Windows there are no prerequisites, so this step can be skipped. On Linux, some libraries
+might be needed:</p>
+<ul class="simple">
+<li><p><em>wxGTK 3.2</em> (or later): they should be available most of the times via the system package
+manager, sometimes by adding a third party repository</p></li>
+<li><p><em>libxss</em> and <em>libX11</em>, which normally come by installing <em>Xorg</em> support.</p></li>
+</ul>
+<p>Also, enable <em>app indicators</em> if needed, using an appropriate <em>shell extension</em>.</p>
+</li>
+<li><p>Download the latest binaries ZIP file from the <strong>whenever</strong> releases page (the provided one
+contains both <strong>whenever</strong> and <strong>whenever_tray</strong>) and extract its contents in a directory
+in the system <em>PATH</em>.</p></li>
+<li><p>Create the <em>application data directory</em> for <strong>whenever_tray</strong> as follows:</p>
+<ul class="simple">
+<li><p>on Linux: <code class="docutils literal notranslate"><span class="pre">mkdir</span> <span class="pre">~/.whenever</span></code></p></li>
+<li><p>on Windows: <code class="docutils literal notranslate"><span class="pre">mkdir</span> <span class="pre">%APPDATA%\Whenever</span></code></p></li>
+</ul>
+</li>
+<li><p>Edit <em>whenever.toml</em> in the <em>application data directory</em>, so that it contains the following
+TOML configuration:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># whenever configuration file</span>
+<span class="n">scheduler_tick_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+<span class="n">randomize_checks_within_ticks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="k">[[task]]</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lua&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;TRACE&quot;</span>
+<span class="n">script</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    log.warn(&quot;Trace: *** VERIFIED CONDITION *** `&quot; .. whenever_condition .. &quot;`&quot;);</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+<span class="k">[[condition]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Periodic00&quot;</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;interval&quot;</span>
+<span class="n">interval_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">recurring</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;TRACE&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">]</span>
+
+<span class="c1"># end.</span>
+</pre></div>
+</div>
+</li>
+<li><p>in the same <em>application data directory</em>, also create the <em>whenever_tray.toml</em> file, so that
+it contains what follows:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[whenever_tray]</span>
+<span class="c1"># path to the text processor used to view the log file</span>
+<span class="c1">#logview_command = &#39;gnome-text-editor&#39;</span>
+<span class="c1">#logview_command = &#39;gedit&#39;</span>
+<span class="c1">#logview_command = &#39;notepad.exe&#39;</span>
+</pre></div>
+</div>
+<p>just uncommenting the appropriate line for a log viewer available on the platform.</p>
+</li>
+<li><p>Launch <strong>whenever_tray</strong>, for example from the command line</p></li>
+<li><p>Access <strong>whenever</strong> from the metronome icon in the notification/tray area.</p></li>
+</ol>
+<p>The <em>whenever.toml</em> configuration file should be edited to suit your needs, as the provided
+example only logs a line (with <em>WARN</em> severity) every minute. Also, you might want to install a
+log viewer application to specify as <code class="docutils literal notranslate"><span class="pre">logview_command</span></code> in <em>whenever_tray.toml</em>, instead of
+using a generic editor like the ones shown in the example above: for instance, <a class="reference external" href="https://glogg.bonnefon.org/">glogg</a> has been
+very useful in my case on both Linux and Windows.</p>
+</section>
+<section id="complete-frontend">
+<span id="install-when"></span><h2>Complete Frontend<a class="headerlink" href="#complete-frontend" title="Link to this heading"></a></h2>
+<p>At the moment the easiest way to install <strong>whenever</strong> and start using it effectively is through
+its full-featured frontend: <a class="reference external" href="https://github.com/almostearthling/when-command">When</a>. You can follow its specific installation instructions
+<a class="reference external" href="https://almostearthling.github.io/when-command/install.html">here</a>: <strong>When</strong> takes care of
+downloading and checking the latest binary release of <strong>whenever</strong>, and provides a way to install
+the program icons and to autostart the scheduler upon login. Moreover, <strong>When</strong> offers a graphical
+UI to configure <em>tasks</em>, <em>conditions</em>, and <em>events</em>, instead of manually editing the configuration
+file.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="80.build.html" class="btn btn-neutral float-left" title="Building whenever" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="99.license.html" class="btn btn-neutral float-right" title="License" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
