@@ -1,4 +1,7 @@
 // build script
+// this script contains dead code that might have been introduced as platform
+// specific, but might also be useful in further editions
+#![allow(dead_code)]
 
 use std::env;
 
