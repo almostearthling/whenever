@@ -8,6 +8,44 @@ authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 repository = "https://github.com/almostearthling/whenever/"
 edition = "2024"
 
+[dependencies]
+time = "0.3.17"
+chrono = "0.4.24"
+rand = "0.10"
+regex = "1.7.1"
+log = "0.4.17"
+flexi_logger = "0.31.2"
+nu-ansi-term = "0.50.1"
+clokwerk = "0.4"
+listenfd = "1.0.1"
+toml = "1.0"
+serde = "1.0"
+lazy_static = "1.4"
+subprocess = "0.2.15"
+ctrlc = { version = "3.5.1", features = ["termination"] }
+cfgmap = { version = "0.4", features = ["from_toml", "from_json"] }
+clap = { version = "4.1.4", features = ["derive"] }
+mlua = { version = "0.11.1", features = ["lua54", "vendored"] }
+unique_id = "0.1.5"
+serde_json = "1.0.95"
+single-instance = "0.3.3"
+notify = "8.1"
+async-std = "1.12"
+zbus = { version ="5.9", optional = true }
+whoami = "2.1.1"
+itertools = "0.14"
+futures = "0.3"
+async-trait = "0.1.89"
+system-idle-time = "1.0.4"
+
+[target.'cfg(windows)'.dependencies]
+wmi = { version = "0.18", optional = true }
+
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1.30"
+
+
 # a brief explanation of the available features:
 #
 # 1. "dbus": enables DBus support, available on both Linux and Windows, but
@@ -25,41 +63,9 @@ edition = "2024"
 # as the default features are both enabled for rust-analyzer to consider them
 [features]
 default = ["dbus", "wmi"]
-dbus = []
-wmi = []
+dbus = ["dep:zbus"]
+wmi = ["dep:wmi"]
 lua_unsafe = []
-
-[dependencies]
-time = "0.3.17"
-chrono = "0.4.24"
-rand = "0.10"
-regex = "1.7.1"
-log = "0.4.17"
-flexi_logger = "0.31.2"
-nu-ansi-term = "0.50.1"
-clokwerk = "0.4.0"
-listenfd = "1.0.1"
-toml = "1.0"
-serde = "1.0"
-lazy_static = "1.4.0"
-subprocess = "0.2.15"
-ctrlc = { version = "3.5.1", features = ["termination"] }
-cfgmap = { version = "0.4.0", features = ["from_toml", "from_json"] }
-clap = { version = "4.1.4", features = ["derive"] }
-mlua = { version = "0.11.1", features = ["lua54", "vendored"] }
-unique_id = "0.1.5"
-serde_json = "1.0.95"
-single-instance = "0.3.3"
-notify = "8.1.0"
-async-std = "1.12.0"
-zbus = "5.9.0"
-wmi = "0.18.0"
-whoami = "2.1.1"
-itertools = "0.14.0"
-futures = "0.3"
-async-trait = "0.1.89"
-system-idle-time = "1.0.4"
-
 
 # make the executable memory footprint as small as possible for release
 [profile.release]
@@ -67,6 +73,3 @@ strip = true        # strip executable
 opt-level = "z"     # optimize for size
 lto = true
 panic = 'abort'     # remove garbage strings from executable
-
-[build-dependencies]
-winresource = "0.1.30"

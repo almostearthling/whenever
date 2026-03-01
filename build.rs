@@ -1,6 +1,8 @@
 // build script
 
 use std::env;
+
+#[cfg(windows)]
 use winresource;
 
 
@@ -35,29 +37,33 @@ fn main() {
     if let Ok(platform) = env::var("CARGO_CFG_TARGET_OS") {
         match platform.as_str() {
             "windows" => {
-                // 1.a: attach an icon and version information
-                println!("cargo::rerun-if-changed=Cargo.toml");
-                println!("cargo::rerun-if-changed=resources/metronome.ico");
-                let mut res = winresource::WindowsResource::new();
-                res
-                    .set_icon("resources/metronome.ico")
-                    .set_version_info(
-                        winresource::VersionInfo::PRODUCTVERSION, 
-                        version_info_as_u64(),
-                    )
-                    .set("InternalName", APP_NAME)
-                    .set("FileDescription", APP_DESC)
-                    .set("ProductVersion", APP_VERSION)
-                    .set("LegalCopyright", APP_LICENSE);
-                
-                // panic here if something went wrong
-                res.compile().expect("error attaching resources");
+                // 1.a: attach an icon and version information (conditional, in
+                // order to avoid to require `winresource` unconditionally)
+                #[cfg(windows)]
+                {
+                    println!("cargo::rerun-if-changed=Cargo.toml");
+                    println!("cargo::rerun-if-changed=resources/metronome.ico");
+                    let mut res = winresource::WindowsResource::new();
+                    res
+                        .set_icon("resources/metronome.ico")
+                        .set_version_info(
+                            winresource::VersionInfo::PRODUCTVERSION,
+                            version_info_as_u64(),
+                        )
+                        .set("InternalName", APP_NAME)
+                        .set("FileDescription", APP_DESC)
+                        .set("ProductVersion", APP_VERSION)
+                        .set("LegalCopyright", APP_LICENSE);
+
+                    // panic here if something went wrong
+                    res.compile().expect("error attaching resources");
+                }
 
                 // ...
                 // ^^^ other Windows specific actions should be added above here
             }
             "linux" => {
-            
+
             }
             // ...
             // ^^^ other supported platforms should be added above here
