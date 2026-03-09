@@ -647,7 +647,7 @@ impl Task for LuaTask {
                 LogType::Warn,
                 LOG_WHEN_START,
                 LOG_STATUS_MSG,
-                &format!("cannot add socket library to Lua interpreter (error: `{e}`)"),
+                &format!("cannot add socket library to Lua interpreter ({e})"),
             );
         }
 
