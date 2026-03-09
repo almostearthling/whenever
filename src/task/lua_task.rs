@@ -7,11 +7,13 @@
 
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
+use std::thread;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use cfgmap::CfgValue::Float;
 use itertools::Itertools;
 
 use cfgmap::CfgMap;
@@ -639,6 +641,10 @@ impl Task for LuaTask {
             }
         };
 
+        // preload socket module if the `lua_extras` feature is selected
+        #[cfg(feature = "lua_extras")]
+        mlua_socket::preload(&lua);
+
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
@@ -744,6 +750,25 @@ impl Task for LuaTask {
         );
 
         let _ = globals.set("log", logftab);
+
+        // the following features are optional
+        #[cfg(feature = "lua_extras")]
+        {
+            // create synchronization functions in a table named `synchro`
+            let sync = lua.create_table().unwrap();
+    
+            let _ = sync.set(
+                "sleep", 
+                lua.create_function(move |_, secs: Float| {
+                    thread::sleep(Duration::from_secs(secs));
+                    Ok(())
+                }).unwrap(),
+            );
+    
+            // ...
+    
+            let _ = globals.set("synchro", sync);
+        }
 
         // run the initialization script if it has been specified: an error in
         // the initialization script can abort the execution at this point

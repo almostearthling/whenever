@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::{Duration, Instant, SystemTime};
+use std::thread;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -970,6 +971,10 @@ impl Condition for LuaCondition {
             }
         };
 
+        // preload socket module if the `lua_extras` feature is selected
+        #[cfg(feature = "lua_extras")]
+        mlua_socket::preload(&lua);
+
         self.log(
             LogType::Trace,
             LOG_WHEN_START,
@@ -1069,6 +1074,25 @@ impl Condition for LuaCondition {
         );
 
         let _ = globals.set("log", logftab);
+
+        // the following features are optional
+        #[cfg(feature = "lua_extras")]
+        {
+            // create synchronization functions in a table named `synchro`
+            let sync = lua.create_table().unwrap();
+    
+            let _ = sync.set(
+                "sleep", 
+                lua.create_function(move |_, secs: Float| {
+                    thread::sleep(Duration::from_secs(secs));
+                    Ok(())
+                }).unwrap(),
+            );
+    
+            // ...
+    
+            let _ = globals.set("synchro", sync);
+        }
 
         // run the initialization script if it has been specified: an error in
         // the initialization script can abort the execution at this point
