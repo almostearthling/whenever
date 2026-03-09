@@ -973,7 +973,14 @@ impl Condition for LuaCondition {
 
         // preload socket module if the `lua_extras` feature is selected
         #[cfg(feature = "lua_extras")]
-        mlua_socket::preload(&lua);
+        if let Err(e) = mlua_socket::preload(&lua) {
+            self.log(
+                LogType::Warn,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                &format!("cannot add socket library to Lua interpreter (error: `{e}`)"),
+            );
+        }
 
         self.log(
             LogType::Trace,
@@ -1083,8 +1090,10 @@ impl Condition for LuaCondition {
     
             let _ = sync.set(
                 "sleep", 
-                lua.create_function(move |_, secs: Float| {
-                    thread::sleep(Duration::from_secs(secs));
+                lua.create_function(move |_, secs: f64| {
+                    let ms = (secs * 1000.0).round() as i64;
+                    let ms = if ms < 0 { 0 } else { ms } as u64;
+                    thread::sleep(Duration::from_millis(ms));
                     Ok(())
                 }).unwrap(),
             );
