@@ -629,7 +629,7 @@ impl Task for LuaTask {
                         LogType::Debug,
                         LOG_WHEN_START,
                         LOG_STATUS_FAIL,
-                        &format!("cannot start Lua interpreter ({e})"),
+                        &format!("(trigger: {trigger_name}) cannot start Lua interpreter ({e})"),
                     );
                     return Err(Error::new(
                         Kind::Failed,
@@ -647,7 +647,7 @@ impl Task for LuaTask {
                 LogType::Warn,
                 LOG_WHEN_START,
                 LOG_STATUS_MSG,
-                &format!("cannot add socket library to Lua interpreter ({e})"),
+                &format!("(trigger: {trigger_name}) cannot add socket library to Lua interpreter ({e})"),
             );
         }
 
