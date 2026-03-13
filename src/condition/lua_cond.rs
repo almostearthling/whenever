@@ -21,6 +21,7 @@ use mlua;
 use super::base::Condition;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
+use crate::common::named_mutex::*;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
@@ -1087,9 +1088,9 @@ impl Condition for LuaCondition {
         {
             // create synchronization functions in a table named `synchro`
             let sync = lua.create_table().unwrap();
-    
+
             let _ = sync.set(
-                "sleep", 
+                "sleep",
                 lua.create_function(move |_, secs: f64| {
                     let ms = (secs * 1000.0).round() as i64;
                     let ms = if ms < 0 { 0 } else { ms } as u64;
@@ -1097,9 +1098,33 @@ impl Condition for LuaCondition {
                     Ok(())
                 }).unwrap(),
             );
-    
+
+            let _ = sync.set(
+                "lock",
+                lua.create_function(move |_, name: String| {
+                    if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
+                        Ok(namedmutex_lock(name.as_str(), None))
+                    } else {
+                        Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                    }
+                }).unwrap(),
+            );
+
+            let _ = sync.set(
+                "lock_for",
+                lua.create_function(move |_, (name, timeout): (String, f64)| {
+                    if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
+                        let ms = (timeout * 1000.0).round() as i64;
+                        let ms = if ms < 0 { 0 } else { ms } as u64;
+                        Ok(namedmutex_lock(name.as_str(), Some(Duration::from_millis(ms))))
+                    } else {
+                        Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                    }
+                }).unwrap(),
+            );
+
             // ...
-    
+
             let _ = globals.set("synchro", sync);
         }
 

@@ -178,18 +178,22 @@ pub const EVENT_CHANNEL_SIZE: usize = 10; // default: 10
 
 // crate-wide values
 lazy_static! {
-    // environment variables set by the command based task
+    // environment variables set by the command based items
     pub static ref ENVVAR_NAME_TASK: String = format!("{}_TASK", APP_NAME.to_ascii_uppercase());
     pub static ref ENVVAR_NAME_COND: String = format!("{}_CONDITION", APP_NAME.to_ascii_uppercase());
 
+    // Lua variables set by the Lua based items
+    pub static ref LUAVAR_NAME_TASK: String = format!("{}_task", APP_NAME.to_ascii_lowercase());
+    pub static ref LUAVAR_NAME_COND: String = format!("{}_condition", APP_NAME.to_ascii_lowercase());
+
+    // item names
     pub static ref RE_TASK_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_COND_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_EVENT_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
+
+    // other identifiers used in command based and Lua based items
     pub static ref RE_VAR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_ENVVAR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
-
-    pub static ref LUAVAR_NAME_TASK: String = format!("{}_task", APP_NAME.to_ascii_lowercase());
-    pub static ref LUAVAR_NAME_COND: String = format!("{}_condition", APP_NAME.to_ascii_lowercase());
 
     // interval for polling spawned commands for stdout/stderr contents
     pub static ref DUR_SPAWNED_POLL_INTERVAL: Duration = Duration::from_millis(100);
@@ -224,6 +228,13 @@ lazy_static! {
     // the check for the first part to be `ROOT\` is left to a frontend, we
     // only check that a string that can be used as a namespace is provided
     pub static ref RE_WMI_NAMESPACE: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*([/\\][a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
+}
+
+#[cfg(feature = "lua_extras")]
+lazy_static! {
+    // accepted names for mutex objects and state tables to use in Lua scrripts
+    pub static ref RE_LUA_MUTEX_NAME: Regex = Regex::new(r"^[a-zA-Z_](\.?[a-zA-Z0-9_]+)*$").unwrap();
+    pub static ref RE_LUA_STATE_NAME: Regex = Regex::new(r"^[a-zA-Z_](\.?[a-zA-Z0-9_]+)*$").unwrap();
 }
 
 // end.
