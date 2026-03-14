@@ -235,6 +235,7 @@ lazy_static! {
     // accepted names for mutex objects and state tables to use in Lua scrripts
     pub static ref RE_LUA_MUTEX_NAME: Regex = Regex::new(r"^[a-zA-Z_](\.?[a-zA-Z0-9_]+)*$").unwrap();
     pub static ref RE_LUA_STATE_NAME: Regex = Regex::new(r"^[a-zA-Z_](\.?[a-zA-Z0-9_]+)*$").unwrap();
+    pub static ref RE_LUA_STATE_INDEX: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
 }
 
 // end.

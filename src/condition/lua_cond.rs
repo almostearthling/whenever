@@ -1087,9 +1087,9 @@ impl Condition for LuaCondition {
         #[cfg(feature = "lua_extras")]
         {
             // create synchronization functions in a table named `synchro`
-            let sync = lua.create_table().unwrap();
+            let syncftab = lua.create_table().unwrap();
 
-            let _ = sync.set(
+            let _ = syncftab.set(
                 "sleep",
                 lua.create_function(move |_, secs: f64| {
                     let ms = (secs * 1000.0).round() as i64;
@@ -1099,33 +1099,55 @@ impl Condition for LuaCondition {
                 }).unwrap(),
             );
 
-            let _ = sync.set(
+            // let _ = syncftab.set(
+            //     "lock_wait",
+            //     lua.create_function(move |_, name: String| {
+            //         if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
+            //             Ok(namedmutex_lock(name.as_str(), None))
+            //         } else {
+            //             Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+            //         }
+            //     }).unwrap(),
+            // );
+
+            // for no particular reason we enforce the mutex name to follow
+            // a rule: it must start with an underscore or a letter, followed
+            // by underscores, letters, and numbers; dots can be used to
+            // separate parts of the name, but are not mandatory; names that
+            // do not follow this syntax will cause the lock to fail with an
+            // `invalid parameter` error, as well as timeouts less than zero
+            let _ = syncftab.set(
                 "lock",
-                lua.create_function(move |_, name: String| {
+                lua.create_function(move |_, (name, timeout): (String, Option<f64>)| {
                     if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
-                        Ok(namedmutex_lock(name.as_str(), None))
+                        if let Some(ms) = timeout {
+                            let ms = (ms * 1000.0).round() as i64;
+                            if ms >= 0 {
+                                Ok(namedmutex_lock(name.as_str(), Some(Duration::from_millis(ms as u64))))
+                            } else {
+                                Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                            }
+                        } else {
+                            Ok(namedmutex_lock(name.as_str(), None))
+                        }
                     } else {
                         Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
                     }
                 }).unwrap(),
             );
 
-            let _ = sync.set(
-                "lock_for",
-                lua.create_function(move |_, (name, timeout): (String, f64)| {
-                    if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
-                        let ms = (timeout * 1000.0).round() as i64;
-                        let ms = if ms < 0 { 0 } else { ms } as u64;
-                        Ok(namedmutex_lock(name.as_str(), Some(Duration::from_millis(ms))))
-                    } else {
-                        Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
-                    }
+            // here the name is not checked: invalid names will not be found
+            // and the unlock will simply fail and return `false`
+            let _ = syncftab.set(
+                "release",
+                lua.create_function(|_, name: String| {
+                    Ok(namedmutex_release(name.as_str()))
                 }).unwrap(),
             );
 
             // ...
 
-            let _ = globals.set("synchro", sync);
+            let _ = globals.set("synchro", syncftab);
         }
 
         // run the initialization script if it has been specified: an error in

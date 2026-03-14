@@ -1444,6 +1444,10 @@ pub mod named_mutex {
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
 pub mod luaitem {
+    use mlua::{FromLua, IntoLua};
+
+    use crate::constants::ERR_INVALID_PARAMETER;
+
 
     /// The possible values to be checked from Lua
     #[derive(Debug)]
@@ -1451,6 +1455,39 @@ pub mod luaitem {
         LuaString(String),
         LuaNumber(f64),
         LuaBoolean(bool),
+    }
+
+    // this is to use `LuaValue` in functions defined for Lua
+    impl IntoLua for LuaValue {
+        fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+            match self {
+                LuaValue::LuaBoolean(x) => {
+                    x.into_lua(lua)
+                }
+                LuaValue::LuaNumber(x) => {
+                    x.into_lua(lua)
+                }
+                LuaValue::LuaString(x) => {
+                    x.into_lua(lua)
+                }
+            }
+        }
+    }
+
+    impl FromLua for LuaValue {
+        fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
+            match value {
+                mlua::Value::Boolean(x) => { Ok(LuaValue::LuaBoolean(x)) },
+                mlua::Value::Integer(x) => { Ok(LuaValue::LuaNumber(x as f64)) },
+                mlua::Value::Number(x) => { Ok(LuaValue::LuaNumber(x)) },
+                mlua::Value::String(x) => {
+                    Ok(LuaValue::LuaString(lua.convert::<String>(x).unwrap()))
+                },
+                _ => {
+                    Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                },
+            }
+        }
     }
 
     /// In case of failure, the reason will be one of the provided values
