@@ -1445,19 +1445,18 @@ pub mod named_mutex {
 /// This module provides utilities for Lua based items
 pub mod luaitem {
     use mlua::{FromLua, IntoLua};
-
-    use crate::constants::ERR_INVALID_PARAMETER;
+    use crate::constants::ERR_INVALID_VALUE;
 
 
     /// The possible values to be checked from Lua
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum LuaValue {
         LuaString(String),
         LuaNumber(f64),
         LuaBoolean(bool),
     }
 
-    // this is to use `LuaValue` in functions defined for Lua
+    // these are needed to convert values found in a table
     impl IntoLua for LuaValue {
         fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
             match self {
@@ -1484,7 +1483,7 @@ pub mod luaitem {
                     Ok(LuaValue::LuaString(lua.convert::<String>(x).unwrap()))
                 },
                 _ => {
-                    Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                    Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()))
                 },
             }
         }

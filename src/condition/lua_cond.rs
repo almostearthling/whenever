@@ -77,6 +77,9 @@ pub struct LuaCondition {
     // condition has actually been successful, which in this case may not
     // be true, as a persistent success may not let the condition succeed
     last_check_failed: bool,
+
+    #[cfg(feature = "lua_extras")]
+    state: HashMap<String, LuaValue>,
 }
 
 // implement the hash protocol
@@ -179,6 +182,9 @@ impl LuaCondition {
             // internal values
             check_last: t,
             last_check_failed: true,
+
+            #[cfg(feature = "lua_extras")]
+            state: HashMap::new(),
         }
     }
 
@@ -1081,12 +1087,12 @@ impl Condition for LuaCondition {
             .unwrap(),
         );
 
-        let _ = globals.set("log", logftab);
+        let _ = globals.set(LUA_MODULE_LOG, logftab);
 
         // the following features are optional
         #[cfg(feature = "lua_extras")]
         {
-            // create synchronization functions in a table named `synchro`
+            // create synchronization functions in a table
             let syncftab = lua.create_table().unwrap();
 
             let _ = syncftab.set(
@@ -1098,17 +1104,6 @@ impl Condition for LuaCondition {
                     Ok(())
                 }).unwrap(),
             );
-
-            // let _ = syncftab.set(
-            //     "lock_wait",
-            //     lua.create_function(move |_, name: String| {
-            //         if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
-            //             Ok(namedmutex_lock(name.as_str(), None))
-            //         } else {
-            //             Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
-            //         }
-            //     }).unwrap(),
-            // );
 
             // for no particular reason we enforce the mutex name to follow
             // a rule: it must start with an underscore or a letter, followed
@@ -1147,7 +1142,15 @@ impl Condition for LuaCondition {
 
             // ...
 
-            let _ = globals.set("synchro", syncftab);
+            let _ = globals.set(LUA_MODULE_SYNC, syncftab);
+
+            // initialize the private state table with the current state, and
+            // provide it to the script: this is different from the config
+            // entry that sets variables, because the private state is handled
+            // by previous script runs and not at configuration time
+            let stateftab = lua.create_table().unwrap();
+            let state = lua.create_table_from(self.state.clone()).unwrap();
+            let _ = stateftab.set(LUA_TABLE_STATE_PRIVATE, state);
         }
 
         // run the initialization script if it has been specified: an error in
@@ -1220,7 +1223,75 @@ impl Condition for LuaCondition {
 
         // if still at the initial value, execute the script and check results
         if failure_reason == FailureReason::NoCheck {
-            match lua.load(self.script.clone()).exec() {
+            // execute the script and possibly store the private state
+            let res = lua.load(self.script.as_str()).exec();
+
+            #[cfg(feature = "lua_extras")]
+            {
+                // a new state is intialized: on a successful save the newly
+                // created state will replace the previous one; there are two
+                // things to note:
+                // 1. the private state is not synchronized, because two
+                //    consecutive runs cannot overlap due to the busy harness
+                //    implemented for conditions;
+                // 2. faulure to save the state will not interfere with script
+                //    outcome, the state itself is resilient to value and
+                //    index errors, and the failure to save the state could
+                //    also be caused by tampering with the state table that is
+                //    a regular Lua table after all
+                let mut state: HashMap<String, LuaValue> = HashMap::new();
+                if let Ok(table) = globals.get::<mlua::Table>(LUA_TABLE_STATE_PRIVATE) {
+                    for pair in table.pairs::<mlua::Value, mlua::Value>() {
+                        if pair.is_ok() {
+                            let (name, value) = pair.unwrap();
+                            if let Ok(name) = lua.convert::<String>(name) {
+                                if RE_LUA_STATE_INDEX.is_match(name.as_str()) {
+                                    if let Ok(value) = lua.convert::<LuaValue>(value) {
+                                        state.insert(name, value);
+                                        self.log(
+                                            LogType::Trace,
+                                            LOG_WHEN_PROC,
+                                            LOG_STATUS_MSG,
+                                            "state entry with index `{name}` set to ``",
+                                        );
+                                    }
+                                } else {
+                                    self.log(
+                                        LogType::Debug,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_ERR,
+                                        &format!("state index `{name}` invalid: entry not saved"),
+                                    );
+                                }
+                            } else {
+                                self.log(
+                                    LogType::Debug,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_ERR,
+                                    "an invalid state index has been provided: entry not saved",
+                                );
+                            }
+                        } else {
+                            self.log(
+                                LogType::Debug,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_ERR,
+                                "an invalid state entry could not be saved",
+                            );
+                        }
+                    }
+                    self.state = state;
+                } else {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_MSG,
+                        "Lua state not changed",
+                    );
+                }
+            }
+
+            match res {
                 // if the script executed without error, iterate over the provided
                 // names and values to check that the results match expectations;
                 // obviously if no varnames/values are provided, no iteration will

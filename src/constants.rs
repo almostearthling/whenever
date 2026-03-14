@@ -74,6 +74,7 @@ pub const ERR_INVALID_ENVVAR_VALUE: &str = "invalid value for environment variab
 
 pub const ERR_INVALID_VAR_NAME: &str = "invalid variable name";
 pub const ERR_INVALID_VAR_VALUE: &str = "invalid variable value";
+pub const ERR_INVALID_VALUE: &str = "invalid value";
 
 pub const ERR_INVALID_TIMESPEC: &str = "invalid specification for date or time";
 pub const ERR_INVALID_TICK_SECONDS: &str = "invalid number of seconds for tick";
@@ -175,6 +176,13 @@ pub const MAIN_STDIN_READ_WAIT_MILLISECONDS: u64 = 100; // default: 100
 // channel sizes
 pub const EVENT_QUIT_CHANNEL_SIZE: usize = 10; // default: 10
 pub const EVENT_CHANNEL_SIZE: usize = 10; // default: 10
+
+// names of injected Lua tables and modules
+pub const LUA_MODULE_LOG: &str = "log";
+#[cfg(feature = "lua_extras")]
+pub const LUA_MODULE_SYNC: &str = "sync";
+#[cfg(feature = "lua_extras")]
+pub const LUA_TABLE_STATE_PRIVATE: &str = "state";
 
 // crate-wide values
 lazy_static! {
