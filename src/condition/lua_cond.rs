@@ -7,8 +7,8 @@
 
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::time::{Duration, Instant, SystemTime};
 use std::thread;
+use std::time::{Duration, Instant, SystemTime};
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1102,7 +1102,8 @@ impl Condition for LuaCondition {
                     let ms = if ms < 0 { 0 } else { ms } as u64;
                     thread::sleep(Duration::from_millis(ms));
                     Ok(())
-                }).unwrap(),
+                })
+                .unwrap(),
             );
 
             // for no particular reason we enforce the mutex name to carry an
@@ -1114,7 +1115,10 @@ impl Condition for LuaCondition {
                         if let Some(ms) = timeout {
                             let ms = (ms * 1000.0).round() as i64;
                             if ms >= 0 {
-                                Ok(namedmutex_lock(name.as_str(), Some(Duration::from_millis(ms as u64))))
+                                Ok(namedmutex_lock(
+                                    name.as_str(),
+                                    Some(Duration::from_millis(ms as u64)),
+                                ))
                             } else {
                                 Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
                             }
@@ -1124,16 +1128,16 @@ impl Condition for LuaCondition {
                     } else {
                         Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
                     }
-                }).unwrap(),
+                })
+                .unwrap(),
             );
 
             // here the name is not checked: invalid names will not be found
             // and the unlock will simply fail and return `false`
             let _ = syncftab.set(
                 "release",
-                lua.create_function(|_, name: String| {
-                    Ok(namedmutex_release(name.as_str()))
-                }).unwrap(),
+                lua.create_function(|_, name: String| Ok(namedmutex_release(name.as_str())))
+                    .unwrap(),
             );
 
             // ...
@@ -1144,9 +1148,16 @@ impl Condition for LuaCondition {
             // provide it to the script: this is different from the config
             // entry that sets variables, because the private state is handled
             // by previous script runs and not at configuration time
-            let stateftab = lua.create_table().unwrap();
             let state = lua.create_table_from(self.state.clone()).unwrap();
-            let _ = stateftab.set(LUA_TABLE_STATE_PRIVATE, state);
+            // globals.set(LUA_TABLE_STATE_PRIVATE, state).unwrap_or_else(|_| {
+            //     self.log(
+            //         LogType::Debug,
+            //         LOG_WHEN_START,
+            //         LOG_STATUS_FAIL,
+            //         "could not initialize Lua private state"
+            //     );
+            // });
+            let _ = globals.set(LUA_TABLE_STATE_PRIVATE, state);
 
             // provide access to the shared state utilities: in order for the
             // shared state to be set, it has to be well formed in the same
@@ -1156,19 +1167,19 @@ impl Condition for LuaCondition {
             // save the shared state, will return an error if not compliant
             let _ = sharedstateftab.set(
                 "save",
-                lua.create_function( |lua, (name, state): (String, mlua::Table)| {
+                lua.create_function(|lua, (name, state): (String, mlua::Table)| {
                     set_shared_state(&lua, name.as_str(), state)?;
                     Ok(())
-                }).unwrap(),
+                })
+                .unwrap(),
             );
 
             // load the shared state as a table, typically it will be assigned
             // to a local table to be saved later
             let _ = sharedstateftab.set(
                 "load",
-                lua.create_function(|lua, name: String| {
-                    Ok(get_shared_state(lua, name.as_str())?)
-                }).unwrap(),
+                lua.create_function(|lua, name: String| Ok(get_shared_state(lua, name.as_str())?))
+                    .unwrap(),
             );
 
             // ...
@@ -1272,7 +1283,7 @@ impl Condition for LuaCondition {
                                             LogType::Trace,
                                             LOG_WHEN_PROC,
                                             LOG_STATUS_MSG,
-                                            &format!("private state entry with index `{name}` set to {:?}", value),
+                                            &format!("private state entry with index `{name}` set to {value}"),
                                         );
                                         state.insert(name, value);
                                         state_updated = true;

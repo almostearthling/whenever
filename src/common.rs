@@ -1316,9 +1316,9 @@ pub mod named_mutex {
     // maybe I should use it in other situations too? It claims to be more
     // efficient) in order to deal with timeouts.
 
+    use parking_lot::Mutex;
     use std::collections::HashMap;
     use std::sync::{Arc, OnceLock};
-    use parking_lot::Mutex;
     use std::time::Duration;
 
     /// A wrapper around a mutex that can be identified by name
@@ -1434,26 +1434,22 @@ pub mod named_mutex {
 
     /// Clears the guard for a named mutex, releasing the lock
     fn clear_guard(name: &str) -> bool {
-        MUTEX_GUARDS.with(|guards| {
-            guards.borrow_mut().remove(name).is_some()
-        })
+        MUTEX_GUARDS.with(|guards| guards.borrow_mut().remove(name).is_some())
     }
 }
 
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
 pub mod luaitem {
+    use parking_lot::Mutex;
+    use std::fmt::Display;
     use std::collections::HashMap;
     use std::sync::OnceLock;
-    use parking_lot::Mutex;
 
-    use mlua::{FromLua, IntoLua};
     use crate::constants::{
-        ERR_INVALID_VALUE,
-        ERR_INVALID_PARAMETER,
-        RE_LUA_STATE_NAME,
-        RE_LUA_STATE_INDEX,
+        ERR_INVALID_PARAMETER, ERR_INVALID_VALUE, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
     };
+    use mlua::{FromLua, IntoLua};
 
     /// The possible values to be checked from Lua
     #[derive(Debug, Clone)]
@@ -1461,6 +1457,22 @@ pub mod luaitem {
         LuaString(String),
         LuaNumber(f64),
         LuaBoolean(bool),
+    }
+
+    impl Display for LuaValue {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::LuaBoolean(x) => {
+                    x.fmt(f)
+                }
+                Self::LuaNumber(x) => {
+                    x.fmt(f)
+                }
+                Self::LuaString(x) => {
+                    format!("'{x}'").fmt(f)
+                }
+            }
+        }
     }
 
     // implement a map of shared states
@@ -1498,11 +1510,17 @@ pub mod luaitem {
     pub fn get_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
         let shared_states = get_shared_states().lock();
 
-        if let Some(state) = shared_states.get(entry) {
-            let state = lua.create_table_from(state.clone())?;
-            Ok(state)
-        } else {
+        if !RE_LUA_STATE_NAME.is_match(entry) {
             Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+        } else {
+            if let Some(state) = shared_states.get(entry) {
+                let state = lua
+                    .create_table_from(state.clone())
+                    .unwrap_or_else(|_| lua.create_table().unwrap());
+                Ok(state)
+            } else {
+                Ok(lua.create_table().unwrap())
+            }
         }
     }
 
@@ -1510,15 +1528,9 @@ pub mod luaitem {
     impl IntoLua for LuaValue {
         fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
             match self {
-                LuaValue::LuaBoolean(x) => {
-                    x.into_lua(lua)
-                }
-                LuaValue::LuaNumber(x) => {
-                    x.into_lua(lua)
-                }
-                LuaValue::LuaString(x) => {
-                    x.into_lua(lua)
-                }
+                LuaValue::LuaBoolean(x) => x.into_lua(lua),
+                LuaValue::LuaNumber(x) => x.into_lua(lua),
+                LuaValue::LuaString(x) => x.into_lua(lua),
             }
         }
     }
@@ -1526,15 +1538,13 @@ pub mod luaitem {
     impl FromLua for LuaValue {
         fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
             match value {
-                mlua::Value::Boolean(x) => { Ok(LuaValue::LuaBoolean(x)) },
-                mlua::Value::Integer(x) => { Ok(LuaValue::LuaNumber(x as f64)) },
-                mlua::Value::Number(x) => { Ok(LuaValue::LuaNumber(x)) },
+                mlua::Value::Boolean(x) => Ok(LuaValue::LuaBoolean(x)),
+                mlua::Value::Integer(x) => Ok(LuaValue::LuaNumber(x as f64)),
+                mlua::Value::Number(x) => Ok(LuaValue::LuaNumber(x)),
                 mlua::Value::String(x) => {
                     Ok(LuaValue::LuaString(lua.convert::<String>(x).unwrap()))
-                },
-                _ => {
-                    Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()))
-                },
+                }
+                _ => Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string())),
             }
         }
     }
