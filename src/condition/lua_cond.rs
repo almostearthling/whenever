@@ -1311,13 +1311,13 @@ impl Condition for LuaCondition {
                     );
                 } else {
                     if state_updated {
+                        self.state = state;
                         self.log(
                             LogType::Debug,
                             LOG_WHEN_END,
                             LOG_STATUS_MSG,
                             "Lua state successfully updated",
                         );
-                        self.state = state;
                     }
                 }
             }

@@ -988,6 +988,7 @@ impl Task for LuaTask {
                         "an error occurred updating private state: Lua state not changed",
                     );
                 } else {
+                    self.state = state;
                     if state_updated {
                         self.log(
                             LogType::Debug,
@@ -995,7 +996,6 @@ impl Task for LuaTask {
                             LOG_STATUS_MSG,
                             "Lua state successfully updated",
                         );
-                        self.state = state;
                     }
                 }
             }
