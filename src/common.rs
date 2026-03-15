@@ -1524,6 +1524,13 @@ pub mod luaitem {
         }
     }
 
+    pub fn del_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
+        let res = get_shared_state(lua, entry)?;
+        let mut shared_states = get_shared_states().lock();
+        shared_states.remove(entry);
+        Ok(res)
+    }
+
     // these are needed to convert values found in a table
     impl IntoLua for LuaValue {
         fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
