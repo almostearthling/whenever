@@ -53,7 +53,7 @@ pub struct LuaTask {
 
     // internal values
     #[cfg(feature = "lua_extras")]
-    state: HashMap<String, LuaValue>,
+    state: LuaState,
 }
 
 // implement the hash protocol
@@ -781,12 +781,8 @@ impl Task for LuaTask {
                 }).unwrap(),
             );
 
-            // for no particular reason we enforce the mutex name to follow
-            // a rule: it must start with an underscore or a letter, followed
-            // by underscores, letters, and numbers; dots can be used to
-            // separate parts of the name, but are not mandatory; names that
-            // do not follow this syntax will cause the lock to fail with an
-            // `invalid parameter` error, as well as timeouts less than zero
+            // for no particular reason we enforce the mutex name to carry an
+            // identifier-like name, otherwise an error is thrown
             let _ = syncftab.set(
                 "lock",
                 lua.create_function(move |_, (name, timeout): (String, Option<f64>)| {
@@ -811,7 +807,7 @@ impl Task for LuaTask {
             // and the unlock will simply fail and return `false`
             let _ = syncftab.set(
                 "release",
-                lua.create_function(|_, name: String| {
+                lua.create_function(move |_, name: String| {
                     Ok(namedmutex_release(name.as_str()))
                 }).unwrap(),
             );
@@ -827,6 +823,33 @@ impl Task for LuaTask {
             let stateftab = lua.create_table().unwrap();
             let state = lua.create_table_from(self.state.clone()).unwrap();
             let _ = stateftab.set(LUA_TABLE_STATE_PRIVATE, state);
+
+            // provide access to the shared state utilities: in order for the
+            // shared state to be set, it has to be well formed in the same
+            // way as the private state
+            let sharedstateftab = lua.create_table().unwrap();
+
+            // save the shared state, will return an error if not compliant
+            let _ = sharedstateftab.set(
+                "save",
+                lua.create_function( |lua, (name, state): (String, mlua::Table)| {
+                    set_shared_state(&lua, name.as_str(), state)?;
+                    Ok(())
+                }).unwrap(),
+            );
+
+            // load the shared state as a table, typically it will be assigned
+            // to a local table to be saved later
+            let _ = sharedstateftab.set(
+                "load",
+                lua.create_function(|lua, name: String| {
+                    Ok(get_shared_state(lua, name.as_str())?)
+                }).unwrap(),
+            );
+
+            // ...
+
+            let _ = globals.set(LUA_MODULE_SHARED_STATE, sharedstateftab);
         }
 
         // run the initialization script if it has been specified: an error in
@@ -910,12 +933,10 @@ impl Task for LuaTask {
                 // 1. the private state is not synchronized, because two
                 //    consecutive runs cannot overlap due to the busy harness
                 //    implemented for conditions;
-                // 2. faulure to save the state will not interfere with script
-                //    outcome, the state itself is resilient to value and
-                //    index errors, and the failure to save the state could
-                //    also be caused by tampering with the state table that is
-                //    a regular Lua table after all
+                // 2. faulure to save the state will not change the outcome
                 let mut state: HashMap<String, LuaValue> = HashMap::new();
+                let mut save_error = false;
+                let mut state_updated = false;
                 if let Ok(table) = globals.get::<mlua::Table>(LUA_TABLE_STATE_PRIVATE) {
                     for pair in table.pairs::<mlua::Value, mlua::Value>() {
                         if pair.is_ok() {
@@ -923,47 +944,46 @@ impl Task for LuaTask {
                             if let Ok(name) = lua.convert::<String>(name) {
                                 if RE_LUA_STATE_INDEX.is_match(name.as_str()) {
                                     if let Ok(value) = lua.convert::<LuaValue>(value) {
-                                        state.insert(name, value);
                                         self.log(
                                             LogType::Trace,
                                             LOG_WHEN_PROC,
                                             LOG_STATUS_MSG,
-                                            "state entry with index `{name}` set to ``",
+                                            &format!("private state entry with index `{name}` set to {:?}", value),
                                         );
+                                        state.insert(name, value);
+                                        state_updated = true;
                                     }
                                 } else {
-                                    self.log(
-                                        LogType::Debug,
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_ERR,
-                                        &format!("state index `{name}` invalid: entry not saved"),
-                                    );
+                                    save_error = true;
+                                    break;
                                 }
                             } else {
-                                self.log(
-                                    LogType::Debug,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_ERR,
-                                    "an invalid state index has been provided: entry not saved",
-                                );
+                                save_error = true;
+                                break;
                             }
                         } else {
-                            self.log(
-                                LogType::Debug,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_ERR,
-                                "an invalid state entry could not be saved",
-                            );
+                            save_error = true;
+                            break;
                         }
                     }
-                    self.state = state;
-                } else {
+                }
+                if save_error {
                     self.log(
                         LogType::Debug,
                         LOG_WHEN_END,
-                        LOG_STATUS_MSG,
-                        "Lua state not changed",
+                        LOG_STATUS_FAIL,
+                        "an error occurred updating private state: Lua state not changed",
                     );
+                } else {
+                    if state_updated {
+                        self.log(
+                            LogType::Debug,
+                            LOG_WHEN_END,
+                            LOG_STATUS_MSG,
+                            "Lua state successfully updated",
+                        );
+                        self.state = state;
+                    }
                 }
             }
 

@@ -1317,7 +1317,7 @@ pub mod named_mutex {
     // efficient) in order to deal with timeouts.
 
     use std::collections::HashMap;
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
     use parking_lot::Mutex;
     use std::time::Duration;
 
@@ -1327,8 +1327,7 @@ pub mod named_mutex {
     }
 
     /// Global storage for all named mutexes
-    static NAMED_MUTEXES: std::sync::OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> =
-        std::sync::OnceLock::new();
+    static NAMED_MUTEXES: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::new();
 
     /// Initializes the global named mutex storage
     fn get_mutex_map() -> &'static Mutex<HashMap<String, Arc<Mutex<()>>>> {
@@ -1444,9 +1443,17 @@ pub mod named_mutex {
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
 pub mod luaitem {
-    use mlua::{FromLua, IntoLua};
-    use crate::constants::ERR_INVALID_VALUE;
+    use std::collections::HashMap;
+    use std::sync::OnceLock;
+    use parking_lot::Mutex;
 
+    use mlua::{FromLua, IntoLua};
+    use crate::constants::{
+        ERR_INVALID_VALUE,
+        ERR_INVALID_PARAMETER,
+        RE_LUA_STATE_NAME,
+        RE_LUA_STATE_INDEX,
+    };
 
     /// The possible values to be checked from Lua
     #[derive(Debug, Clone)]
@@ -1454,6 +1461,49 @@ pub mod luaitem {
         LuaString(String),
         LuaNumber(f64),
         LuaBoolean(bool),
+    }
+
+    // implement a map of shared states
+    pub type LuaState = HashMap<String, LuaValue>;
+    static SHARED_STATES: OnceLock<Mutex<HashMap<String, LuaState>>> = OnceLock::new();
+
+    fn get_shared_states() -> &'static Mutex<HashMap<String, LuaState>> {
+        SHARED_STATES.get_or_init(|| Mutex::new(HashMap::new()))
+    }
+
+    pub fn set_shared_state(lua: &mlua::Lua, entry: &str, table: mlua::Table) -> mlua::Result<()> {
+        if !RE_LUA_STATE_NAME.is_match(entry) {
+            Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+        } else {
+            let mut state: LuaState = HashMap::new();
+            for pair in table.pairs::<mlua::Value, mlua::Value>() {
+                let (key, value) = pair?;
+                // perform all checks before setting a value
+                if !key.is_string() {
+                    return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
+                }
+                let key = key.to_string().unwrap();
+                if !RE_LUA_STATE_INDEX.is_match(key.as_str()) {
+                    return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
+                }
+                let value = lua.convert::<LuaValue>(value)?;
+                state.insert(key, value);
+            }
+            let mut shared_states = get_shared_states().lock();
+            shared_states.insert(String::from(entry), state);
+            Ok(())
+        }
+    }
+
+    pub fn get_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
+        let shared_states = get_shared_states().lock();
+
+        if let Some(state) = shared_states.get(entry) {
+            let state = lua.create_table_from(state.clone())?;
+            Ok(state)
+        } else {
+            Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+        }
     }
 
     // these are needed to convert values found in a table

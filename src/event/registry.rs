@@ -105,19 +105,6 @@ impl EventRegistry {
             // also, check that the list of futures is not empty (which would
             // cause a panic), and if empty return None as data, which is just
             // a no-op in the event poller
-            // if let Ok(mut el0) = el0.lock() {
-            //     if el0.is_empty() {
-            //         TriggeredOrQuitMessage::Triggered(Ok(None))
-            //     } else {
-            //         let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
-
-            //         // only the first item of the tuple is needed for our purposes
-            //         let res = select_all(catch_events).await;
-            //         TriggeredOrQuitMessage::Triggered(res.0)
-            //     }
-            // } else {
-            //     TriggeredOrQuitMessage::Triggered(Ok(None))
-            // }
             let mut el0 = el0.lock();
             if el0.is_empty() {
                 TriggeredOrQuitMessage::Triggered(Ok(None))

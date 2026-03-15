@@ -183,6 +183,8 @@ pub const LUA_MODULE_LOG: &str = "log";
 pub const LUA_MODULE_SYNC: &str = "sync";
 #[cfg(feature = "lua_extras")]
 pub const LUA_TABLE_STATE_PRIVATE: &str = "state";
+#[cfg(feature = "lua_extras")]
+pub const LUA_MODULE_SHARED_STATE: &str = "sharedstate";
 
 // crate-wide values
 lazy_static! {
@@ -241,8 +243,8 @@ lazy_static! {
 #[cfg(feature = "lua_extras")]
 lazy_static! {
     // accepted names for mutex objects and state tables to use in Lua scrripts
-    pub static ref RE_LUA_MUTEX_NAME: Regex = Regex::new(r"^[a-zA-Z_](\.?[a-zA-Z0-9_]+)*$").unwrap();
-    pub static ref RE_LUA_STATE_NAME: Regex = Regex::new(r"^[a-zA-Z_](\.?[a-zA-Z0-9_]+)*$").unwrap();
+    pub static ref RE_LUA_MUTEX_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
+    pub static ref RE_LUA_STATE_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
     pub static ref RE_LUA_STATE_INDEX: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
 }
 
