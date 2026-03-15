@@ -12,9 +12,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::RwLock;
 use std::sync::mpsc::channel;
+use parking_lot::{Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::thread::spawn;
 
@@ -79,7 +78,7 @@ impl TaskRegistry {
     ///
     /// * name - the name of the task to check for registration
     pub fn has_task(&self, name: &str) -> Result<bool> {
-        Ok(self.task_list.read()?.contains_key(name))
+        Ok(self.task_list.read().contains_key(name))
     }
 
     /// Check whether or not the provided task is in the registry.
@@ -90,10 +89,10 @@ impl TaskRegistry {
     pub fn has_task_eq(&self, task: &dyn Task) -> Result<bool> {
         let name = task.get_name();
         if self.has_task(name.as_str())? {
-            let tasks = self.task_list.read()?;
+            let tasks = self.task_list.read();
             let found_task = tasks.get(name.as_str()).unwrap();
             let t0 = found_task.clone();
-            let locked_task = t0.lock()?;
+            let locked_task = t0.lock();
             return Ok(locked_task.eq(task));
         }
 
@@ -111,7 +110,7 @@ impl TaskRegistry {
     /// * names - a list of task names (as a vector).
     pub fn has_all_tasks(&self, names: &Vec<&str>) -> Result<bool> {
         for name in names {
-            if !self.task_list.read()?.contains_key(*name) {
+            if !self.task_list.read().contains_key(*name) {
                 return Ok(false);
             }
         }
@@ -148,7 +147,7 @@ impl TaskRegistry {
         // released task would be safe to run even when not registered
         boxed_task.set_id(generate_task_id());
         self.task_list
-            .write()?
+            .write()
             .insert(name, Arc::new(Mutex::new(boxed_task)));
         Ok(true)
     }
@@ -158,7 +157,7 @@ impl TaskRegistry {
     pub fn dynamic_add_or_replace_task(&self, boxed_task: TaskRef) -> Result<bool> {
         let name = boxed_task.get_name();
         let sessions = self.running_sessions.clone();
-        let sessions = sessions.lock()?;
+        let sessions = sessions.lock();
         if *sessions == 0 {
             if self.has_task(&name)? {
                 match self.remove_task(&name) {
@@ -180,7 +179,7 @@ impl TaskRegistry {
             }
         } else {
             let queue = self.items_to_add.clone();
-            let mut queue = queue.lock()?;
+            let mut queue = queue.lock();
             queue.push(boxed_task);
             log(
                 LogType::Debug,
@@ -214,12 +213,12 @@ impl TaskRegistry {
     /// * `Ok(Task)` - the removed (_pulled out_) `Task` on success.
     pub fn remove_task(&self, name: &str) -> Result<Option<TaskRef>> {
         if self.has_task(name)? {
-            match self.task_list.write()?.remove(name) {
+            match self.task_list.write().remove(name) {
                 Some(r) => {
                     let Ok(mx) = Arc::try_unwrap(r) else {
                         return Err(Error::new(Kind::Failed, ERR_ACCESS_FAILED));
                     };
-                    let mut task = mx.into_inner()?;
+                    let mut task = mx.into_inner();
                     task.set_id(0);
                     Ok(Some(task))
                 }
@@ -235,12 +234,12 @@ impl TaskRegistry {
     pub fn dynamic_remove_task(&self, name: &str) -> Result<bool> {
         if self.has_task(name)? {
             let sessions = self.running_sessions.clone();
-            let sessions = sessions.lock()?;
+            let sessions = sessions.lock();
             if *sessions == 0 {
                 self.remove_task(name)?;
             } else {
                 let queue = self.items_to_remove.clone();
-                let mut queue = queue.lock()?;
+                let mut queue = queue.lock();
                 queue.push(String::from(name));
                 log(
                     LogType::Debug,
@@ -267,7 +266,7 @@ impl TaskRegistry {
     pub fn task_names(&self) -> Result<Option<Vec<String>>> {
         let mut res = Vec::new();
 
-        for name in self.task_list.read()?.keys() {
+        for name in self.task_list.read().keys() {
             res.push(name.clone())
         }
         if res.is_empty() {
@@ -281,10 +280,10 @@ impl TaskRegistry {
     pub fn task_id(&self, name: &str) -> Result<Option<i64>> {
         if self.has_task(name).unwrap() {
             // TO_FIX
-            let tl0 = self.task_list.read()?;
+            let tl0 = self.task_list.read();
             let task = tl0.get(name).expect("cannot retrieve task").clone();
             drop(tl0);
-            let id = task.lock()?.get_id();
+            let id = task.lock().get_id();
             Ok(Some(id))
         } else {
             Ok(None)
@@ -345,7 +344,7 @@ impl TaskRegistry {
 
         // increase the number of running sessions before running tasks
         {
-            let mut sessions = sessions.lock()?;
+            let mut sessions = sessions.lock();
             *sessions += 1;
         }
 
@@ -357,14 +356,14 @@ impl TaskRegistry {
             let id = self.task_id(name)?.unwrap();
             let mut breaks = false;
             let task;
-            let tl0 = self.task_list.read()?;
+            let tl0 = self.task_list.read();
             task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();
             drop(tl0);
 
-            let mut t0 = task.lock()?;
+            let mut t0 = task.lock();
             let cur_res = t0.run(trigger_name);
             log(
                 LogType::Trace,
@@ -412,13 +411,13 @@ impl TaskRegistry {
         // note that since the counter is locked, no other sessions can be run
         // in other possible threads
         {
-            let mut sessions = sessions.lock()?;
+            let mut sessions = sessions.lock();
             *sessions -= 1;
 
             if *sessions == 0 {
                 let rm_queue = self.items_to_remove.clone();
                 {
-                    let queue = rm_queue.lock()?;
+                    let queue = rm_queue.lock();
                     for name in queue.iter() {
                         if let Ok(item) = self.remove_task(name) {
                             if let Some(item) = item {
@@ -448,7 +447,7 @@ impl TaskRegistry {
                 }
                 let add_queue = self.items_to_add.clone();
                 {
-                    let mut queue = add_queue.lock()?;
+                    let mut queue = add_queue.lock();
                     while !queue.is_empty() {
                         if let Some(boxed_item) = queue.pop() {
                             let name = boxed_item.get_name();
@@ -550,7 +549,7 @@ impl TaskRegistry {
 
         // increase the number of running sessions before running tasks
         {
-            let mut sessions = sessions.lock()?;
+            let mut sessions = sessions.lock();
             *sessions += 1;
         }
 
@@ -572,7 +571,7 @@ impl TaskRegistry {
         for name in names.iter() {
             // the task list is only *read*: this greatly simplifies handling of
             // strings used as indexes, in this case the task name
-            let tl0 = self.task_list.read()?;
+            let tl0 = self.task_list.read();
             let task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
@@ -583,12 +582,10 @@ impl TaskRegistry {
             let atrname = atrname.clone().to_string();
             let atx = atx.clone();
             let handle = spawn(move || {
-                if let Ok(mut locked_task) = task.lock() {
-                    let outcome = locked_task.run(&atrname);
-                    if let Ok(atx) = atx.lock() {
-                        let _ = atx.send((aname.clone(), outcome));
-                    }
-                }
+                let mut task = task.lock();
+                let outcome = task.run(&atrname);
+                let atx = atx.lock();
+                let _ = atx.send((aname.clone(), outcome));
             });
             handles.push(handle);
         }
@@ -635,13 +632,13 @@ impl TaskRegistry {
         // then perform the item add/removal routine while the session counter
         // is locked, so that no one else can modify the current items list
         {
-            let mut sessions = sessions.lock()?;
+            let mut sessions = sessions.lock();
             *sessions -= 1;
 
             if *sessions == 0 {
                 let rm_queue = self.items_to_remove.clone();
                 {
-                    let queue = rm_queue.lock()?;
+                    let queue = rm_queue.lock();
                     for name in queue.iter() {
                         if let Ok(item) = self.remove_task(name) {
                             if let Some(item) = item {
@@ -671,7 +668,7 @@ impl TaskRegistry {
                 }
                 let add_queue = self.items_to_add.clone();
                 {
-                    let mut queue = add_queue.lock()?;
+                    let mut queue = add_queue.lock();
                     while !queue.is_empty() {
                         if let Some(boxed_item) = queue.pop() {
                             let name = boxed_item.get_name();

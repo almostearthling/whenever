@@ -72,7 +72,7 @@
 //! memory by avoiding unnecessary duplications.
 
 use lazy_static::lazy_static;
-use std::sync::RwLock;
+use parking_lot::RwLock;
 
 // the following global flag is exposed here because it looks like there is
 // no actual way to pass anything but a string as payload to the logger, so
@@ -202,7 +202,7 @@ pub mod logging {
                         } else if logplain {
                             log_format_plain
                         } else if logjson {
-                            *LOGGER_EMITS_JSON.write().unwrap() = true;
+                            *LOGGER_EMITS_JSON.write() = true;
                             log_format_json
                         } else {
                             log_format_plain
@@ -232,7 +232,7 @@ pub mod logging {
                         } else if logplain {
                             log_format_plain
                         } else if logjson {
-                            *LOGGER_EMITS_JSON.write().unwrap() = true;
+                            *LOGGER_EMITS_JSON.write() = true;
                             log_format_json
                         } else {
                             log_format_colors
@@ -299,7 +299,7 @@ pub mod logging {
         status: &str,
         message: &str,
     ) {
-        let payload = if *LOGGER_EMITS_JSON.read().unwrap() {
+        let payload = if *LOGGER_EMITS_JSON.read() {
             let context = if let Some((item, item_id)) = item {
                 json!({
                     "emitter": emitter,

@@ -7,8 +7,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 
@@ -91,10 +90,10 @@ impl EventRegistry {
         async fn next_event(registry: Arc<Mutex<&EventRegistry>>) -> TriggeredOrQuitMessage {
             let r0 = registry.clone();
             let r0 = r0.lock();
-            if r0.is_err() {
-                return TriggeredOrQuitMessage::Triggered(Ok(None));
-            }
-            let r0 = r0.unwrap();
+            // if r0.is_err() {
+            //     return TriggeredOrQuitMessage::Triggered(Ok(None));
+            // }
+            // let r0 = r0.unwrap();
             let el0 = r0.events.clone();
             drop(r0);
 
@@ -106,19 +105,30 @@ impl EventRegistry {
             // also, check that the list of futures is not empty (which would
             // cause a panic), and if empty return None as data, which is just
             // a no-op in the event poller
-            if let Ok(mut el0) = el0.lock() {
-                if el0.is_empty() {
-                    TriggeredOrQuitMessage::Triggered(Ok(None))
-                } else {
-                    let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
+            // if let Ok(mut el0) = el0.lock() {
+            //     if el0.is_empty() {
+            //         TriggeredOrQuitMessage::Triggered(Ok(None))
+            //     } else {
+            //         let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
 
-                    // only the first item of the tuple is needed for our purposes
-                    let res = select_all(catch_events).await;
-                    TriggeredOrQuitMessage::Triggered(res.0)
-                }
-            } else {
+            //         // only the first item of the tuple is needed for our purposes
+            //         let res = select_all(catch_events).await;
+            //         TriggeredOrQuitMessage::Triggered(res.0)
+            //     }
+            // } else {
+            //     TriggeredOrQuitMessage::Triggered(Ok(None))
+            // }
+            let mut el0 = el0.lock();
+            if el0.is_empty() {
                 TriggeredOrQuitMessage::Triggered(Ok(None))
+            } else {
+                let catch_events = el0.iter_mut().map(|(_, evt)| evt.event_triggered());
+
+                // only the first item of the tuple is needed for our purposes
+                let res = select_all(catch_events).await;
+                TriggeredOrQuitMessage::Triggered(res.0)
             }
+
         }
 
         // simplify collection of ToQMs sent through `listener_quit_messenger`
@@ -146,9 +156,9 @@ impl EventRegistry {
 
         // create the stream used to send the quit message and assign it to the registry
         let (qtx, qrx) = futures::channel::mpsc::channel::<()>(EVENT_QUIT_CHANNEL_SIZE);
-        let r0 = managed_registry.lock()?;
+        let r0 = managed_registry.lock();
         let m0 = r0.listener_quit_messenger.clone();
-        let mut m1 = m0.lock()?;
+        let mut m1 = m0.lock();
         *m1 = Some(qtx);
         drop(m1);
         drop(m0);
@@ -161,9 +171,9 @@ impl EventRegistry {
         // and quit messages: no other threads are spawned in this version
         let handle = thread::spawn(move || {
             let r0 = registry.clone();
-            let r0 = r0.lock()?;
+            let r0 = r0.lock();
             let el0 = r0.events.clone();
-            let mut el0 = el0.lock()?;
+            let mut el0 = el0.lock();
 
             for (name, event) in el0.iter_mut() {
                 if !event.initial_setup()? {
@@ -293,9 +303,9 @@ impl EventRegistry {
             });
 
             let r0 = registry.clone();
-            let r0 = r0.lock()?;
+            let r0 = r0.lock();
             let el0 = r0.events.clone();
-            let mut el0 = el0.lock()?;
+            let mut el0 = el0.lock();
 
             for (name, event) in el0.iter_mut() {
                 if !event.final_cleanup()? {
@@ -336,10 +346,10 @@ impl EventRegistry {
         });
 
         let managed_registry = managed_registry.clone();
-        let managed_registry = managed_registry.lock()?;
+        let managed_registry = managed_registry.lock();
 
         let h0 = managed_registry.listener_handle.clone();
-        let mut h0 = h0.lock()?;
+        let mut h0 = h0.lock();
         *h0 = Some(handle);
         drop(h0);
 
@@ -351,10 +361,10 @@ impl EventRegistry {
         let managed_registry = Arc::new(Mutex::new(self));
 
         let m0 = managed_registry.clone();
-        let m0 = m0.lock()?;
+        let m0 = m0.lock();
         let messenger = m0.listener_quit_messenger.clone();
         drop(m0);
-        let mut messenger = messenger.lock()?;
+        let mut messenger = messenger.lock();
         if messenger.is_some() {
             log(
                 LogType::Trace,
@@ -383,9 +393,9 @@ impl EventRegistry {
 
         // take ownership of the service handle and replace it with `None`
         let m0 = managed_registry.clone();
-        let m0 = m0.lock()?;
+        let m0 = m0.lock();
         let h0 = m0.listener_handle.clone();
-        let mut h0 = h0.lock()?;
+        let mut h0 = h0.lock();
 
         let handle = h0.take();
         let res = handle.unwrap().join();
@@ -411,7 +421,7 @@ impl EventRegistry {
     ///
     /// * name - the name of the event to check for registration.
     pub fn has_event(&self, name: &str) -> Result<bool> {
-        Ok(self.events.clone().lock()?.contains_key(name))
+        Ok(self.events.clone().lock().contains_key(name))
     }
 
     /// Check whether or not the provided event is in the registry
@@ -423,7 +433,7 @@ impl EventRegistry {
         let name = event.get_name();
         if self.has_event(name.as_str())? {
             let el0 = self.events.clone();
-            let el0 = el0.lock()?;
+            let el0 = el0.lock();
             let found_event = el0.get(name.as_str()).unwrap();
             let equals = found_event.eq(event);
             return Ok(equals);
@@ -464,9 +474,9 @@ impl EventRegistry {
         // released event would be safe to use even when not registered
         boxed_event.set_id(generate_event_id());
         self.triggerable_events
-            .write()?
+            .write()
             .insert(name.clone(), boxed_event.triggerable());
-        self.events.clone().lock()?.insert(name, boxed_event);
+        self.events.clone().lock().insert(name, boxed_event);
         Ok(true)
     }
 
@@ -494,7 +504,7 @@ impl EventRegistry {
     /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success.
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
         if self.has_event(name)? {
-            match self.events.clone().lock()?.remove(name) {
+            match self.events.clone().lock().remove(name) {
                 Some(e) => {
                     let mut event = e;
                     event.set_id(0);
@@ -514,7 +524,7 @@ impl EventRegistry {
     pub fn event_names(&self) -> Result<Option<Vec<String>>> {
         let mut res = Vec::new();
 
-        for name in self.events.clone().lock()?.keys() {
+        for name in self.events.clone().lock().keys() {
             res.push(name.clone())
         }
         if res.is_empty() {
@@ -528,7 +538,7 @@ impl EventRegistry {
     pub fn event_id(&self, name: &str) -> Result<Option<i64>> {
         if self.has_event(name)? {
             let el0 = self.events.clone();
-            let el0 = el0.lock()?;
+            let el0 = el0.lock();
             let event = el0.get(name).expect("cannot retrieve event");
             let id = event.get_id();
             Ok(Some(id))
@@ -540,7 +550,7 @@ impl EventRegistry {
     /// Tell whether or not an event is triggerable, `None` if event not found
     pub fn event_triggerable(&self, name: &str) -> Result<Option<bool>> {
         if self.has_event(name)? {
-            let triggerable = *self.triggerable_events.read()?.get(name).unwrap();
+            let triggerable = *self.triggerable_events.read().get(name).unwrap();
             Ok(Some(triggerable))
         } else {
             Ok(None)
@@ -569,7 +579,7 @@ impl EventRegistry {
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name)?.unwrap();
         let el0 = self.events.clone();
-        let el0 = el0.lock()?;
+        let el0 = el0.lock();
         let event = el0.get(name).expect("cannot retrieve event for triggering");
 
         log(
@@ -639,7 +649,7 @@ impl EventRegistry {
         // only its inner state, and not the wrapping pointer
         let id = self.event_id(name)?.unwrap();
         let el0 = self.events.clone();
-        let el0 = el0.lock()?;
+        let el0 = el0.lock();
         let event = el0.get(name).expect("cannot retrieve event for activation");
 
         if let Ok(res) = event.fire_condition() {

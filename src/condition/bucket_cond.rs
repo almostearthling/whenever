@@ -12,7 +12,8 @@
 
 use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use parking_lot::Mutex;
 use std::time::Instant;
 
 use cfgmap::CfgMap;
@@ -49,7 +50,7 @@ impl ExecutionBucket {
         Ok(self
             .execution_list
             .clone()
-            .lock()?
+            .lock()
             .contains(&String::from(name)))
     }
 
@@ -60,7 +61,7 @@ impl ExecutionBucket {
             Ok(self
                 .execution_list
                 .clone()
-                .lock()?
+                .lock()
                 .insert(String::from(name)))
         } else {
             Ok(false)
@@ -73,7 +74,7 @@ impl ExecutionBucket {
             Ok(self
                 .execution_list
                 .clone()
-                .lock()?
+                .lock()
                 .remove(&String::from(name)))
         } else {
             Ok(false)
@@ -82,10 +83,10 @@ impl ExecutionBucket {
 
     /// Clear the execution list (result can be ignored)
     pub fn clear(&self) -> Result<bool> {
-        if self.execution_list.clone().lock()?.is_empty() {
+        if self.execution_list.clone().lock().is_empty() {
             Ok(false)
         } else {
-            self.execution_list.clone().lock()?.clear();
+            self.execution_list.clone().lock().clear();
             Ok(true)
         }
     }

@@ -5,7 +5,7 @@
 
 use rand::{Rng, rng};
 use std::io::{BufRead, Stdin, stdin};
-use std::sync::{Mutex, RwLock};
+use parking_lot::{Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
 
@@ -127,7 +127,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
     }
 
     // skip if application has been intentionally paused
-    if *APPLICATION_IS_PAUSED.read().unwrap() {
+    if *APPLICATION_IS_PAUSED.read() {
         log(
             LogType::Trace,
             LOG_EMITTER_MAIN,
@@ -140,7 +140,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
         return Ok(false);
     }
     // also skip if application has been paused for reconfiguration
-    if *APPLICATION_IS_RECONFIGURING.read().unwrap() {
+    if *APPLICATION_IS_RECONFIGURING.read() {
         log(
             LogType::Trace,
             LOG_EMITTER_MAIN,
@@ -461,9 +461,9 @@ fn reconfigure(config_file: &str) -> Result<()> {
         return Err(e);
     }
 
-    *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
+    *APPLICATION_IS_RECONFIGURING.write() = true;
     let res = reconfigure_globals(config_file);
-    *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
+    *APPLICATION_IS_RECONFIGURING.write() = false;
     match res {
         Ok(config) => {
             let scheduler_tick_seconds = *config
@@ -472,7 +472,7 @@ fn reconfigure(config_file: &str) -> Result<()> {
                 .as_int()
                 .unwrap_or(&DEFAULT_SCHEDULER_TICK_SECONDS)
                 as u64;
-            *APPLICATION_IS_RECONFIGURING.write().unwrap() = true;
+            *APPLICATION_IS_RECONFIGURING.write() = true;
             let res = reconfigure_items(
                 &config,
                 &TASK_REGISTRY,
@@ -481,7 +481,7 @@ fn reconfigure(config_file: &str) -> Result<()> {
                 &EXECUTION_BUCKET,
                 scheduler_tick_seconds,
             );
-            *APPLICATION_IS_RECONFIGURING.write().unwrap() = false;
+            *APPLICATION_IS_RECONFIGURING.write() = false;
             match res {
                 Ok(_) => {
                     log(
@@ -608,7 +608,7 @@ fn trigger_event(name: &str) -> Result<bool> {
 // this function actually interprets and runs a command, passed as a string
 pub fn run_command(line: &str) -> Result<bool> {
     // first of all, lock the command execution feature to avoid overlaps
-    let _l = INPUT_COMMAND_LOCK.lock()?;
+    let _l = INPUT_COMMAND_LOCK.lock();
 
     let buffer_save = String::from(line);
     let v: Vec<&str> = line.split_whitespace().collect();
@@ -639,7 +639,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                         LOG_STATUS_MSG,
                         "exit request received: terminating application",
                     );
-                    *APPLICATION_MUST_EXIT.write().unwrap() = true;
+                    *APPLICATION_MUST_EXIT.write() = true;
                     Ok(true)
                 }
             }
@@ -666,8 +666,8 @@ pub fn run_command(line: &str) -> Result<bool> {
                         LOG_STATUS_MSG,
                         "kill request received: terminating application immediately",
                     );
-                    *APPLICATION_MUST_EXIT.write().unwrap() = true;
-                    *APPLICATION_FORCE_EXIT.write().unwrap() = true;
+                    *APPLICATION_MUST_EXIT.write() = true;
+                    *APPLICATION_FORCE_EXIT.write() = true;
                     Ok(true)
                 }
             }
@@ -684,7 +684,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                         &msg,
                     );
                     Err(Error::new(Kind::Invalid, &msg))
-                } else if *APPLICATION_IS_PAUSED.read().unwrap() {
+                } else if *APPLICATION_IS_PAUSED.read() {
                     log(
                         LogType::Warn,
                         LOG_EMITTER_MAIN,
@@ -705,7 +705,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                         LOG_STATUS_MSG,
                         "pausing scheduler ticks: conditions not checked until resume",
                     );
-                    *APPLICATION_IS_PAUSED.write().unwrap() = true;
+                    *APPLICATION_IS_PAUSED.write() = true;
                     // this log line is for wrappers, to set a possible pause
                     // UI element (for instance: tray icon) on pause
                     log(
@@ -733,7 +733,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                         &format!("command `{cmd}` does not support arguments"),
                     );
                     Err(Error::new(Kind::Invalid, &msg))
-                } else if *APPLICATION_IS_PAUSED.read().unwrap() {
+                } else if *APPLICATION_IS_PAUSED.read() {
                     log(
                         LogType::Debug,
                         LOG_EMITTER_MAIN,
@@ -750,7 +750,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                     // correct to just obey instructions and verify conditions
                     // associated to these events: commented out for now)
                     // EXECUTION_BUCKET.clear();
-                    *APPLICATION_IS_PAUSED.write().unwrap() = false;
+                    *APPLICATION_IS_PAUSED.write() = false;
                     // this log line is for wrappers, to reset a possible pause
                     // UI element (for instance: tray icon) on resume
                     log(
@@ -1179,7 +1179,7 @@ fn main() {
                 LOG_STATUS_MSG,
                 "caught interruption request: terminating application",
             );
-            *APPLICATION_MUST_EXIT.write().unwrap() = true;
+            *APPLICATION_MUST_EXIT.write() = true;
         })
     );
 
@@ -1241,7 +1241,7 @@ fn main() {
             LOG_STATUS_MSG,
             "starting in paused mode",
         );
-        *APPLICATION_IS_PAUSED.write().unwrap() = true;
+        *APPLICATION_IS_PAUSED.write() = true;
         log(
             LogType::Trace,
             LOG_EMITTER_MAIN,
@@ -1291,8 +1291,8 @@ fn main() {
     loop {
         sched.run_pending();
         thread::sleep(free_pending);
-        if *APPLICATION_MUST_EXIT.read().unwrap() {
-            if *APPLICATION_FORCE_EXIT.read().unwrap() {
+        if *APPLICATION_MUST_EXIT.read() {
+            if *APPLICATION_FORCE_EXIT.read() {
                 log(
                     LogType::Warn,
                     LOG_EMITTER_MAIN,
