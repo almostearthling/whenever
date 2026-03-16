@@ -27,13 +27,13 @@ binaries that are normally available in the published releases:
 
 .. code-block:: shell
 
-   cargo build --release --no-default-features --features linux_std
+   cargo build --release --features linux_std
 
 2. on Windows:
 
 .. code-block:: shell
 
-   cargo build --release --no-default-features --features win_std
+   cargo build --release --features windows_std
 
 
 This way, the produced binaries will only contain code for features that can be effectively used

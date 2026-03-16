@@ -46,6 +46,7 @@ fn main() {
                 {
                     println!("cargo::rerun-if-changed=Cargo.toml");
                     println!("cargo::rerun-if-changed=resources/metronome.ico");
+
                     let mut res = winresource::WindowsResource::new();
                     res
                         .set_icon("resources/metronome.ico")
@@ -67,7 +68,9 @@ fn main() {
             }
             "linux" => {
 
-            }
+                // ...
+                // ^^^ other Linux specific actions should be added above here
+           }
             // ...
             // ^^^ other supported platforms should be added above here
             _ => {
