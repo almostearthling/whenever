@@ -62,7 +62,7 @@ winresource = "0.1.30"
 #
 # as the default features are both enabled for rust-analyzer to consider them
 [features]
-default = ["dbus", "wmi"]
+default = []
 dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
 lua_unsafe = []
