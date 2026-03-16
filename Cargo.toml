@@ -32,7 +32,7 @@ serde_json = "1.0.95"
 single-instance = "0.3.3"
 notify = "8.1"
 async-std = "1.12"
-zbus = { version ="5.9", optional = true }
+zbus = { version = "5.9", optional = true }
 whoami = "2.1.1"
 itertools = "0.14"
 futures = "0.3"
@@ -57,24 +57,27 @@ winresource = "0.1.30"
 #    Lua C (binary) modules, is supported on both Linux and Windows, but it
 #    is still experimental
 #
-# the suggested configurations are:
+# the suggested configuration can be built using:
 #
-# - cargo build --release --no-default-features --features dbus     (Linux)
-# - cargo build --release --no-default-features --features wmi      (Windows)
+# - cargo build --release --features "linux_std"        (Linux)
+# - cargo build --release --features "windows_std"      (Windows)
 #
-# as the default features are both enabled for rust-analyzer to consider them
+# as the default configuration does not include any option.
 [features]
-default = ["dbus", "wmi", "lua_extras"]
 dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
 lua_extras = ["dep:mlua-socket"]
 lua_unsafe = []
-win_std = ["wmi", "lua_extras"]
+windows_std = ["wmi", "lua_extras"]
 linux_std = ["dbus", "lua_extras"]
+
 
 # make the executable memory footprint as small as possible for release
 [profile.release]
-strip = true        # strip executable
-opt-level = "z"     # optimize for size
+strip = true    # strip executable
+opt-level = "z" # optimize for size
 lto = true
-panic = 'abort'     # remove garbage strings from executable
+panic = 'abort' # remove garbage strings from executable
+
+
+# end
