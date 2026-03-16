@@ -69,6 +69,8 @@ dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
 lua_extras = ["dep:mlua-socket"]
 lua_unsafe = []
+win_std = ["wmi"]
+linux_std = ["dbus"]
 
 # make the executable memory footprint as small as possible for release
 [profile.release]
