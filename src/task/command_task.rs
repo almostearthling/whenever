@@ -721,7 +721,6 @@ impl Task for CommandTask {
         );
 
         // run the process and capture possible errors
-        // let mut failure_reason: FailureReason = FailureReason::NoFailure;
         let failure_reason;
         self._process_failed = false;
         self._process_status = 0;

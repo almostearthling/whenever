@@ -90,10 +90,6 @@ impl EventRegistry {
         async fn next_event(registry: Arc<Mutex<&EventRegistry>>) -> TriggeredOrQuitMessage {
             let r0 = registry.clone();
             let r0 = r0.lock();
-            // if r0.is_err() {
-            //     return TriggeredOrQuitMessage::Triggered(Ok(None));
-            // }
-            // let r0 = r0.unwrap();
             let el0 = r0.events.clone();
             drop(r0);
 

@@ -2236,7 +2236,6 @@ pub mod dbusitem {
                                     // in fact ugly as hell, however a nicer implementation might come with more recent
                                     // releases of zbus, which provide enum variants for signature nested structures
                                     ParameterIndex::String(s) => {
-                                        // let s = s.as_str();
                                         match field_value {
                                             zvariant::Value::Dict(f) => {
                                                 // in order to match either strings or object paths, match key signature

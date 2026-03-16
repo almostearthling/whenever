@@ -827,14 +827,6 @@ impl Task for LuaTask {
             // entry that sets variables, because the private state is handled
             // by previous script runs and not at configuration time
             let state = lua.create_table_from(self.state.clone()).unwrap();
-            // globals.set(LUA_TABLE_STATE_PRIVATE, state).unwrap_or_else(|_| {
-            //     self.log(
-            //         LogType::Debug,
-            //         LOG_WHEN_START,
-            //         LOG_STATUS_FAIL,
-            //         "could not initialize Lua private state"
-            //     );
-            // });
             let _ = globals.set(LUA_TABLE_STATE_PRIVATE, state);
 
             // provide access to the shared state utilities: in order for the
@@ -857,6 +849,14 @@ impl Task for LuaTask {
             let _ = sharedstateftab.set(
                 "load",
                 lua.create_function(|lua, name: String| Ok(get_shared_state(lua, name.as_str())?))
+                    .unwrap(),
+            );
+
+            // remove a shared state entry: returns the removed table, safe to
+            // be ignored most of the times
+            let _ = sharedstateftab.set(
+                "remove",
+                lua.create_function(|lua, name: String| Ok(del_shared_state(lua, name.as_str())?))
                     .unwrap(),
             );
 
