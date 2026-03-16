@@ -66,18 +66,19 @@ winresource = "0.1.30"
 [features]
 dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
-lua_extras = ["dep:mlua-socket"]
+lua_sync = []
+lua_net = ["dep:mlua-socket"]
 lua_unsafe = []
-windows_std = ["wmi", "lua_extras"]
-linux_std = ["dbus", "lua_extras"]
+windows_std = ["wmi", "lua_sync"]
+linux_std = ["dbus", "lua_sync"]
 
 
 # make the executable memory footprint as small as possible for release
 [profile.release]
-strip = true    # strip executable
-opt-level = "z" # optimize for size
+strip = true        # strip executable
+opt-level = "z"     # optimize for size
 lto = true
-panic = 'abort' # remove garbage strings from executable
+panic = 'abort'     # remove garbage strings from executable
 
 
 # end

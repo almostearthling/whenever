@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::{Duration, Instant, SystemTime};
 
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 use std::thread;
 
 use std::fs;
@@ -27,7 +27,7 @@ use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 use crate::common::wres::Result;
 
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 use crate::common::named_mutex::*;
 
 #[cfg(not(feature = "lua_unsafe"))]
@@ -80,7 +80,7 @@ pub struct LuaCondition {
     // be true, as a persistent success may not let the condition succeed
     last_check_failed: bool,
 
-    #[cfg(feature = "lua_extras")]
+    #[cfg(feature = "lua_sync")]
     state: LuaState,
 }
 
@@ -185,7 +185,7 @@ impl LuaCondition {
             check_last: t,
             last_check_failed: true,
 
-            #[cfg(feature = "lua_extras")]
+            #[cfg(feature = "lua_sync")]
             state: HashMap::new(),
         }
     }
@@ -981,7 +981,7 @@ impl Condition for LuaCondition {
         };
 
         // preload socket module if the `lua_extras` feature is selected
-        #[cfg(feature = "lua_extras")]
+        #[cfg(feature = "lua_net")]
         if let Err(e) = mlua_socket::preload(&lua) {
             self.log(
                 LogType::Warn,
@@ -1092,7 +1092,7 @@ impl Condition for LuaCondition {
         let _ = globals.set(LUA_MODULE_LOG, logftab);
 
         // the following features are optional
-        #[cfg(feature = "lua_extras")]
+        #[cfg(feature = "lua_sync")]
         {
             // create synchronization functions in a table
             let syncftab = lua.create_table().unwrap();
@@ -1262,7 +1262,7 @@ impl Condition for LuaCondition {
             // execute the script and possibly store the private state
             let res = lua.load(self.script.as_str()).exec();
 
-            #[cfg(feature = "lua_extras")]
+            #[cfg(feature = "lua_sync")]
             {
                 // a new state is intialized: on a successful save the newly
                 // created state will replace the previous one; there are two

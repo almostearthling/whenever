@@ -179,11 +179,11 @@ pub const EVENT_CHANNEL_SIZE: usize = 10; // default: 10
 
 // names of injected Lua tables and modules
 pub const LUA_MODULE_LOG: &str = "log";
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 pub const LUA_MODULE_SYNC: &str = "sync";
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 pub const LUA_TABLE_STATE_PRIVATE: &str = "state";
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 pub const LUA_MODULE_SHARED_STATE: &str = "sharedstate";
 
 // crate-wide values
@@ -240,7 +240,7 @@ lazy_static! {
     pub static ref RE_WMI_NAMESPACE: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*([/\\][a-zA-Z_][a-zA-Z0-9_]*)+$").unwrap();
 }
 
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 lazy_static! {
     // accepted names for mutex objects and state tables to use in Lua scrripts
     pub static ref RE_LUA_MUTEX_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();

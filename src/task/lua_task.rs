@@ -9,10 +9,10 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::SystemTime;
 
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 use std::time::Duration;
 
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 use std::thread;
 
 use std::fs;
@@ -30,7 +30,7 @@ use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
 use crate::common::wres::Result;
 
-#[cfg(feature = "lua_extras")]
+#[cfg(feature = "lua_sync")]
 use crate::common::named_mutex::*;
 
 #[cfg(not(feature = "lua_unsafe"))]
@@ -57,7 +57,7 @@ pub struct LuaTask {
     expect_all: bool,
 
     // internal values
-    #[cfg(feature = "lua_extras")]
+    #[cfg(feature = "lua_sync")]
     state: LuaState,
 }
 
@@ -141,7 +141,7 @@ impl LuaTask {
             init_script: None,
             expect_all: false,
 
-            #[cfg(feature = "lua_extras")]
+            #[cfg(feature = "lua_sync")]
             state: HashMap::new(),
         }
     }
@@ -654,7 +654,7 @@ impl Task for LuaTask {
         };
 
         // preload socket module if the `lua_extras` feature is selected
-        #[cfg(feature = "lua_extras")]
+        #[cfg(feature = "lua_net")]
         if let Err(e) = mlua_socket::preload(&lua) {
             self.log(
                 LogType::Warn,
@@ -773,7 +773,7 @@ impl Task for LuaTask {
         let _ = globals.set(LUA_MODULE_LOG, logftab);
 
         // the following features are optional
-        #[cfg(feature = "lua_extras")]
+        #[cfg(feature = "lua_sync")]
         {
             // create synchronization functions in a table
             let syncftab = lua.create_table().unwrap();
@@ -943,7 +943,7 @@ impl Task for LuaTask {
             // execute the script and possibly store the private state
             let res = lua.load(self.script.as_str()).exec();
 
-            #[cfg(feature = "lua_extras")]
+            #[cfg(feature = "lua_sync")]
             {
                 // a new state is intialized: on a successful save the newly
                 // created state will replace the previous one; there are two
