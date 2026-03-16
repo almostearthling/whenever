@@ -28,15 +28,13 @@ use super::base::Task;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
+use crate::common::wres::Result;
 
 #[cfg(feature = "lua_extras")]
 use crate::common::named_mutex::*;
 
-#[cfg(feature = "lua_unsafe")]
-use crate::common::wres::Result;
-
 #[cfg(not(feature = "lua_unsafe"))]
-use crate::common::wres::{Error, Kind, Result};
+use crate::common::wres::{Error, Kind};
 
 use crate::cfghelp::*;
 
