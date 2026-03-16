@@ -1441,16 +1441,23 @@ pub mod named_mutex {
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
 pub mod luaitem {
-    use parking_lot::Mutex;
     use std::fmt::Display;
+    use crate::constants::ERR_INVALID_VALUE;
+    use mlua::{FromLua, IntoLua};
+
+    #[cfg(feature = "lua_extras")]
+    use parking_lot::Mutex;
+
+    #[cfg(feature = "lua_extras")]
     use std::collections::HashMap;
+
+    #[cfg(feature = "lua_extras")]
     use std::sync::OnceLock;
 
     #[cfg(feature = "lua_extras")]
     use crate::constants::{
-        ERR_INVALID_PARAMETER, ERR_INVALID_VALUE, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
+        ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
     };
-    use mlua::{FromLua, IntoLua};
 
     /// The possible values to be checked from Lua
     #[derive(Debug, Clone)]
@@ -1549,7 +1556,6 @@ pub mod luaitem {
         }
     }
 
-    #[cfg(feature = "lua_extras")]
     impl FromLua for LuaValue {
         fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
             match value {

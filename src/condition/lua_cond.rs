@@ -7,8 +7,10 @@
 
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::thread;
 use std::time::{Duration, Instant, SystemTime};
+
+#[cfg(feature = "lua_extras")]
+use std::thread;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -21,15 +23,15 @@ use mlua;
 use super::base::Condition;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
-use crate::common::named_mutex::*;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
-
-#[cfg(feature = "lua_unsafe")]
 use crate::common::wres::Result;
 
+#[cfg(feature = "lua_extras")]
+use crate::common::named_mutex::*;
+
 #[cfg(not(feature = "lua_unsafe"))]
-use crate::common::wres::{Error, Kind, Result};
+use crate::common::wres::{Error, Kind};
 
 use crate::cfghelp::*;
 

@@ -1123,7 +1123,7 @@ fn main() {
     }
 
     if args.options {
-        let options = [
+        let options: Vec<&str> = vec![
             #[cfg(feature = "dbus")]
             "dbus",
             #[cfg(windows)]
