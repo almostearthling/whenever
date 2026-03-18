@@ -1445,18 +1445,79 @@ pub mod luaitem {
     use crate::constants::ERR_INVALID_VALUE;
     use mlua::{FromLua, IntoLua};
 
+    // implement a map of shared states with basic accessors
     #[cfg(feature = "lua_sync")]
-    use parking_lot::Mutex;
+    mod helper_sync {
+        use parking_lot::Mutex;
+        use std::collections::HashMap;
+        use std::sync::OnceLock;
+
+        use crate::constants::{
+            ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
+        };
+
+        type LuaState = HashMap<String, LuaValue>;
+        static SHARED_STATES: OnceLock<Mutex<HashMap<String, LuaState>>> = OnceLock::new();
+
+        fn get_shared_states() -> &'static Mutex<HashMap<String, LuaState>> {
+            SHARED_STATES.get_or_init(|| Mutex::new(HashMap::new()))
+        }
+
+        fn set_shared_state(lua: &mlua::Lua, entry: &str, table: mlua::Table) -> mlua::Result<()> {
+            if !RE_LUA_STATE_NAME.is_match(entry) {
+                Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+            } else {
+                let mut state: LuaState = HashMap::new();
+                for pair in table.pairs::<mlua::Value, mlua::Value>() {
+                    let (key, value) = pair?;
+                    // perform all checks before setting a value
+                    if !key.is_string() {
+                        return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
+                    }
+                    let key = key.to_string().unwrap();
+                    if !RE_LUA_STATE_INDEX.is_match(key.as_str()) {
+                        return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
+                    }
+                    let value = lua.convert::<LuaValue>(value)?;
+                    state.insert(key, value);
+                }
+                let mut shared_states = get_shared_states().lock();
+                shared_states.insert(String::from(entry), state);
+                Ok(())
+            }
+        }
+
+        fn get_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
+            let shared_states = get_shared_states().lock();
+
+            if !RE_LUA_STATE_NAME.is_match(entry) {
+                Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+            } else {
+                if let Some(state) = shared_states.get(entry) {
+                    let state = lua
+                        .create_table_from(state.clone())
+                        .unwrap_or_else(|_| lua.create_table().unwrap());
+                    Ok(state)
+                } else {
+                    Ok(lua.create_table().unwrap())
+                }
+            }
+        }
+
+        fn del_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
+            let res = get_shared_state(lua, entry)?;
+            let mut shared_states = get_shared_states().lock();
+            shared_states.remove(entry);
+            Ok(res)
+        }
+    }
 
     #[cfg(feature = "lua_sync")]
-    use std::collections::HashMap;
-
-    #[cfg(feature = "lua_sync")]
-    use std::sync::OnceLock;
-
-    #[cfg(feature = "lua_sync")]
-    use crate::constants::{
-        ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
+    pub use helper_sync::{
+        LuaState,
+        set_shared_state,
+        get_shared_state,
+        del_shared_state,
     };
 
     /// The possible values to be checked from Lua
@@ -1481,68 +1542,6 @@ pub mod luaitem {
                 }
             }
         }
-    }
-
-    // implement a map of shared states
-    #[cfg(feature = "lua_sync")]
-    pub type LuaState = HashMap<String, LuaValue>;
-    #[cfg(feature = "lua_sync")]
-    static SHARED_STATES: OnceLock<Mutex<HashMap<String, LuaState>>> = OnceLock::new();
-
-    #[cfg(feature = "lua_sync")]
-    fn get_shared_states() -> &'static Mutex<HashMap<String, LuaState>> {
-        SHARED_STATES.get_or_init(|| Mutex::new(HashMap::new()))
-    }
-
-    #[cfg(feature = "lua_sync")]
-    pub fn set_shared_state(lua: &mlua::Lua, entry: &str, table: mlua::Table) -> mlua::Result<()> {
-        if !RE_LUA_STATE_NAME.is_match(entry) {
-            Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
-        } else {
-            let mut state: LuaState = HashMap::new();
-            for pair in table.pairs::<mlua::Value, mlua::Value>() {
-                let (key, value) = pair?;
-                // perform all checks before setting a value
-                if !key.is_string() {
-                    return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
-                }
-                let key = key.to_string().unwrap();
-                if !RE_LUA_STATE_INDEX.is_match(key.as_str()) {
-                    return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
-                }
-                let value = lua.convert::<LuaValue>(value)?;
-                state.insert(key, value);
-            }
-            let mut shared_states = get_shared_states().lock();
-            shared_states.insert(String::from(entry), state);
-            Ok(())
-        }
-    }
-
-    #[cfg(feature = "lua_sync")]
-    pub fn get_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
-        let shared_states = get_shared_states().lock();
-
-        if !RE_LUA_STATE_NAME.is_match(entry) {
-            Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
-        } else {
-            if let Some(state) = shared_states.get(entry) {
-                let state = lua
-                    .create_table_from(state.clone())
-                    .unwrap_or_else(|_| lua.create_table().unwrap());
-                Ok(state)
-            } else {
-                Ok(lua.create_table().unwrap())
-            }
-        }
-    }
-
-    #[cfg(feature = "lua_sync")]
-    pub fn del_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
-        let res = get_shared_state(lua, entry)?;
-        let mut shared_states = get_shared_states().lock();
-        shared_states.remove(entry);
-        Ok(res)
     }
 
     // these are needed to convert values found in a table
