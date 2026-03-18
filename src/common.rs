@@ -1448,6 +1448,7 @@ pub mod luaitem {
     // implement a map of shared states with basic accessors
     #[cfg(feature = "lua_sync")]
     mod helper_sync {
+        use super::*;
         use parking_lot::Mutex;
         use std::collections::HashMap;
         use std::sync::OnceLock;
@@ -1456,14 +1457,14 @@ pub mod luaitem {
             ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
         };
 
-        type LuaState = HashMap<String, LuaValue>;
+        pub type LuaState = HashMap<String, LuaValue>;
         static SHARED_STATES: OnceLock<Mutex<HashMap<String, LuaState>>> = OnceLock::new();
 
-        fn get_shared_states() -> &'static Mutex<HashMap<String, LuaState>> {
+        pub fn get_shared_states() -> &'static Mutex<HashMap<String, LuaState>> {
             SHARED_STATES.get_or_init(|| Mutex::new(HashMap::new()))
         }
 
-        fn set_shared_state(lua: &mlua::Lua, entry: &str, table: mlua::Table) -> mlua::Result<()> {
+        pub fn set_shared_state(lua: &mlua::Lua, entry: &str, table: mlua::Table) -> mlua::Result<()> {
             if !RE_LUA_STATE_NAME.is_match(entry) {
                 Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
             } else {
@@ -1487,7 +1488,7 @@ pub mod luaitem {
             }
         }
 
-        fn get_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
+        pub fn get_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
             let shared_states = get_shared_states().lock();
 
             if !RE_LUA_STATE_NAME.is_match(entry) {
@@ -1504,7 +1505,7 @@ pub mod luaitem {
             }
         }
 
-        fn del_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
+        pub fn del_shared_state(lua: &mlua::Lua, entry: &str) -> mlua::Result<mlua::Table> {
             let res = get_shared_state(lua, entry)?;
             let mut shared_states = get_shared_states().lock();
             shared_states.remove(entry);
