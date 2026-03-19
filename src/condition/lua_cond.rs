@@ -980,8 +980,8 @@ impl Condition for LuaCondition {
             }
         };
 
-        // preload socket module if the `lua_extras` feature is selected
-        #[cfg(feature = "lua_net")]
+        // preload socket module if the `lua_socket` feature is selected
+        #[cfg(feature = "lua_socket")]
         if let Err(e) = mlua_socket::preload(&lua) {
             self.log(
                 LogType::Warn,
@@ -1122,13 +1122,13 @@ impl Condition for LuaCondition {
                                     Some(Duration::from_millis(ms as u64)),
                                 ))
                             } else {
-                                Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                                Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
                             }
                         } else {
                             Ok(namedmutex_lock(name.as_str(), None))
                         }
                     } else {
-                        Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                        Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
                     }
                 })
                 .unwrap(),

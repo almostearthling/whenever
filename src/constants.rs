@@ -88,6 +88,14 @@ pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
 pub const ERR_INVALID_EVENT_TYPE: &str = "event type invalid or mismatched";
 pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
+// Lua specific runtime error messages
+pub const ERR_LUA_INVALID_PARAMETER: &str = "invalid parameter";
+pub const ERR_LUA_INVALID_CALL: &str = "invalid function call";
+#[cfg(feature = "lua_socket")]
+pub const ERR_LUA_NETWORK_ERROR: &str = "error during network operation";
+#[cfg(feature = "lua_httpreq")]
+pub const ERR_LUA_HTTPREQ_ERROR: &str = "error during HTTP request";
+
 // logging constants
 pub const LOG_WHEN_INIT: &str = "INIT";
 pub const LOG_WHEN_START: &str = "START";
@@ -185,6 +193,8 @@ pub const LUA_MODULE_SYNC: &str = "sync";
 pub const LUA_TABLE_STATE_PRIVATE: &str = "state";
 #[cfg(feature = "lua_sync")]
 pub const LUA_MODULE_SHARED_STATE: &str = "sharedstate";
+#[cfg(feature = "lua_httpreq")]
+pub const LUA_MODULE_HTTP_REQUEST: &str = "http";
 
 // crate-wide values
 lazy_static! {

@@ -1,2 +1,2 @@
 # rust analyzer directives
-cargo.features = ["dbus", "wmi", "lua_sync", "lua_net"]
+cargo.features = ["dbus", "wmi", "lua_sync", "lua_socket"]
