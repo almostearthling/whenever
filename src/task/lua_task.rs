@@ -30,13 +30,16 @@ use crate::common::luaitem::*;
 use crate::{cfg_mandatory, constants::*};
 use crate::common::wres::Result;
 
+use crate::cfghelp::*;
+
 #[cfg(feature = "lua_sync")]
 use crate::common::named_mutex::*;
 
+#[cfg(feature = "lua_httpreq")]
+use crate::common::lua_httpreq;
+
 #[cfg(not(feature = "lua_unsafe"))]
 use crate::common::wres::{Error, Kind};
-
-use crate::cfghelp::*;
 
 /// _Lua_ script Based Task
 ///
@@ -868,6 +871,33 @@ impl Task for LuaTask {
             // ...
 
             let _ = globals.set(LUA_MODULE_SHARED_STATE, sharedstateftab);
+        }
+
+        #[cfg(feature = "lua_httpreq")]
+        {
+            // HTTP request functionalities
+            let httpftab = lua.create_table().unwrap();
+
+            let _ = httpftab.set(
+                "get",
+                lua.create_function(|_, params: mlua::MultiValue| {
+                    let (body, status) = lua_httpreq::request_get(params)?;
+                    Ok((body, status))
+                }).unwrap()
+            );
+
+            let _ = httpftab.set(
+                "post",
+                lua.create_function(|_, params: mlua::MultiValue| {
+                    let (body, status) = lua_httpreq::request_post(params)?;
+                    Ok((body, status))
+                }).unwrap()
+            );
+
+            // ...
+
+            let _ = globals.set(LUA_MODULE_HTTP_REQUEST, httpftab);
+
         }
 
         // run the initialization script if it has been specified: an error in

@@ -1440,33 +1440,152 @@ pub mod named_mutex {
 }
 
 /// Provide a simplified HTTP(S) request for Lua
-/// 
+///
 /// The capability offered by this module can be added to a table so that it
 /// works as a preloaded module
 #[cfg(feature = "lua_httpreq")]
 #[allow(dead_code)]
 pub mod lua_httpreq {
-    use reqwest::blocking as req;
-    use crate::constants::ERR_LUA_HTTPREQ_ERROR;
+    use std::{collections::HashMap, str::FromStr};
 
-    pub fn request_get(lua: &mlua::Lua, params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
+    use crate::constants::{ERR_LUA_HTTPREQ_ERROR, ERR_LUA_INVALID_PARAMETER};
+    use reqwest::{
+        self,
+        header::{HeaderName, HeaderValue},
+    };
 
-        Err(mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))
+    struct RequestParams {
+        url: reqwest::Url,
+        body: Option<String>,
+        client_params: Option<HashMap<String, String>>,
+        client_headers: Option<reqwest::header::HeaderMap>,
     }
 
-    pub fn request_post(lua: &mlua::Lua, params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
+    // extract data from a `MultiValue` to be passed to an HTTP request: expect
+    // a maximum of four values in params, of which the first is the URL base,
+    // the second is optionally a request body (string), the third is optionally
+    // a map of query arguments (for both POST and GET requests), and the fourth
+    // is an optional map of request headers; the maps are expected to be from
+    // a string to a value that can be converted to a string (generally a string
+    // or a number)
+    fn parse_params(params: &mlua::MultiValue) -> mlua::Result<RequestParams> {
+        let mut pi = params.iter();
 
-        Err(mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))
+        let v = pi.next();
+        let url = if v.is_none() {
+            return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+        } else {
+            reqwest::Url::parse(v.unwrap().to_string()?.as_str())
+                .map_err(|_| mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))?
+        };
+
+        let v = pi.next();
+        let body: Option<String> = if v.is_none() {
+            None
+        } else {
+            Some(String::from(v.unwrap().to_string()?))
+        };
+
+        let v = pi.next();
+        let client_params = if v.is_none() || v.unwrap().is_nil() || v.unwrap().is_null() {
+            None
+        } else {
+            let v = v.unwrap();
+            if !v.is_table() {
+                return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+            }
+            let tp = v.as_table().unwrap();
+            let mut m: HashMap<String, String> = HashMap::new();
+            tp.for_each::<mlua::Value, mlua::Value>(|k, v| {
+                m.insert(String::from(k.to_string()?), String::from(v.to_string()?));
+                Ok(())
+            })?;
+            Some(m)
+        };
+
+        let v = pi.next();
+        let client_headers = if v.is_none() || v.unwrap().is_nil() || v.unwrap().is_null() {
+            None
+        } else {
+            let v = v.unwrap();
+            if !v.is_table() {
+                return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+            }
+            let tp = v.as_table().unwrap();
+            let mut hm = reqwest::header::HeaderMap::new();
+
+            tp.for_each::<mlua::Value, mlua::Value>(|k, v| {
+                hm.insert(
+                    HeaderName::from_str(k.to_string()?.as_str())
+                        .map_err(|_| mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))?,
+                    HeaderValue::from_str(v.to_string()?.as_str())
+                        .map_err(|_| mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))?,
+                );
+                Ok(())
+            })?;
+            Some(hm)
+        };
+
+        if pi.next().is_some() {
+            return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+        }
+
+        Ok(RequestParams {
+            url,
+            body,
+            client_params,
+            client_headers,
+        })
     }
 
+    /// Perform a request using the GET method
+    pub fn request_get(params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
+        let rqp = parse_params(&params)?;
+
+        let client = reqwest::blocking::ClientBuilder::new()
+            .build()
+            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+        let response = client.get(rqp.url)
+            .body(rqp.body.unwrap_or_default())
+            .query(&rqp.client_params.unwrap_or_default())
+            .headers(rqp.client_headers.unwrap_or_default())
+            .send()
+            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+        let status = response.status().as_u16();
+
+        Ok((
+            response.text().map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?.to_string(),
+            status,
+        ))
+    }
+
+    pub fn request_post(params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
+        let rqp = parse_params(&params)?;
+
+        let client = reqwest::blocking::ClientBuilder::new()
+            .build()
+            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+        let response = client.post(rqp.url)
+            .body(rqp.body.unwrap_or_default())
+            .form(&rqp.client_params.unwrap_or_default())
+            .headers(rqp.client_headers.unwrap_or_default())
+            .send()
+            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+        let status = response.status().as_u16();
+        
+        Ok((
+            response.text().map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?.to_string(),
+            status,
+        ))
+    }
 }
 
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
 pub mod luaitem {
-    use std::fmt::Display;
     use crate::constants::ERR_INVALID_VALUE;
     use mlua::{FromLua, IntoLua};
+    use std::fmt::Display;
 
     // implement a map of shared states with basic accessors
     #[cfg(feature = "lua_sync")]
@@ -1476,9 +1595,7 @@ pub mod luaitem {
         use std::collections::HashMap;
         use std::sync::OnceLock;
 
-        use crate::constants::{
-            ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME,
-        };
+        use crate::constants::{ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME};
 
         pub type LuaState = HashMap<String, LuaValue>;
         static SHARED_STATES: OnceLock<Mutex<HashMap<String, LuaState>>> = OnceLock::new();
@@ -1487,7 +1604,11 @@ pub mod luaitem {
             SHARED_STATES.get_or_init(|| Mutex::new(HashMap::new()))
         }
 
-        pub fn set_shared_state(lua: &mlua::Lua, entry: &str, table: mlua::Table) -> mlua::Result<()> {
+        pub fn set_shared_state(
+            lua: &mlua::Lua,
+            entry: &str,
+            table: mlua::Table,
+        ) -> mlua::Result<()> {
             if !RE_LUA_STATE_NAME.is_match(entry) {
                 Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
             } else {
@@ -1537,12 +1658,7 @@ pub mod luaitem {
     }
 
     #[cfg(feature = "lua_sync")]
-    pub use helper_sync::{
-        LuaState,
-        set_shared_state,
-        get_shared_state,
-        del_shared_state,
-    };
+    pub use helper_sync::{LuaState, del_shared_state, get_shared_state, set_shared_state};
 
     /// The possible values to be checked from Lua
     #[derive(Debug, Clone)]
@@ -1555,15 +1671,9 @@ pub mod luaitem {
     impl Display for LuaValue {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::LuaBoolean(x) => {
-                    x.fmt(f)
-                }
-                Self::LuaNumber(x) => {
-                    x.fmt(f)
-                }
-                Self::LuaString(x) => {
-                    format!("'{x}'").fmt(f)
-                }
+                Self::LuaBoolean(x) => x.fmt(f),
+                Self::LuaNumber(x) => x.fmt(f),
+                Self::LuaString(x) => format!("'{x}'").fmt(f),
             }
         }
     }

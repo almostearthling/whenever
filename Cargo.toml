@@ -40,7 +40,7 @@ system-idle-time = "1.0.4"
 parking_lot = "0.12"
 # mlua-socket = { version = "0.2.7", features = ["lua54"], optional = true}
 mlua-socket = { version = "0.2.7", default-features = false, features = ["lua54"], optional = true, path = "library/mlua-socket"}
-reqwest = { version = "0.13", features = ["blocking", "http2"], optional = true }
+reqwest = { version = "0.13", features = ["blocking", "http2", "query", "form"], optional = true }
 
 [target.'cfg(windows)'.dependencies]
 wmi = { version = "0.18", optional = true }
@@ -67,7 +67,7 @@ winresource = "0.1.30"
 # as the default configuration does not include any option.
 [features]
 # default = []
-default = ["wmi", "dbus", "lua_sync", "lua_socket", "lua_httpreq"]
+default = ["wmi", "dbus", "lua_sync", "lua_httpreq"]
 dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
 lua_sync = []
