@@ -656,19 +656,6 @@ impl Task for LuaTask {
             }
         };
 
-        // preload socket module if the `lua_socket` feature is selected
-        #[cfg(feature = "lua_socket")]
-        if let Err(e) = mlua_socket::preload(&lua) {
-            self.log(
-                LogType::Warn,
-                LOG_WHEN_START,
-                LOG_STATUS_MSG,
-                &format!(
-                    "(trigger: {trigger_name}) cannot add socket library to Lua interpreter ({e})"
-                ),
-            );
-        }
-
         self.log(
             LogType::Debug,
             LOG_WHEN_START,
@@ -881,7 +868,6 @@ impl Task for LuaTask {
             let _ = httpftab.set(
                 "get",
                 lua.create_function(|lua: &mlua::Lua, url: String| {
-                    // (body, status) = lua_httpreq::request_get(lua, url)?;
                     Ok(lua_httpreq::request_get(lua, url.as_str())?)
                 }).unwrap()
             );
@@ -890,7 +876,7 @@ impl Task for LuaTask {
                 "post",
                 lua.create_function(|lua: &mlua::Lua, (url, body): (String, mlua::Value)| {
                     if body.is_nil() {
-                        Ok(lua_httpreq::request_post(lua, url.as_str(), None)?)    
+                        Ok(lua_httpreq::request_post(lua, url.as_str(), None)?)
                     } else {
                         Ok(lua_httpreq::request_post(lua, url.as_str(), Some(&body.to_string()?.as_bytes()))?)
                     }

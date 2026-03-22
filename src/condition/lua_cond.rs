@@ -7,10 +7,7 @@
 
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::time::{Instant, SystemTime};
-
-#[cfg(feature = "lua_sync")]
-use std::time::Duration;
+use std::time::{Instant, SystemTime, Duration};
 
 #[cfg(feature = "lua_sync")]
 use std::thread;
@@ -986,17 +983,6 @@ impl Condition for LuaCondition {
             }
         };
 
-        // preload socket module if the `lua_socket` feature is selected
-        #[cfg(feature = "lua_socket")]
-        if let Err(e) = mlua_socket::preload(&lua) {
-            self.log(
-                LogType::Warn,
-                LOG_WHEN_START,
-                LOG_STATUS_MSG,
-                &format!("cannot add socket library to Lua interpreter ({e})"),
-            );
-        }
-
         self.log(
             LogType::Trace,
             LOG_WHEN_START,
@@ -1203,7 +1189,6 @@ impl Condition for LuaCondition {
             let _ = httpftab.set(
                 "get",
                 lua.create_function(|lua: &mlua::Lua, url: String| {
-                    // (body, status) = lua_httpreq::request_get(lua, url)?;
                     Ok(lua_httpreq::request_get(lua, url.as_str())?)
                 }).unwrap()
             );
@@ -1212,7 +1197,7 @@ impl Condition for LuaCondition {
                 "post",
                 lua.create_function(|lua: &mlua::Lua, (url, body): (String, mlua::Value)| {
                     if body.is_nil() {
-                        Ok(lua_httpreq::request_post(lua, url.as_str(), None)?)    
+                        Ok(lua_httpreq::request_post(lua, url.as_str(), None)?)
                     } else {
                         Ok(lua_httpreq::request_post(lua, url.as_str(), Some(&body.to_string()?.as_bytes()))?)
                     }

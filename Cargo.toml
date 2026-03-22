@@ -39,9 +39,6 @@ async-trait = "0.1.89"
 system-idle-time = "1.0.4"
 parking_lot = "0.12"
 bstr = "1.12"
-# mlua-socket = { version = "0.2.7", features = ["lua54"], optional = true}
-mlua-socket = { version = "0.2.7", default-features = false, features = ["lua54"], optional = true, path = "library/mlua-socket"}
-reqwest = { version = "0.13", features = ["blocking", "http2", "query", "form"], optional = true }
 ehttp = { version = "0.6", optional = true }
 
 [target.'cfg(windows)'.dependencies]
@@ -68,19 +65,15 @@ winresource = "0.1.30"
 #
 # as the default configuration does not include any option.
 [features]
-# default = []
-default = ["wmi", "dbus", "lua_sync", "lua_httpreq"]
+default = []
+# default = ["wmi", "dbus", "lua_sync", "lua_httpreq"]
 dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
 lua_sync = []
-lua_socket = ["dep:mlua-socket"]
 lua_unsafe = []
 lua_httpreq = ["dep:ehttp"]
-# lua_httpreq = ["dep:reqwest"]
-# windows_std = ["wmi", "lua_sync", "lua_httpreq"]
-# linux_std = ["dbus", "lua_sync", "lua_httpreq"]
-windows_std = ["wmi", "lua_sync"]
-linux_std = ["dbus", "lua_sync"]
+windows_std = ["wmi", "lua_sync", "lua_httpreq"]
+linux_std = ["dbus", "lua_sync", "lua_httpreq"]
 
 
 # make the executable memory footprint as small as possible for release

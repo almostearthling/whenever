@@ -1129,6 +1129,10 @@ fn main() {
             #[cfg(windows)]
             #[cfg(feature = "wmi")]
             "wmi",
+            #[cfg(feature = "lua_sync")]
+            "lua_sync",
+            #[cfg(feature = "lua_httpreq")]
+            "lua_httpreq",
             #[cfg(feature = "lua_unsafe")]
             "lua_unsafe",
         ];
