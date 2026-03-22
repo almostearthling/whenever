@@ -1446,20 +1446,30 @@ pub mod named_mutex {
 #[cfg(feature = "lua_httpreq")]
 #[allow(dead_code)]
 pub mod lua_httpreq {
-    use std::{collections::HashMap, str::FromStr};
+    use bstr::BStr;
+    use ehttp::{Request, fetch_blocking};
+    use mlua::IntoLua;
 
-    use crate::constants::{ERR_LUA_HTTPREQ_ERROR, ERR_LUA_INVALID_PARAMETER};
-    use reqwest::{
-        self,
-        header::{HeaderName, HeaderValue},
-    };
+    use crate::constants::ERR_LUA_HTTPREQ_ERROR;
+    // use reqwest::{
+    //     self,
+    //     header::{HeaderName, HeaderValue},
+    // };
 
-    struct RequestParams {
-        url: reqwest::Url,
-        body: Option<String>,
-        client_params: Option<HashMap<String, String>>,
-        client_headers: Option<reqwest::header::HeaderMap>,
-    }
+    // struct RequestParams {
+    //     url: reqwest::Url,
+    //     body: Option<String>,
+    //     client_params: Option<HashMap<String, String>>,
+    //     client_headers: Option<reqwest::header::HeaderMap>,
+    // }
+
+    // struct RequestParams {
+    //     url: String,
+    //     body: Option<String>,
+    //     client_params: Option<HashMap<String, String>>,
+    //     client_headers: Option<Headers>,
+    // }
+
 
     // extract data from a `MultiValue` to be passed to an HTTP request: expect
     // a maximum of four values in params, of which the first is the URL base,
@@ -1468,116 +1478,142 @@ pub mod lua_httpreq {
     // is an optional map of request headers; the maps are expected to be from
     // a string to a value that can be converted to a string (generally a string
     // or a number)
-    fn parse_params(params: &mlua::MultiValue) -> mlua::Result<RequestParams> {
-        let mut pi = params.iter();
+    // fn parse_params(params: &mlua::MultiValue) -> mlua::Result<RequestParams> {
+    //     let mut pi = params.iter();
 
-        let v = pi.next();
-        let url = if v.is_none() {
-            return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
-        } else {
-            reqwest::Url::parse(v.unwrap().to_string()?.as_str())
-                .map_err(|_| mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))?
-        };
+    //     let v = pi.next();
+    //     let url = if v.is_none() {
+    //         return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+    //     } else {
+    //         String::from(v.unwrap().to_string()?.as_str())
+    //     };
 
-        let v = pi.next();
-        let body: Option<String> = if v.is_none() {
-            None
-        } else {
-            Some(String::from(v.unwrap().to_string()?))
-        };
+    //     let v = pi.next();
+    //     let body: Option<String> = if v.is_none() {
+    //         None
+    //     } else {
+    //         Some(String::from(v.unwrap().to_string()?))
+    //     };
 
-        let v = pi.next();
-        let client_params = if v.is_none() || v.unwrap().is_nil() || v.unwrap().is_null() {
-            None
-        } else {
-            let v = v.unwrap();
-            if !v.is_table() {
-                return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
-            }
-            let tp = v.as_table().unwrap();
-            let mut m: HashMap<String, String> = HashMap::new();
-            tp.for_each::<mlua::Value, mlua::Value>(|k, v| {
-                m.insert(String::from(k.to_string()?), String::from(v.to_string()?));
-                Ok(())
-            })?;
-            Some(m)
-        };
+    //     let v = pi.next();
+    //     let client_params = if v.is_none() || v.unwrap().is_nil() || v.unwrap().is_null() {
+    //         None
+    //     } else {
+    //         let v = v.unwrap();
+    //         if !v.is_table() {
+    //             return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+    //         }
+    //         let tp = v.as_table().unwrap();
+    //         let mut m: HashMap<String, String> = HashMap::new();
+    //         tp.for_each::<mlua::Value, mlua::Value>(|k, v| {
+    //             m.insert(String::from(k.to_string()?), String::from(v.to_string()?));
+    //             Ok(())
+    //         })?;
+    //         Some(m)
+    //     };
 
-        let v = pi.next();
-        let client_headers = if v.is_none() || v.unwrap().is_nil() || v.unwrap().is_null() {
-            None
-        } else {
-            let v = v.unwrap();
-            if !v.is_table() {
-                return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
-            }
-            let tp = v.as_table().unwrap();
-            let mut hm = reqwest::header::HeaderMap::new();
+    //     let v = pi.next();
+    //     let client_headers = if v.is_none() || v.unwrap().is_nil() || v.unwrap().is_null() {
+    //         None
+    //     } else {
+    //         let v = v.unwrap();
+    //         if !v.is_table() {
+    //             return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+    //         }
+    //         let tp = v.as_table().unwrap();
+    //         let mut hm = Headers::new(&[]);
 
-            tp.for_each::<mlua::Value, mlua::Value>(|k, v| {
-                hm.insert(
-                    HeaderName::from_str(k.to_string()?.as_str())
-                        .map_err(|_| mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))?,
-                    HeaderValue::from_str(v.to_string()?.as_str())
-                        .map_err(|_| mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))?,
-                );
-                Ok(())
-            })?;
-            Some(hm)
-        };
+    //         tp.for_each::<mlua::Value, mlua::Value>(|k, v| {
+    //             hm.insert(
+    //                 String::from(k.to_string()?.as_str()),
+    //                 String::from(v.to_string()?.as_str()),
+    //             );
+    //             Ok(())
+    //         })?;
+    //         Some(hm)
+    //     };
 
-        if pi.next().is_some() {
-            return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
-        }
+    //     if pi.next().is_some() {
+    //         return Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER));
+    //     }
 
-        Ok(RequestParams {
-            url,
-            body,
-            client_params,
-            client_headers,
-        })
-    }
+    //     Ok(RequestParams {
+    //         url,
+    //         body,
+    //         client_params,
+    //         client_headers,
+    //     })
+    // }
 
-    /// Perform a request using the GET method
-    pub fn request_get(params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
-        let rqp = parse_params(&params)?;
 
-        let client = reqwest::blocking::ClientBuilder::new()
-            .build()
+    pub fn request_get(
+        lua: &mlua::Lua, 
+        url: &str,
+    ) -> mlua::Result<(mlua::Value, u16)> {
+        let rq = Request::get(url);
+        let resp = fetch_blocking(&rq)
             .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
-        let response = client.get(rqp.url)
-            .body(rqp.body.unwrap_or_default())
-            .query(&rqp.client_params.unwrap_or_default())
-            .headers(rqp.client_headers.unwrap_or_default())
-            .send()
-            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
-        let status = response.status().as_u16();
-
-        Ok((
-            response.text().map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?.to_string(),
-            status,
-        ))
-    }
-
-    pub fn request_post(params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
-        let rqp = parse_params(&params)?;
-
-        let client = reqwest::blocking::ClientBuilder::new()
-            .build()
-            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
-        let response = client.post(rqp.url)
-            .body(rqp.body.unwrap_or_default())
-            .form(&rqp.client_params.unwrap_or_default())
-            .headers(rqp.client_headers.unwrap_or_default())
-            .send()
-            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
-        let status = response.status().as_u16();
         
-        Ok((
-            response.text().map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?.to_string(),
-            status,
-        ))
+        Ok((BStr::new(&resp.bytes).into_lua(lua)?, resp.status))
     }
+
+    pub fn request_post(
+        lua: &mlua::Lua, 
+        url: &str,
+        body: Option<&[u8]>,
+    ) -> mlua::Result<(mlua::Value, u16)> {
+        let rq = Request::post(
+            url,
+            body.unwrap_or_default().to_vec(),
+        );
+        let resp = fetch_blocking(&rq)
+            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+
+        Ok((BStr::new(&resp.bytes).into_lua(lua)?, resp.status))
+    }
+
+
+    // /// Perform a request using the GET method
+    // pub fn request_get(params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
+    //     let rqp = parse_params(&params)?;
+
+    //     let client = reqwest::blocking::ClientBuilder::new()
+    //         .build()
+    //         .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+    //     let response = client.get(rqp.url)
+    //         .body(rqp.body.unwrap_or_default())
+    //         .query(&rqp.client_params.unwrap_or_default())
+    //         .headers(rqp.client_headers.unwrap_or_default())
+    //         .send()
+    //         .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+    //     let status = response.status().as_u16();
+
+    //     Ok((
+    //         response.text().map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?.to_string(),
+    //         status,
+    //     ))
+    // }
+
+    // /// Perform a request using the POST method
+    // pub fn request_post(params: mlua::MultiValue) -> mlua::Result<(String, u16)> {
+    //     let rqp = parse_params(&params)?;
+
+    //     let client = reqwest::blocking::ClientBuilder::new()
+    //         .build()
+    //         .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+    //     let response = client.post(rqp.url)
+    //         .body(rqp.body.unwrap_or_default())
+    //         .form(&rqp.client_params.unwrap_or_default())
+    //         .headers(rqp.client_headers.unwrap_or_default())
+    //         .send()
+    //         .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+    //     let status = response.status().as_u16();
+        
+    //     Ok((
+    //         response.text().map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?.to_string(),
+    //         status,
+    //     ))
+    // }
 }
 
 #[allow(dead_code)]

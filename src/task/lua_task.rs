@@ -875,22 +875,25 @@ impl Task for LuaTask {
 
         #[cfg(feature = "lua_httpreq")]
         {
-            // HTTP request functionalities
+            // HTTP request capability
             let httpftab = lua.create_table().unwrap();
 
             let _ = httpftab.set(
                 "get",
-                lua.create_function(|_, params: mlua::MultiValue| {
-                    let (body, status) = lua_httpreq::request_get(params)?;
-                    Ok((body, status))
+                lua.create_function(|lua: &mlua::Lua, url: String| {
+                    // (body, status) = lua_httpreq::request_get(lua, url)?;
+                    Ok(lua_httpreq::request_get(lua, url.as_str())?)
                 }).unwrap()
             );
 
             let _ = httpftab.set(
                 "post",
-                lua.create_function(|_, params: mlua::MultiValue| {
-                    let (body, status) = lua_httpreq::request_post(params)?;
-                    Ok((body, status))
+                lua.create_function(|lua: &mlua::Lua, (url, body): (String, mlua::Value)| {
+                    if body.is_nil() {
+                        Ok(lua_httpreq::request_post(lua, url.as_str(), None)?)    
+                    } else {
+                        Ok(lua_httpreq::request_post(lua, url.as_str(), Some(&body.to_string()?.as_bytes()))?)
+                    }
                 }).unwrap()
             );
 
