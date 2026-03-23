@@ -1460,7 +1460,7 @@ pub mod lua_httpreq {
     ) -> mlua::Result<(mlua::Value, u16)> {
         let rq = Request::get(url);
         let resp = fetch_blocking(&rq)
-            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+            .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
 
         Ok((BStr::new(&resp.bytes).into_lua(lua)?, resp.status))
     }
@@ -1477,7 +1477,7 @@ pub mod lua_httpreq {
             body.unwrap_or_default().to_vec(),
         );
         let resp = fetch_blocking(&rq)
-            .map_err(|_| mlua::Error::runtime(ERR_LUA_HTTPREQ_ERROR))?;
+            .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
 
         Ok((BStr::new(&resp.bytes).into_lua(lua)?, resp.status))
     }

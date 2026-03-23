@@ -92,7 +92,7 @@ pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 pub const ERR_LUA_INVALID_PARAMETER: &str = "invalid parameter";
 pub const ERR_LUA_INVALID_CALL: &str = "invalid function call";
 #[cfg(feature = "lua_httpreq")]
-pub const ERR_LUA_HTTPREQ_ERROR: &str = "error during HTTP request";
+pub const ERR_LUA_HTTPREQ_ERROR: &str = "error within HTTP request";
 
 // logging constants
 pub const LOG_WHEN_INIT: &str = "INIT";

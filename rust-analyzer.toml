@@ -1,3 +1,0 @@
-# rust analyzer directives
-rust_analyzer.cargo.features = ["dbus", "wmi", "lua_sync", "lua_socket"]
-rust-analyzer.cargo.noDefaultFeatures = true
