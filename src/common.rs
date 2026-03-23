@@ -1447,7 +1447,7 @@ pub mod named_mutex {
 #[allow(dead_code)]
 pub mod lua_httpreq {
     use bstr::BStr;
-    use ehttp::{Request, fetch_blocking};
+    use minreq;
     use mlua::IntoLua;
 
     use crate::constants::ERR_LUA_HTTPREQ_ERROR;
@@ -1457,12 +1457,10 @@ pub mod lua_httpreq {
     pub fn request_get(
         lua: &mlua::Lua,
         url: &str,
-    ) -> mlua::Result<(mlua::Value, u16)> {
-        let rq = Request::get(url);
-        let resp = fetch_blocking(&rq)
+    ) -> mlua::Result<(mlua::Value, i64)> {
+        let resp = minreq::get(url).send()
             .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
-
-        Ok((BStr::new(&resp.bytes).into_lua(lua)?, resp.status))
+        Ok((BStr::new(&resp.as_bytes()).into_lua(lua)?, resp.status_code as i64))
     }
 
     /// Perform a request using the POST method: parameters must be urlencoded
@@ -1471,15 +1469,11 @@ pub mod lua_httpreq {
         lua: &mlua::Lua,
         url: &str,
         body: Option<&[u8]>,
-    ) -> mlua::Result<(mlua::Value, u16)> {
-        let rq = Request::post(
-            url,
-            body.unwrap_or_default().to_vec(),
-        );
-        let resp = fetch_blocking(&rq)
+    ) -> mlua::Result<(mlua::Value, i64)> {
+        let resp = minreq::post(url).with_body(body.unwrap_or_default().to_vec()).send()
             .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
 
-        Ok((BStr::new(&resp.bytes).into_lua(lua)?, resp.status))
+        Ok((BStr::new(&resp.as_bytes()).into_lua(lua)?, resp.status_code as i64))
     }
 }
 
