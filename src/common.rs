@@ -1514,11 +1514,11 @@ pub mod luaitem {
                     let (key, value) = pair?;
                     // perform all checks before setting a value
                     if !key.is_string() {
-                        return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
+                        return Err(mlua::Error::runtime(ERR_INVALID_VALUE));
                     }
                     let key = key.to_string().unwrap();
                     if !RE_LUA_STATE_INDEX.is_match(key.as_str()) {
-                        return Err(mlua::Error::RuntimeError(ERR_INVALID_VALUE.to_string()));
+                        return Err(mlua::Error::runtime(ERR_INVALID_VALUE));
                     }
                     let value = lua.convert::<LuaValue>(value)?;
                     state.insert(key, value);
@@ -1533,7 +1533,7 @@ pub mod luaitem {
             let shared_states = get_shared_states().lock();
 
             if !RE_LUA_STATE_NAME.is_match(entry) {
-                Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                Err(mlua::Error::runtime(ERR_INVALID_VALUE))
             } else {
                 if let Some(state) = shared_states.get(entry) {
                     let state = lua
