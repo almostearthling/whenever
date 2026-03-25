@@ -523,6 +523,10 @@ impl LuaCondition {
             }
         }
 
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "check_after", 1)? {
+            new_condition.check_after = Some(Duration::from_secs(v as u64));
+        }
+
         // if an initialization file is specified, it must exist at config time
         let cur_key = "init_script_path";
         if let Some(init_script) = cfg_string(cfgmap, cur_key)? {
