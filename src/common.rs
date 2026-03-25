@@ -1466,6 +1466,8 @@ pub mod named_mutex {
 #[cfg(feature = "lua_httpreq")]
 #[allow(dead_code)]
 pub mod lua_httpreq {
+    use std::collections::HashMap;
+
     use bstr::BStr;
     use minreq;
     use mlua::IntoLua;
@@ -1477,8 +1479,14 @@ pub mod lua_httpreq {
     pub fn request_get(
         lua: &mlua::Lua,
         url: &str,
+        headers: Option<HashMap<String, String>>
     ) -> mlua::Result<(mlua::Value, i64)> {
-        let resp = minreq::get(url).send()
+        let mut req = minreq::get(url);
+        if let Some(headers) = headers {
+            req = req.with_headers(headers);
+        }
+
+        let resp = req.send()
             .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
         Ok((BStr::new(&resp.as_bytes()).into_lua(lua)?, resp.status_code as i64))
     }
@@ -1489,8 +1497,17 @@ pub mod lua_httpreq {
         lua: &mlua::Lua,
         url: &str,
         body: Option<&[u8]>,
+        headers: Option<HashMap<String, String>>
     ) -> mlua::Result<(mlua::Value, i64)> {
-        let resp = minreq::post(url).with_body(body.unwrap_or_default().to_vec()).send()
+        let mut req = minreq::post(url);
+        if let Some(headers) = headers {
+            req = req.with_headers(headers);
+        }
+        if let Some(body) = body {
+            req = req.with_body(body);
+        }
+
+        let resp = req.send()
             .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
 
         Ok((BStr::new(&resp.as_bytes()).into_lua(lua)?, resp.status_code as i64))
@@ -1512,7 +1529,7 @@ pub mod luaitem {
         use std::collections::HashMap;
         use std::sync::OnceLock;
 
-        use crate::constants::{ERR_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME};
+        use crate::constants::{ERR_LUA_INVALID_PARAMETER, RE_LUA_STATE_INDEX, RE_LUA_STATE_NAME};
 
         pub type LuaState = HashMap<String, LuaValue>;
         static SHARED_STATES: OnceLock<Mutex<HashMap<String, LuaState>>> = OnceLock::new();
@@ -1527,16 +1544,13 @@ pub mod luaitem {
             table: mlua::Table,
         ) -> mlua::Result<()> {
             if !RE_LUA_STATE_NAME.is_match(entry) {
-                Err(mlua::Error::RuntimeError(ERR_INVALID_PARAMETER.to_string()))
+                Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
             } else {
                 let mut state: LuaState = HashMap::new();
                 for pair in table.pairs::<mlua::Value, mlua::Value>() {
                     let (key, value) = pair?;
                     // perform all checks before setting a value
-                    if !key.is_string() {
-                        return Err(mlua::Error::runtime(ERR_INVALID_VALUE));
-                    }
-                    let key = key.to_string().unwrap();
+                    let key = key.to_string()?;
                     if !RE_LUA_STATE_INDEX.is_match(key.as_str()) {
                         return Err(mlua::Error::runtime(ERR_INVALID_VALUE));
                     }

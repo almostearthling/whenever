@@ -27,8 +27,8 @@ use mlua;
 use super::base::Task;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
-use crate::{cfg_mandatory, constants::*};
 use crate::common::wres::Result;
+use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
@@ -867,26 +867,73 @@ impl Task for LuaTask {
 
             let _ = httpftab.set(
                 "get",
-                lua.create_function(|lua: &mlua::Lua, url: String| {
-                    Ok(lua_httpreq::request_get(lua, url.as_str())?)
-                }).unwrap()
+                lua.create_function(|lua: &mlua::Lua, (url, headers): (String, mlua::Value)| {
+                    if headers.is_nil() {
+                        Ok(lua_httpreq::request_get(lua, url.as_str(), None)?)
+                    } else if headers.is_table() {
+                        let mut h: HashMap<String, String> = HashMap::new();
+                        for pair in headers
+                            .as_table()
+                            .unwrap()
+                            .pairs::<mlua::Value, mlua::Value>()
+                        {
+                            let (key, value) = pair?;
+                            h.insert(key.to_string()?, value.to_string()?);
+                        }
+                        Ok(lua_httpreq::request_get(lua, url.as_str(), Some(h))?)
+                    } else {
+                        Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
+                    }
+                })
+                .unwrap(),
             );
 
             let _ = httpftab.set(
                 "post",
-                lua.create_function(|lua: &mlua::Lua, (url, body): (String, mlua::Value)| {
-                    if body.is_nil() {
-                        Ok(lua_httpreq::request_post(lua, url.as_str(), None)?)
-                    } else {
-                        Ok(lua_httpreq::request_post(lua, url.as_str(), Some(&body.to_string()?.as_bytes()))?)
-                    }
-                }).unwrap()
+                lua.create_function(
+                    |lua: &mlua::Lua, (url, body, headers): (String, mlua::Value, mlua::Value)| {
+                        if headers.is_nil() {
+                            if body.is_nil() {
+                                Ok(lua_httpreq::request_post(lua, url.as_str(), None, None)?)
+                            } else {
+                                Ok(lua_httpreq::request_post(
+                                    lua,
+                                    url.as_str(),
+                                    Some(&body.to_string()?.as_bytes()),
+                                    None,
+                                )?)
+                            }
+                        } else if headers.is_table() {
+                            let mut h: HashMap<String, String> = HashMap::new();
+                            for pair in headers
+                                .as_table()
+                                .unwrap()
+                                .pairs::<mlua::Value, mlua::Value>()
+                            {
+                                let (key, value) = pair?;
+                                h.insert(key.to_string()?, value.to_string()?);
+                            }
+                            if body.is_nil() {
+                                Ok(lua_httpreq::request_post(lua, url.as_str(), None, Some(h))?)
+                            } else {
+                                Ok(lua_httpreq::request_post(
+                                    lua,
+                                    url.as_str(),
+                                    Some(&body.to_string()?.as_bytes()),
+                                    Some(h),
+                                )?)
+                            }
+                        } else {
+                            Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
+                        }
+                    },
+                )
+                .unwrap(),
             );
 
             // ...
 
             let _ = globals.set(LUA_MODULE_HTTP_REQUEST, httpftab);
-
         }
 
         // run the initialization script if it has been specified: an error in
