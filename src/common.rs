@@ -1338,34 +1338,34 @@ pub mod named_mutex {
             }
         }
 
+        // this reclaims a named mutex, possibly with a timeout: if able to
+        // capture it, then it changes its busy state to true and returns
+        // true to signal that it succeeded
         pub fn claim(self: &Self, timeout: Option<Duration>) -> bool {
             let mut busy = self.busy.lock();
             let res = if *busy {
-                *busy = if let Some(timeout) = timeout {
+                if let Some(timeout) = timeout {
                     if self.notifier.wait_for(&mut busy, timeout).timed_out() {
                         false
                     } else {
+                        *busy = true;
                         true
                     }
                 } else {
                     self.notifier.wait(&mut busy);
+                    *busy = true;
                     true
-                };
-                *busy
+                }
             } else {
                 *busy = true;
                 true
             };
 
-            // if !busy at this time, then the status has been changed from
-            // busy to !busy, thus we notify the next waiting thread
-            if !*busy {
-                self.notifier.notify_one();
-            };
-
             res
         }
 
+        // free the mutex and signal the next waiting thread that it can go on;
+        // this fails only if there was nothing to release
         pub fn free(self: &Self) -> bool {
             let mut busy = self.busy.lock();
             if *busy {
@@ -1441,7 +1441,7 @@ pub mod named_mutex {
     ///
     /// # Returns
     ///
-    /// Returns `true` if the mutex was successfully released, `false` if a 
+    /// Returns `true` if the mutex was successfully released, `false` if a
     /// mutex with the specified name was not found or was not locked by the
     /// current thread.
     ///
