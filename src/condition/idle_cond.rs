@@ -199,14 +199,15 @@ impl IdleCondition {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // retrieve task list and try to directly add each task
@@ -283,14 +284,15 @@ impl IdleCondition {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // check configuration task list against the provided ones
@@ -519,10 +521,9 @@ impl Condition for IdleCondition {
                     LogType::Debug,
                     LOG_WHEN_PROC,
                     LOG_STATUS_ERR,
-                    &format!(
-                        "error while checking idle time based condition{}: {e}",
-                        { if self.idle_verified { " [idle]" } else { "" } },
-                    ),
+                    &format!("error while checking idle time based condition{}: {e}", {
+                        if self.idle_verified { " [idle]" } else { "" }
+                    },),
                 );
                 Ok(Some(false))
             }

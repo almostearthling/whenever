@@ -5,9 +5,6 @@
 
 use std::env;
 
-#[cfg(windows)]
-use winresource;
-
 
 // information used during the build process in pre-build actions
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -27,10 +24,10 @@ const APP_VER_PATCH: &str = env!("CARGO_PKG_VERSION_PATCH");
 fn version_info_as_u64() -> u64 {
     let app_ver_pre: &str = option_env!("CARGO_PKG_VERSION_PRE").unwrap_or("0");
 
-    u64::from_str_radix(APP_VER_MAJOR, 10).unwrap_or(0) << 48
-    | u64::from_str_radix(APP_VER_MINOR, 10).unwrap_or(0) << 32
-    | u64::from_str_radix(APP_VER_PATCH, 10).unwrap_or(0) << 16
-    | u64::from_str_radix(app_ver_pre, 10).unwrap_or(0) << 0
+    APP_VER_MAJOR.parse::<u64>().unwrap_or(0) << 48
+    | APP_VER_MINOR.parse::<u64>().unwrap_or(0) << 32
+    | APP_VER_PATCH.parse::<u64>().unwrap_or(0) << 16
+    | app_ver_pre.parse::<u64>().unwrap_or(0)
 }
 
 

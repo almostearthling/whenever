@@ -142,14 +142,15 @@ impl ManualCommandEvent {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         let cur_key = "condition";
@@ -190,26 +191,27 @@ impl ManualCommandEvent {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // assigned condition is checked against the provided array
         let cur_key = "condition";
-        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
-            if !available_conditions.contains(&v.as_str()) {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    &v,
-                    ERR_INVALID_EVENT_CONDITION,
-                ));
-            }
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)?
+            && !available_conditions.contains(&v.as_str())
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                &v,
+                ERR_INVALID_EVENT_CONDITION,
+            ));
         }
 
         Ok(name)

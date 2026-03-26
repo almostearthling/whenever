@@ -438,17 +438,17 @@ pub mod cmditem {
             }
             exit_status = proc.poll();
             if exit_status.is_none() {
-                if let Some(t) = timeout {
-                    if SystemTime::now() > startup + t {
-                        let res = proc.terminate();
-                        if res.is_err() {
-                            let _ = proc.kill();
-                        }
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            ERR_TIMEOUT_REACHED,
-                        ));
+                if let Some(t) = timeout
+                    && SystemTime::now() > startup + t
+                {
+                    let res = proc.terminate();
+                    if res.is_err() {
+                        let _ = proc.kill();
                     }
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        ERR_TIMEOUT_REACHED,
+                    ));
                 }
             } else {
                 break;
@@ -738,149 +738,134 @@ pub mod cmditem {
                 //    handled by the Regex engine
                 if match_regexp {
                     // A.1 regex success stdout check
-                    if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &success_stdout {
-                            if !p.is_empty() {
-                                match regex::RegexBuilder::new(p)
-                                    .case_insensitive(!case_sensitive)
-                                    .build()
-                                {
-                                    Ok(re) => {
-                                        if match_exact {
-                                            if re.is_match(process_stdout) {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition success stdout (regex) {p:?} matched",
-                                                );
-                                            } else {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition success stdout (regex) {p:?} NOT matched",
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            }
-                                        } else if re.find(process_stdout).is_some() {
+                    if failure_reason == FailureReason::NoFailure
+                        && let Some(p) = &success_stdout
+                    {
+                        if !p.is_empty() {
+                            match regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build()
+                            {
+                                Ok(re) => {
+                                    if match_exact {
+                                        if re.is_match(process_stdout) {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition success stdout (regex) {p:?} found",
+                                                "condition success stdout (regex) {p:?} matched",
                                             );
                                         } else {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition success stdout (regex) {p:?} NOT found",
+                                                "condition success stdout (regex) {p:?} NOT matched",
                                             );
                                             failure_reason = FailureReason::StdOut;
                                         }
-                                    }
-                                    _ => {
-                                        severity = LogType::Error;
+                                    } else if re.find(process_stdout).is_some() {
+                                        severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
-                                        ref_log_status = LOG_STATUS_FAIL;
+                                        ref_log_status = LOG_STATUS_OK;
                                         log_message = format!(
-                                            "provided INVALID stdout regex {p:?} NOT found/matched",
+                                            "condition success stdout (regex) {p:?} found",
+                                        );
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = format!(
+                                            "condition success stdout (regex) {p:?} NOT found",
                                         );
                                         failure_reason = FailureReason::StdOut;
                                     }
+                                }
+                                _ => {
+                                    severity = LogType::Error;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = format!(
+                                        "provided INVALID stdout regex {p:?} NOT found/matched",
+                                    );
+                                    failure_reason = FailureReason::StdOut;
                                 }
                             }
                         }
                     }
                     // A.2 regex success stderr check
-                    if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &success_stderr {
-                            if !p.is_empty() {
-                                match regex::RegexBuilder::new(p)
-                                    .case_insensitive(!case_sensitive)
-                                    .build()
-                                {
-                                    Ok(re) => {
-                                        if match_exact {
-                                            if re.is_match(process_stderr) {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition success stderr (regex) {p:?} matched",
-                                                );
-                                            } else {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition success stderr (regex) {p:?} NOT matched",
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            }
-                                        } else if re.find(process_stderr).is_some() {
+                    if failure_reason == FailureReason::NoFailure
+                        && let Some(p) = &success_stderr
+                    {
+                        if !p.is_empty() {
+                            match regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build()
+                            {
+                                Ok(re) => {
+                                    if match_exact {
+                                        if re.is_match(process_stderr) {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition success stderr (regex) {p:?} found",
+                                                "condition success stderr (regex) {p:?} matched",
                                             );
                                         } else {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition success stderr (regex) {p:?} NOT found",
+                                                "condition success stderr (regex) {p:?} NOT matched",
                                             );
                                             failure_reason = FailureReason::StdErr;
                                         }
-                                    }
-                                    _ => {
-                                        severity = LogType::Error;
+                                    } else if re.find(process_stderr).is_some() {
+                                        severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
-                                        ref_log_status = LOG_STATUS_FAIL;
+                                        ref_log_status = LOG_STATUS_OK;
                                         log_message = format!(
-                                            "provided INVALID stderr regex {p:?} NOT found/matched",
+                                            "condition success stderr (regex) {p:?} found",
+                                        );
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = format!(
+                                            "condition success stderr (regex) {p:?} NOT found",
                                         );
                                         failure_reason = FailureReason::StdErr;
                                     }
+                                }
+                                _ => {
+                                    severity = LogType::Error;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = format!(
+                                        "provided INVALID stderr regex {p:?} NOT found/matched",
+                                    );
+                                    failure_reason = FailureReason::StdErr;
                                 }
                             }
                         }
                     }
                     // A.3 regex failure stdout check
-                    if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &failure_stdout {
-                            if !p.is_empty() {
-                                match regex::RegexBuilder::new(p)
-                                    .case_insensitive(!case_sensitive)
-                                    .build()
-                                {
-                                    Ok(re) => {
-                                        if match_exact {
-                                            if re.is_match(process_stdout) {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition failure stdout (regex) {p:?} matched",
-                                                );
-                                                failure_reason = FailureReason::StdOut;
-                                            } else {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition failure stdout (regex) {p:?} NOT matched",
-                                                );
-                                            }
-                                        } else if re.find(process_stdout).is_some() {
+                    if failure_reason == FailureReason::NoFailure
+                        && let Some(p) = &failure_stdout
+                    {
+                        if !p.is_empty() {
+                            match regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build()
+                            {
+                                Ok(re) => {
+                                    if match_exact {
+                                        if re.is_match(process_stdout) {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition failure stdout (regex) {p:?} found",
+                                                "condition failure stdout (regex) {p:?} matched",
                                             );
                                             failure_reason = FailureReason::StdOut;
                                         } else {
@@ -888,54 +873,54 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition failure stdout (regex) {p:?} NOT found",
+                                                "condition failure stdout (regex) {p:?} NOT matched",
                                             );
                                         }
-                                    }
-                                    _ => {
-                                        severity = LogType::Error;
+                                    } else if re.find(process_stdout).is_some() {
+                                        severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
-                                        ref_log_status = LOG_STATUS_FAIL;
+                                        ref_log_status = LOG_STATUS_OK;
                                         log_message = format!(
-                                            "provided INVALID failure stdout regex {p:?} NOT found/matched",
+                                            "condition failure stdout (regex) {p:?} found",
+                                        );
+                                        failure_reason = FailureReason::StdOut;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = format!(
+                                            "condition failure stdout (regex) {p:?} NOT found",
                                         );
                                     }
+                                }
+                                _ => {
+                                    severity = LogType::Error;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = format!(
+                                        "provided INVALID failure stdout regex {p:?} NOT found/matched",
+                                    );
                                 }
                             }
                         }
                     }
                     // A.4 regex failure stderr check
-                    if failure_reason == FailureReason::NoFailure {
-                        if let Some(p) = &failure_stderr {
-                            if !p.is_empty() {
-                                match regex::RegexBuilder::new(p)
-                                    .case_insensitive(!case_sensitive)
-                                    .build()
-                                {
-                                    Ok(re) => {
-                                        if match_exact {
-                                            if re.is_match(process_stderr) {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition success stderr (regex) {p:?} matched",
-                                                );
-                                                failure_reason = FailureReason::StdErr;
-                                            } else {
-                                                severity = LogType::Debug;
-                                                ref_log_when = LOG_WHEN_PROC;
-                                                ref_log_status = LOG_STATUS_OK;
-                                                log_message = format!(
-                                                    "condition success stderr (regex) {p:?} NOT matched",
-                                                );
-                                            }
-                                        } else if re.find(process_stderr).is_some() {
+                    if failure_reason == FailureReason::NoFailure
+                        && let Some(p) = &failure_stderr
+                    {
+                        if !p.is_empty() {
+                            match regex::RegexBuilder::new(p)
+                                .case_insensitive(!case_sensitive)
+                                .build()
+                            {
+                                Ok(re) => {
+                                    if match_exact {
+                                        if re.is_match(process_stderr) {
                                             severity = LogType::Debug;
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition success stderr (regex) {p:?} found",
+                                                "condition success stderr (regex) {p:?} matched",
                                             );
                                             failure_reason = FailureReason::StdErr;
                                         } else {
@@ -943,18 +928,33 @@ pub mod cmditem {
                                             ref_log_when = LOG_WHEN_PROC;
                                             ref_log_status = LOG_STATUS_OK;
                                             log_message = format!(
-                                                "condition success stderr (regex) {p:?} NOT found",
+                                                "condition success stderr (regex) {p:?} NOT matched",
                                             );
                                         }
-                                    }
-                                    _ => {
-                                        severity = LogType::Error;
+                                    } else if re.find(process_stderr).is_some() {
+                                        severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
-                                        ref_log_status = LOG_STATUS_FAIL;
+                                        ref_log_status = LOG_STATUS_OK;
                                         log_message = format!(
-                                            "provided INVALID stderr regex {p:?} NOT found/matched",
+                                            "condition success stderr (regex) {p:?} found",
+                                        );
+                                        failure_reason = FailureReason::StdErr;
+                                    } else {
+                                        severity = LogType::Debug;
+                                        ref_log_when = LOG_WHEN_PROC;
+                                        ref_log_status = LOG_STATUS_OK;
+                                        log_message = format!(
+                                            "condition success stderr (regex) {p:?} NOT found",
                                         );
                                     }
+                                }
+                                _ => {
+                                    severity = LogType::Error;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_FAIL;
+                                    log_message = format!(
+                                        "provided INVALID stderr regex {p:?} NOT found/matched",
+                                    );
                                 }
                             }
                         }
@@ -965,311 +965,287 @@ pub mod cmditem {
                     //    different comparisons
                     if case_sensitive {
                         // B.1a CS text success stdout check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stdout {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stdout == *p {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition success stdout {p:?} matched");
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition success stdout {p:?} NOT matched",
-                                            );
-                                            failure_reason = FailureReason::StdOut;
-                                        }
-                                    } else if process_stdout.contains(p) {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = success_stdout
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout == *p {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} found");
+                                            format!("condition success stdout {p:?} matched");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} NOT found");
+                                            format!("condition success stdout {p:?} NOT matched",);
                                         failure_reason = FailureReason::StdOut;
                                     }
+                                } else if process_stdout.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition success stdout {p:?} found");
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition success stdout {p:?} NOT found");
+                                    failure_reason = FailureReason::StdOut;
                                 }
                             }
                         }
                         // B.2a CS text success stderr check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stderr {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stderr == *p {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition success stderr {p:?} matched");
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition success stderr {p:?} NOT matched",
-                                            );
-                                            failure_reason = FailureReason::StdErr;
-                                        }
-                                    } else if process_stderr.contains(p) {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = success_stderr
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr == *p {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} found");
+                                            format!("condition success stderr {p:?} matched");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} NOT found");
+                                            format!("condition success stderr {p:?} NOT matched",);
                                         failure_reason = FailureReason::StdErr;
                                     }
+                                } else if process_stderr.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition success stderr {p:?} found");
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition success stderr {p:?} NOT found");
+                                    failure_reason = FailureReason::StdErr;
                                 }
                             }
                         }
                         // B.3a CS text failure stdout check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stdout {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stdout == *p {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition failure stdout {p:?} matched");
-                                            failure_reason = FailureReason::StdOut;
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition failure stdout {p:?} NOT matched",
-                                            );
-                                        }
-                                    } else if process_stdout.contains(p) {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = failure_stdout
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout == *p {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} found");
+                                            format!("condition failure stdout {p:?} matched");
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} NOT found");
+                                            format!("condition failure stdout {p:?} NOT matched",);
                                     }
+                                } else if process_stdout.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition failure stdout {p:?} found");
+                                    failure_reason = FailureReason::StdOut;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition failure stdout {p:?} NOT found");
                                 }
                             }
                         }
                         // B.4a CS text failure stderr check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stderr {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stderr == *p {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition failure stderr {p:?} matched");
-                                            failure_reason = FailureReason::StdErr;
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition failure stderr {p:?} NOT matched",
-                                            );
-                                        }
-                                    } else if process_stderr.contains(p) {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = failure_stderr
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr == *p {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} found");
+                                            format!("condition failure stderr {p:?} matched");
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} NOT found");
+                                            format!("condition failure stderr {p:?} NOT matched",);
                                     }
+                                } else if process_stderr.contains(p) {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition failure stderr {p:?} found");
+                                    failure_reason = FailureReason::StdErr;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition failure stderr {p:?} NOT found");
                                 }
                             }
                         }
                     } else {
                         // B.1b CI text success stdout check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stdout {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stdout.to_uppercase() == p.to_uppercase() {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition success stdout {p:?} matched");
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition success stdout {p:?} NOT matched",
-                                            );
-                                            failure_reason = FailureReason::StdOut;
-                                        }
-                                    } else if process_stdout
-                                        .to_uppercase()
-                                        .contains(&p.to_uppercase())
-                                    {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = success_stdout
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout.to_uppercase() == p.to_uppercase() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} found");
+                                            format!("condition success stdout {p:?} matched");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stdout {p:?} NOT found");
+                                            format!("condition success stdout {p:?} NOT matched",);
                                         failure_reason = FailureReason::StdOut;
                                     }
+                                } else if process_stdout.to_uppercase().contains(&p.to_uppercase())
+                                {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition success stdout {p:?} found");
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition success stdout {p:?} NOT found");
+                                    failure_reason = FailureReason::StdOut;
                                 }
                             }
                         }
                         // B.2b CI text success stderr check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = success_stderr {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stderr.to_uppercase() == p.to_uppercase() {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition success stderr {p:?} matched");
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition success stderr {p:?} NOT matched",
-                                            );
-                                            failure_reason = FailureReason::StdErr;
-                                        }
-                                    } else if process_stderr
-                                        .to_uppercase()
-                                        .contains(&p.to_uppercase())
-                                    {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = success_stderr
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr.to_uppercase() == p.to_uppercase() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} found");
+                                            format!("condition success stderr {p:?} matched");
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition success stderr {p:?} NOT found");
+                                            format!("condition success stderr {p:?} NOT matched",);
                                         failure_reason = FailureReason::StdErr;
                                     }
+                                } else if process_stderr.to_uppercase().contains(&p.to_uppercase())
+                                {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition success stderr {p:?} found");
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition success stderr {p:?} NOT found");
+                                    failure_reason = FailureReason::StdErr;
                                 }
                             }
                         }
                         // B.3b CI text failure stdout check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stdout {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stdout.to_uppercase() == p.to_uppercase() {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition failure stdout {p:?} matched");
-                                            failure_reason = FailureReason::StdOut;
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition failure stdout {p:?} NOT matched",
-                                            );
-                                        }
-                                    } else if process_stdout
-                                        .to_uppercase()
-                                        .contains(&p.to_uppercase())
-                                    {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = failure_stdout
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stdout.to_uppercase() == p.to_uppercase() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} found");
+                                            format!("condition failure stdout {p:?} matched");
                                         failure_reason = FailureReason::StdOut;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stdout {p:?} NOT found");
+                                            format!("condition failure stdout {p:?} NOT matched",);
                                     }
+                                } else if process_stdout.to_uppercase().contains(&p.to_uppercase())
+                                {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition failure stdout {p:?} found");
+                                    failure_reason = FailureReason::StdOut;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition failure stdout {p:?} NOT found");
                                 }
                             }
                         }
                         // B.4b CI text failure stderr check
-                        if failure_reason == FailureReason::NoFailure {
-                            if let Some(p) = failure_stderr {
-                                if !p.is_empty() {
-                                    if match_exact {
-                                        if process_stderr.to_uppercase() == p.to_uppercase() {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message =
-                                                format!("condition failure stderr {p:?} matched");
-                                            failure_reason = FailureReason::StdErr;
-                                        } else {
-                                            severity = LogType::Debug;
-                                            ref_log_when = LOG_WHEN_PROC;
-                                            ref_log_status = LOG_STATUS_OK;
-                                            log_message = format!(
-                                                "condition failure stderr {p:?} NOT matched",
-                                            );
-                                        }
-                                    } else if process_stderr
-                                        .to_uppercase()
-                                        .contains(&p.to_uppercase())
-                                    {
+                        if failure_reason == FailureReason::NoFailure
+                            && let Some(p) = failure_stderr
+                        {
+                            if !p.is_empty() {
+                                if match_exact {
+                                    if process_stderr.to_uppercase() == p.to_uppercase() {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} found");
+                                            format!("condition failure stderr {p:?} matched");
                                         failure_reason = FailureReason::StdErr;
                                     } else {
                                         severity = LogType::Debug;
                                         ref_log_when = LOG_WHEN_PROC;
                                         ref_log_status = LOG_STATUS_OK;
                                         log_message =
-                                            format!("condition failure stderr {p:?} NOT found");
+                                            format!("condition failure stderr {p:?} NOT matched",);
                                     }
+                                } else if process_stderr.to_uppercase().contains(&p.to_uppercase())
+                                {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message = format!("condition failure stderr {p:?} found");
+                                    failure_reason = FailureReason::StdErr;
+                                } else {
+                                    severity = LogType::Debug;
+                                    ref_log_when = LOG_WHEN_PROC;
+                                    ref_log_status = LOG_STATUS_OK;
+                                    log_message =
+                                        format!("condition failure stderr {p:?} NOT found");
                                 }
                             }
                         }
@@ -1341,9 +1317,9 @@ pub mod named_mutex {
         // this reclaims a named mutex, possibly with a timeout: if able to
         // capture it, then it changes its busy state to true and returns
         // true to signal that it succeeded
-        pub fn claim(self: &Self, timeout: Option<Duration>) -> bool {
+        pub fn claim(&self, timeout: Option<Duration>) -> bool {
             let mut busy = self.busy.lock();
-            let res = if *busy {
+            if *busy {
                 if let Some(timeout) = timeout {
                     if self.notifier.wait_for(&mut busy, timeout).timed_out() {
                         false
@@ -1359,14 +1335,12 @@ pub mod named_mutex {
             } else {
                 *busy = true;
                 true
-            };
-
-            res
+            }
         }
 
         // free the mutex and signal the next waiting thread that it can go on;
         // this fails only if there was nothing to release
-        pub fn free(self: &Self) -> bool {
+        pub fn free(&self) -> bool {
             let mut busy = self.busy.lock();
             if *busy {
                 *busy = false;
@@ -1479,16 +1453,20 @@ pub mod lua_httpreq {
     pub fn request_get(
         lua: &mlua::Lua,
         url: &str,
-        headers: Option<HashMap<String, String>>
+        headers: Option<HashMap<String, String>>,
     ) -> mlua::Result<(mlua::Value, i64)> {
         let mut req = minreq::get(url);
         if let Some(headers) = headers {
             req = req.with_headers(headers);
         }
 
-        let resp = req.send()
-            .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
-        Ok((BStr::new(&resp.as_bytes()).into_lua(lua)?, resp.status_code as i64))
+        let resp = req
+            .send()
+            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
+        Ok((
+            BStr::new(&resp.as_bytes()).into_lua(lua)?,
+            resp.status_code as i64,
+        ))
     }
 
     /// Perform a request using the POST method: parameters must be urlencoded
@@ -1497,7 +1475,7 @@ pub mod lua_httpreq {
         lua: &mlua::Lua,
         url: &str,
         body: Option<&[u8]>,
-        headers: Option<HashMap<String, String>>
+        headers: Option<HashMap<String, String>>,
     ) -> mlua::Result<(mlua::Value, i64)> {
         let mut req = minreq::post(url);
         if let Some(headers) = headers {
@@ -1507,10 +1485,14 @@ pub mod lua_httpreq {
             req = req.with_body(body);
         }
 
-        let resp = req.send()
-            .map_err(|e| mlua::Error::runtime(&format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
+        let resp = req
+            .send()
+            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
 
-        Ok((BStr::new(&resp.as_bytes()).into_lua(lua)?, resp.status_code as i64))
+        Ok((
+            BStr::new(&resp.as_bytes()).into_lua(lua)?,
+            resp.status_code as i64,
+        ))
     }
 }
 
@@ -1963,10 +1945,10 @@ pub mod dbusitem {
             match v {
                 zvariant::Value::Array(a) => {
                     for elem in a.iter().cloned() {
-                        if let zvariant::Value::Str(s) = elem {
-                            if self.is_match(s.as_str()) {
-                                return true;
-                            }
+                        if let zvariant::Value::Str(s) = elem
+                            && self.is_match(s.as_str())
+                        {
+                            return true;
                         }
                     }
                     false

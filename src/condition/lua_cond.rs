@@ -383,14 +383,15 @@ impl LuaCondition {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // retrieve task list and try to directly add each task
@@ -432,107 +433,91 @@ impl LuaCondition {
 
         // variables to set are in a complex map, thus no shortcut is given
         let cur_key = "variables_to_set";
-        if cfgmap.contains_key(cur_key) {
-            if let Some(item) = cfgmap.get(cur_key) {
-                if !item.is_map() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER,
-                    ));
-                } else {
-                    let map = item.as_map().unwrap();
-                    let mut vars: HashMap<String, LuaValue> = HashMap::new();
-                    for name in map.keys() {
-                        if !RE_VAR_NAME.is_match(name) {
-                            return Err(cfg_err_invalid_config(
-                                cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
-                            ));
-                        } else if let Some(value) = map.get(name) {
-                            if value.is_int() {
-                                let v = value.as_int().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
-                            } else if value.is_float() {
-                                let v = value.as_float().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
-                            } else if value.is_bool() {
-                                let v = value.as_bool().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
-                            } else if value.is_str() {
-                                let v = value.as_str().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
-                            } else {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_VAR_VALUE,
-                                ));
-                            }
+        if cfgmap.contains_key(cur_key)
+            && let Some(item) = cfgmap.get(cur_key)
+        {
+            if !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                let map = item.as_map().unwrap();
+                let mut vars: HashMap<String, LuaValue> = HashMap::new();
+                for name in map.keys() {
+                    if !RE_VAR_NAME.is_match(name) {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
+                    } else if let Some(value) = map.get(name) {
+                        if value.is_int() {
+                            let v = value.as_int().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
+                        } else if value.is_float() {
+                            let v = value.as_float().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                        } else if value.is_bool() {
+                            let v = value.as_bool().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                        } else if value.is_str() {
+                            let v = value.as_str().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
                         } else {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_VAR_VALUE,
                             ));
                         }
+                    } else {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
                     }
-                    new_condition.variables = vars;
                 }
+                new_condition.variables = vars;
             }
         }
 
         // expected results are in a complex map, thus no shortcut is given
         let cur_key = "expected_results";
-        if cfgmap.contains_key(cur_key) {
-            if let Some(item) = cfgmap.get(cur_key) {
-                if !item.is_map() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER,
-                    ));
-                } else {
-                    let map = item.as_map().unwrap();
-                    let mut vars: HashMap<String, LuaValue> = HashMap::new();
-                    for name in map.keys() {
-                        if !RE_VAR_NAME.is_match(name) {
-                            return Err(cfg_err_invalid_config(
-                                cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
-                            ));
-                        } else if let Some(value) = map.get(name) {
-                            if value.is_int() {
-                                let v = value.as_int().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
-                            } else if value.is_float() {
-                                let v = value.as_float().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
-                            } else if value.is_bool() {
-                                let v = value.as_bool().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
-                            } else if value.is_str() {
-                                let v = value.as_str().unwrap();
-                                vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
-                            } else {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_VAR_VALUE,
-                                ));
-                            }
+        if cfgmap.contains_key(cur_key)
+            && let Some(item) = cfgmap.get(cur_key)
+        {
+            if !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                let map = item.as_map().unwrap();
+                let mut vars: HashMap<String, LuaValue> = HashMap::new();
+                for name in map.keys() {
+                    if !RE_VAR_NAME.is_match(name) {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
+                    } else if let Some(value) = map.get(name) {
+                        if value.is_int() {
+                            let v = value.as_int().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaNumber(*v as f64));
+                        } else if value.is_float() {
+                            let v = value.as_float().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaNumber(*v));
+                        } else if value.is_bool() {
+                            let v = value.as_bool().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaBoolean(*v));
+                        } else if value.is_str() {
+                            let v = value.as_str().unwrap();
+                            vars.insert(name.to_string(), LuaValue::LuaString(v.to_string()));
                         } else {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_VAR_VALUE,
                             ));
                         }
+                    } else {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
                     }
-                    new_condition.expected = vars;
                 }
+                new_condition.expected = vars;
             }
         }
 
@@ -600,14 +585,15 @@ impl LuaCondition {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // check configuration task list against the provided ones
@@ -634,42 +620,34 @@ impl LuaCondition {
 
         // variables to set are in a complex map, thus no shortcut is given
         let cur_key = "variables_to_set";
-        if cfgmap.contains_key(cur_key) {
-            if let Some(item) = cfgmap.get(cur_key) {
-                if !item.is_map() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER,
-                    ));
-                } else {
-                    let map = item.as_map().unwrap();
-                    for name in map.keys() {
-                        if !RE_VAR_NAME.is_match(name) {
+        if cfgmap.contains_key(cur_key)
+            && let Some(item) = cfgmap.get(cur_key)
+        {
+            if !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                let map = item.as_map().unwrap();
+                for name in map.keys() {
+                    if !RE_VAR_NAME.is_match(name) {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
+                    } else if let Some(value) = map.get(name) {
+                        if !(value.is_bool()
+                            || value.is_int()
+                            || value.is_float()
+                            || value.is_str())
+                        {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
-                            ));
-                        } else if let Some(value) = map.get(name) {
-                            if !(value.is_bool()
-                                || value.is_int()
-                                || value.is_float()
-                                || value.is_str())
-                            {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_VAR_VALUE,
-                                ));
-                            }
-                        } else {
-                            return Err(cfg_err_invalid_config(
-                                cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_VAR_VALUE,
                             ));
                         }
+                    } else {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
                     }
                 }
             }
@@ -677,42 +655,34 @@ impl LuaCondition {
 
         // expected results are in a complex map, thus no shortcut is given
         let cur_key = "expected_results";
-        if cfgmap.contains_key(cur_key) {
-            if let Some(item) = cfgmap.get(cur_key) {
-                if !item.is_map() {
-                    return Err(cfg_err_invalid_config(
-                        cur_key,
-                        STR_UNKNOWN_VALUE,
-                        ERR_INVALID_PARAMETER,
-                    ));
-                } else {
-                    let map = item.as_map().unwrap();
-                    for name in map.keys() {
-                        if !RE_VAR_NAME.is_match(name) {
+        if cfgmap.contains_key(cur_key)
+            && let Some(item) = cfgmap.get(cur_key)
+        {
+            if !item.is_map() {
+                return Err(cfg_err_invalid_config(
+                    cur_key,
+                    STR_UNKNOWN_VALUE,
+                    ERR_INVALID_PARAMETER,
+                ));
+            } else {
+                let map = item.as_map().unwrap();
+                for name in map.keys() {
+                    if !RE_VAR_NAME.is_match(name) {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
+                    } else if let Some(value) = map.get(name) {
+                        if !(value.is_bool()
+                            || value.is_int()
+                            || value.is_float()
+                            || value.is_str())
+                        {
                             return Err(cfg_err_invalid_config(
                                 cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
-                            ));
-                        } else if let Some(value) = map.get(name) {
-                            if !(value.is_bool()
-                                || value.is_int()
-                                || value.is_float()
-                                || value.is_str())
-                            {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_VAR_VALUE,
-                                ));
-                            }
-                        } else {
-                            return Err(cfg_err_invalid_config(
-                                cur_key,
-                                name,
-                                ERR_INVALID_VAR_NAME,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_VAR_VALUE,
                             ));
                         }
+                    } else {
+                        return Err(cfg_err_invalid_config(cur_key, name, ERR_INVALID_VAR_NAME));
                     }
                 }
             }
@@ -937,16 +907,16 @@ impl Condition for LuaCondition {
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
         let t = self.last_tested.unwrap();
-        if let Some(e) = self.check_after {
-            if e > t - self.check_last {
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_START,
-                    LOG_STATUS_MSG,
-                    "check explicitly delayed by configuration",
-                );
-                return Ok(Some(false));
-            }
+        if let Some(e) = self.check_after
+            && e > t - self.check_last
+        {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                "check explicitly delayed by configuration",
+            );
+            return Ok(Some(false));
         }
 
         let mut failure_reason = FailureReason::NoCheck;
@@ -1158,8 +1128,7 @@ impl Condition for LuaCondition {
             let _ = sharedstateftab.set(
                 "save",
                 lua.create_function(|lua, (name, state): (String, mlua::Table)| {
-                    set_shared_state(&lua, name.as_str(), state)?;
-                    Ok(())
+                    set_shared_state(lua, name.as_str(), state)
                 })
                 .unwrap(),
             );
@@ -1168,7 +1137,7 @@ impl Condition for LuaCondition {
             // to a local table to be saved later
             let _ = sharedstateftab.set(
                 "load",
-                lua.create_function(|lua, name: String| Ok(get_shared_state(lua, name.as_str())?))
+                lua.create_function(|lua, name: String| get_shared_state(lua, name.as_str()))
                     .unwrap(),
             );
 
@@ -1176,7 +1145,7 @@ impl Condition for LuaCondition {
             // be ignored most of the times
             let _ = sharedstateftab.set(
                 "remove",
-                lua.create_function(|lua, name: String| Ok(del_shared_state(lua, name.as_str())?))
+                lua.create_function(|lua, name: String| del_shared_state(lua, name.as_str()))
                     .unwrap(),
             );
 
@@ -1224,7 +1193,7 @@ impl Condition for LuaCondition {
                                 Ok(lua_httpreq::request_post(
                                     lua,
                                     url.as_str(),
-                                    Some(&body.to_string()?.as_bytes()),
+                                    Some(body.to_string()?.as_bytes()),
                                     None,
                                 )?)
                             }
@@ -1244,7 +1213,7 @@ impl Condition for LuaCondition {
                                 Ok(lua_httpreq::request_post(
                                     lua,
                                     url.as_str(),
-                                    Some(&body.to_string()?.as_bytes()),
+                                    Some(body.to_string()?.as_bytes()),
                                     Some(h),
                                 )?)
                             }
@@ -1348,8 +1317,7 @@ impl Condition for LuaCondition {
                 let mut state_updated = false;
                 if let Ok(table) = globals.get::<mlua::Table>(LUA_TABLE_STATE_PRIVATE) {
                     for pair in table.pairs::<mlua::Value, mlua::Value>() {
-                        if pair.is_ok() {
-                            let (name, value) = pair.unwrap();
+                        if let Ok((name, value)) = pair {
                             if let Ok(name) = lua.convert::<String>(name) {
                                 if RE_LUA_STATE_INDEX.is_match(name.as_str()) {
                                     if let Ok(value) = lua.convert::<LuaValue>(value) {

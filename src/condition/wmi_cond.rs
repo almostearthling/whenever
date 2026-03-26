@@ -273,14 +273,15 @@ impl WmiQueryCondition {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // retrieve task list and try to directly add each task
@@ -520,14 +521,15 @@ impl WmiQueryCondition {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // check configuration task list against the provided ones
@@ -853,16 +855,16 @@ impl Condition for WmiQueryCondition {
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
         let t = self.last_tested.unwrap();
-        if let Some(e) = self.check_after {
-            if e > t - self.check_last {
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_START,
-                    LOG_STATUS_MSG,
-                    "check explicitly delayed by configuration",
-                );
-                return Ok(Some(false));
-            }
+        if let Some(e) = self.check_after
+            && e > t - self.check_last
+        {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                "check explicitly delayed by configuration",
+            );
+            return Ok(Some(false));
         }
 
         // run the WMI query and retrieve results, then perform the checks
@@ -870,8 +872,8 @@ impl Condition for WmiQueryCondition {
         // executed anyway, even in case no checks have been provided, because
         // it still can produce an error or an empty result, where the latter
         // case is considered a failure
-        let conn = if self.namespace.is_some() {
-            WMIConnection::with_namespace_path(self.namespace.as_ref().unwrap())?
+        let conn = if let Some(namespace) = &self.namespace {
+            WMIConnection::with_namespace_path(namespace)?
         } else {
             WMIConnection::new()?
         };

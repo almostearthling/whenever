@@ -46,14 +46,14 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
 
     // tags are always simply checked this way
     let cur_key = "tags";
-    if let Some(item) = config_map.get(cur_key) {
-        if !item.is_list() && !item.is_map() {
+    if let Some(item) = config_map.get(cur_key) 
+        && !item.is_list() && !item.is_map() {
             return Err(cfg_err_invalid_config(
                 cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_INVALID_PARAMETER,
             ));
-        }
+        
     }
 
     // globals
@@ -229,14 +229,14 @@ pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
 
     // tags are always simply checked this way
     let cur_key = "tags";
-    if let Some(item) = config_map.get(cur_key) {
-        if !item.is_list() && !item.is_map() {
+    if let Some(item) = config_map.get(cur_key) 
+        && !item.is_list() && !item.is_map() {
             return Err(cfg_err_invalid_config(
                 cur_key,
                 STR_UNKNOWN_VALUE,
                 ERR_INVALID_PARAMETER,
             ));
-        }
+        
     }
 
     let cur_key = "scheduler_tick_seconds";

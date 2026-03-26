@@ -66,7 +66,6 @@ impl EventRegistry {
     pub fn new() -> Self {
         EventRegistry {
             events: Arc::new(Mutex::new(HashMap::new())),
-            // event_waiters: Arc::new(Mutex::new(HashMap::new())),
             triggerable_events: RwLock::new(HashMap::new()),
             listener_quit_messenger: Arc::new(Mutex::new(None)),
             listener_handle: Arc::new(Mutex::new(None)),

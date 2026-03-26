@@ -154,12 +154,12 @@ pub trait Condition: Send {
     /// internal _succeeded_ status for next call. May return an error if
     /// it wasn't possible to reset the internal _succeeded_ status.
     fn verify(&mut self) -> Result<bool> {
-        if let Some(tc) = self.last_checked() {
-            if let Some(ts) = self.last_succeeded() {
-                let res = ts == tc;
-                self.reset_succeeded()?;
-                return Ok(res);
-            }
+        if let Some(tc) = self.last_checked()
+            && let Some(ts) = self.last_succeeded()
+        {
+            let res = ts == tc;
+            self.reset_succeeded()?;
+            return Ok(res);
         }
         Ok(false)
     }

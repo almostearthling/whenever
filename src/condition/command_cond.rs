@@ -511,14 +511,15 @@ impl CommandCondition {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // retrieve task list and try to directly add each task
@@ -631,10 +632,10 @@ impl CommandCondition {
             new_condition.failure_status = Some(v as u32);
         }
 
-        if let Some(v) = cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)? {
-            if v > 0 {
-                new_condition.timeout = Some(Duration::from_secs(v as u64));
-            }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)?
+            && v > 0
+        {
+            new_condition.timeout = Some(Duration::from_secs(v as u64));
         }
 
         // start the condition if the configuration did not suspend it
@@ -707,14 +708,15 @@ impl CommandCondition {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // check configuration task list against the provided ones
@@ -980,16 +982,16 @@ impl Condition for CommandCondition {
         // if the minimum interval between checks has been set, obey it
         // last_tested has already been set by trait to Instant::now()
         let t = self.last_tested.unwrap();
-        if let Some(e) = self.check_after {
-            if e > t - self.check_last {
-                self.log(
-                    LogType::Debug,
-                    LOG_WHEN_START,
-                    LOG_STATUS_MSG,
-                    "check explicitly delayed by configuration",
-                );
-                return Ok(Some(false));
-            }
+        if let Some(e) = self.check_after
+            && e > t - self.check_last
+        {
+            self.log(
+                LogType::Debug,
+                LOG_WHEN_START,
+                LOG_STATUS_MSG,
+                "check explicitly delayed by configuration",
+            );
+            return Ok(Some(false));
         }
 
         // build the environment: least priority settings come first; it is

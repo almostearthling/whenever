@@ -223,14 +223,15 @@ impl FilesystemChangeEvent {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         let cur_key = "condition";
@@ -290,26 +291,27 @@ impl FilesystemChangeEvent {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // assigned condition is checked against the provided array
         let cur_key = "condition";
-        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)? {
-            if !available_conditions.contains(&v.as_str()) {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    &v,
-                    ERR_INVALID_EVENT_CONDITION,
-                ));
-            }
+        if let Some(v) = cfg_string_check_regex(cfgmap, "condition", &RE_COND_NAME)?
+            && !available_conditions.contains(&v.as_str())
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                &v,
+                ERR_INVALID_EVENT_CONDITION,
+            ));
         }
 
         // specific optional parameter check
@@ -378,9 +380,8 @@ impl Event for FilesystemChangeEvent {
         );
         let event_receiver = self.event_rx.as_mut().unwrap();
 
-        // this already returns the selected value; the `while let` form is
-        // used only for style consistency: this loop actually never loops
-        while let Some(evt) = event_receiver.next().await {
+        // this already returns the selected value
+        if let Some(evt) = event_receiver.next().await {
             // ignore access events
             let evt = evt?;
             if !evt.kind.is_access() {
@@ -429,7 +430,6 @@ impl Event for FilesystemChangeEvent {
                         return Err(e);
                     }
                 }
-                break;
             } else {
                 // an access only notification is a non triggered event
                 self.log(

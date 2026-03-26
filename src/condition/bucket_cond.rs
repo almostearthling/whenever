@@ -10,10 +10,10 @@
 //! checked, and all conditions (of this kind) are verified. Therefore, after
 //! each tick, the execution bucket will be empty again.
 
+use parking_lot::Mutex;
 use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
-use parking_lot::Mutex;
 use std::time::Instant;
 
 use cfgmap::CfgMap;
@@ -286,14 +286,15 @@ impl BucketCondition {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                )); // TODO: instead of forcing this, the `cfg_err_invalid_config` should be changed to use wres::Error
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // retrieve task list and try to directly add each task
@@ -371,14 +372,15 @@ impl BucketCondition {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // check configuration task list against the provided ones

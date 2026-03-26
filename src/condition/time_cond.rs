@@ -487,14 +487,15 @@ impl TimeCondition {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // retrieve task list and try to directly add each task
@@ -723,14 +724,15 @@ impl TimeCondition {
 
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // check configuration task list against the provided ones
@@ -773,59 +775,59 @@ impl TimeCondition {
                         ));
                     } else {
                         let map = map.as_map().unwrap();
-                        if let Some(v) = map.get("year") {
-                            if !v.is_int() {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_TIMESPEC,
-                                ));
-                            }
+                        if let Some(v) = map.get("year")
+                            && !v.is_int()
+                        {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_TIMESPEC,
+                            ));
                         }
-                        if let Some(v) = map.get("month") {
-                            if !v.is_int() {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_TIMESPEC,
-                                ));
-                            }
+                        if let Some(v) = map.get("month")
+                            && !v.is_int()
+                        {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_TIMESPEC,
+                            ));
                         }
-                        if let Some(v) = map.get("day") {
-                            if !v.is_int() {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_TIMESPEC,
-                                ));
-                            }
+                        if let Some(v) = map.get("day")
+                            && !v.is_int()
+                        {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_TIMESPEC,
+                            ));
                         }
-                        if let Some(v) = map.get("hour") {
-                            if !v.is_int() {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_TIMESPEC,
-                                ));
-                            }
+                        if let Some(v) = map.get("hour")
+                            && !v.is_int()
+                        {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_TIMESPEC,
+                            ));
                         }
-                        if let Some(v) = map.get("minute") {
-                            if !v.is_int() {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_TIMESPEC,
-                                ));
-                            }
+                        if let Some(v) = map.get("minute")
+                            && !v.is_int()
+                        {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_TIMESPEC,
+                            ));
                         }
-                        if let Some(v) = map.get("second") {
-                            if !v.is_int() {
-                                return Err(cfg_err_invalid_config(
-                                    cur_key,
-                                    STR_UNKNOWN_VALUE,
-                                    ERR_INVALID_TIMESPEC,
-                                ));
-                            }
+                        if let Some(v) = map.get("second")
+                            && !v.is_int()
+                        {
+                            return Err(cfg_err_invalid_config(
+                                cur_key,
+                                STR_UNKNOWN_VALUE,
+                                ERR_INVALID_TIMESPEC,
+                            ));
                         }
                         if let Some(v) = map.get("weekday") {
                             if !v.is_str() {

@@ -405,14 +405,15 @@ impl CommandTask {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // specific optional parameter initialization
@@ -489,10 +490,10 @@ impl CommandTask {
             new_task.failure_status = Some(v as u32);
         }
 
-        if let Some(v) = cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)? {
-            if v > 0 {
-                new_task.timeout = Some(Duration::from_secs(v as u64));
-            }
+        if let Some(v) = cfg_int_check_above_eq(cfgmap, "timeout_seconds", 0)?
+            && v > 0
+        {
+            new_task.timeout = Some(Duration::from_secs(v as u64));
         }
 
         Ok(new_task)
@@ -550,14 +551,15 @@ impl CommandTask {
         // also for optional parameters just check and throw away the result
         // tags are always simply checked this way
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            }
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         cfg_bool(cfgmap, "match_exact")?;

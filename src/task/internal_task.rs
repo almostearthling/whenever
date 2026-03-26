@@ -133,14 +133,14 @@ impl InternalTask {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) {
-            if !item.is_list() && !item.is_map() {
+        if let Some(item) = cfgmap.get(cur_key) 
+            && !item.is_list() && !item.is_map() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
                     STR_UNKNOWN_VALUE,
                     ERR_INVALID_PARAMETER,
                 ));
-            }
+            
         }
 
         // specific optional parameter initialization
@@ -165,6 +165,20 @@ impl InternalTask {
 
         // specific mandatory parameter retrieval
         cfg_mandatory!(cfg_string(cfgmap, "command"))?;
+
+        // also for optional parameters just check and throw away the result
+        // tags are always simply checked this way
+        let cur_key = "tags";
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
+        }
 
         Ok(name)
     }
