@@ -74,6 +74,7 @@ lua_unsafe = []
 lua_httpreq = ["dep:minreq"]
 windows_std = ["wmi", "lua_sync", "lua_httpreq"]
 linux_std = ["dbus", "lua_sync", "lua_httpreq"]
+check_std = ["wmi", "dbus", "lua_sync", "lua_httpreq"]
 
 
 # make the executable memory footprint as small as possible for release
