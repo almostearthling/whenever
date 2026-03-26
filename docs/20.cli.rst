@@ -47,6 +47,19 @@ The only elements that should be highlighted are the following:
 * when checking for another running instance, the ``whenever --check-running`` command exits
   immediately with a ``0`` exit code if another instance is found, ``1`` otherwise: it also writes
   an answer to the standard output that can be suppressed using the ``--quiet`` switch.\ [#fn-1]_
+* if a launcher behaves differently according to optional features available in the **whenever**
+  executable, it can use the ``--options`` switch to determine which ones are available, the
+  command output is the string ``options:`` followed by one or more of the following:
+  - ``dbus``: the executable has been compiled with DBus support (generally on Linux)
+  - ``wmi``: the executable has WMI support (available on Windows only)
+  - ``lua_sync``: the embedded *Lua* interpreter supports synchronization and data sharing
+    among scripts that run at different times
+  - ``lua_httpreq``: the embedded *Lua* interpreter is capable of performing HTTP request
+    without external tools
+  - ``lua_unsafe``: the embedded *Lua* interpreter allows to call external functions: this
+    feature is experimental and unsupported, and usually disabled in binary releases.
+
+For the *Lua* related features, please refer to the specific documentation pages.
 
 When debugging a configuration file, it might be useful to set the log level at least to *debug*,
 if not to *trace* which also emits some redundant messages.

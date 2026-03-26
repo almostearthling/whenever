@@ -1,0 +1,91 @@
+.. _65-lua:
+
+The Embedded *Lua* Interpreter
+==============================
+
+As seen for :ref:`tasks <40-tasks-lua>` and :ref:`conditions <50-conditions-lua>`, an embedded
+*Lua* interpreter can be used to execute scripts to respectively execute structured tasks and
+verify complex conditions without the need to execute external commands. This is generally
+quicker for small operations, because the interpreter is already available while **whenever**
+is running, it only needs to be initialized and provided the script that, in turn, has been
+loaded at startup. Tasks (or checks) that would last even seconds, can be performed in a small
+fraction of the time.
+
+The embedded interpreter makes the standard *Lua* library available for scripts, which includes:
+
+* string manipulation
+* mathematics
+* io and file operations
+* access to OS information and facilities.
+
+The `Lua manual <https://www.lua.org/manual/>`__ is the primary source for information about the
+capabilities of the standard library.
+
+Moreover, the embedded interpreter provides an isolation level that is comparable to the one
+that can be achieved by running external commands: every time that a script has to be run, a new
+interpreted is initialized, that normally works without interaction with other scripts that may
+have run before, or may be running aside.
+
+While the *Lua* language is supported in its entirety, the embedded interpreter has both some
+limitations and some enhancements, that come from its awareness of being part of **whenever**.
+
+
+.. _65-lua-limitations:
+
+Limitations
+-----------
+
+The most obvious limitation is that the *Lua* interpreter in **whenever** *can not* load binary
+modules.\ [#fn-1]_ This means that many popular libraries, mostly used in proper applications,
+are not available to the scripts that this application can execute.
+
+
+
+
+
+
+.. _65-lua-enhancements:
+
+Enhancements
+------------
+
+The non-standard features that come with this version of the interpreter cover the following
+topics:
+
+* knowing the reason why a script is run
+* sending messages to the **whenever** log
+* performing basic network operations, namely simple HTTP requests
+* sharing data with other scripts within the same **whenever** session.
+
+All of these features are accessed each through specific module-like interfaces, variables, or
+*Lua tables*.
+
+The *reason* for running a script can be accessed through two predefined variables:
+
+* ``whenever_task`` which is a string reporting the name of the task which defines the script:
+  it is obviously available in *Lua* based tasks only,
+* ``whenever_condition``, is another string that in the case of *Lua* based condition reports
+  the name of the condition being checked, and for tasks reports the condition that triggered
+  the tsk itself.
+
+The ``log`` module exposes commands that allow to send messages to the **whenever** log file:
+this can be useful for debugging, of course, but also for frontends that need to communicate
+with specially crafted *Lua* based items. Messages can be sent at every supported log level
+(\ *error*, *warn*, *info*, *debug*, *trace*\ ). The library functions are the following:
+
+* ``log.error(message)``
+* ``log.warn(message)``
+* ``log.info(message)``
+* ``log.debug(message)``
+* ``log.trace(message)``
+
+and take a single string (``message``) as their argument.
+
+
+
+
+
+.. [#fn-1] There is actually the possibility to recompile **whenever** with support for binary
+           *Lua* modules: this is disabled by default and in the standard configurations for the
+           supported platform. The tests on this option are still unsatisfactory, and in any case
+           it comes with the risk of corrupting the application state.
