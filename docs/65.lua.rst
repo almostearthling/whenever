@@ -143,6 +143,18 @@ log message at the respective log level.
 There is no need to ``require`` the ``log`` module, as it is available to the interpreter
 by default.
 
+An example for both the ``log`` module and the ``whenever_`` variables can be found in the
+*TRACE* task shown in the README file:
+
+.. code-block:: toml
+
+  [[task]]
+  type = "lua"
+  name = "TRACE"
+  script = '''log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`");'''
+
+that is, a task that can be used to debug conditions.
+
 The remaining additional features are more complex, and deserve dedicated sub-paragraphs.
 
 
@@ -171,10 +183,71 @@ receives the response *status code* as a *Lua* integer number.
   is not the intended behavior, it can be useful to enclose the code that sends the
   request in a ``pcall()`` statement in order to catch the error.
 
+In a *Lua* script, the two utiities can be exploited as follows to retrieve information
+from an HTTP server:
 
+.. code-block:: lua
+  
+  -- script parameters
+  success = true
+  url = "https://httpbin.org/get?param1=42&param2=some"
+  check1 = '"param1": "42"'
+  check2 = '"param2": "some"'
 
+  -- retrieve data and check it: `httpbin.org` answers in the JSON
+  -- format by default, and the checks are substrings of the response
+  resp = http.get(url)
+  success = success and string.find(resp, check1, 1, true)
+  success = success and string.find(resp, check2, 1, true)
 
+the answer that *httpbin.org* provides is the following:
 
+.. code-block:: json
+
+  {
+    "args": {
+      "param1": "42",
+      "param2": "some"
+    },
+    "headers": {
+      "Accept": "*/*",
+      "Host": "httpbin.org",
+      "User-Agent": "curl/8.18.0",
+      "X-Amzn-Trace-Id": "Root=1-69c6bb80-08f03a13145c13042443a168"
+    },
+    "origin": "151.37.231.168",
+    "url": "https://httpbin.org/get?param1=42&param2=some"
+  }
+
+so, if the ``expected_results`` parameter in the item configuration had been set to
+``{ success = true }``, the script execution is considered successful -- as long as
+the server was reachable and had no errors.
+
+As said before, a similar script can be used, that uses the POST method:
+
+.. code-block:: lua
+
+  success = true
+  url = "https://httpbin.org/post"
+  headers = {}
+  headers["Content-Type"] = "application/x-www-form-urlencoded"
+  body = "param1=42&param2=some"
+  check1 = '"param1": "42"'
+  check2 = '"param2": "some"'
+  txt = http.post(url, body, headers)
+  success = success and string.find(txt, check1, 1, true)
+  success = success and string.find(txt, check2, 1, true)
+
+by constructing the appropriate headers and body, and providing everything to the server.
+
+.. note::
+  While the URL and the request body are simple strings, the ``headers`` parameter must
+  be provided as a *Lua table*, with suitable strings for keys and values. The *table*
+  is built in *Lua* in the usual way, as in the provided example.
+
+These utilities cover a great range of what can be useful for network access in a *Lua*
+script from within **whenever**: for more complex needs, external commands can be used
+anyway.
 
 
 
