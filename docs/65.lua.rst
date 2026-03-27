@@ -30,18 +30,71 @@ While the *Lua* language is supported in its entirety, the embedded interpreter 
 limitations and some enhancements, that come from its awareness of being part of **whenever**.
 
 
+.. _65-lua-configuration:
+
+Configuration
+-------------
+
+Both *tasks* and *conditions* based on *Lua* scripts can configure the interpreter with
+common parameters. Apart from the ``script`` parameter, that should contain the script to
+be run as a plain string, the following configuration parameters are available:
+
+* ``init_script_path``, the optional path to an initialization script, that can be used
+  to fine-tune the interpreter, for example by setting the module search path and other
+  specific options;
+* ``variables_to_set``, an optional map that associates identifiers to values that the
+  interpreter will find already set when it starts running: the identifiers are plain
+  TOML keys and as such they will be available in the script as usual *Lua* identifiers,
+  and the values can only be of *boolean*, *numeric*, and *string* type;
+* ``expected_results``, a map that associates identifiers (plain TOML keys here as well)
+  to simple values that can be of *boolean*, *numeric*, and *string* type: although not
+  mandatory, at least an expected result is necessary for *Lua* script based conditions
+  to perform a test that can either succeed or fail.
+
+.. tip::
+  The script has to be provided as a literal using the ``script`` parameter (TOML
+  `literal strings <https://toml.io/en/v1.1.0#string>`__, especially in the *multiline*
+  flavor, come handy for this purpose), however, in case the execution of a script is
+  needed, that is available as a separate file, it is always possible to use the
+  ``require`` and ``dofile()`` *Lua* functions to achieve this.
+
+Both in *tasks* and *conditions*, the dictionary of espected result is checked when the
+script finishes running. Depending on the value of the ``expect_all`` parameter (which is
+*false* by default) the script is considered to have succeeded as follows:
+
+* when ``expect_all`` is *true* and all the identifiers specified in the map hold exactly
+  the specified values,
+* when ``expect_all`` is *false* and at least one of the identifiers holds the specified
+  value.
+
+Because of the limitations in the types of values that can be provided in the configuration
+file, the tests that **whenever** can perform after the script has finished running are
+actually quite simple. However, of course, nothing forbids to perform more articulated tests
+in the script itself and assign, for instance, a value to a boolean variable that depends
+on the outcome of such tests.
+
+.. note::
+  Since an independent interpreter is initialized for every *Lua* based item, the above
+  mentioned parameters are set specifically for every item at each run; at the moment there
+  is no way to change the default values for these parameters.
+
+Even though every script gets its own, isolated *Lua* interpreter, **whenever** offers a
+way for possibly different scripts to interoperate by sharing simple values, and to store
+intermediate results for subsequent runs of the script associated to an item. Details on
+this capability can be found below in the ::ref::`Enhancements <_65-lua-enhancements>`
+section.
+
+
 .. _65-lua-limitations:
 
 Limitations
 -----------
 
-The most obvious limitation is that the *Lua* interpreter in **whenever** *can not* load binary
+The prominent limitation is that the *Lua* interpreter in **whenever** *can not* load binary
 modules.\ [#fn-1]_ This means that many popular libraries, mostly used in proper applications,
-are not available to the scripts that this application can execute.
-
-
-
-
+are not (and cannot be made) available to the scripts that this application can execute: trying
+to ``require`` such libraries, even in case they can be found in the library search path, just
+results in an error.
 
 
 .. _65-lua-enhancements:
