@@ -132,7 +132,47 @@ with specially crafted *Lua* based items. Messages can be sent at every supporte
 * ``log.debug(message)``
 * ``log.trace(message)``
 
-and take a single string (``message``) as their argument.
+and take a single string (``message``) as their argument. Each of these functions issues a
+log message at the respective log level.
+
+.. warning::
+  The message is not issued on its own, but prefixed by the standard log information (such
+  as the date, the application and the log level) plus extra information that identify the
+  condition and/or the task to which the script that issued the message belongs.
+
+There is no need to ``require`` the ``log`` module, as it is available to the interpreter
+by default.
+
+The remaining additional features are more complex, and deserve dedicated sub-paragraphs.
+
+
+.. _65-lua-enhancements-http:
+
+HTTP Queries
+~~~~~~~~~~~~
+
+The embedded *Lua* interpreter offers the possibility to query network services for
+responses, using the HTTP protocol, both encrypted (HTTPS) and unencrypted. This feature
+is provided via a built in module named ``http``. The requests can be performed using
+both the *GET* and the *POST* methods, respectively using
+
+* ``http.get(url, [headers])``, and
+* ``http.post(url [, body [, headers]])``
+
+where the optional parameters are expected to be in the ``url`` argument for *GET* queries
+and in the ``body`` argument (with appropriate headers if necessary) for *POST* queries.
+
+These functions return the response body as it has been received if successful, or an
+error if the query could not be performed. Along with the response body, the interpreter
+receives the response *status code* as a *Lua* integer number.
+
+.. warning::
+  A request error, as every other error, causes always the script to **fail**: if this
+  is not the intended behavior, it can be useful to enclose the code that sends the
+  request in a ``pcall()`` statement in order to catch the error.
+
+
+
 
 
 
