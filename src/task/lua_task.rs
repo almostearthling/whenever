@@ -986,7 +986,7 @@ impl Task for LuaTask {
                 // 1. the private state is not synchronized, because two
                 //    consecutive runs cannot overlap due to the busy harness
                 //    implemented for conditions;
-                // 2. faulure to save the state will not change the outcome
+                // 2. failure to save the state will not change the outcome
                 let mut state: HashMap<String, LuaValue> = HashMap::new();
                 let mut save_error = false;
                 let mut state_updated = false;

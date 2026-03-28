@@ -473,10 +473,9 @@ Lua script
 
 A `Lua <https://www.lua.org/>`__ script can be used to determine the verification of a condition:
 after the execution of the script, one or more variables can be checked against expected values
-and thus decide whether or not the associated tasks have to be run. Given the power of *Lua* and
-its standard library, this type of condition can constitute a lightweight alternative to complex
-scripts to call to implement a *command* based condition. The definition of a *Lua* condition is
-actually much simpler:
+and thus decide whether or not the associated tasks have to be run.
+
+The definition of a *Lua* condition is much simpler than the definition of a command based one:
 
 .. code-block:: toml
 
@@ -547,64 +546,16 @@ The specific parameters are described in the following table:
      - (empty)
      - the path to an optional initialization script to be executed before the provided one
 
-.. tip::
-    The ``variables_to_set`` and ``init_script_path`` settings are generally of little use for
-    user-provided items, since the execution of an extra script can be performed at the script
-    level and global variables can be set up at the beginning of the script. A *frontend*, on
-    the other hand, can benefit of the combination of global variables and an initialization
-    script to change the interpreter behavior, for instance by setting the ``package.path`` and
-    ``package.cpath`` settings programmatically, possibly according to the current setup.
-
-.. warning::
-    The embedded *Lua* interpreter is not able to load *Lua C (binary) modules*:[#fn-7]_ this is
-    due to the fact that safety is enforced at build time, and loading an external library is
-    considered unsafe. This also means that the ``package.cpath`` setting will never have effect,
-    since any attempt to load a binary module will always result in a runtime error.
-
-The same rules and possibilities seen for *Lua* based tasks also apply to conditions: the embedded
-*Lua* interpreter is enriched with library functions that allow to write to the **whenever** log,
-at all logging levels (\ *error*, *warn*, *info*, *debug*, *trace*\ ). The library
-functions are the following:
-
-* ``log.error``
-* ``log.warn``
-* ``log.info``
-* ``log.debug``
-* ``log.trace``
-
-and take a single string as their argument. Also, from the embedded *Lua* interpreter there is a
-value that can be accessed:
-
-* ``whenever_condition`` is the name of the condition being checked.
-
-The Lua interpreter is initialized at each run by
-
-* setting the additional variables, including the ones implicitly provided by **whenever**,
-* implementing the extra log functionality, and
-* executing the startup script,
-
-exactly in this order.
-
-.. note::
-    Each *Lua* based item (either task or condition) initializes its own instance of the
-    interpreter: this means that the global variables are set and the initialization script is run
-    every time the item is executed. At the end of the execution, the interpreter instance is
-    destroyed and its resources are freed. In fact, this means that at each run **whenever** has
-    to do some extra work to initialize the interpreter context; on the other hand, this allows
-    for multiple instances of *Lua* to run concurrently, and to be initialized with different
-    global variables and different startup scripts, as suggested by the *per item* configuration
-    options.
-
-External scripts can be executed via ``dofile("/path/to/script.lua")`` or by using the ``require``
-function. While a successful execution is always determined by matching the provided criteria, an
-error in the script is always considered a failure.
-
 The ``recur_after_failed_check`` flag allows for avoidance of multiple subsequent task runs in case
 of a persistent situation that cause the condition checks to be successful if the condition is
 marked as *recurring*: the associated tasks are run as soon as the check is successful for the
 first time, then the tasks are not executed anymore as long as this status persists. After at least
 one unsuccessful condition check (in which, of course, the tasks are not executed), at the
 following successful one the task run is performed again.
+
+Also, the embedded *Lua* interpreter is enriched with several utility functions that are explained
+in detail in the dedicated `section <_65-lua-enhancements>`__. The dedicated `chapter <_65-lua>`__
+also describes with more detail the *Lua* environment in **whenever**.
 
 For this type of condition the actual test can be performed at a random time within the tick
 interval.

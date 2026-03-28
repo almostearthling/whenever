@@ -1,6 +1,6 @@
 .. _65-lua:
 
-The Embedded *Lua* Interpreter
+The embedded *Lua* interpreter
 ==============================
 
 As seen for :ref:`tasks <40-tasks-lua>` and :ref:`conditions <50-conditions-lua>`, an embedded
@@ -29,6 +29,11 @@ have run before, or may be running aside.
 While the *Lua* language is supported in its entirety, the embedded interpreter has both some
 limitations and some enhancements, that come from its awareness of being part of **whenever**.
 
+.. tip::
+  While many of the features and configuration options described here may not be very useful
+  for casual scripts configured directly by editing the configuration file, they are intended
+  to be helpful when implementing specific tasks or conditions in a frontend.
+
 
 .. _65-lua-configuration:
 
@@ -54,7 +59,7 @@ be run as a plain string, the following configuration parameters are available:
 .. tip::
   The script has to be provided as a literal using the ``script`` parameter (TOML
   `literal strings <https://toml.io/en/v1.1.0#string>`__, especially in the *multiline*
-  flavor, come handy for this purpose), however, in case the execution of a script is
+  flavor, come in handy for this purpose), however, in case the execution of a script is
   needed, that is available as a separate file, it is always possible to use the
   ``require`` and ``dofile()`` *Lua* functions to achieve this.
 
@@ -84,6 +89,27 @@ intermediate results for subsequent runs of the script associated to an item. De
 this capability can be found below in the ::ref::`Enhancements <_65-lua-enhancements>`
 section.
 
+The Lua interpreter is initialized at each run by
+
+* setting the additional variables, including the ones implicitly provided by **whenever**,
+* implementing the extra functionalities, and
+* executing the startup script,
+
+exactly in this order.
+
+
+.. _65-lua-initscript:
+
+Initialization script
+---------------------
+
+For more fine-tuned initialization, that can even be common to several instances of the
+interpreter, an initialization script in *Lua* can be specified in each item configuration
+using the ``init_script_path`` parameter: the value should be set to the full path of the
+script itself. It can be used to configure the *Lua* interpreter, for example by setting
+the ``package.path``\ [#fn-1]_ to a directory where pure *Lua* modules can be found, or by
+preloading modules.
+
 
 .. _65-lua-limitations:
 
@@ -91,7 +117,7 @@ Limitations
 -----------
 
 The prominent limitation is that the *Lua* interpreter in **whenever** *can not* load binary
-modules.\ [#fn-1]_ This means that many popular libraries, mostly used in proper applications,
+modules.\ [#fn-2]_ This means that many popular libraries, mostly used in proper applications,
 are not (and cannot be made) available to the scripts that this application can execute: trying
 to ``require`` such libraries, even in case they can be found in the library search path, just
 results in an error.
@@ -151,16 +177,22 @@ An example for both the ``log`` module and the ``whenever_`` variables can be fo
   [[task]]
   type = "lua"
   name = "TRACE"
-  script = '''log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`");'''
+  script = '''log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`")'''
 
 that is, a task that can be used to debug conditions.
+
+.. tip::
+  Triple single quotes are used in TOML to denote *literal multiline strings*: *literal* means
+  that everything betwen the two occurrences of the triple single quotes is interpreted as it
+  is, including quotes of any type and backslashes. This is particularly useful in this case,
+  allowing a short script to be provided in the configuration without losing readability.
 
 The remaining additional features are more complex, and deserve dedicated sub-paragraphs.
 
 
 .. _65-lua-enhancements-http:
 
-HTTP Queries
+HTTP queries
 ~~~~~~~~~~~~
 
 The embedded *Lua* interpreter offers the possibility to query network services for
@@ -168,7 +200,7 @@ responses, using the HTTP protocol, both encrypted (HTTPS) and unencrypted. This
 is provided via a built in module named ``http``. The requests can be performed using
 both the *GET* and the *POST* methods, respectively using
 
-* ``http.get(url, [headers])``, and
+* ``http.get(url [, headers])``, and
 * ``http.post(url [, body [, headers]])``
 
 where the optional parameters are expected to be in the ``url`` argument for *GET* queries
@@ -183,11 +215,11 @@ receives the response *status code* as a *Lua* integer number.
   is not the intended behavior, it can be useful to enclose the code that sends the
   request in a ``pcall()`` statement in order to catch the error.
 
-In a *Lua* script, the two utiities can be exploited as follows to retrieve information
+In a *Lua* script, the two utilities can be exploited as follows to retrieve information
 from an HTTP server:
 
 .. code-block:: lua
-  
+
   -- script parameters
   success = true
   url = "https://httpbin.org/get?param1=42&param2=some"
@@ -200,7 +232,7 @@ from an HTTP server:
   success = success and string.find(resp, check1, 1, true)
   success = success and string.find(resp, check2, 1, true)
 
-the answer that *httpbin.org* provides is the following:
+and the answer that *httpbin.org* provides is the following:
 
 .. code-block:: json
 
@@ -220,10 +252,10 @@ the answer that *httpbin.org* provides is the following:
   }
 
 so, if the ``expected_results`` parameter in the item configuration had been set to
-``{ success = true }``, the script execution is considered successful -- as long as
-the server was reachable and had no errors.
+``{ success = true }``, the script execution is considered successful -- as long as the server
+was reachable and could respond.
 
-As said before, a similar script can be used, that uses the POST method:
+As said before, a similar script can be used, that uses the *POST* method:
 
 .. code-block:: lua
 
@@ -249,9 +281,199 @@ These utilities cover a great range of what can be useful for network access in 
 script from within **whenever**: for more complex needs, external commands can be used
 anyway.
 
+.. note::
+  The *http* module is only available when the ``lua_httpreq`` feature is enabled; the
+  standard configuration and the provided binaries enable the feature.
 
 
-.. [#fn-1] There is actually the possibility to recompile **whenever** with support for binary
+.. _65-lua-persistence:
+
+Private and shared states
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As said at the beginning of this chapter, even though the *Lua* interpreter is freshly
+reinitialized at each run, there is the possibility to "remember" intermediate results across
+subsequent sessions of the same script, or even to exchange data with other scripts. This is
+made possible through *private* and *shared states*.
+
+A *private state* is simply a *Lua table* that is available to every script. This table, named
+``state``, is available to every script, and cannot be accessed by other scripts. Values in the
+table can be set as follows:
+
+.. code-block:: lua
+
+  state.message = "Have a nice day!"
+  state.answer = 42
+  state.been_here = true
+
+and a subsequent run of the *same* script in the *same* task or condition, is able to retrieve
+those values:
+
+.. code-block:: lua
+
+  success = state.answer == 42
+
+thus becoming aware of results that may have been obtained in previous runs. The state is saved
+when the script finishes running, even if the outcome is unsuccessful for any reason.
+
+.. warning::
+  The entries of the ``state`` table can only contain values of type *boolean*, *numeric*, or
+  *string*: any other type of value, including *nil*, will cause an error at the end of the
+  script: in this case the state is *not* saved.
+
+Since the private state is only accessible by the item it is associated to, it is normally safe
+to access and modify it freely, without any type of synchronization: there is only one case in
+which what happens is hardly predictable, that is when more than one condition activate the same
+*Lua* based task, almost at the same time -- or, at least, an instance of the script is started
+while another instance of the *same* script, in the *same* task is already running: no matter
+whether or not the first instance already stored something into the private state, the second
+instance will access the same values as the first instance, unmodified. Moreover, the values
+that the instance that ends first saves to the private state, will be simply overwritten by the
+one that the instance that finishes next saves in turn: attempting to use the synchronization
+utilities does not help, since the state is read at once *before* the script runs, and saved
+*after* it finished running.
+
+*Shared states* are accessible to *all* lua scripts, and behave differently: they need to be
+explicitly loaded and saved by a script, respectively using the ``sharedstate.load(name)`` and
+``sharedstate.save(name, table)`` functions.
+
+When a shared state is saved, it becomes immediately available for access and modification to
+other scripts, or to the same script in a second moment: it can be loaded using the name that
+it has been saved with. Shared state names, although strings, must have the form of an
+identifier, that is, start with an underscore or a letter followed by alphanumeric characters
+and underscores. And, just like identifiers, state names are case sensitive. The tables that
+can be saved can only contain values of the types allowed in private states: *booleans*,
+*numbers*, and *strings*.
+
+Reading and writing shared states are protected from concurrency, that is, it is impossible
+for a script to access a shared state that is accessed by another script: therefore it is
+safe to avoid synchronization when loading or saving a shared state. Nevertheless, an example
+of shared state that uses synchronization is provided below, in the paragraph dedicated to
+the synchronization utilities.
+
+A method is provided also to remove an existing shared state, ``sharedstate.remove(name)``,
+where ``name`` is the name of the state to delete.
+
+.. note::
+  The *state* table and the *sharedstate* module are only available when the ``lua_sync``
+  feature is enabled; the standard configuration and the provided binaries enable the feature.
+
+
+.. _65-lua-synchronization:
+
+Synchronization utilities
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The synchronization utilities are provided in order to avoid that *Lua* scripts, that run at
+the same time, concurrently access a resource (for instance, a file), possibly causing an
+avoidable script error. The possibility to activate a lock, and to wait for a lock to be
+released, synchronizes the access to resources in a safe way.
+
+The utilities to acquire and release a lock are, respectively, ``sync.lock(name [, timeout])``
+and ``sync.release(name)`` where ``name`` is a string which has the form of an identifier, and
+the optional ``timeout`` parameter is the amount of time, in seconds, that the calling script
+should wait for the lock to be released before giving up: in case the lock is not acquired the
+return value is *false*. When the timeout is omitted, ``lock()`` will wait forever. The
+``timeout`` parameter can also be a fractional number.
+
+Although not mandatory, the script that acquires a lock should *explicitly* release it as soon
+as possible: these synchronization utilities are made available to simplify exclusive access
+in the most flexible way, so that the ``lock()`` function just puts a lock on a resource, and
+``release()`` just releases it, independently from which script calls the former or the latter.
+In other words, ``lock()`` can be called from a script and ``release()``from another, although
+it is not encouraged.
+
+A ``sync.sleep(seconds)``function is also provided, that stops the script for the provided
+amount of time in seconds. The ``seconds`` parameter is a number, can be fractional, and the
+granularity is milliseconds.
+
+In the following example, two scripts contend a shared state: it can be useful to use locks
+for shared states too, if the scripts that contend it should wait for each other to release it.
+
+First script:
+
+.. code-block:: lua
+
+  if v == nil then
+      v = 0
+  end
+  sleep_seconds = math.random() * 10
+  log.warn("LOCK:A waiting to lock shared state")
+  l = sync.lock("SharedState1_LOCK")
+  if l then
+      log.warn("LOCK:A shared state LOCKED")
+      sync.sleep(sleep_seconds)
+      sst = sharedstate.load("SharedState1")
+      v = sst.v
+      if v == nil then
+          v = 0
+      end
+      v = v + 1
+      sst.v = v
+      sharedstate.save("SharedState1", sst)
+      sync.release("SharedState1_LOCK")
+      log.warn("LOCK:A shared state UNLOCKED: now v = " .. tostring(v))
+  else
+      log.error("LOCK:A shared state NOT LOCKED")
+  end
+
+and second:
+
+.. code-block:: lua
+
+  sleep_seconds = math.random() * 10
+  log.warn("LOCK:B waiting to lock shared state")
+  l = sync.lock("SharedState1_LOCK", 2)
+  if l then
+      log.warn("LOCK:B shared state LOCKED")
+      sync.sleep(sleep_seconds)
+      sst = sharedstate.load("SharedState1")
+      v = sst.v
+      if v == nil then
+          v = 0
+      end
+      v = v * 2
+      sst.v = v
+      sharedstate.save("SharedState1", sst)
+      sync.release("SharedState1_LOCK")
+      log.warn("LOCK:B shared state UNLOCKED: now v = " .. tostring(v))
+  else
+      log.error("LOCK:B shared state NOT LOCKED")
+  end
+
+The examples use the logging system to notify the outcome of the synchronization operations.
+Only the second script forces the ``lock()`` utility to wait at most two seconds to acquire
+the lock, after which it will just log an error. Both scripts access a shared state both to
+read and to write a single entry, ``v``, which is a number that each script manipulates. The
+random sleep time has been introduced in order to randomly cause contentions.
+
+.. note::
+  The *sync* module is only available when the ``lua_sync`` feature is enabled; the standard
+  configuration and the provided binaries enable the feature.
+
+
+.. _65-lua-conclusion:
+
+Conclusion
+----------
+
+The embedded *Lua* interpreter can be intended, especially in the case of script manually
+created by the user, as a quick replacement for external scripts and commands: the interpreter
+initialization is very fast, while calling an external engine is slower and resource hungry.
+*Lua* is a very expressive language, quite common as a scripting engine for applications for
+many reasons, one of which is that it has been *expressedly* created for this purpose and
+another is that it is very compact.
+
+In **whenever**, the internal *Lua* interpreter can also be used as a building block for
+complex workflows: thanks to the recent additions, it acts as a stateful engine where scripts
+activated as both *tasks* and *conditions* can cooperate. Its usefulness, especially for
+frontends that create specific tasks and conditions that should be aware of each other.
+
+
+.. [#fn-2] The ``package.cpath`` setting can be modified as well, however it generally has no
+           effect due to the fact that loading binary modules is normally disabled.
+
+.. [#fn-2] There is actually the possibility to recompile **whenever** with support for binary
            *Lua* modules: this is disabled by default and in the standard configurations for the
-           supported platform. The tests on this option are still unsatisfactory, and in any case
-           it comes with the risk of corrupting the application state.
+           supported platforms. The tests on this option are still unsatisfactory, and in any
+           case it comes with the risk of corrupting the application state.
