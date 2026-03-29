@@ -476,8 +476,8 @@ random sleep time has been introduced in order to randomly cause contentions.
   locks might end up in unwanted resource occupation.
 
 .. note::
-  The *sync* module is only available when the ``lua_sync`` feature is enabled; the standard
-  configuration and the provided binaries enable the feature.
+  The *sync* module is only available when the ``lua_sync`` feature is enabled. In fact, the
+  feature is active by default in the standard configurations and in the provided binaries.
 
 
 .. _65-lua-conclusion:
@@ -485,9 +485,9 @@ random sleep time has been introduced in order to randomly cause contentions.
 Conclusion
 ----------
 
-The embedded *Lua* interpreter can be intended, especially in the case of script manually
+The embedded *Lua* interpreter can be intended, especially in the case of scripts manually
 created by the user, as a quick replacement for external scripts and commands: the interpreter
-initialization is very fast, while calling an external engine is slower and resource hungry.
+initialization is very fast, while calling an external command is slower and resource hungry.
 *Lua* is a very expressive language, quite common as a scripting engine for applications for
 many reasons, one of which is that it has been *expressedly* created for this purpose and
 another is that it is very compact.
