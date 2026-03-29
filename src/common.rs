@@ -1454,7 +1454,7 @@ pub mod lua_httpreq {
         lua: &mlua::Lua,
         url: &str,
         headers: Option<HashMap<String, String>>,
-    ) -> mlua::Result<(mlua::Value, i64)> {
+    ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
         let mut req = minreq::get(url);
         if let Some(headers) = headers {
             req = req.with_headers(headers);
@@ -1466,6 +1466,7 @@ pub mod lua_httpreq {
         Ok((
             BStr::new(&resp.as_bytes()).into_lua(lua)?,
             resp.status_code as i64,
+            lua.create_table_from(resp.headers)?,
         ))
     }
 
@@ -1476,7 +1477,7 @@ pub mod lua_httpreq {
         url: &str,
         body: Option<&[u8]>,
         headers: Option<HashMap<String, String>>,
-    ) -> mlua::Result<(mlua::Value, i64)> {
+    ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
         let mut req = minreq::post(url);
         if let Some(headers) = headers {
             req = req.with_headers(headers);
@@ -1492,6 +1493,7 @@ pub mod lua_httpreq {
         Ok((
             BStr::new(&resp.as_bytes()).into_lua(lua)?,
             resp.status_code as i64,
+            lua.create_table_from(resp.headers)?,
         ))
     }
 }
