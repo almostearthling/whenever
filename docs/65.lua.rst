@@ -86,7 +86,7 @@ on the outcome of such tests.
 Even though every script gets its own, isolated *Lua* interpreter, **whenever** offers a
 way for possibly different scripts to interoperate by sharing simple values, and to store
 intermediate results for subsequent runs of the script associated to an item. Details on
-this capability can be found below in the ::ref::`Enhancements <_65-lua-enhancements>`
+this capability can be found below in the :ref:`Enhancements <65-lua-enhancements>`
 section.
 
 The Lua interpreter is initialized at each run by
@@ -278,8 +278,9 @@ by constructing the appropriate headers and body, and providing everything to th
 
 .. caution::
   While the URL and the request body are simple strings, the ``headers`` parameter must
-  be provided as a *Lua table*, with suitable strings for keys and values. The *table*
-  is built in *Lua* in the usual way, as in the provided example.
+  be provided as a *Lua table*, with suitable strings for both keys (the header *names*,
+  or *fields*) and values. The *table* can be built in *Lua* in the usual way, as in the
+  provided example.
 
 While the examples above only capture the *body* of the HTTP response, both ``http.get()``
 and ``http.post()`` have three return values, in the following order:
@@ -341,8 +342,8 @@ when the script finishes running, even if the outcome is unsuccessful for any re
 
 .. warning::
   The entries of the ``state`` table can only contain values of type *boolean*, *numeric*, or
-  *string*: any other type of value, including *nil*, will cause an error at the end of the
-  script: in this case the state is *not* saved.
+  *string*. Any other type of value, including *nil*, will cause an error at the end of the
+  script and the state will *not* be saved.
 
 Since the private state is only accessible by the item it is associated to, it is normally safe
 to access and modify it freely, without any type of synchronization: there is only one case in
@@ -356,9 +357,9 @@ one that the instance that finishes next saves in turn: attempting to use the sy
 utilities does not help, since the state is read at once *before* the script runs, and saved
 *after* it finished running.
 
-*Shared states* are accessible to *all* *Lua* scripts, and behave differently: they need to be
-explicitly loaded and saved by a script, respectively using the ``sharedstate.load(name)`` and
-``sharedstate.save(name, table)`` functions.
+*Shared states*, on the other side, are accessible to *all* *Lua* scripts, and behave
+differently: they need to be explicitly loaded and saved by a script, respectively using the
+``sharedstate.load(name)`` and ``sharedstate.save(name, table)`` functions.
 
 When a shared state is saved, it becomes immediately available for access and modification to
 other scripts, or to the same script in a second moment: it can be loaded using the name that
@@ -397,7 +398,7 @@ and ``sync.release(name)`` where ``name`` is a string which has the form of an i
 the optional ``timeout`` parameter is the amount of time, in seconds, that the calling script
 should wait for the lock to be released before giving up: in case the lock is not acquired the
 return value is *false*. When the timeout is omitted, ``lock()`` will wait forever. The
-``timeout`` parameter can also be a fractional number.
+``timeout`` parameter can also be a fractional number, and the precision is in milliseconds.
 
 Although not mandatory, the script that acquires a lock should *explicitly* release it as soon
 as possible: these synchronization utilities are made available to simplify exclusive access
@@ -406,9 +407,9 @@ in the most flexible way, so that the ``lock()`` function just puts a lock on a 
 In other words, ``lock()`` can be called from a script and ``release()`` from another, although
 it is not encouraged.
 
-A ``sync.sleep(seconds)``function is also provided, that stops the script for the provided
+A ``sync.sleep(seconds)`` function is also provided, that stops the script for the provided
 amount of time in seconds. The ``seconds`` parameter is a number, can be fractional, and the
-granularity is milliseconds.
+precision is, in this case as well, in milliseconds.
 
 In the following example, two scripts contend a shared state: it can be useful to use locks
 for shared states too, if the scripts that contend it should wait for each other to release it.
