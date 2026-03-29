@@ -575,7 +575,7 @@ how to test the result.\ [#fn-3]_
 .. note::
     This type of item is only available when the ``dbus`` feature is enabled.
 
-So, as a rule of thumb:\ [#fn-4]_
+So, as a rule of thumb:
 
 * arguments to be passed to the DBus method are specified in a list
 * criteria to determine expected return values (aka *messages*, which can be complex structures)
@@ -640,9 +640,9 @@ This means that there are a lot of value types that are not directly derived fro
 types. **whenever** comes to help by allowing to express strictly typed values by using specially
 crafted strings. These string must begin with a backslash, ``\`` (in the TOML representation it
 has to be doubled in order to escape it, or a literal string must be used), followed by the
-*signature* character (\ *ASCII Type Code* in the basic type table\ [#fn-5]_\ ) identifying the
+*signature* character (\ *ASCII Type Code* in the basic type table\ [#fn-4]_\ ) identifying the
 type. For example, the string ``'\y42'`` indicates a ``BYTE`` parameter holding *42* as the value,
-while ``'\o/com/example/MusicPlayer1'`` indicates an ``OBJECT_PATH``\ [#fn-6]_ containing the value
+while ``'\o/com/example/MusicPlayer1'`` indicates an ``OBJECT_PATH``\ [#fn-5]_ containing the value
 */com/example/MusicPlayer1*. A specially crafted string will be translated into a specific value of
 a specific type *only* when a supported *ASCII Type Code* is used, in all other cases the string is
 interpreted literally: for instance, ``'\w100'`` is translated into a ``STRING`` holding the value
@@ -981,9 +981,7 @@ interval.
 .. [#fn-3] In fact, in the original *When* the DBus based conditions and events were considered
            an advanced feature: even the dialog box that allowed the configuration of user-defined
            DBus events was only available through a specific invocation using the command line.
-.. [#fn-4] DBus parameters and criteria can still be expressed in `JSON <https://www.json.org/>`__
-           format for compatibility reasons, but this support will be eventually removed.
-.. [#fn-5] See the `DBus Specification
+.. [#fn-4] See the `DBus Specification
            <https://dbus.freedesktop.org/doc/dbus-specification.html#basic-types>`__ for the
            complete list of supported types, and the ASCII character that identifies each of them.
-.. [#fn-6] In DBus, strings and object paths are considered different types.
+.. [#fn-5] In DBus, strings and object paths are considered different types.
