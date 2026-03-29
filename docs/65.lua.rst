@@ -468,6 +468,13 @@ the lock, after which it will just log an error. Both scripts access a shared st
 read and to write a single entry, ``v``, which is a number that each script manipulates. The
 random sleep time has been introduced in order to randomly cause contentions.
 
+.. caution::
+  Locks are never destroyed: they are intended to be shared among scripts, so once a lock is
+  created it remains in memory until **whenever** exits. Even though locks do not require a
+  significant amount of resources, it is adviced not to create them with dynamic names, that
+  is, with names that are created from variable elements, because indefinite proliferation of
+  locks might end up in unwanted resource occupation.
+
 .. note::
   The *sync* module is only available when the ``lua_sync`` feature is enabled; the standard
   configuration and the provided binaries enable the feature.
