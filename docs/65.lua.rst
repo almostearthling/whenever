@@ -403,7 +403,7 @@ Although not mandatory, the script that acquires a lock should *explicitly* rele
 as possible: these synchronization utilities are made available to simplify exclusive access
 in the most flexible way, so that the ``lock()`` function just puts a lock on a resource, and
 ``release()`` just releases it, independently from which script calls the former or the latter.
-In other words, ``lock()`` can be called from a script and ``release()``from another, although
+In other words, ``lock()`` can be called from a script and ``release()`` from another, although
 it is not encouraged.
 
 A ``sync.sleep(seconds)``function is also provided, that stops the script for the provided
