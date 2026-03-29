@@ -232,7 +232,7 @@ from an HTTP server:
   success = success and string.find(resp, check1, 1, true)
   success = success and string.find(resp, check2, 1, true)
 
-and the answer that *httpbin.org* provides is the following:
+and the answer that *httpbin.org* provides is similar to the following:
 
 .. code-block:: json
 
@@ -244,10 +244,9 @@ and the answer that *httpbin.org* provides is the following:
     "headers": {
       "Accept": "*/*",
       "Host": "httpbin.org",
-      "User-Agent": "curl/8.18.0",
       "X-Amzn-Trace-Id": "Root=1-69c6bb80-08f03a13145c13042443a168"
     },
-    "origin": "151.37.231.168",
+    "origin": "1.2.3.4",
     "url": "https://httpbin.org/get?param1=42&param2=some"
   }
 
@@ -272,10 +271,29 @@ As said before, a similar script can be used, that uses the *POST* method:
 
 by constructing the appropriate headers and body, and providing everything to the server.
 
-.. note::
+.. caution::
   While the URL and the request body are simple strings, the ``headers`` parameter must
   be provided as a *Lua table*, with suitable strings for keys and values. The *table*
   is built in *Lua* in the usual way, as in the provided example.
+
+While the examples above only capture the *body* of the HTTP response, both ``http.get()``
+and ``http.post()`` have three return values, in the following order:
+
+* the response *body* as a string,
+* the HTTP *status code* as an integer, and
+* the response *headers* as a table that maps strings to strings.
+
+Therefore a complete HTTP request has the following form:
+
+.. code-block:: lua
+
+  body, status, headers = http.get("https://httpbin.org/get?param1=42&param2=some")
+
+where, for instance, ``headers["host"] == "httpbin.org"`` holds *true*. Please note that *all
+header names are converted to lowercase*: per RFC 2616 header names are case insensitive, and
+just using lowercase is a way to standardize access when treated as structured data.
+
+Of course, *Lua* allows to capture just one or two, or all of the three return values.
 
 These utilities cover a great range of what can be useful for network access in a *Lua*
 script from within **whenever**: for more complex needs, external commands can be used

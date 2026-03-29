@@ -553,7 +553,7 @@ first time, then the tasks are not executed anymore as long as this status persi
 one unsuccessful condition check (in which, of course, the tasks are not executed), at the
 following successful one the task run is performed again.
 
-Also, the embedded *Lua* interpreter is enriched with several utility functions that are explained
+Also, the embedded *Lua* interpreter is enriched with several utility functions, that are explained
 in detail in the dedicated `section <_65-lua-enhancements>`__. The dedicated `chapter <_65-lua>`__
 also describes with more detail the *Lua* environment in **whenever**.
 

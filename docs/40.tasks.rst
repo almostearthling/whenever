@@ -174,7 +174,7 @@ configuration file -- TOML helps in this sense, by allowing multiline strings by
 
 *Lua* based tasks can be considered more lightweight than *command* tasks, as the interpreter is
 embedded in **whenever**. Also, the embedded *Lua* interpreter is enriched with several utility
-functions that are explained in detail in the dedicated `section <_65-lua-enhancements>`__.
+functions, that are explained in detail in the dedicated `section <_65-lua-enhancements>`__.
 
 The configuration of *Lua* based tasks has the following form:
 
