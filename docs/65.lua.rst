@@ -192,8 +192,8 @@ The remaining additional features are more complex, and deserve dedicated sub-pa
 
 .. _65-lua-enhancements-http:
 
-HTTP queries
-~~~~~~~~~~~~
+HTTP queries (optional)
+~~~~~~~~~~~~~~~~~~~~~~~
 
 The embedded *Lua* interpreter offers the possibility to query network services for
 responses, using the HTTP protocol, both encrypted (HTTPS) and unencrypted. This feature
@@ -312,8 +312,8 @@ anyway.
 
 .. _65-lua-persistence:
 
-Private and shared states
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Private and shared states (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As said at the beginning of this chapter, even though the *Lua* interpreter is freshly
 reinitialized at each run, there is the possibility to "remember" intermediate results across
@@ -385,8 +385,8 @@ where ``name`` is the name of the state to delete.
 
 .. _65-lua-synchronization:
 
-Synchronization utilities
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Synchronization utilities (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The synchronization utilities are provided in order to avoid that *Lua* scripts, that run at
 the same time, concurrently access a resource (for instance, a file), possibly causing an
