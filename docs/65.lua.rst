@@ -494,8 +494,9 @@ another is that it is very compact.
 
 In **whenever**, the internal *Lua* interpreter can also be used as a building block for
 complex workflows: thanks to the recent additions, it acts as a stateful engine where scripts
-activated as both *tasks* and *conditions* can cooperate. Its usefulness, especially for
-frontends that create specific tasks and conditions that should be aware of each other.
+activated as both *tasks* and *conditions* can cooperate. Its usefulness becomes even more
+evident in the case of frontends that create specific tasks and conditions that should be aware
+of each other.
 
 
 .. [#fn-1] The ``package.cpath`` setting can be modified as well, however it generally has no
