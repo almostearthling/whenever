@@ -19,6 +19,7 @@ This document describes **whenever**, a lightweight scheduler and automation too
    40.tasks
    50.conditions
    60.events
+   65.lua
    70.intcli
    80.build
    90.install

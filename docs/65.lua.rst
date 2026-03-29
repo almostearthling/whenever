@@ -488,7 +488,7 @@ activated as both *tasks* and *conditions* can cooperate. Its usefulness, especi
 frontends that create specific tasks and conditions that should be aware of each other.
 
 
-.. [#fn-2] The ``package.cpath`` setting can be modified as well, however it generally has no
+.. [#fn-1] The ``package.cpath`` setting can be modified as well, however it generally has no
            effect due to the fact that loading binary modules is normally disabled.
 
 .. [#fn-2] There is actually the possibility to recompile **whenever** with support for binary

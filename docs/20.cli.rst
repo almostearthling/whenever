@@ -52,12 +52,9 @@ The only elements that should be highlighted are the following:
   command output is the string ``options:`` followed by one or more of the following:
   - ``dbus``: the executable has been compiled with DBus support (generally on Linux)
   - ``wmi``: the executable has WMI support (available on Windows only)
-  - ``lua_sync``: the embedded *Lua* interpreter supports synchronization and data sharing
-    among scripts that run at different times
-  - ``lua_httpreq``: the embedded *Lua* interpreter is capable of performing HTTP request
-    without external tools
-  - ``lua_unsafe``: the embedded *Lua* interpreter allows to call external functions: this
-    feature is experimental and unsupported, and usually disabled in binary releases.
+  - ``lua_sync``: the embedded *Lua* interpreter supports synchronization and data sharing among scripts that run at different times
+  - ``lua_httpreq``: the embedded *Lua* interpreter is capable of performing HTTP request without external tools
+  - ``lua_unsafe``: the embedded *Lua* interpreter allows to call external functions: this feature is experimental and unsupported, and usually disabled in binary releases.
 
 For the *Lua* related features, please refer to the specific documentation pages.
 

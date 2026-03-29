@@ -978,9 +978,6 @@ interval.
            the first success or failure happens.
 .. [#fn-2] Except on *Wayland* based Linux systems (e.g. Ubuntu), on which the idle time starts
            *after the session has been locked*.
-.. [#fn-7] In fact, there is the option to include the *unsafe* version of the *Lua* interpreter
-           in **whenever**: it is still experimental and not well supported, and loading binary
-           modules often leads to runtime errors in this case too.
 .. [#fn-3] In fact, in the original *When* the DBus based conditions and events were considered
            an advanced feature: even the dialog box that allowed the configuration of user-defined
            DBus events was only available through a specific invocation using the command line.
