@@ -19,7 +19,7 @@ Building from Scratch
 ---------------------
 
 In order to build **whenever** a recent version of *Rust* is needed: some of the features that
-have been released with version **1.87.0** have been used. Once the *Rust* requirement, along with
+have been released with version **1.88.0** have been used. Once the *Rust* requirement, along with
 the toolchain for the destination platform, is fulfilled, the following build commands produce the
 binaries that are normally available in the published releases:
 
