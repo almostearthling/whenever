@@ -356,7 +356,7 @@ one that the instance that finishes next saves in turn: attempting to use the sy
 utilities does not help, since the state is read at once *before* the script runs, and saved
 *after* it finished running.
 
-*Shared states* are accessible to *all* lua scripts, and behave differently: they need to be
+*Shared states* are accessible to *all* *Lua* scripts, and behave differently: they need to be
 explicitly loaded and saved by a script, respectively using the ``sharedstate.load(name)`` and
 ``sharedstate.save(name, table)`` functions.
 
