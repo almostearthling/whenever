@@ -258,13 +258,18 @@ As said before, a similar script can be used, that uses the *POST* method:
 
 .. code-block:: lua
 
+  -- script parameters
   success = true
   url = "https://httpbin.org/post"
+
+  -- set the headers: here we use mixed case only for aesthetical reasons
   headers = {}
   headers["Content-Type"] = "application/x-www-form-urlencoded"
   body = "param1=42&param2=some"
   check1 = '"param1": "42"'
   check2 = '"param2": "some"'
+
+  -- perform the request and check the results
   txt = http.post(url, body, headers)
   success = success and string.find(txt, check1, 1, true)
   success = success and string.find(txt, check2, 1, true)
@@ -412,9 +417,6 @@ First script:
 
 .. code-block:: lua
 
-  if v == nil then
-      v = 0
-  end
   sleep_seconds = math.random() * 10
   log.warn("LOCK:A waiting to lock shared state")
   l = sync.lock("SharedState1_LOCK")
