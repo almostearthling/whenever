@@ -49,7 +49,6 @@ On Linux, the build process might complain that some packages are missing: it ma
 the "essential build tools" and the *development* versions of some packages are not installed by
 default. Taking Debian as an example, the following packages should be installed:
 
-
 * *pkg-config*
 * *libx11-dev*
 * *libxss-dev*.
@@ -57,3 +56,5 @@ default. Taking Debian as an example, the following packages should be installed
 In fact, *X11* libraries are optional, and all features are now supported on Wayland desktops as
 well; however, in particular, *idle time detection* can fail on Wayland desktops if *X11* support
 is not available.
+
+To enable the `lua_httpreq` feature, the *libssl-dev* package must be installed on Linux systems.
