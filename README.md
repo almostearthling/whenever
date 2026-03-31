@@ -66,7 +66,7 @@ The provided binaries are self-contained on Windows, and almost so on Linux: on 
    whenever -L trace whenever.toml
    ```
 
-The application will start to run in the background and to log to the terminal it is running within. Every 15th a warning similar to the following will be shown:
+The application will start to run in the background and to log to the terminal it is running within. Every 15th second a warning similar to the following will be shown:
 
 ```text
 [2026-03-31T11:38:45.986] (whenever) WARN  TASK exec_lua TRACE/1: [PROC/MSG] (trigger: Periodic_15s) (Lua) Trace: *** VERIFIED CONDITION *** `Periodic_15s`
