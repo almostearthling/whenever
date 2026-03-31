@@ -50,7 +50,7 @@ The provided binaries are self-contained on Windows, and almost so on Linux: on 
    [[task]]
    type = "lua"
    name = "TRACE"
-   script = '''log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`");'''
+   script = '''log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`")'''
 
    [[condition]]
    name = "Periodic_15s"
@@ -66,11 +66,11 @@ The provided binaries are self-contained on Windows, and almost so on Linux: on 
    whenever -L trace whenever.toml
    ```
 
-The output should be similar to the following:
+The application will start to run in the background and to log to the terminal it is running within. Every 15th a warning similar to the following will be shown:
 
-[![asciicast](https://asciinema.org/a/2q7yy5p1uqv9FBRRGl53LvZUb.svg)](https://asciinema.org/a/2q7yy5p1uqv9FBRRGl53LvZUb)
-
-Well, not that impressive... But, in fact, **whenever** has not been designed to be used this way.
+```text
+[2026-03-31T11:38:45.986] (whenever) WARN  TASK exec_lua TRACE/1: [PROC/MSG] (trigger: Periodic_15s) (Lua) Trace: *** VERIFIED CONDITION *** `Periodic_15s`
+```
 
 To terminate the console application, just hit `Ctrl+C` and it will gracefully stop.
 
