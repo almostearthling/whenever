@@ -20,24 +20,24 @@ enabling logging just for warnings and errors.
 A short description of the log levels follows:
 
 #. **trace**: every single step is logged, some messages can be redundant because if an
-   acknowledgement or an issue takes place in more than one context of the program, each of the
-   involved parts may decide to log about what happened. Sometimes, for example, the same error
-   may be reported by a condition that is checked and by the registry that has been used to reach
-   this condition. Also, *history* messages are issued only at the trace level: *wrappers* will
-   want to use the *trace* level in order to catch these messages and calculate, for instance,
-   the execution time for a particular task.
-#. **debug**: there is plenty of informational messages at each execution step, however
+   acknowledgement or an issue takes place in more than one context, each of the involved parts
+   may decide to log about what happened. Sometimes, for example, the same error can be reported
+   by a condition that is checked and by the registry that has been used to reach it. Also,
+   *history* messages are issued only at the trace level: *wrappers* will want to use the
+   *trace* level in order to catch these messages and calculate, for instance, the execution
+   time for a particular task.
+#. **debug**: there is plenty of informational messages at each execution step, however many
    redundant messages are not emitted. In particular, *history* messages are not present at this
    level.
 #. **info**: a reduced amount of informational messages is emitted, mostly related to the outcome
    of conditions and execution of related tasks; information about what is being checked is less
    verbose. Very reduced logging is performed at this level by the main control program, thus most
    of the logging is left to items.
-#. **warn**: **warnings** are logged, that is erratic situations that can be handled by
+#. **warn**: **warnings** are logged, that is unexpected situations that can be handled by
    **whenever** without having to stop or abort -- note that termination requests are logged as
-   **warnings** instead of **errors**, even though they could be considered normal causes for
-   the scheduler to stop and exit.
-#. **error**: only **errors** are reported, which are erratic situations that may prevent
+   **warnings**, even though they could be considered normal causes for the scheduler to stop and
+   exit.
+#. **error**: only **errors** are reported, which are unwanted situations that may prevent
    **whenever** to perform the requested operations or, in some cases, to keep running correctly.
 
 Note that, since *Lua* scripts are allowed to log at each of the above described levels, lines

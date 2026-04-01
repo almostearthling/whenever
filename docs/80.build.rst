@@ -57,4 +57,5 @@ In fact, *X11* libraries are optional, and all features are now supported on Way
 well; however, in particular, *idle time detection* can fail on Wayland desktops if *X11* support
 is not available.
 
-To enable the `lua_httpreq` feature, the *libssl-dev* package must be installed on Linux systems.
+To enable and build the `lua_httpreq` feature, the *libssl-dev* package (or an equivalent,
+according to the distributon) must be installed on Linux systems.

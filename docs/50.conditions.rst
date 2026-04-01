@@ -554,8 +554,8 @@ one unsuccessful condition check (in which, of course, the tasks are not execute
 following successful one the task run is performed again.
 
 Also, the embedded *Lua* interpreter is enriched with several utility functions, that are explained
-in detail in the dedicated `section <_65-lua-enhancements>`__. The dedicated `chapter <_65-lua>`__
-also describes with more detail the *Lua* environment in **whenever**.
+in detail in the dedicated :ref:`section <65-lua-enhancements>`. The dedicated
+:ref:`chapter <65-lua>` also describes with more detail the *Lua* environment in **whenever**.
 
 For this type of condition the actual test can be performed at a random time within the tick
 interval.
@@ -573,7 +573,8 @@ especially for what concerns the parameters to be passed to the method, and in t
 how to test the result.\ [#fn-3]_
 
 .. note::
-    This type of item is only available when the ``dbus`` feature is enabled.
+    This type of item is only available when the ``dbus`` feature is enabled; however, both the
+    standard Linux configuration and the provided binaries come with the feature enabled.
 
 So, as a rule of thumb:
 
@@ -799,7 +800,8 @@ where every component has a name. For analogy with database operations and queri
 will refer the returned compound values as *rows* or *records*, and their components as *fields*.
 
 .. note::
-    This type of item is only available when the ``wmi`` feature is enabled.
+    This type of item is only available when the ``wmi`` feature is enabled; however, both the
+    standard Windows configuration and the provided binaries come with the feature enabled.
 
 *WMI* inquiries are somewhat simpler than their *DBus* counterparts, mostly because the query
 language is more structured and allows for more complex filtering at the query level. Because of
@@ -871,7 +873,7 @@ An example of *WMI Query* based condition configuration is the following:
 
 The above condition definition queries the *WMI* subsystem to report basic information about the
 logical drives handled by the system, and is successful if any of them has roughly less than 5GB
-left. The test is performed every minute. Of course, the ``result_check`` part coul also be
+left. The test is performed every minute. Of course, the ``result_check`` part could also be
 incorporated in the query itself, using an *AND* clause.
 
 The specific parameters are described in the following table:

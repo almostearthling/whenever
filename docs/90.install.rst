@@ -58,11 +58,11 @@ fulfilled following these steps:
     type = "lua"
     name = "TRACE"
     script = '''
-        log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`");
+        log.warn("Trace: *** VERIFIED CONDITION *** `" .. whenever_condition .. "`")
         '''
 
     [[condition]]
-    name = "Periodic00"
+    name = "Periodic_60s"
     type = "interval"
     interval_seconds = 60
     recurring = true

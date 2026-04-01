@@ -100,10 +100,11 @@ subscribe to these signals, so that when the *return parameters* match the provi
 then the event occurs and the associated condition is fired.
 
 .. note::
-    This type of item is only available when the ``dbus`` feature is enabled.
+    This type of item is only available when the ``dbus`` feature is enabled; however, both the
+    standard Linux configuration and the provided binaries come with the feature enabled.
 
 Subscription is performed by providing a *watch expression* in the same form that is used by the
-`dbus-monitor <https://dbus.freedesktop.org/doc/dbus-monitor.1.html>` utility. The criteria
+`dbus-monitor <https://dbus.freedesktop.org/doc/dbus-monitor.1.html>`__ utility. The criteria
 that the *signal parameters* must meet in order for the event to arise, are specified using the
 same format that is used for *return message parameter* checks in
 :ref:`DBus method based conditions <50-conditions-dbus>`.
@@ -191,7 +192,8 @@ If a namespace other than the default ``ROOT\CIMV2`` is needed, it can be specif
 optional ``namespace`` configuration entry.
 
 .. note::
-    This type of item is only available when the ``wmi`` feature is enabled.
+    This type of item is only available when the ``wmi`` feature is enabled; however, both the
+    standard Windows configuration and the provided binaries come with the feature enabled.
 
 As a result, the configuration of a *WMI* based event is much simpler than the one of *DBus signal*
 based ones, by only having to specify a mandatory ``query`` entry, whose syntax and semantic is

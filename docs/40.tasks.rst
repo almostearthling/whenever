@@ -225,7 +225,7 @@ and the following table provides a detailed description of the entries:
      - (empty)
      - the path to an optional initialization script to be executed before the provided one
 
-More details *Lua* in **whenever** can be found in the dedicated `chapter <_65-lua>`__.
+More details about *Lua* in **whenever** can be found in the dedicated :ref:`chapter <65-lua>`.
 
 
 .. _40-tasks-internal:
@@ -291,6 +291,6 @@ and simpler configuration element: an example could be the use of the *org.freed
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
 .. warning::
-    The provided command will *not* be checked upon configuration, it will *fail* instead causing
-    a warning to be logged in case it is invalid or malformed.
+    The provided command will *not* be checked upon configuration, it will *fail* instead, causing
+    a warning to be logged, in case it is invalid or malformed.
 
