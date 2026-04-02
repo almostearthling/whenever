@@ -1,0 +1,202 @@
+.. _10-main:
+
+The **whenever** Documentation
+==============================
+
+**whenever** is a lightweight automation tool capable of executing *tasks* (in particular, OS
+commands and *Lua* scripts) according to specific *conditions*. Conditions are of various types:
+depending on time (both intervals or specific more-or-less defined instants), execution of OS
+commands or *Lua* scripts, changes in specific files and directories, session inactivity, DBus
+and WMI signals or property checks.\ [#fn-1]_ The scheduler intends to be as lightweight as
+possible in terms of used computational resources, and to run at a low priority level.
+
+Configuration is provided to the scheduler via a `TOML <https://toml.io/>`__ file, which must
+contain all definitions for conditions and associated tasks, as well as events that the scheduler
+should listen to.
+
+Although a command line application, it is designed for desktops -- therefore it should be
+executed via a controlling GUI wrapper.
+
+
+.. _10-main-introduction:
+
+Introduction
+------------
+
+The purpose of **whenever** is to provide the user, possibly without administrative credentials,
+with the ability to define conditions that do not only depend on time, but also on particular
+states of the session, result of commands run in a shell, execution of *Lua* scripts, or other
+events that may occur while the system is being used. This scheduler is a terminal (or console,
+on Windows) application, however it is meant to run in the background without interaction with
+the user. The application is able to produce detailed logs, so that the user can review what the
+application is doing or has done.
+
+The **whenever** scheduler might overlap, to some extent, with the standard *cron* scheduler on
+Unix, and with the *Task Scheduler* on Windows. However this tool tries to be more flexible --
+although possibly less precise than *cron* -- and to function as an alternative to more complex
+solutions that could be implemented using the system-provided schedulers. The **whenever**
+approach is to perform certain tasks after a condition is met, in a relaxed fashion: this means
+that the tasks might not be performed *exactly* in the instant that marks the condition
+verification, but *after* such verification instead. Thus this tool is not intended as a
+replacement for the utilities provided by the operating system: it aims at representing an easy
+solution for those who need to automate some actions depending on other situations or events that
+may occur.
+
+Also, **whenever** aims at being cross-platform: most features are available on all supported
+operating systems, with the exception of
+
+* *DBus support*, which is available on both Linux and Windows, but is of little or no use on
+  the Windows platform, and is therefore not included in the prebuilt binaries, and
+* *WMI support*, which is only available on Windows.
+
+**whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM),
+and, since it does not interact with the user normally, it should be able to run at low priority.
+Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a
+:ref:`simple stdin-based interface <70-intcli-input-commands>` that is mostly aimed at interacting
+with an independent *wrapper*.
+
+The actions to be performed are loaded every time at startup by means of a single configuration
+file that, as many modern tools do, uses the well known TOML format.
+
+A very lightweight cross-platform wrapper, namely `whenever_tray`_, is available for both Linux
+and Windows. Developed in C++ and using the `WxWidgets <https://www.wxwidgets.org/>`__ GUI
+library, it has been designed to implement the bare minimum of functionality and to just show an
+icon in the system tray area, from which it is possible to stop the scheduler, and to pause/resume
+the condition checks and therefore the execution of tasks that would derive from them. The
+minimalistic wrapper also hides the console window on Windows environments. Due to the use of
+*stdin*/*stdout* for communication, it is possible to build more elaborate wrappers in any
+language that supports the possibility to spawn a process and control its I/O, at the expense of
+a larger resource occupation but possibly without drawbacks in terms of performance, as the
+scheduler runs in a separate process anyway. The original *Python* based `When`_ application had
+an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file,
+and could noticeably use the CPU.
+
+This version, written in the `Rust <https://www.rust-lang.org/>`__ programming language, uses
+around 2MB of RAM on Windows\ [#fn-2]_ with a reasonable configuration file that uses *tasks*,
+*conditions*, and *events* supported on the platform. Although small in footprint, **whenever**
+is fully multithreaded, condition checks have no influence on each other and, when needed, may
+run concurrently. Consequential task execution also takes place with full parallelism -- with the
+exception of those tasks that, per configuration, are set to run sequentially.
+
+The former version of `When`_ itself has currently been converted to a frontend wrapper for
+**whenever**: see the specific repository and documentation for details.
+
+
+.. _10-main-features:
+
+Features
+--------
+
+**whenever** can perform the following types of :ref:`task <40-tasks>`:
+
+* :ref:`Running OS executables <40-tasks-command>`, either binaries or scripts,
+  checking their exit code or output (both on *stdout* and *stderr*) for expected or undesired
+  results
+* :ref:`Running Lua scripts <40-tasks-lua>`, using an embedded
+  interpreter, with the possibility of checking the contents of *Lua* variables for expected
+  outcomes
+* :ref:`Running internal input commands <40-tasks-internal>`, to
+  modify the internal scheduler status at the verification of specific conditions
+
+as the consequence of the verification of a *condition*. The concepts of tasks and conditions
+are inherited from the *Python* based `When`_ scheduler.
+
+The supported types of :ref:`condition <50-conditions>` are the following:
+
+* :ref:`Interval based <50-conditions-interval>`: the *periodic* conditions are verified after
+  a certain time interval has passed since **whenever** has started, and may be verified
+  again after the same amount of time if the condition is set to be *recurring*
+* :ref:`Time based <50-conditions-time>`: one or more instants in time can be provided for the
+  condition to be verified
+* :ref:`Idle user session <50-conditions-idle>`: this type of condition is verified after the
+  session has been idle for the specified amount of time
+* :ref:`Command execution <50-conditions-command>`: an available executable (be it a script,
+  a batch file on Windows, a binary) is run, its exit code or output is checked and, when an
+  expected outcome is found, the condition is considered verified - or failed on an explicitly
+  undesired outcome
+* :ref:`Lua script execution <50-conditions-lua>`: a *Lua* script is run using the embedded
+  interpreter, and if the contents of one or more variables meet the specified expectations
+  the condition is considered verified
+* :ref:`DBus inspection (optional) <50-conditions-dbus>`: a *DBus* method is called and the result
+  is checked against some criteria provided in the configuration file
+* :ref:`WMI query (optional, Windows only) <50-conditions-wmi>`: a *WMI* query is executed and
+  the result is checked against some criteria provided in the configuration file
+* :ref:`Event based <50-conditions-event>`: are verified when a certain event occurs that fires
+  the condition.
+
+The :ref:`events <60-events>` that can fire *event* based conditions are:
+
+* :ref:`Filesystem changes <60-events-fschange>`, that is, changes in files and/or directories
+  that are set to be monitored
+* :ref:`DBus signals (optional) <60-events-dbus>`, that may be filtered for an expected payload
+* :ref:`WMI events (optional, Windows only) <60-events-wmi>`, subscribed via specific *WQL* queries
+* :ref:`Command line <60-events-cli>`, that are manually triggered by writing to **whenever**
+  standard input.
+
+Note that *DBus* events and conditions are also supported on Windows, being one of the *DBus* target
+platforms, and enabled by default.  *WMI* events and conditions, on the contrary, are only supported
+on Windows platforms. Both *DBus* and *WMI* support can be **disabled** on build, by respectively
+removing ``dbus`` and/or ``wmi`` from the default features in the *Cargo.toml* file, or by building
+the application with the ``--no-default-features`` command line flag (in this case, other desired
+features have to be specifically enabled using the ``--features`` option). **whenever** can provide
+the list of the available optional features by invoking ``whenever --options`` from the command line.
+
+All of the above listed items are fully configurable via a TOML configuration file, that *must* be
+specified as the only mandatory argument on the command line. The syntax of the configuration file
+is described in the following sections.
+
+Every type of check is performed periodically, even the ones involving *event* based
+conditions\ [#fn-3]_: the periodic time interval at which the conditions are checked is referred
+here as *tick*, and the tick interval can be specified in the configuration file -- defaulting at
+5 seconds. Note that, since performing all checks in the same instant at every tick could cause
+usage peaks in terms of computational resources, there is the option to attempt to randomly
+distribute some of the checks within the tick interval, by explicitly specifying this behavior in
+the configuration file.
+
+The configuration can be also modified while the scheduler application is running, using a specific
+:ref:`command <70-intcli-input-commands>`, in a dynamic fashion that does not reset the items
+whose configuration is unchanged.
+
+
+.. _10-main-configuration:
+
+Configuration
+-------------
+
+The configuration file is strictly based on the current TOML specification: therefore it can be
+implemented by hand, or automatically written (for example, by a GUI based utility) using a library
+capable of writing well-formed TOML files. This section describes the exact format of this file, in
+all of its components.
+
+The configuration has a :ref:`global section <35-globals>` for parameters that affect the scheduler
+behavior globally, and sections for the various configuration items described above, that is
+
+* :ref:`Tasks <40-tasks>`
+* :ref:`Conditions <50-conditions>`
+* :ref:`Events <60-events>`
+
+In configuration files generated by tools such as the current version of `When`_, a special
+``[[tags]]`` section may appear in several places, which generally contains configuration specific
+to the tool itself.
+
+.. note::
+    If **whenever** has been compiled without support for one or more optional features, entries
+    for items depending on that feature are considered configuration errors and cause **whenever**
+    to exit.
+
+
+.. _When: https://github.com/almostearthling/when-command
+.. _whenever_tray: https://github.com/almostearthling/whenever_tray
+
+.. [#fn-1] Although DBus support is available on Windows too, it is mostly useful on Linux
+           desktops: in fact it might be appropriate to disable it when compiling the
+           application for Windows, in order to save resources. Binaries released for Windows
+           ship *without* DBus support.
+.. [#fn-2] When run alone, with no wrapper: using the minimal provided wrapper, both programs
+           together use less than 4MB of RAM and the combined CPU consumption in rare occasions
+           reaches the 0.2% -- as reported by the Windows *Task Manager*.
+.. [#fn-3] The occurrence of an *event*, in fact, raises a flag that specifies that the
+           associated condition will be considered as verified at the following tick: the condition
+           is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the
+           scheduler that executes the related tasks. Therefore *event* based conditions are also
+           referred to as *bucket* conditions.
