@@ -4,7 +4,7 @@ The embedded *Lua* interpreter
 ==============================
 
 As seen for :ref:`tasks <40-tasks-lua>` and :ref:`conditions <50-conditions-lua>`, an embedded
-*Lua* interpreter can be used to execute scripts to respectively execute structured tasks and
+*Lua* interpreter can be used to run scripts to respectively execute structured tasks and
 verify complex conditions without the need to execute external commands. This is generally
 quicker for small operations, because the interpreter is already available while **whenever**
 is running, it only needs to be initialized and provided the script that, in turn, has been
