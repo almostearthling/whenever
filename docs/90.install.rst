@@ -8,6 +8,15 @@ Installation
 mentioned in the *PATH* environment variable, or just to be directly invoked using the full
 path to the executable.
 
+.. warning::
+    On Windows, depending on how recent the OS installation is and what other applications are
+    already present, an error box may show up when you launch **whenever** from the command
+    line, reporting that the *VCRUNTIME140.dll* and/or *MSVCP140.dll* libraries are missing:
+    in this case,     the latest supported *Visual C++ Redistributable Files* (64 bit version)
+    need to be `downloaded and installed <https://aka.ms/vc14/vc_redist.x64.exe>`__ (`source
+    <https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist>`__). Thereafter,
+    there is no need to reinstall **whenever**, and the command should run without errors.
+
 Running **whenever** from the command line, though, is not really useful -- if not in order
 to test a configuration file, especially if it has not been produced by means of a configuration
 utility such as `When`_. The tool, in fact, is designed to be launched by a GUI application, to
