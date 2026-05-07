@@ -137,8 +137,8 @@ Note that *DBus* events and conditions are also supported on Windows, being one 
 platforms, and enabled by default.  *WMI* events and conditions, on the contrary, are only supported
 on Windows platforms. Both *DBus* and *WMI* support can be **disabled** on build, by respectively
 removing ``dbus`` and/or ``wmi`` from the default features in the *Cargo.toml* file, or by building
-the application with the ``--no-default-features`` command line flag (in this case, other desired
-features have to be specifically enabled using the ``--features`` option). **whenever** can provide
+the executable without specifying that the *standard* features for the hosting platform are desired
+by using ``--features [linux_std|windows_std]`` as parameters to *cargo*. **whenever** can provide
 the list of the available optional features by invoking ``whenever --options`` from the command line.
 
 All of the above listed items are fully configurable via a TOML configuration file, that *must* be
@@ -146,7 +146,7 @@ specified as the only mandatory argument on the command line. The syntax of the 
 is described in the following sections.
 
 Every type of check is performed periodically, even the ones involving *event* based
-conditions\ [#fn-3]_: the periodic time interval at which the conditions are checked is referred
+conditions:\ [#fn-3]_ the periodic time interval at which the conditions are checked is referred
 here as *tick*, and the tick interval can be specified in the configuration file -- defaulting at
 5 seconds. Note that, since performing all checks in the same instant at every tick could cause
 usage peaks in terms of computational resources, there is the option to attempt to randomly

@@ -1,4 +1,4 @@
-The Whenever Automation Tool
+The whenever Automation Tool
 ============================
 
 :Version: |release|

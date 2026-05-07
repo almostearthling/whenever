@@ -1,4 +1,4 @@
-# The Whenever Automation Tool
+# The whenever Automation Tool
 
 ![HeaderImage](docs/graphics/banner.png)
 
