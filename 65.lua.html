@@ -1,0 +1,577 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon.ico" rel="icon" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The embedded Lua interpreter &mdash; whenever 1.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=6efca38a"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Input Commands" href="70.intcli.html" />
+    <link rel="prev" title="Events" href="60.events.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            whenever
+              <img src="_static/metronome.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="10.main.html">The <strong>whenever</strong> Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="20.cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="30.logging.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="35.globals.html">Globals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="40.tasks.html">Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="50.conditions.html">Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="60.events.html">Events</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The embedded <em>Lua</em> interpreter</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#initialization-script">Initialization script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#limitations">Limitations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#enhancements">Enhancements</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#http-queries-optional">HTTP queries (optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#private-and-shared-states-optional">Private and shared states (optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#synchronization-utilities-optional">Synchronization utilities (optional)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="70.intcli.html">Input Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="80.build.html">Building <strong>whenever</strong></a></li>
+<li class="toctree-l1"><a class="reference internal" href="90.install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="99.license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">whenever</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">The embedded <em>Lua</em> interpreter</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/65.lua.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="the-embedded-lua-interpreter">
+<span id="lua"></span><h1>The embedded <em>Lua</em> interpreter<a class="headerlink" href="#the-embedded-lua-interpreter" title="Link to this heading"></a></h1>
+<p>As seen for <a class="reference internal" href="40.tasks.html#tasks-lua"><span class="std std-ref">tasks</span></a> and <a class="reference internal" href="50.conditions.html#conditions-lua"><span class="std std-ref">conditions</span></a>, an embedded
+<em>Lua</em> interpreter can be used to run scripts to respectively execute structured tasks and
+verify complex conditions without the need to execute external commands. This is generally
+quicker for small operations, because the interpreter is already available while <strong>whenever</strong>
+is running, it only needs to be initialized and provided the script that, in turn, has been
+loaded at startup. Tasks (or checks) that would last even seconds, can be performed in a small
+fraction of the time.</p>
+<p>The embedded interpreter makes the standard <em>Lua</em> library available for scripts, which includes:</p>
+<ul class="simple">
+<li><p>string manipulation</p></li>
+<li><p>mathematics</p></li>
+<li><p>io and file operations</p></li>
+<li><p>access to OS information and facilities.</p></li>
+</ul>
+<p>The <a class="reference external" href="https://www.lua.org/manual/">Lua manual</a> is the primary source for information about the
+capabilities of the standard library.</p>
+<p>Moreover, the embedded interpreter provides an isolation level that is comparable to the one
+that can be achieved by running external commands: every time that a script has to be run, a new
+interpreter is initialized, that normally works without interaction with other scripts that may
+have run before, or may be running aside.</p>
+<p>While the <em>Lua</em> language is supported in its entirety, the embedded interpreter has both some
+limitations and some enhancements, that come from its awareness of being part of <strong>whenever</strong>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>While many of the features and configuration options described here may not be very useful
+for casual scripts configured directly by editing the configuration file, they are intended
+to be helpful when implementing specific tasks or conditions in a frontend.</p>
+</div>
+<section id="configuration">
+<span id="lua-configuration"></span><h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>Both <em>tasks</em> and <em>conditions</em> based on <em>Lua</em> scripts can configure the interpreter with
+common parameters. Apart from the <code class="docutils literal notranslate"><span class="pre">script</span></code> parameter, that should contain the script to
+be run as a plain string, the following configuration parameters are available:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">init_script_path</span></code>, the optional path to an initialization script, that can be used
+to fine-tune the interpreter, for example by setting the module search path and other
+specific options;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">variables_to_set</span></code>, an optional map that associates identifiers to values that the
+interpreter will find already set when it starts running: the identifiers are plain
+TOML keys and as such they will be available in the script as usual <em>Lua</em> identifiers,
+and the values can only be of <em>boolean</em>, <em>numeric</em>, and <em>string</em> type;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">expected_results</span></code>, a map that associates identifiers (plain TOML keys here as well)
+to simple values that can be of <em>boolean</em>, <em>numeric</em>, and <em>string</em> type: although not
+mandatory, at least an expected result is necessary for <em>Lua</em> script based conditions
+to perform a test that can either succeed or fail.</p></li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The script has to be provided as a literal using the <code class="docutils literal notranslate"><span class="pre">script</span></code> parameter (TOML
+<a class="reference external" href="https://toml.io/en/v1.1.0#string">literal strings</a>, especially in the <em>multiline</em>
+flavor, come in handy for this purpose), however, in case the execution of a script is
+needed, that is available as a separate file, it is always possible to use the
+<code class="docutils literal notranslate"><span class="pre">require</span></code> and <code class="docutils literal notranslate"><span class="pre">dofile()</span></code> <em>Lua</em> functions to achieve this.</p>
+</div>
+<p>Both in <em>tasks</em> and <em>conditions</em>, the dictionary of espected result is checked when the
+script finishes running. Depending on the value of the <code class="docutils literal notranslate"><span class="pre">expect_all</span></code> parameter (which is
+<em>false</em> by default) the script is considered to have succeeded as follows:</p>
+<ul class="simple">
+<li><p>when <code class="docutils literal notranslate"><span class="pre">expect_all</span></code> is <em>true</em> and all the identifiers specified in the map hold exactly
+the specified values,</p></li>
+<li><p>when <code class="docutils literal notranslate"><span class="pre">expect_all</span></code> is <em>false</em> and at least one of the identifiers holds the specified
+value.</p></li>
+</ul>
+<p>Because of the limitations in the types of values that can be provided in the configuration
+file, the tests that <strong>whenever</strong> can perform after the script has finished running are
+actually quite simple. However, of course, nothing forbids to perform more articulated tests
+in the script itself and assign, for instance, a value to a boolean variable that depends
+on the outcome of such tests.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since an independent interpreter is initialized for every <em>Lua</em> based item, the above
+mentioned parameters are set specifically for every item at each run; at the moment there
+is no way to change the default values for these parameters.</p>
+</div>
+<p>Even though every script gets its own, isolated <em>Lua</em> interpreter, <strong>whenever</strong> offers a
+way for possibly different scripts to interoperate by sharing simple values, and to store
+intermediate results for subsequent runs of the script associated to an item. Details on
+this capability can be found below in the <a class="reference internal" href="#lua-enhancements"><span class="std std-ref">Enhancements</span></a>
+section.</p>
+<p>The Lua interpreter is initialized at each run by</p>
+<ul class="simple">
+<li><p>setting the additional variables, including the ones implicitly provided by <strong>whenever</strong>,</p></li>
+<li><p>implementing the extra functionalities, and</p></li>
+<li><p>executing the startup script,</p></li>
+</ul>
+<p>exactly in this order.</p>
+</section>
+<section id="initialization-script">
+<span id="lua-initscript"></span><h2>Initialization script<a class="headerlink" href="#initialization-script" title="Link to this heading"></a></h2>
+<p>For more fine-tuned initialization, that can even be common to several instances of the
+interpreter, an initialization script in <em>Lua</em> can be specified in each item configuration
+using the <code class="docutils literal notranslate"><span class="pre">init_script_path</span></code> parameter: the value should be set to the full path of the
+script itself. It can be used to configure the <em>Lua</em> interpreter, for example by setting
+the <code class="docutils literal notranslate"><span class="pre">package.path</span></code><a class="footnote-reference brackets" href="#fn-1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> to a directory where pure <em>Lua</em> modules can be found, or by
+preloading modules.</p>
+</section>
+<section id="limitations">
+<span id="lua-limitations"></span><h2>Limitations<a class="headerlink" href="#limitations" title="Link to this heading"></a></h2>
+<p>The prominent limitation is that the <em>Lua</em> interpreter in <strong>whenever</strong> <em>can not</em> load binary
+modules.<a class="footnote-reference brackets" href="#fn-2" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> This means that many popular libraries, mostly used in proper applications,
+are not (and cannot be made) available to the scripts that this application can execute: trying
+to <code class="docutils literal notranslate"><span class="pre">require</span></code> such libraries, even in case they can be found in the library search path, just
+results in an error.</p>
+</section>
+<section id="enhancements">
+<span id="lua-enhancements"></span><h2>Enhancements<a class="headerlink" href="#enhancements" title="Link to this heading"></a></h2>
+<p>The non-standard features that come with this version of the interpreter cover the following
+topics:</p>
+<ul class="simple">
+<li><p>knowing the reason why a script is run</p></li>
+<li><p>sending messages to the <strong>whenever</strong> log</p></li>
+<li><p>performing basic network operations, namely simple HTTP requests</p></li>
+<li><p>sharing data with other scripts within the same <strong>whenever</strong> session.</p></li>
+</ul>
+<p>All of these features are accessed each through specific module-like interfaces, variables, or
+<em>Lua tables</em>.</p>
+<p>The <em>reason</em> for running a script can be accessed through two predefined variables:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">whenever_task</span></code> which is a string reporting the name of the task which defines the script:
+it is obviously available in <em>Lua</em> based tasks only,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">whenever_condition</span></code>, is another string that in the case of <em>Lua</em> based condition reports
+the name of the condition being checked, and for tasks reports the condition that triggered
+the tsk itself.</p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">log</span></code> module exposes commands that allow to forward messages to the <strong>whenever</strong> log:
+this can be useful for debugging, of course, but also for frontends that need to communicate
+with specially crafted <em>Lua</em> based items. Messages can be sent at every supported log level
+(<em>error</em>, <em>warn</em>, <em>info</em>, <em>debug</em>, <em>trace</em>). The library functions are the following:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">log.error(message)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.warn(message)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.info(message)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.debug(message)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log.trace(message)</span></code></p></li>
+</ul>
+<p>and take a single string (<code class="docutils literal notranslate"><span class="pre">message</span></code>) as their argument. Each of these functions issues a
+log message at the respective log level.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The message is not issued on its own, but prefixed by the standard log information (such
+as the date, the application and the log level) plus extra information that identify the
+condition and/or the task to which the script that issued the message belongs.</p>
+</div>
+<p>There is no need to <code class="docutils literal notranslate"><span class="pre">require</span></code> the <code class="docutils literal notranslate"><span class="pre">log</span></code> module, as it is available to the interpreter
+by default.</p>
+<p>An example for both the <code class="docutils literal notranslate"><span class="pre">log</span></code> module and the <code class="docutils literal notranslate"><span class="pre">whenever_...</span></code> variables can be found in the
+<em>TRACE</em> task shown in the README file:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[[task]]</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lua&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;TRACE&quot;</span>
+<span class="n">script</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;log.warn(&quot;Trace: *** VERIFIED CONDITION *** `&quot; .. whenever_condition .. &quot;`&quot;)&#39;&#39;&#39;</span>
+</pre></div>
+</div>
+<p>that is, a task that can be used to debug conditions.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Triple single quotes are used in TOML to denote <em>literal multiline strings</em>: <em>literal</em> means
+that everything betwen the two occurrences of the triple single quotes is interpreted as it
+is, including quotes of any type and backslashes. This is particularly useful in this case,
+allowing a short script to be provided in the configuration without losing readability.</p>
+</div>
+<p>The remaining additional features are more complex, and deserve dedicated sub-paragraphs.</p>
+<section id="http-queries-optional">
+<span id="lua-enhancements-http"></span><h3>HTTP queries (optional)<a class="headerlink" href="#http-queries-optional" title="Link to this heading"></a></h3>
+<p>The embedded <em>Lua</em> interpreter offers the possibility to query network services for
+responses, using the HTTP protocol, both encrypted (HTTPS) and unencrypted. This feature
+is provided via a built in module named <code class="docutils literal notranslate"><span class="pre">http</span></code>. The requests can be performed using
+both the <em>GET</em> and the <em>POST</em> methods, respectively using</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">http.get(url</span> <span class="pre">[,</span> <span class="pre">headers])</span></code>, and</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">http.post(url</span> <span class="pre">[,</span> <span class="pre">body</span> <span class="pre">[,</span> <span class="pre">headers]])</span></code></p></li>
+</ul>
+<p>where the optional parameters are expected to be in the <code class="docutils literal notranslate"><span class="pre">url</span></code> argument for <em>GET</em> queries
+and in the <code class="docutils literal notranslate"><span class="pre">body</span></code> argument (with appropriate headers if necessary) for <em>POST</em> queries.</p>
+<p>These functions return the response body as it has been received if successful, or an
+error if the query could not be performed. Along with the response body, the interpreter
+receives the response <em>status code</em> as a <em>Lua</em> integer number.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>A request error, as every other error, causes always the script to <strong>fail</strong>: if this
+is not the intended behavior, it can be useful to enclose the code that sends the
+request in a <code class="docutils literal notranslate"><span class="pre">pcall()</span></code> statement in order to catch the error.</p>
+</div>
+<p>In a <em>Lua</em> script, the two utilities can be exploited as follows to retrieve information
+from an HTTP server:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- script parameters</span>
+<span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="nv">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://httpbin.org/get?param1=42&amp;param2=some&quot;</span>
+<span class="nv">check1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&quot;param1&quot;: &quot;42&quot;&#39;</span>
+<span class="nv">check2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&quot;param2&quot;: &quot;some&quot;&#39;</span>
+
+<span class="c1">-- retrieve data and check it: `httpbin.org` answers in the JSON</span>
+<span class="c1">-- format by default, and the checks are substrings of the response</span>
+<span class="nv">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">http</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="nv">url</span><span class="p">)</span>
+<span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">success</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nb">string.find</span><span class="p">(</span><span class="nv">resp</span><span class="p">,</span><span class="w"> </span><span class="nv">check1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">success</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nb">string.find</span><span class="p">(</span><span class="nv">resp</span><span class="p">,</span><span class="w"> </span><span class="nv">check2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>and the answer that <em>httpbin.org</em> provides is similar to the following:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;param1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;42&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;param2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;some&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;headers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Accept&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;*/*&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Host&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;httpbin.org&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;X-Amzn-Trace-Id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Root=1-69c6bb80-08f03a13145c13042443a168&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;origin&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.2.3.4&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://httpbin.org/get?param1=42&amp;param2=some&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>so, if the <code class="docutils literal notranslate"><span class="pre">expected_results</span></code> parameter in the item configuration had been set to
+<code class="docutils literal notranslate"><span class="pre">{</span> <span class="pre">success</span> <span class="pre">=</span> <span class="pre">true</span> <span class="pre">}</span></code>, the script execution is considered successful – as long as the server
+was reachable and could respond.</p>
+<p>As said before, a similar script can be used, that uses the <em>POST</em> method:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- script parameters</span>
+<span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="nv">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://httpbin.org/post&quot;</span>
+
+<span class="c1">-- set the headers: here we use mixed case only for aesthetical reasons</span>
+<span class="nv">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{}</span>
+<span class="nv">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;application/x-www-form-urlencoded&quot;</span>
+<span class="nv">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;param1=42&amp;param2=some&quot;</span>
+<span class="nv">check1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&quot;param1&quot;: &quot;42&quot;&#39;</span>
+<span class="nv">check2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&quot;param2&quot;: &quot;some&quot;&#39;</span>
+
+<span class="c1">-- perform the request and check the results</span>
+<span class="nv">txt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">http</span><span class="p">.</span><span class="nf">post</span><span class="p">(</span><span class="nv">url</span><span class="p">,</span><span class="w"> </span><span class="nv">body</span><span class="p">,</span><span class="w"> </span><span class="nv">headers</span><span class="p">)</span>
+<span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">success</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nb">string.find</span><span class="p">(</span><span class="nv">txt</span><span class="p">,</span><span class="w"> </span><span class="nv">check1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">success</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nb">string.find</span><span class="p">(</span><span class="nv">txt</span><span class="p">,</span><span class="w"> </span><span class="nv">check2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>by constructing the appropriate headers and body, and providing everything to the server.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>While the URL and the request body are simple strings, the <code class="docutils literal notranslate"><span class="pre">headers</span></code> parameter must
+be provided as a <em>Lua table</em>, with suitable strings for both keys (the header <em>names</em>,
+or <em>fields</em>) and values. The <em>table</em> can be built in <em>Lua</em> in the usual way, as in the
+provided example.</p>
+</div>
+<p>While the examples above only capture the <em>body</em> of the HTTP response, both <code class="docutils literal notranslate"><span class="pre">http.get()</span></code>
+and <code class="docutils literal notranslate"><span class="pre">http.post()</span></code> have three return values, in the following order:</p>
+<ul class="simple">
+<li><p>the response <em>body</em> as a string,</p></li>
+<li><p>the HTTP <em>status code</em> as an integer, and</p></li>
+<li><p>the response <em>headers</em> as a table that maps strings to strings.</p></li>
+</ul>
+<p>Therefore a complete HTTP request has the following form:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">body</span><span class="p">,</span><span class="w"> </span><span class="nv">status</span><span class="p">,</span><span class="w"> </span><span class="nv">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">http</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/get?param1=42&amp;param2=some&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where, for instance, <code class="docutils literal notranslate"><span class="pre">headers[&quot;host&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;httpbin.org&quot;</span></code> holds <em>true</em>. Please note that <em>all
+header names are converted to lowercase</em>: per RFC 2616 header names are case insensitive, and
+just using lowercase is a way to standardize access when treated as structured data.</p>
+<p>Of course, <em>Lua</em> allows to capture just one or two, or all of the three return values.</p>
+<p>These utilities cover a great range of what can be useful for network access in a <em>Lua</em>
+script from within <strong>whenever</strong>: for more complex needs, external commands can be used
+anyway.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <em>http</em> module is only available when the <code class="docutils literal notranslate"><span class="pre">lua_httpreq</span></code> feature is enabled; however,
+both the standard configurations and the provided binaries come with the feature enabled.</p>
+</div>
+</section>
+<section id="private-and-shared-states-optional">
+<span id="lua-persistence"></span><h3>Private and shared states (optional)<a class="headerlink" href="#private-and-shared-states-optional" title="Link to this heading"></a></h3>
+<p>As said at the beginning of this chapter, even though the <em>Lua</em> interpreter is freshly
+reinitialized at each run, there is the possibility to “remember” intermediate results across
+subsequent sessions of the same script, or even to exchange data with other scripts. This is
+made possible through <em>private</em> and <em>shared states</em>.</p>
+<p>A <em>private state</em> is simply a <em>Lua table</em> that is available to every script. This table, named
+<code class="docutils literal notranslate"><span class="pre">state</span></code>, is available to every script, and cannot be accessed by other scripts. Values in the
+table can be set as follows:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">state</span><span class="p">.</span><span class="py">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Have a nice day!&quot;</span>
+<span class="nv">state</span><span class="p">.</span><span class="py">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">42</span>
+<span class="nv">state</span><span class="p">.</span><span class="py">been_here</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</pre></div>
+</div>
+<p>and a subsequent run of the <em>same</em> script in the <em>same</em> task or condition, is able to retrieve
+those values:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">state</span><span class="p">.</span><span class="py">answer</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">42</span>
+</pre></div>
+</div>
+<p>thus becoming aware of results that may have been obtained in previous runs. The state is saved
+when the script finishes running, even if the outcome is unsuccessful for any reason.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The entries of the <code class="docutils literal notranslate"><span class="pre">state</span></code> table can only contain values of type <em>boolean</em>, <em>numeric</em>, or
+<em>string</em>. Any other type of value, including <em>nil</em>, will cause an error at the end of the
+script and the state will <em>not</em> be saved.</p>
+</div>
+<p>Since the private state is only accessible by the item it is associated to, it is normally safe
+to access and modify it freely, without any type of synchronization: there is only one case in
+which what happens is hardly predictable, that is when more than one condition activate the same
+<em>Lua</em> based task, almost at the same time – or, at least, an instance of the script is started
+while another instance of the <em>same</em> script, in the <em>same</em> task is already running: no matter
+whether or not the first instance already stored something into the private state, the second
+instance will access the same values as the first instance, unmodified. Moreover, the values
+that the instance that ends first saves to the private state, will be simply overwritten by the
+one that the instance that finishes next saves in turn: attempting to use the synchronization
+utilities does not help, since the state is read at once <em>before</em> the script runs, and saved
+<em>after</em> it finished running.</p>
+<p><em>Shared states</em>, on the other side, are accessible to <em>all</em> <em>Lua</em> scripts, and behave
+differently: they need to be explicitly loaded and saved by a script, respectively using the
+<code class="docutils literal notranslate"><span class="pre">sharedstate.load(name)</span></code> and <code class="docutils literal notranslate"><span class="pre">sharedstate.save(name,</span> <span class="pre">table)</span></code> functions.</p>
+<p>When a shared state is saved, it becomes immediately available for access and modification to
+other scripts, or to the same script in a second moment: it can be loaded using the name that
+it has been saved with. Shared state names, although strings, must have the form of an
+identifier, that is, start with an underscore or a letter followed by alphanumeric characters
+and underscores. And, just like identifiers, state names are case sensitive. The tables that
+can be saved can only contain values of the types allowed in private states: <em>booleans</em>,
+<em>numbers</em>, and <em>strings</em>.</p>
+<p>Reading and writing shared states are protected from concurrency, that is, it is impossible
+for a script to access a shared state that is accessed by another script: therefore it is
+safe to avoid synchronization when loading or saving a shared state. Nevertheless, an example
+of shared state that uses synchronization is provided below, in the paragraph dedicated to
+the synchronization utilities.</p>
+<p>A method is provided also to remove an existing shared state, <code class="docutils literal notranslate"><span class="pre">sharedstate.remove(name)</span></code>,
+where <code class="docutils literal notranslate"><span class="pre">name</span></code> is the name of the state to delete.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <em>state</em> table and the <em>sharedstate</em> module are only available when the <code class="docutils literal notranslate"><span class="pre">lua_sync</span></code>
+feature is enabled; however, both the standard configurations and the provided binaries
+come with the feature enabled.</p>
+</div>
+</section>
+<section id="synchronization-utilities-optional">
+<span id="lua-synchronization"></span><h3>Synchronization utilities (optional)<a class="headerlink" href="#synchronization-utilities-optional" title="Link to this heading"></a></h3>
+<p>The synchronization utilities are provided in order to avoid that <em>Lua</em> scripts, that run at
+the same time, concurrently access a resource (for instance, a file), possibly causing an
+avoidable script error. The possibility to activate a lock, and to wait for a lock to be
+released, synchronizes the access to resources in a safe way.</p>
+<p>The utilities to acquire and release a lock are, respectively, <code class="docutils literal notranslate"><span class="pre">sync.lock(name</span> <span class="pre">[,</span> <span class="pre">timeout])</span></code>
+and <code class="docutils literal notranslate"><span class="pre">sync.release(name)</span></code> where <code class="docutils literal notranslate"><span class="pre">name</span></code> is a string which has the form of an identifier, and
+the optional <code class="docutils literal notranslate"><span class="pre">timeout</span></code> parameter is the amount of time, in seconds, that the calling script
+should wait for the lock to be released before giving up: in case the lock is not acquired the
+return value is <em>false</em>. When the timeout is omitted, <code class="docutils literal notranslate"><span class="pre">lock()</span></code> will wait forever. The
+<code class="docutils literal notranslate"><span class="pre">timeout</span></code> parameter can also be a fractional number, and the precision is in milliseconds.</p>
+<p>Although not mandatory, the script that acquires a lock should <em>explicitly</em> release it as soon
+as possible: these synchronization utilities are made available to simplify exclusive access
+in the most flexible way, so that the <code class="docutils literal notranslate"><span class="pre">lock()</span></code> function just puts a lock on a resource, and
+<code class="docutils literal notranslate"><span class="pre">release()</span></code> just releases it, independently from which script calls the former or the latter.
+In other words, <code class="docutils literal notranslate"><span class="pre">lock()</span></code> can be called from a script and <code class="docutils literal notranslate"><span class="pre">release()</span></code> from another, although
+it is not encouraged.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">sync.sleep(seconds)</span></code> function is also provided, that stops the script for the provided
+amount of time in seconds. The <code class="docutils literal notranslate"><span class="pre">seconds</span></code> parameter is a number, can be fractional, and the
+precision is, in this case as well, in milliseconds.</p>
+<p>In the following example, two scripts contend a shared state: it can be useful to use locks
+for shared states too, if the scripts that contend it should wait for each other to release it.</p>
+<p>First script:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">sleep_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">math.random</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">10</span>
+<span class="nv">log</span><span class="p">.</span><span class="nf">warn</span><span class="p">(</span><span class="s2">&quot;LOCK:A waiting to lock shared state&quot;</span><span class="p">)</span>
+<span class="nv">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">sync</span><span class="p">.</span><span class="nf">lock</span><span class="p">(</span><span class="s2">&quot;SharedState1_LOCK&quot;</span><span class="p">)</span>
+<span class="kr">if</span><span class="w"> </span><span class="nv">l</span><span class="w"> </span><span class="kr">then</span>
+<span class="w">    </span><span class="nv">log</span><span class="p">.</span><span class="nf">warn</span><span class="p">(</span><span class="s2">&quot;LOCK:A shared state LOCKED&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">sync</span><span class="p">.</span><span class="nf">sleep</span><span class="p">(</span><span class="nv">sleep_seconds</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">sst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">sharedstate</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="s2">&quot;SharedState1&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">sst</span><span class="p">.</span><span class="py">v</span>
+<span class="w">    </span><span class="kr">if</span><span class="w"> </span><span class="nv">v</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="kr">then</span>
+<span class="w">        </span><span class="nv">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="kr">end</span>
+<span class="w">    </span><span class="nv">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">v</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">    </span><span class="nv">sst</span><span class="p">.</span><span class="py">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">v</span>
+<span class="w">    </span><span class="nv">sharedstate</span><span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="s2">&quot;SharedState1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nv">sst</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">sync</span><span class="p">.</span><span class="nf">release</span><span class="p">(</span><span class="s2">&quot;SharedState1_LOCK&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">log</span><span class="p">.</span><span class="nf">warn</span><span class="p">(</span><span class="s2">&quot;LOCK:A shared state UNLOCKED: now v = &quot;</span><span class="w"> </span><span class="o">..</span><span class="w"> </span><span class="nb">tostring</span><span class="p">(</span><span class="nv">v</span><span class="p">))</span>
+<span class="kr">else</span>
+<span class="w">    </span><span class="nv">log</span><span class="p">.</span><span class="nf">error</span><span class="p">(</span><span class="s2">&quot;LOCK:A shared state NOT LOCKED&quot;</span><span class="p">)</span>
+<span class="kr">end</span>
+</pre></div>
+</div>
+<p>and second:</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">sleep_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">math.random</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">10</span>
+<span class="nv">log</span><span class="p">.</span><span class="nf">warn</span><span class="p">(</span><span class="s2">&quot;LOCK:B waiting to lock shared state&quot;</span><span class="p">)</span>
+<span class="nv">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">sync</span><span class="p">.</span><span class="nf">lock</span><span class="p">(</span><span class="s2">&quot;SharedState1_LOCK&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span>
+<span class="kr">if</span><span class="w"> </span><span class="nv">l</span><span class="w"> </span><span class="kr">then</span>
+<span class="w">    </span><span class="nv">log</span><span class="p">.</span><span class="nf">warn</span><span class="p">(</span><span class="s2">&quot;LOCK:B shared state LOCKED&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">sync</span><span class="p">.</span><span class="nf">sleep</span><span class="p">(</span><span class="nv">sleep_seconds</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">sst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">sharedstate</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="s2">&quot;SharedState1&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">sst</span><span class="p">.</span><span class="py">v</span>
+<span class="w">    </span><span class="kr">if</span><span class="w"> </span><span class="nv">v</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="kr">then</span>
+<span class="w">        </span><span class="nv">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="kr">end</span>
+<span class="w">    </span><span class="nv">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">v</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span>
+<span class="w">    </span><span class="nv">sst</span><span class="p">.</span><span class="py">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">v</span>
+<span class="w">    </span><span class="nv">sharedstate</span><span class="p">.</span><span class="nf">save</span><span class="p">(</span><span class="s2">&quot;SharedState1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nv">sst</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">sync</span><span class="p">.</span><span class="nf">release</span><span class="p">(</span><span class="s2">&quot;SharedState1_LOCK&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nv">log</span><span class="p">.</span><span class="nf">warn</span><span class="p">(</span><span class="s2">&quot;LOCK:B shared state UNLOCKED: now v = &quot;</span><span class="w"> </span><span class="o">..</span><span class="w"> </span><span class="nb">tostring</span><span class="p">(</span><span class="nv">v</span><span class="p">))</span>
+<span class="kr">else</span>
+<span class="w">    </span><span class="nv">log</span><span class="p">.</span><span class="nf">error</span><span class="p">(</span><span class="s2">&quot;LOCK:B shared state NOT LOCKED&quot;</span><span class="p">)</span>
+<span class="kr">end</span>
+</pre></div>
+</div>
+<p>The examples use the logging system to notify the outcome of the synchronization operations.
+Only the second script forces the <code class="docutils literal notranslate"><span class="pre">lock()</span></code> utility to wait at most two seconds to acquire
+the lock, after which it will just log an error. Both scripts access a shared state both to
+read and to write a single entry, <code class="docutils literal notranslate"><span class="pre">v</span></code>, which is a number that each script manipulates. The
+random sleep time has been introduced in order to randomly cause contentions.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Locks are never destroyed: they are intended to be shared among scripts, so once a lock is
+created it remains in memory until <strong>whenever</strong> exits. Even though locks do not require a
+significant amount of resources, it is adviced not to instance them with dynamic names, that
+is, with names that are built up from variable elements, because indefinite proliferation of
+locks might end up in unwanted resource occupation.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <em>sync</em> module is only available when the <code class="docutils literal notranslate"><span class="pre">lua_sync</span></code> feature is enabled. In fact, the
+feature is active by default in the standard configurations and in the provided binaries.</p>
+</div>
+</section>
+</section>
+<section id="conclusion">
+<span id="lua-conclusion"></span><h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>The embedded <em>Lua</em> interpreter can be intended, especially in the case of scripts manually
+created by the user, as a quick replacement for external scripts and commands: the interpreter
+initialization is very fast, while calling an external command is slower and resource hungry.
+<em>Lua</em> is a very expressive language, quite common as a scripting engine for applications for
+many reasons, one of which is that it has been <em>expressedly</em> created for this purpose, and
+another is that it is very compact.</p>
+<p>In <strong>whenever</strong>, the internal <em>Lua</em> interpreter can also be used as a building block for
+complex workflows: thanks to the recent additions, it acts as a stateful engine where scripts
+activated as both <em>tasks</em> and <em>conditions</em> can cooperate. Its usefulness becomes even more
+evident in the case of frontends that create specific tasks and conditions that should be aware
+of each other.</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="fn-1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>The <code class="docutils literal notranslate"><span class="pre">package.cpath</span></code> setting can be modified as well, however it generally has no
+effect due to the fact that loading binary modules is normally disabled.</p>
+</aside>
+<aside class="footnote brackets" id="fn-2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>There is actually the possibility to recompile <strong>whenever</strong> with support for binary
+<em>Lua</em> modules: this is disabled by default and in the standard configurations for the
+supported platforms. The tests on this option are still unsatisfactory, and in any
+case it comes with the risk of corrupting the application state.</p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="60.events.html" class="btn btn-neutral float-left" title="Events" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="70.intcli.html" class="btn btn-neutral float-right" title="Input Commands" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2026, Francesco Garosi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
