@@ -101,7 +101,7 @@ fn check_single_instance(instance: &SingleInstance) -> Result<()> {
 // the new thread the tick might wait for a random duration,
 fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
     // log whether or not there are any busy conditions
-    let busy_conds = CONDITION_REGISTRY.conditions_busy().unwrap();
+    let busy_conds = CONDITION_REGISTRY.conditions_busy()?;
     if let Some(busy_conds) = busy_conds {
         if busy_conds > 0 {
             log(

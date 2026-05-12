@@ -27,7 +27,7 @@ use mlua;
 use super::base::Task;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
-use crate::common::wres::Result;
+use crate::common::wres::{Result, Error, Kind};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -37,9 +37,6 @@ use crate::common::named_mutex::*;
 
 #[cfg(feature = "lua_httpreq")]
 use crate::common::lua_httpreq;
-
-#[cfg(not(feature = "lua_unsafe"))]
-use crate::common::wres::{Error, Kind};
 
 /// _Lua_ script Based Task
 ///
@@ -668,7 +665,7 @@ impl Task for LuaTask {
         }
 
         // create functions for logging in a table called `log`
-        let logftab = lua.create_table().unwrap();
+        let logftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
 
         let id = self.get_id();
         let name = self.get_name();
@@ -736,7 +733,7 @@ impl Task for LuaTask {
         #[cfg(feature = "lua_sync")]
         {
             // create synchronization functions in a table
-            let syncftab = lua.create_table().unwrap();
+            let syncftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
 
             let _ = syncftab.set(
                 "sleep",
@@ -791,13 +788,13 @@ impl Task for LuaTask {
             // provide it to the script: this is different from the config
             // entry that sets variables, because the private state is handled
             // by previous script runs and not at configuration time
-            let state = lua.create_table_from(self.state.clone()).unwrap();
+            let state = lua.create_table_from(self.state.clone()).map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
             let _ = globals.set(LUA_TABLE_STATE_PRIVATE, state);
 
             // provide access to the shared state utilities: in order for the
             // shared state to be set, it has to be well formed in the same
             // way as the private state
-            let sharedstateftab = lua.create_table().unwrap();
+            let sharedstateftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
 
             // save the shared state, will return an error if not compliant
             let _ = sharedstateftab.set(
@@ -832,7 +829,7 @@ impl Task for LuaTask {
         #[cfg(feature = "lua_httpreq")]
         {
             // HTTP request capability
-            let httpftab = lua.create_table().unwrap();
+            let httpftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
 
             let _ = httpftab.set(
                 "get",
@@ -1165,7 +1162,10 @@ impl Task for LuaTask {
         }
 
         // log the final message and return the condition outcome
-        let duration = SystemTime::now().duration_since(startup_time).unwrap();
+        let duration = SystemTime::now()
+            .duration_since(startup_time)
+            .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
+        
         match failure_reason {
             FailureReason::NoFailure => {
                 self.log(

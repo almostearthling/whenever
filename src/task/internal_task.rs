@@ -17,7 +17,7 @@ use lazy_static::lazy_static;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{LogType, log};
-use crate::common::wres::Result;
+use crate::common::wres::{Error, Result, Kind};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -232,8 +232,10 @@ impl Task for InternalTask {
         let res = runner(&self.command);
 
         // log the final message and return the condition outcome
-        let duration = SystemTime::now().duration_since(startup_time).unwrap();
-
+        let duration = SystemTime::now()
+            .duration_since(startup_time)
+            .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
+        
         if let Ok(r) = res {
             if r {
                 self.log(

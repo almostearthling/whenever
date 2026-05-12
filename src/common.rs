@@ -427,7 +427,9 @@ pub mod cmditem {
                     return Err(std::io::Error::new(e.kind(), e.to_string()));
                 }
             } else {
-                (out, err) = cres.unwrap();
+                (out, err) = cres.map_err(
+                    |e| std::io::Error::new(e.kind(), e.to_string())
+                )?;
             }
 
             if let Some(ref o) = out {
@@ -477,7 +479,9 @@ pub mod cmditem {
                 return Err(std::io::Error::new(e.kind(), e.to_string()));
             }
         } else {
-            (out, err) = cres.unwrap();
+            (out, err) = cres.map_err(
+                |e| std::io::Error::new(e.kind(), e.to_string())
+            )?;
         }
         if let Some(ref o) = out {
             stdout.push_str(o);
@@ -1554,12 +1558,9 @@ pub mod luaitem {
                 Err(mlua::Error::runtime(ERR_INVALID_VALUE))
             } else {
                 if let Some(state) = shared_states.get(entry) {
-                    let state = lua
-                        .create_table_from(state.clone())
-                        .unwrap_or_else(|_| lua.create_table().unwrap());
-                    Ok(state)
+                    Ok(lua.create_table_from(state.clone())?)
                 } else {
-                    Ok(lua.create_table().unwrap())
+                    Ok(lua.create_table()?)
                 }
             }
         }

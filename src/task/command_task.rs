@@ -39,7 +39,7 @@ use cfgmap::CfgMap;
 use super::base::Task;
 use crate::common::cmditem::*;
 use crate::common::logging::{LogType, log};
-use crate::common::wres::Result;
+use crate::common::wres::{Error, Result, Kind};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -768,7 +768,9 @@ impl Task for CommandTask {
                 },
             }
 
-            self._process_duration = SystemTime::now().duration_since(startup_time).unwrap();
+            self._process_duration = SystemTime::now()
+                .duration_since(startup_time)
+                .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
             match proc_exit {
                 Ok(exit_status) => {
                     let ck_process_status;
