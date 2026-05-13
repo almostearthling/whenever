@@ -256,7 +256,7 @@ macro_rules! exit_if_fails {
             }
             Ok(value) => value,
         }
-    };
+    }
 }
 
 // reset the conditions whose names are provided in a vector of &str
@@ -1098,7 +1098,8 @@ fn main() {
     let args = Args::parse();
 
     // check that no other instance is running
-    let instance = SingleInstance::new(&INSTANCE_GUID).unwrap();
+    
+    let instance = exit_if_fails!(args.quiet, SingleInstance::new(&INSTANCE_GUID));
 
     // if asked to, check for a running instance and exit with a 0 exit status
     // if an instance is already running, 1 if no instaance is running, and if

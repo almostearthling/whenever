@@ -218,7 +218,9 @@ pub mod logging {
                             dir
                         }
                     }
-                    let fspec = FileSpec::try_from(&pb).unwrap();
+                    let fspec = FileSpec::try_from(&pb).map_err(|e| {
+                        std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+                    })?;
                     logger = Ok(
                         l.log_to_file(fspec).format_for_files(log_format), // .write_mode(WriteMode::BufferAndFlush)
                     );
@@ -427,9 +429,7 @@ pub mod cmditem {
                     return Err(std::io::Error::new(e.kind(), e.to_string()));
                 }
             } else {
-                (out, err) = cres.map_err(
-                    |e| std::io::Error::new(e.kind(), e.to_string())
-                )?;
+                (out, err) = cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?;
             }
 
             if let Some(ref o) = out {
@@ -479,9 +479,7 @@ pub mod cmditem {
                 return Err(std::io::Error::new(e.kind(), e.to_string()));
             }
         } else {
-            (out, err) = cres.map_err(
-                |e| std::io::Error::new(e.kind(), e.to_string())
-            )?;
+            (out, err) = cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?;
         }
         if let Some(ref o) = out {
             stdout.push_str(o);
@@ -3224,6 +3222,7 @@ pub mod wmiitem {
 pub mod wres {
     use notify;
     use std::{self, fmt, sync::PoisonError};
+    use mlua;
 
     use crate::constants::{ERR_FAILED, ERR_LOCK_FAILED};
 
@@ -3276,6 +3275,7 @@ pub mod wres {
         StdIo,
         Notify,
         Sync,
+        Lua,
 
         #[cfg(feature = "dbus")]
         DBus,
@@ -3299,6 +3299,7 @@ pub mod wres {
                     Origin::StdIo => "io",
                     Origin::Notify => "fschange",
                     Origin::Sync => "sync",
+                    Origin::Lua => "lua",
 
                     #[cfg(feature = "dbus")]
                     Origin::DBus => "dbus",
@@ -3357,6 +3358,17 @@ pub mod wres {
             Self {
                 kind: Kind::Failed,
                 origin: Origin::Notify,
+                message: e.to_string(),
+            }
+        }
+    }
+
+    // Lua errors
+    impl From<mlua::Error> for Error {
+        fn from(e: mlua::Error) -> Self {
+            Self {
+                kind: Kind::Failed,
+                origin: Origin::Lua,
                 message: e.to_string(),
             }
         }

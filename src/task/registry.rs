@@ -278,7 +278,7 @@ impl TaskRegistry {
 
     /// Return the id of the specified task
     pub fn task_id(&self, name: &str) -> Result<Option<i64>> {
-        if self.has_task(name).unwrap() {
+        if self.has_task(name)? {
             // TO_FIX
             let tl0 = self.task_list.read();
             let task = tl0.get(name).expect("cannot retrieve task").clone();

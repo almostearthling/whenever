@@ -888,9 +888,7 @@ impl Event for DbusMessageEvent {
     fn final_cleanup(&mut self) -> Result<bool> {
         if self.connection.is_some() {
             let conn = self.connection.as_mut().unwrap();
-            task::block_on(async {
-                conn.clone().close().await.unwrap();
-            });
+            task::block_on(async { conn.clone().close().await })?;
             let _ = self.connection.take();
             self.log(
                 LogType::Debug,

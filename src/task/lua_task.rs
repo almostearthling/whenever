@@ -27,7 +27,7 @@ use mlua;
 use super::base::Task;
 use crate::common::logging::{LogType, log};
 use crate::common::luaitem::*;
-use crate::common::wres::{Result, Error, Kind};
+use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -665,7 +665,7 @@ impl Task for LuaTask {
         }
 
         // create functions for logging in a table called `log`
-        let logftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
+        let logftab = lua.create_table()?;
 
         let id = self.get_id();
         let name = self.get_name();
@@ -675,8 +675,7 @@ impl Task for LuaTask {
             lua.create_function(move |_, s: String| {
                 inner_log(&trigger, id, &name, LogType::Debug, &s);
                 Ok(())
-            })
-            .unwrap(),
+            })?,
         );
 
         let id = self.get_id();
@@ -687,8 +686,7 @@ impl Task for LuaTask {
             lua.create_function(move |_, s: String| {
                 inner_log(&trigger, id, &name, LogType::Trace, &s);
                 Ok(())
-            })
-            .unwrap(),
+            })?,
         );
 
         let id = self.get_id();
@@ -699,8 +697,7 @@ impl Task for LuaTask {
             lua.create_function(move |_, s: String| {
                 inner_log(&trigger, id, &name, LogType::Info, &s);
                 Ok(())
-            })
-            .unwrap(),
+            })?,
         );
 
         let id = self.get_id();
@@ -711,8 +708,7 @@ impl Task for LuaTask {
             lua.create_function(move |_, s: String| {
                 inner_log(&trigger, id, &name, LogType::Warn, &s);
                 Ok(())
-            })
-            .unwrap(),
+            })?,
         );
 
         let id = self.get_id();
@@ -723,8 +719,7 @@ impl Task for LuaTask {
             lua.create_function(move |_, s: String| {
                 inner_log(&trigger, id, &name, LogType::Error, &s);
                 Ok(())
-            })
-            .unwrap(),
+            })?,
         );
 
         let _ = globals.set(LUA_MODULE_LOG, logftab);
@@ -733,7 +728,7 @@ impl Task for LuaTask {
         #[cfg(feature = "lua_sync")]
         {
             // create synchronization functions in a table
-            let syncftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
+            let syncftab = lua.create_table()?;
 
             let _ = syncftab.set(
                 "sleep",
@@ -742,8 +737,7 @@ impl Task for LuaTask {
                     let ms = if ms < 0 { 0 } else { ms } as u64;
                     thread::sleep(Duration::from_millis(ms));
                     Ok(())
-                })
-                .unwrap(),
+                })?,
             );
 
             // for no particular reason we enforce the mutex name to carry an
@@ -768,16 +762,14 @@ impl Task for LuaTask {
                     } else {
                         Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
                     }
-                })
-                .unwrap(),
+                })?,
             );
 
             // here the name is not checked: invalid names will not be found
             // and the unlock will simply fail and return `false`
             let _ = syncftab.set(
                 "release",
-                lua.create_function(move |_, name: String| Ok(namedmutex_release(name.as_str())))
-                    .unwrap(),
+                lua.create_function(move |_, name: String| Ok(namedmutex_release(name.as_str())))?,
             );
 
             // ...
@@ -788,37 +780,34 @@ impl Task for LuaTask {
             // provide it to the script: this is different from the config
             // entry that sets variables, because the private state is handled
             // by previous script runs and not at configuration time
-            let state = lua.create_table_from(self.state.clone()).map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
+            let state = lua.create_table_from(self.state.clone())?;
             let _ = globals.set(LUA_TABLE_STATE_PRIVATE, state);
 
             // provide access to the shared state utilities: in order for the
             // shared state to be set, it has to be well formed in the same
             // way as the private state
-            let sharedstateftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
+            let sharedstateftab = lua.create_table()?;
 
             // save the shared state, will return an error if not compliant
             let _ = sharedstateftab.set(
                 "save",
                 lua.create_function(|lua, (name, state): (String, mlua::Table)| {
                     set_shared_state(lua, name.as_str(), state)
-                })
-                .unwrap(),
+                })?,
             );
 
             // load the shared state as a table, typically it will be assigned
             // to a local table to be saved later
             let _ = sharedstateftab.set(
                 "load",
-                lua.create_function(|lua, name: String| get_shared_state(lua, name.as_str()))
-                    .unwrap(),
+                lua.create_function(|lua, name: String| get_shared_state(lua, name.as_str()))?,
             );
 
             // remove a shared state entry: returns the removed table, safe to
             // be ignored most of the times
             let _ = sharedstateftab.set(
                 "remove",
-                lua.create_function(|lua, name: String| del_shared_state(lua, name.as_str()))
-                    .unwrap(),
+                lua.create_function(|lua, name: String| del_shared_state(lua, name.as_str()))?,
             );
 
             // ...
@@ -829,7 +818,7 @@ impl Task for LuaTask {
         #[cfg(feature = "lua_httpreq")]
         {
             // HTTP request capability
-            let httpftab = lua.create_table().map_err(|e| Error::new(Kind::Unavailable, &e.to_string()))?;
+            let httpftab = lua.create_table()?;
 
             let _ = httpftab.set(
                 "get",
@@ -850,8 +839,7 @@ impl Task for LuaTask {
                     } else {
                         Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
                     }
-                })
-                .unwrap(),
+                })?,
             );
 
             let _ = httpftab.set(
@@ -893,8 +881,7 @@ impl Task for LuaTask {
                             Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
                         }
                     },
-                )
-                .unwrap(),
+                )?,
             );
 
             // ...
@@ -1165,7 +1152,7 @@ impl Task for LuaTask {
         let duration = SystemTime::now()
             .duration_since(startup_time)
             .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
-        
+
         match failure_reason {
             FailureReason::NoFailure => {
                 self.log(
