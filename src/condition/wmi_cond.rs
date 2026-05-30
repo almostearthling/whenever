@@ -379,10 +379,9 @@ impl WmiQueryCondition {
                 }
                 let field = field.unwrap().unwrap();
 
-                let operator;
-                if let Some(oper) = spec.get("operator") {
+                let operator = if let Some(oper) = spec.get("operator") {
                     if oper.is_str() {
-                        operator = match oper.as_str().unwrap().as_str() {
+                        match oper.as_str().unwrap().as_str() {
                             "eq" => ResultCheckOperator::Equal,
                             "neq" => ResultCheckOperator::NotEqual,
                             "gt" => ResultCheckOperator::Greater,
@@ -397,7 +396,7 @@ impl WmiQueryCondition {
                                     ERR_INVALID_VALUE_FOR_ENTRY,
                                 ));
                             }
-                        };
+                        }
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
@@ -411,22 +410,21 @@ impl WmiQueryCondition {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
 
-                let value;
-                if let Some(v) = spec.get("value") {
+                let value = if let Some(v) = spec.get("value") {
                     if v.is_bool() {
-                        value = ResultCheckValue::Boolean(*v.as_bool().unwrap());
+                        ResultCheckValue::Boolean(*v.as_bool().unwrap())
                     } else if v.is_int() {
-                        value = ResultCheckValue::Integer(*v.as_int().unwrap());
+                        ResultCheckValue::Integer(*v.as_int().unwrap())
                     } else if v.is_float() {
-                        value = ResultCheckValue::Float(*v.as_float().unwrap());
+                        ResultCheckValue::Float(*v.as_float().unwrap())
                     } else if v.is_str() {
                         let s = v.as_str().unwrap();
                         if operator == ResultCheckOperator::Match {
                             let re = Regex::new(s);
                             if let Ok(re) = re {
-                                value = ResultCheckValue::Regex(re);
+                                ResultCheckValue::Regex(re)
                             } else {
                                 return Err(cfg_err_invalid_config(
                                     &format!("{cur_key}:value"),
@@ -435,7 +433,7 @@ impl WmiQueryCondition {
                                 ));
                             }
                         } else {
-                            value = ResultCheckValue::String(s.to_string());
+                            ResultCheckValue::String(s.to_string())
                         }
                     } else {
                         return Err(cfg_err_invalid_config(
@@ -450,7 +448,7 @@ impl WmiQueryCondition {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
                 // now that we have the full struct, we can add it to criteria
                 result_checks.push(ResultCheckTest {
                     index: index.map(|i| i as usize),
@@ -605,10 +603,9 @@ impl WmiQueryCondition {
                     ));
                 }
 
-                let operator;
-                if let Some(oper) = spec.get("operator") {
+                let operator = if let Some(oper) = spec.get("operator") {
                     if oper.is_str() {
-                        operator = match oper.as_str().unwrap().as_str() {
+                        match oper.as_str().unwrap().as_str() {
                             "eq" => ResultCheckOperator::Equal,
                             "neq" => ResultCheckOperator::NotEqual,
                             "gt" => ResultCheckOperator::Greater,
@@ -623,7 +620,7 @@ impl WmiQueryCondition {
                                     ERR_INVALID_VALUE_FOR_ENTRY,
                                 ));
                             }
-                        };
+                        }
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
@@ -637,7 +634,7 @@ impl WmiQueryCondition {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
 
                 if let Some(v) = spec.get("value") {
                     if v.is_str() {

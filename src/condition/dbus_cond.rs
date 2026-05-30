@@ -525,10 +525,9 @@ impl DbusMethodCondition {
                     ));
                 }
 
-                let operator;
-                if let Some(oper) = spec.get("operator") {
+                let operator = if let Some(oper) = spec.get("operator") {
                     if oper.is_str() {
-                        operator = match oper.as_str().unwrap().as_str() {
+                        match oper.as_str().unwrap().as_str() {
                             "eq" => ParamCheckOperator::Equal,
                             "neq" => ParamCheckOperator::NotEqual,
                             "gt" => ParamCheckOperator::Greater,
@@ -545,7 +544,7 @@ impl DbusMethodCondition {
                                     ERR_INVALID_VALUE_FOR_ENTRY,
                                 ));
                             }
-                        };
+                        }
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
@@ -559,22 +558,21 @@ impl DbusMethodCondition {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
 
-                let value;
-                if let Some(v) = spec.get("value") {
+                let value = if let Some(v) = spec.get("value") {
                     if v.is_bool() {
-                        value = ParameterCheckValue::Boolean(*v.as_bool().unwrap());
+                        ParameterCheckValue::Boolean(*v.as_bool().unwrap())
                     } else if v.is_int() {
-                        value = ParameterCheckValue::Integer(*v.as_int().unwrap());
+                        ParameterCheckValue::Integer(*v.as_int().unwrap())
                     } else if v.is_float() {
-                        value = ParameterCheckValue::Float(*v.as_float().unwrap());
+                        ParameterCheckValue::Float(*v.as_float().unwrap())
                     } else if v.is_str() {
                         let s = v.as_str().unwrap();
                         if operator == ParamCheckOperator::Match {
                             let re = Regex::new(s);
                             if let Ok(re) = re {
-                                value = ParameterCheckValue::Regex(re);
+                                ParameterCheckValue::Regex(re)
                             } else {
                                 return Err(cfg_err_invalid_config(
                                     &format!("{cur_key}:value"),
@@ -583,7 +581,7 @@ impl DbusMethodCondition {
                                 ));
                             }
                         } else {
-                            value = ParameterCheckValue::String(s.to_string());
+                            ParameterCheckValue::String(s.to_string())
                         }
                     } else {
                         return Err(cfg_err_invalid_config(
@@ -598,7 +596,7 @@ impl DbusMethodCondition {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
                 // now that we have the full triple, we can add it to criteria
                 param_checks.push(ParameterCheckTest {
                     index: index_list,
@@ -865,10 +863,9 @@ impl DbusMethodCondition {
                 // instead of simply checking that the corresponding string
                 // is present in a fixed array in order to check for regex
                 // correctness below in the same way as load_cfgmap does
-                let operator;
-                if let Some(oper) = spec.get("operator") {
+                let operator = if let Some(oper) = spec.get("operator") {
                     if oper.is_str() {
-                        operator = match oper.as_str().unwrap().as_str() {
+                        match oper.as_str().unwrap().as_str() {
                             "eq" => ParamCheckOperator::Equal,
                             "neq" => ParamCheckOperator::NotEqual,
                             "gt" => ParamCheckOperator::Greater,
@@ -885,7 +882,7 @@ impl DbusMethodCondition {
                                     ERR_INVALID_VALUE_FOR_ENTRY,
                                 ));
                             }
-                        };
+                        }
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
@@ -899,7 +896,7 @@ impl DbusMethodCondition {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
 
                 if let Some(v) = spec.get("value") {
                     if v.is_str() {
@@ -1147,15 +1144,13 @@ impl Condition for DbusMethodCondition {
         // panic here if the bus name is incorrect: should have been fixed
         // when the condition was configured and constructed
         async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
-            let connection;
             if bus == ":session" {
-                connection = zbus::Connection::session().await;
+                zbus::Connection::session().await
             } else if bus == ":system" {
-                connection = zbus::Connection::system().await;
+                zbus::Connection::system().await
             } else {
                 panic!("specified bus `{bus}` not supported for DBus method based condition");
             }
-            connection
         }
 
         self.log(
@@ -1223,15 +1218,14 @@ impl Condition for DbusMethodCondition {
         // time, and thus I did not found a way to call a method without
         // arguments if not by passing a pointer to the unit as argument to
         // the `call_method` function
-        let message;
-        if let Some(params) = self.param_call.clone() {
+        let message = if let Some(params) = self.param_call.clone() {
             let mut arg = zvariant::StructureBuilder::new();
             for p in params {
                 let v = zvariant::Value::from(p);
                 arg.push_value(v);
             }
             if let Ok(arg) = arg.build() {
-                message = task::block_on(async {
+                task::block_on(async {
                     conn.call_method(
                         if service.is_empty() {
                             None
@@ -1259,9 +1253,9 @@ impl Condition for DbusMethodCondition {
                     ),
                 );
                 return Ok(Some(false));
-            };
+            }
         } else {
-            message = task::block_on(async {
+            task::block_on(async {
                 conn.call_method(
                     if service.is_empty() {
                         None
@@ -1278,8 +1272,8 @@ impl Condition for DbusMethodCondition {
                     &(),
                 )
                 .await
-            });
-        }
+            })
+        };
         if let Err(e) = message {
             self.log(
                 LogType::Warn,

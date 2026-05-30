@@ -367,10 +367,9 @@ impl DbusMessageEvent {
                     ));
                 }
 
-                let operator;
-                if let Some(oper) = spec.get("operator") {
+                let operator = if let Some(oper) = spec.get("operator") {
                     if oper.is_str() {
-                        operator = match oper.as_str().unwrap().as_str() {
+                        match oper.as_str().unwrap().as_str() {
                             "eq" => ParamCheckOperator::Equal,
                             "neq" => ParamCheckOperator::NotEqual,
                             "gt" => ParamCheckOperator::Greater,
@@ -387,7 +386,7 @@ impl DbusMessageEvent {
                                     ERR_INVALID_VALUE_FOR_ENTRY,
                                 ));
                             }
-                        };
+                        }
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
@@ -401,22 +400,21 @@ impl DbusMessageEvent {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
 
-                let value;
-                if let Some(v) = spec.get("value") {
+                let value = if let Some(v) = spec.get("value") {
                     if v.is_bool() {
-                        value = ParameterCheckValue::Boolean(*v.as_bool().unwrap());
+                        ParameterCheckValue::Boolean(*v.as_bool().unwrap())
                     } else if v.is_int() {
-                        value = ParameterCheckValue::Integer(*v.as_int().unwrap());
+                        ParameterCheckValue::Integer(*v.as_int().unwrap())
                     } else if v.is_float() {
-                        value = ParameterCheckValue::Float(*v.as_float().unwrap());
+                        ParameterCheckValue::Float(*v.as_float().unwrap())
                     } else if v.is_str() {
                         let s = v.as_str().unwrap();
                         if operator == ParamCheckOperator::Match {
                             let re = Regex::from_str(s);
                             if let Ok(re) = re {
-                                value = ParameterCheckValue::Regex(re);
+                                ParameterCheckValue::Regex(re)
                             } else {
                                 return Err(cfg_err_invalid_config(
                                     &format!("{cur_key}:value"),
@@ -425,7 +423,7 @@ impl DbusMessageEvent {
                                 ));
                             }
                         } else {
-                            value = ParameterCheckValue::String(s.to_string());
+                            ParameterCheckValue::String(s.to_string())
                         }
                     } else {
                         return Err(cfg_err_invalid_config(
@@ -440,7 +438,7 @@ impl DbusMessageEvent {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
                 // now that we have the full triple, we can add it to criteria
                 param_checks.push(ParameterCheckTest {
                     index: index_list,
@@ -607,10 +605,9 @@ impl DbusMessageEvent {
                 // instead of simply checking that the corresponding string
                 // is present in a fixed array in order to check for regex
                 // correctness below in the same way as load_cfgmap does
-                let operator;
-                if let Some(oper) = spec.get("operator") {
+                let operator = if let Some(oper) = spec.get("operator") {
                     if oper.is_str() {
-                        operator = match oper.as_str().unwrap().as_str() {
+                        match oper.as_str().unwrap().as_str() {
                             "eq" => ParamCheckOperator::Equal,
                             "neq" => ParamCheckOperator::NotEqual,
                             "gt" => ParamCheckOperator::Greater,
@@ -627,7 +624,7 @@ impl DbusMessageEvent {
                                     ERR_INVALID_VALUE_FOR_ENTRY,
                                 ));
                             }
-                        };
+                        }
                     } else {
                         return Err(cfg_err_invalid_config(
                             &format!("{cur_key}:operator"),
@@ -641,7 +638,7 @@ impl DbusMessageEvent {
                         STR_UNKNOWN_VALUE,
                         ERR_MISSING_PARAMETER,
                     ));
-                }
+                };
 
                 if let Some(v) = spec.get("value") {
                     if v.is_str() {
@@ -855,15 +852,13 @@ impl Event for DbusMessageEvent {
         // panic here if the bus name is incorrect: should have been fixed
         // when the event was configured and constructed
         async fn _get_connection(bus: &str) -> zbus::Result<zbus::Connection> {
-            let connection;
             if bus == ":session" {
-                connection = zbus::Connection::session().await;
+                zbus::Connection::session().await
             } else if bus == ":system" {
-                connection = zbus::Connection::system().await;
+                zbus::Connection::system().await
             } else {
                 panic!("specified bus `{bus}` not supported for event");
             }
-            connection
         }
 
         // create the base for the listener, that is a filtered connection

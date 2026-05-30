@@ -355,9 +355,8 @@ impl TaskRegistry {
         for name in names.iter() {
             let id = self.task_id(name)?.unwrap();
             let mut breaks = false;
-            let task;
             let tl0 = self.task_list.read();
-            task = tl0
+            let task = tl0
                 .get(*name)
                 .expect("cannot retrieve task for running")
                 .clone();

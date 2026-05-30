@@ -3,9 +3,9 @@
 //! A lightweight multiplatform background job launcher based upon
 //! verification of various types of conditions.
 
+use parking_lot::{Mutex, RwLock};
 use rand::{Rng, rng};
 use std::io::{BufRead, Stdin, stdin};
-use parking_lot::{Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
 
@@ -256,7 +256,7 @@ macro_rules! exit_if_fails {
             }
             Ok(value) => value,
         }
-    }
+    };
 }
 
 // reset the conditions whose names are provided in a vector of &str
@@ -397,16 +397,16 @@ fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
                         // intervals might fire immediately; reset will always
                         // succeed, so this construct to build the right log
                         // message is only here for consistency
-                        let info;
-                        if let Ok(res_rst) = CONDITION_REGISTRY.reset_condition(name, true) {
-                            info = if res_rst {
-                                "resumed and reset"
+                        let info =
+                            if let Ok(res_rst) = CONDITION_REGISTRY.reset_condition(name, true) {
+                                if res_rst {
+                                    "resumed and reset"
+                                } else {
+                                    "resumed"
+                                }
                             } else {
                                 "resumed"
                             };
-                        } else {
-                            info = "resumed";
-                        }
                         log(
                             LogType::Info,
                             LOG_EMITTER_MAIN,
@@ -1098,7 +1098,6 @@ fn main() {
     let args = Args::parse();
 
     // check that no other instance is running
-    
     let instance = exit_if_fails!(args.quiet, SingleInstance::new(&INSTANCE_GUID));
 
     // if asked to, check for a running instance and exit with a 0 exit status
