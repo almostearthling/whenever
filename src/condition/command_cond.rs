@@ -23,7 +23,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use itertools::Itertools;
 
-use subprocess::{Popen, PopenConfig, PopenError, Redirection};
+use subprocess::{Exec, Redirection};
 
 use cfgmap::CfgMap;
 
@@ -994,10 +994,9 @@ impl Condition for CommandCondition {
             return Ok(Some(false));
         }
 
-        // build the environment: least priority settings come first; it is
-        // created as a hashmap in order to avoid duplicates, but it is
-        // converted to Vec<&OsString, &OsString> in order to be passed to
-        // subprocess::Popen::create in a subprocess::Popenconfig struct
+        // build the environment: least priority settings come first; it is created
+        // as a hashmap in order to avoid duplicates, but it is  converted to
+        // Vec<&OsString, &OsString> in order to be passed to subprocess::Exec
         let mut temp_env: HashMap<String, String> = HashMap::new();
 
         // first inherit environment variables from underlying OS
@@ -1026,20 +1025,8 @@ impl Condition for CommandCondition {
             shell_env.push((OsString::from(&var), OsString::from(&value)));
         }
 
-        // build the subprocess configured environment
-        let process_config = PopenConfig {
-            //stdin: Redirection::Pipe,
-            stdout: Redirection::Pipe,
-            stderr: Redirection::Pipe,
-            cwd: Some(OsString::from(self.startup_dir.as_os_str())),
-            env: Some(shell_env),
-            detached: false,
-            ..Default::default()
-        };
-
         // build the argv slice for Popen::create
         let mut process_argv: Vec<OsString> = Vec::new();
-        process_argv.push(OsString::from(self.command.as_os_str()));
         for item in &self.args {
             process_argv.push(OsString::from(item));
         }
@@ -1058,129 +1045,108 @@ impl Condition for CommandCondition {
         self._process_stderr = String::new();
         self._process_stdout = String::new();
         let startup_time = SystemTime::now();
-        let open_process = Popen::create(&process_argv, process_config);
-        if let Ok(process) = open_process {
-            let proc_exit;
 
-            match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
-                Ok((exit_status, out, err)) => {
-                    if let Some(o) = out {
-                        self._process_stdout = o;
-                    }
-                    if let Some(e) = err {
-                        self._process_stderr = e;
-                    }
-                    proc_exit = Ok(exit_status);
+        let process = Exec::cmd(self.command.as_os_str())
+        .args(process_argv)
+        .cwd(self.startup_dir.as_os_str())
+        .env_clear()
+        .env_extend(shell_env)
+        .stderr(Redirection::Pipe)
+        .stdout(Redirection::Pipe);
+
+        let proc_exit = match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
+
+            Ok((exit_status, out, err)) => {
+                if let Some(o) = out {
+                    self._process_stdout = o;
                 }
-                Err(e) => match e.kind() {
-                    std::io::ErrorKind::TimedOut => {
-                        self.log(
-                            LogType::Debug,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_FAIL,
-                            &format!("timeout reached running command `{}`", self.command_line()),
-                        );
-                        proc_exit = Err(PopenError::from(std::io::Error::new(
-                            ErrorKind::TimedOut,
-                            ERR_TIMEOUT_REACHED,
-                        )));
-                    }
-                    k => {
-                        self.log(
-                            LogType::Warn,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_FAIL,
-                            &format!("error running command `{}`", self.command_line()),
-                        );
-                        proc_exit = Err(PopenError::from(std::io::Error::new(k, e.to_string())));
-                    }
-                },
+                if let Some(e) = err {
+                    self._process_stderr = e;
+                }
+                Ok(exit_status)
             }
-
-            self._process_duration = SystemTime::now()
-                .duration_since(startup_time)
-                .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
-            match proc_exit {
-                Ok(exit_status) => {
-                    let ck_process_status;
-                    let ck_process_failed;
-                    let ck_failure_reason;
-                    let log_severity;
-                    let log_when;
-                    let log_status;
-                    let log_message;
-                    (
-                        ck_process_status,
-                        ck_process_failed,
-                        ck_failure_reason,
-                        log_severity,
-                        log_when,
-                        log_status,
-                        log_message,
-                    ) = check_process_outcome(
-                        &exit_status,
-                        &self._process_stdout,
-                        &self._process_stderr,
-                        &self.command_line(),
-                        self.match_exact,
-                        self.match_regexp,
-                        self.case_sensitive,
-                        &self.success_stdout,
-                        &self.success_stderr,
-                        &self.success_status,
-                        &self.failure_stdout,
-                        &self.failure_stderr,
-                        &self.failure_status,
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::TimedOut => {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("timeout reached running command `{}`", self.command_line()),
                     );
-
-                    self._process_status = ck_process_status;
-                    self._process_failed = ck_process_failed;
-                    failure_reason = ck_failure_reason;
-
-                    self.log(log_severity, log_when, log_status, &log_message);
+                    Err(std::io::Error::new(
+                        ErrorKind::TimedOut,
+                        ERR_TIMEOUT_REACHED,
+                    ))
                 }
-                // the command could not be executed thus an error is reported
-                Err(e) => {
+                k => {
                     self.log(
                         LogType::Warn,
-                        LOG_WHEN_END,
+                        LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
-                        &format!(
-                            "could not execute command: `{}` (reason: {e})",
-                            self.command_line(),
-                        ),
+                        &format!("error running command `{}`", self.command_line()),
                     );
-                    self._process_failed = true;
-                    failure_reason = FailureReason::Other;
+                    Err(std::io::Error::new(k, e.to_string()))
                 }
+            },
+        };
+
+        self._process_duration = SystemTime::now()
+            .duration_since(startup_time)
+            .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
+        match proc_exit {
+            Ok(exit_status) => {
+                let ck_process_status;
+                let ck_process_failed;
+                let ck_failure_reason;
+                let log_severity;
+                let log_when;
+                let log_status;
+                let log_message;
+                (
+                    ck_process_status,
+                    ck_process_failed,
+                    ck_failure_reason,
+                    log_severity,
+                    log_when,
+                    log_status,
+                    log_message,
+                ) = check_process_outcome(
+                    &exit_status,
+                    &self._process_stdout,
+                    &self._process_stderr,
+                    &self.command_line(),
+                    self.match_exact,
+                    self.match_regexp,
+                    self.case_sensitive,
+                    &self.success_stdout,
+                    &self.success_stderr,
+                    &self.success_status,
+                    &self.failure_stdout,
+                    &self.failure_stderr,
+                    &self.failure_status,
+                );
+
+                self._process_status = ck_process_status;
+                self._process_failed = ck_process_failed;
+                failure_reason = ck_failure_reason;
+
+                self.log(log_severity, log_when, log_status, &log_message);
             }
-        } else {
-            // something happened before the command could be run
-            if let Err(e) = open_process {
-                self._process_failed = true;
+            // the command could not be executed thus an error is reported
+            Err(e) => {
                 self.log(
                     LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
                     &format!(
-                        "could not start command: `{}` (reason: {e})",
+                        "could not execute command: `{}` (reason: {e})",
                         self.command_line(),
                     ),
                 );
-            } else {
                 self._process_failed = true;
-                self.log(
-                    LogType::Warn,
-                    LOG_WHEN_END,
-                    LOG_STATUS_FAIL,
-                    &format!(
-                        "could not start command: `{}` (reason: unknown)",
-                        self.command_line(),
-                    ),
-                );
+                failure_reason = FailureReason::Other;
             }
-            failure_reason = FailureReason::Other;
-        }
+        };
 
         // now the time of the last check can be set to the actual time in
         // order to allow further checks to comply with the request to be

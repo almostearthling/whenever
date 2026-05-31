@@ -359,7 +359,7 @@ pub mod logging {
 /// This module helps command based items perform common activities
 pub mod cmditem {
     use std::time::{Duration, SystemTime};
-    use subprocess::{ExitStatus, Popen};
+    use subprocess::{Exec, ExitStatus};
 
     use crate::LogType;
     use crate::constants::*;
@@ -392,16 +392,17 @@ pub mod cmditem {
     /// * `task::command_task::CommandTask::_run()`
     /// * `condition::command_cond::CommandCondition::_check_condition()`
     pub fn spawn_process(
-        mut proc: Popen,
+        proc: Exec,
         poll_interval: Duration,
         timeout: Option<Duration>,
     ) -> Result<(ExitStatus, Option<String>, Option<String>), std::io::Error> {
         let mut stdout = String::new();
         let mut stderr = String::new();
-        let mut out;
-        let mut err;
         let mut exit_status;
-        let mut comm = proc.communicate_start(None).limit_time(poll_interval);
+
+        let mut job = proc.start()?;
+        let mut comm = job.communicate()?.limit_time(poll_interval);
+
         let startup = SystemTime::now();
 
         loop {
@@ -411,41 +412,29 @@ pub mod cmditem {
             // already had a cost in this terms
             let mut timed_out = false;
             let cres = comm.read_string();
-            if let Err(e) = &cres {
+            let io = if let Err(e) = &cres {
                 if e.kind() == std::io::ErrorKind::TimedOut {
-                    let (co, ce) = e.capture.clone();
                     timed_out = true;
-                    if let Some(co) = co {
-                        out = Some(String::from_utf8(co).unwrap_or_default());
-                    } else {
-                        out = None;
-                    }
-                    if let Some(ce) = ce {
-                        err = Some(String::from_utf8(ce).unwrap_or_default());
-                    } else {
-                        err = None;
-                    }
+                    None
                 } else {
                     return Err(std::io::Error::new(e.kind(), e.to_string()));
                 }
             } else {
-                (out, err) = cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?;
-            }
+                Some(cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?)
+            };
 
-            if let Some(ref o) = out {
+            if let Some((o, e)) = io {
                 stdout.push_str(o.as_str());
-            }
-            if let Some(ref e) = err {
                 stderr.push_str(e.as_str());
             }
-            exit_status = proc.poll();
+            exit_status = job.poll();
             if exit_status.is_none() {
                 if let Some(t) = timeout
                     && SystemTime::now() > startup + t
                 {
-                    let res = proc.terminate();
+                    let res = job.terminate();
                     if res.is_err() {
-                        let _ = proc.kill();
+                        job.kill()?;
                     }
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
@@ -462,30 +451,19 @@ pub mod cmditem {
 
         // same as above
         let cres = comm.read_string();
-        if let Err(e) = &cres {
+        let io = if let Err(e) = &cres {
             if e.kind() == std::io::ErrorKind::TimedOut {
-                let (co, ce) = e.capture.clone();
-                if let Some(co) = co {
-                    out = Some(String::from_utf8(co).unwrap_or_default());
-                } else {
-                    out = None;
-                }
-                if let Some(ce) = ce {
-                    err = Some(String::from_utf8(ce).unwrap_or_default());
-                } else {
-                    err = None;
-                }
+                None
             } else {
                 return Err(std::io::Error::new(e.kind(), e.to_string()));
             }
         } else {
-            (out, err) = cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?;
-        }
-        if let Some(ref o) = out {
-            stdout.push_str(o);
-        }
-        if let Some(ref e) = err {
-            stderr.push_str(e);
+            Some(cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?)
+        };
+
+        if let Some((o, e)) = io {
+            stdout.push_str(o.as_str());
+            stderr.push_str(e.as_str());
         }
         if let Some(exit_status) = exit_status {
             Ok((
@@ -610,63 +588,34 @@ pub mod cmditem {
                 }
             }
         } else {
-            match exit_status {
-                // exit code is nonzero, however this might be the expected
-                // behavior of the executed command: if the exit code had to be
-                // checked then the check is performed with the following
-                // priority rule:
-                // 1. match resulting status for expected failure
-                // 2. match resulting status for unsuccessfulness
-                ExitStatus::Exited(v) => {
-                    statusmsg = format!("ERROR/{v}");
-                    severity = LogType::Debug;
-                    ref_log_when = LOG_WHEN_PROC;
-                    ref_log_status = LOG_STATUS_OK;
-                    process_status = *v;
-                    log_message = format!(
-                        "command: `{command_line}` exited with FAILURE status {statusmsg}",
-                    );
-                    if let Some(expectedf) = failure_status {
-                        if v == expectedf {
-                            severity = LogType::Debug;
-                            ref_log_when = LOG_WHEN_PROC;
-                            ref_log_status = LOG_STATUS_OK;
-                            log_message = format!(
-                                "condition expected failure exit code {expectedf} matched",
-                            );
-                            failure_reason = FailureReason::Status;
-                        } else if let Some(expected) = success_status {
-                            if v == expected {
-                                severity = LogType::Debug;
-                                ref_log_when = LOG_WHEN_PROC;
-                                ref_log_status = LOG_STATUS_OK;
-                                log_message = format!(
-                                    "condition expected success exit code {expected} matched",
-                                );
-                            } else {
-                                severity = LogType::Debug;
-                                ref_log_when = LOG_WHEN_PROC;
-                                ref_log_status = LOG_STATUS_OK;
-                                log_message = format!(
-                                    "condition expected success exit code {expected} NOT matched: {v}",
-                                );
-                                failure_reason = FailureReason::Status;
-                            }
-                        } else {
-                            severity = LogType::Debug;
-                            ref_log_when = LOG_WHEN_PROC;
-                            ref_log_status = LOG_STATUS_OK;
-                            log_message = format!(
-                                "condition expected failure exit code {expectedf} NOT matched",
-                            );
-                        }
+            // exit code is nonzero, however this might be the expected behavior
+            // of the executed command: if the exit code had to be checked then
+            // the check is performed with the following priority rule:
+            // 1. match resulting status for expected failure
+            // 2. match resulting status for unsuccessfulness
+            if let Some(v) = exit_status.code() {
+                statusmsg = format!("ERROR/{v}");
+                severity = LogType::Debug;
+                ref_log_when = LOG_WHEN_PROC;
+                ref_log_status = LOG_STATUS_OK;
+                process_status = v;
+                log_message =
+                    format!("command: `{command_line}` exited with FAILURE status {statusmsg}",);
+                if let Some(expectedf) = failure_status {
+                    if v == *expectedf {
+                        severity = LogType::Debug;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_OK;
+                        log_message =
+                            format!("condition expected failure exit code {expectedf} matched",);
+                        failure_reason = FailureReason::Status;
                     } else if let Some(expected) = success_status {
-                        if v == expected {
+                        if v == *expected {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
                             log_message =
-                                format!("condition expected success exit code {expected} matched");
+                                format!("condition expected success exit code {expected} matched",);
                         } else {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
@@ -676,37 +625,50 @@ pub mod cmditem {
                             );
                             failure_reason = FailureReason::Status;
                         }
+                    } else {
+                        severity = LogType::Debug;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_OK;
+                        log_message = format!(
+                            "condition expected failure exit code {expectedf} NOT matched",
+                        );
                     }
-                    // if we are here, neither the success exit code nor the
-                    // failure exit code were set by configuration, thus status
-                    // is still set to NoFailure
+                } else if let Some(expected) = success_status {
+                    if v == *expected {
+                        severity = LogType::Debug;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_OK;
+                        log_message =
+                            format!("condition expected success exit code {expected} matched");
+                    } else {
+                        severity = LogType::Debug;
+                        ref_log_when = LOG_WHEN_PROC;
+                        ref_log_status = LOG_STATUS_OK;
+                        log_message = format!(
+                            "condition expected success exit code {expected} NOT matched: {v}",
+                        );
+                        failure_reason = FailureReason::Status;
+                    }
                 }
+                // if we are here, neither the success exit code nor the
+                // failure exit code were set by configuration, thus status
+                // is still set to NoFailure
+            } else if let Some(v) = exit_status.signal() {
                 // if the subprocess did not exit properly is considered
                 // unsuccessful anyway: set the failure reason appropriately
-                ExitStatus::Signaled(v) => {
-                    statusmsg = format!("SIGNAL/{v}");
-                    severity = LogType::Warn;
-                    ref_log_when = LOG_WHEN_PROC;
-                    ref_log_status = LOG_STATUS_FAIL;
-                    log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
-                    failure_reason = FailureReason::Other;
-                }
-                ExitStatus::Other(v) => {
-                    statusmsg = format!("UNKNOWN/{v}");
-                    severity = LogType::Warn;
-                    ref_log_when = LOG_WHEN_PROC;
-                    ref_log_status = LOG_STATUS_FAIL;
-                    log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
-                    failure_reason = FailureReason::Other;
-                }
-                ExitStatus::Undetermined => {
-                    statusmsg = String::from("UNDETERMINED");
-                    severity = LogType::Warn;
-                    ref_log_when = LOG_WHEN_PROC;
-                    ref_log_status = LOG_STATUS_FAIL;
-                    log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
-                    failure_reason = FailureReason::Other;
-                }
+                statusmsg = format!("SIGNAL/{v}");
+                severity = LogType::Warn;
+                ref_log_when = LOG_WHEN_PROC;
+                ref_log_status = LOG_STATUS_FAIL;
+                log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
+                failure_reason = FailureReason::Other;
+            } else {
+                statusmsg = String::from("UNDETERMINED");
+                severity = LogType::Warn;
+                ref_log_when = LOG_WHEN_PROC;
+                ref_log_status = LOG_STATUS_FAIL;
+                log_message = format!("command: `{command_line}` ended for reason {statusmsg}");
+                failure_reason = FailureReason::Other;
             }
         }
 
@@ -3220,9 +3182,9 @@ pub mod wmiitem {
 /// about what went wrong.
 #[allow(dead_code)]
 pub mod wres {
+    use mlua;
     use notify;
     use std::{self, fmt, sync::PoisonError};
-    use mlua;
 
     use crate::constants::{ERR_FAILED, ERR_LOCK_FAILED};
 

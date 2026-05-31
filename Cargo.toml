@@ -9,34 +9,35 @@ repository = "https://github.com/almostearthling/whenever/"
 edition = "2024"
 
 [dependencies]
-time = "0.3.17"
-chrono = "0.4.24"
+time = "0.3"
+chrono = "0.4"
 rand = "0.10"
-regex = "1.7.1"
-log = "0.4.17"
-flexi_logger = "0.31.2"
-nu-ansi-term = "0.50.1"
+regex = "1.7"
+log = "0.4"
+flexi_logger = "0.31"
+nu-ansi-term = "0.50"
 clokwerk = "0.4"
-listenfd = "1.0.1"
+listenfd = "1.0"
 toml = "1.0"
 serde = "1.0"
 lazy_static = "1.4"
-subprocess = "0.2.15"
-ctrlc = { version = "3.5.1", features = ["termination"] }
+subprocess = "1.1"
+# subprocess = "0.2.15"
+ctrlc = { version = "3.5", features = ["termination"] }
 cfgmap = { version = "0.4", features = ["from_toml", "from_json"] }
-clap = { version = "4.1.4", features = ["derive"] }
-mlua = { version = "0.11.1", features = ["lua54", "vendored"] }
-unique_id = "0.1.5"
-serde_json = "1.0.95"
-single-instance = "0.3.3"
+clap = { version = "4.1", features = ["derive"] }
+mlua = { version = "0.11", features = ["lua54", "vendored"] }
+unique_id = "0.1"
+serde_json = "1.0"
+single-instance = "0.3"
 notify = "8.1"
 async-std = "1.12"
 zbus = { version = "5.9", optional = true }
-whoami = "2.1.1"
+whoami = "2.1"
 itertools = "0.14"
 futures = "0.3"
-async-trait = "0.1.89"
-system-idle-time = "1.0.4"
+async-trait = "0.1"
+system-idle-time = "1.0"
 parking_lot = "0.12"
 bstr = "1.12"
 minreq = { version = "2.14", features = ["https-native"], optional = true }
@@ -45,7 +46,7 @@ minreq = { version = "2.14", features = ["https-native"], optional = true }
 wmi = { version = "0.18", optional = true }
 
 [target.'cfg(windows)'.build-dependencies]
-winresource = "0.1.30"
+winresource = "0.1"
 
 
 # a brief explanation of the available features:
