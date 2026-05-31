@@ -39,7 +39,7 @@ use cfgmap::CfgMap;
 use super::base::Task;
 use crate::common::cmditem::*;
 use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Result, Kind};
+use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -763,6 +763,7 @@ impl Task for CommandTask {
         self._process_duration = SystemTime::now()
             .duration_since(startup_time)
             .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
+
         match proc_exit {
             Ok(exit_status) => {
                 let ck_process_status;
@@ -815,8 +816,10 @@ impl Task for CommandTask {
                     LOG_STATUS_FAIL,
                     &format!(
                         "(trigger: {trigger_name}) could not execute command: `{}` (reason: {})",
-                        self.command_line(), e),
-                    );
+                        self.command_line(),
+                        e
+                    ),
+                );
                 self._process_failed = true;
                 failure_reason = FailureReason::Other;
             }

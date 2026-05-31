@@ -30,7 +30,7 @@ use cfgmap::CfgMap;
 use super::base::Condition;
 use crate::common::cmditem::*;
 use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Result, Kind};
+use crate::common::wres::{Error, Kind, Result};
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
@@ -1047,15 +1047,14 @@ impl Condition for CommandCondition {
         let startup_time = SystemTime::now();
 
         let process = Exec::cmd(self.command.as_os_str())
-        .args(process_argv)
-        .cwd(self.startup_dir.as_os_str())
-        .env_clear()
-        .env_extend(shell_env)
-        .stderr(Redirection::Pipe)
-        .stdout(Redirection::Pipe);
+            .args(process_argv)
+            .cwd(self.startup_dir.as_os_str())
+            .env_clear()
+            .env_extend(shell_env)
+            .stderr(Redirection::Pipe)
+            .stdout(Redirection::Pipe);
 
         let proc_exit = match spawn_process(process, *DUR_SPAWNED_POLL_INTERVAL, self.timeout) {
-
             Ok((exit_status, out, err)) => {
                 if let Some(o) = out {
                     self._process_stdout = o;
@@ -1093,6 +1092,7 @@ impl Condition for CommandCondition {
         self._process_duration = SystemTime::now()
             .duration_since(startup_time)
             .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
+
         match proc_exit {
             Ok(exit_status) => {
                 let ck_process_status;

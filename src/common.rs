@@ -219,7 +219,7 @@ pub mod logging {
                         }
                     }
                     let fspec = FileSpec::try_from(&pb).map_err(|e| {
-                        std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+                        std::io::Error::other(e.to_string())
                     })?;
                     logger = Ok(
                         l.log_to_file(fspec).format_for_files(log_format), // .write_mode(WriteMode::BufferAndFlush)
@@ -411,16 +411,16 @@ pub mod cmditem {
             // avoid waiting extra time when reading from stdout/stderr has
             // already had a cost in this terms
             let mut timed_out = false;
-            let cres = comm.read_string();
-            let io = if let Err(e) = &cres {
+            let comm_res = comm.read_string();
+            let io = if let Err(e) = comm_res {
                 if e.kind() == std::io::ErrorKind::TimedOut {
                     timed_out = true;
                     None
                 } else {
-                    return Err(std::io::Error::new(e.kind(), e.to_string()));
+                    return Err(e);
                 }
             } else {
-                Some(cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?)
+                Some(comm_res?)
             };
 
             if let Some((o, e)) = io {
@@ -450,15 +450,15 @@ pub mod cmditem {
         }
 
         // same as above
-        let cres = comm.read_string();
-        let io = if let Err(e) = &cres {
+        let comm_res = comm.read_string();
+        let io = if let Err(e) = comm_res {
             if e.kind() == std::io::ErrorKind::TimedOut {
                 None
             } else {
-                return Err(std::io::Error::new(e.kind(), e.to_string()));
+                return Err(e);
             }
         } else {
-            Some(cres.map_err(|e| std::io::Error::new(e.kind(), e.to_string()))?)
+            Some(comm_res?)
         };
 
         if let Some((o, e)) = io {
