@@ -1057,7 +1057,7 @@ impl Condition for TimeCondition {
             LOG_STATUS_MSG,
             &format!(
                 "checking time based condition (at: {})",
-                dt.format("%Y-%m-%dT%H:%M:%S [%a]")
+                dt.format("%Y-%m-%dT%H:%M:%S [%a]"),
             ),
         );
 
@@ -1069,14 +1069,14 @@ impl Condition for TimeCondition {
                 LOG_STATUS_MSG,
                 &format!(
                     "checking time specification ({}) against current time",
-                    tspec.as_str()
+                    tspec.as_str(),
                 ),
             );
             // check that the required time has passed for less time than the
             // tick duration (which must be exactly the same as the scheduler
             // tick), and if so also check the week day (if it has been set)
             let span = (test_tspec - dt).num_microseconds().unwrap();
-            if span > 0 && span < self.tick_duration * 1_000_000 {
+            if span >= 0 && span < self.tick_duration * 1_000_000 {
                 if let Some(dow) = tspec.dow {
                     if dow == dt.weekday().number_from_sunday() {
                         return Ok(Some(true));
