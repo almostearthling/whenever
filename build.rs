@@ -67,7 +67,7 @@ fn main() {
 
                 // ...
                 // ^^^ other Linux specific actions should be added above here
-           }
+            }
             // ...
             // ^^^ other supported platforms should be added above here
             _ => {
