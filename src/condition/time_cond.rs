@@ -1046,6 +1046,7 @@ impl Condition for TimeCondition {
     /// time has passed since last successful check (which may be the initial
     /// check only if not recurring), the outcome is successful.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
+        // FIXME: are we sure this must be a runtime test and not an assert?
         if self.tick_duration <= 0 {
             return Err(Error::new(Kind::Invalid, ERR_INVALID_TICK_SECONDS));
         }
@@ -1075,7 +1076,7 @@ impl Condition for TimeCondition {
             // check that the required time has passed for less time than the
             // tick duration (which must be exactly the same as the scheduler
             // tick), and if so also check the week day (if it has been set)
-            let span = (test_tspec - dt).num_microseconds().unwrap();
+            let span = (dt - test_tspec).num_microseconds().unwrap();
             if span >= 0 && span < self.tick_duration * 1_000_000 {
                 if let Some(dow) = tspec.dow {
                     if dow == dt.weekday().number_from_sunday() {
