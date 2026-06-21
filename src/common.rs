@@ -573,7 +573,7 @@ pub mod cmditem {
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
                     log_message =
-                        format!("condition expected success exit code NOT matched: {expected}");
+                        format!("expected success exit code NOT matched: {expected}");
                     failure_reason = FailureReason::Status;
                 }
             } else if let Some(expectedf) = failure_status {
@@ -582,7 +582,7 @@ pub mod cmditem {
                     ref_log_when = LOG_WHEN_PROC;
                     ref_log_status = LOG_STATUS_OK;
                     log_message =
-                        format!("condition expected failure exit code matched: {expectedf}");
+                        format!("expected failure exit code matched: {expectedf}");
                     failure_reason = FailureReason::Status;
                 }
             }
@@ -606,7 +606,7 @@ pub mod cmditem {
                         ref_log_when = LOG_WHEN_PROC;
                         ref_log_status = LOG_STATUS_OK;
                         log_message =
-                            format!("condition expected failure exit code {expectedf} matched");
+                            format!("expected failure exit code {expectedf} matched");
                         failure_reason = FailureReason::Status;
                     } else if let Some(expected) = success_status {
                         if v == *expected {
@@ -614,13 +614,13 @@ pub mod cmditem {
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
                             log_message =
-                                format!("condition expected success exit code {expected} matched");
+                                format!("expected success exit code {expected} matched");
                         } else {
                             severity = LogType::Debug;
                             ref_log_when = LOG_WHEN_PROC;
                             ref_log_status = LOG_STATUS_OK;
                             log_message = format!(
-                                "condition expected success exit code {expected} NOT matched: {v}",
+                                "expected success exit code {expected} NOT matched: {v}",
                             );
                             failure_reason = FailureReason::Status;
                         }
@@ -629,7 +629,7 @@ pub mod cmditem {
                         ref_log_when = LOG_WHEN_PROC;
                         ref_log_status = LOG_STATUS_OK;
                         log_message = format!(
-                            "condition expected failure exit code {expectedf} NOT matched",
+                            "expected failure exit code {expectedf} NOT matched",
                         );
                     }
                 } else if let Some(expected) = success_status {
@@ -638,13 +638,13 @@ pub mod cmditem {
                         ref_log_when = LOG_WHEN_PROC;
                         ref_log_status = LOG_STATUS_OK;
                         log_message =
-                            format!("condition expected success exit code {expected} matched");
+                            format!("expected success exit code {expected} matched");
                     } else {
                         severity = LogType::Debug;
                         ref_log_when = LOG_WHEN_PROC;
                         ref_log_status = LOG_STATUS_OK;
                         log_message = format!(
-                            "condition expected success exit code {expected} NOT matched: {v}",
+                            "expected success exit code {expected} NOT matched: {v}",
                         );
                         failure_reason = FailureReason::Status;
                     }
