@@ -645,9 +645,12 @@ impl ConditionRegistry {
             let mxq0 = self.conditions_to_reset.clone();
             let mut queue = mxq0.lock();
             if queue.contains(&sname) {
+                // these messages are at Info/Warn level because in other places (main) the
+                // caller emits a visible log message when resetting or queuing a condition
+                // for reset, and the actual reset is not logged when queued
                 if cond.reset().is_ok() {
                     log(
-                        LogType::Debug,
+                        LogType::Info,
                         LOG_EMITTER_CONDITION_REGISTRY,
                         LOG_ACTION_RESET_CONDITIONS,
                         None,
@@ -660,7 +663,7 @@ impl ConditionRegistry {
                     queue.swap_remove(i);
                 } else {
                     log(
-                        LogType::Debug,
+                        LogType::Warn,
                         LOG_EMITTER_CONDITION_REGISTRY,
                         LOG_ACTION_RESET_CONDITIONS,
                         None,
@@ -676,9 +679,11 @@ impl ConditionRegistry {
             let mxq0 = self.conditions_to_suspend.clone();
             let mut queue = mxq0.lock();
             if queue.contains(&sname) {
+                // since suspend too is an action that can be requested through a frontend,
+                // also making suspend outcomes visible is coherent, thus Info/Warn level
                 if cond.suspend().is_ok() {
                     log(
-                        LogType::Debug,
+                        LogType::Info,
                         LOG_EMITTER_CONDITION_REGISTRY,
                         LOG_ACTION_SUSPEND_CONDITION,
                         None,
@@ -691,7 +696,7 @@ impl ConditionRegistry {
                     queue.swap_remove(i);
                 } else {
                     log(
-                        LogType::Debug,
+                        LogType::Warn,
                         LOG_EMITTER_CONDITION_REGISTRY,
                         LOG_ACTION_SUSPEND_CONDITION,
                         None,
