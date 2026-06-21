@@ -218,9 +218,8 @@ pub mod logging {
                             dir
                         }
                     }
-                    let fspec = FileSpec::try_from(&pb).map_err(|e| {
-                        std::io::Error::other(e.to_string())
-                    })?;
+                    let fspec = FileSpec::try_from(&pb)
+                        .map_err(|e| std::io::Error::other(e.to_string()))?;
                     logger = Ok(
                         l.log_to_file(fspec).format_for_files(log_format), // .write_mode(WriteMode::BufferAndFlush)
                     );
@@ -3426,22 +3425,19 @@ pub mod wres {
         }
     }
 
+    /// A possible last resort to allow conversions from pointers to errors
+    impl<T: std::error::Error> From<Box<T>> for Error {
+        fn from(e: Box<T>) -> Self {
+            Self {
+                kind: Kind::Unknown,
+                origin: Origin::Unknown,
+                message: e.to_string(),
+            }
+        }
+    }
+
     /// Specific `Result` type that assumes `wres::Error` as its Err variant
     pub type Result<T> = std::result::Result<T, Error>;
-
-    // FIXME: enabling the following creates a conflict with other derived
-    // error types that are implemented as specific cases
-    //
-    // this should be the last resort impl
-    // impl<T: error::Error + Send + Sync + 'static> From<T> for Error {
-    //     fn from(e: T) -> Self {
-    //         Self {
-    //             kind: Kind::Unknown,
-    //             was: Was::Unknown,
-    //             message: e.to_string(),
-    //         }
-    //     }
-    // }
 }
 
 // end.
