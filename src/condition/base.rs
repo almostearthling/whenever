@@ -361,7 +361,7 @@ pub trait Condition: Send {
         // check for presence in registry and issue an error if not
         match self.task_registry() {
             Some(r) => {
-                if !r.has_task(name)? {
+                if !r.has_task(name) {
                     self.log(
                         LogType::Error,
                         LOG_WHEN_PROC,

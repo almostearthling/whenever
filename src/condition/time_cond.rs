@@ -1046,10 +1046,7 @@ impl Condition for TimeCondition {
     /// time has passed since last successful check (which may be the initial
     /// check only if not recurring), the outcome is successful.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-        // FIXME: are we sure this must be a runtime test and not an assert?
-        if self.tick_duration <= 0 {
-            return Err(Error::new(Kind::Invalid, ERR_INVALID_TICK_SECONDS));
-        }
+        assert!(self.tick_duration > 0, "tick seconds must be greater than zero");
 
         let dt = Local::now();
         self.log(

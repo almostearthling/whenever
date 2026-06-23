@@ -10,10 +10,10 @@
 //! other tasks, respectively using the `run_tasks_seq` and `run_tasks_par`
 //! functions.
 
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
-use parking_lot::{Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::thread::spawn;
 
@@ -77,8 +77,8 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * name - the name of the task to check for registration
-    pub fn has_task(&self, name: &str) -> Result<bool> {
-        Ok(self.task_list.read().contains_key(name))
+    pub fn has_task(&self, name: &str) -> bool {
+        self.task_list.read().contains_key(name)
     }
 
     /// Check whether or not the provided task is in the registry.
@@ -86,17 +86,17 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * name - the name of the task to check for registration
-    pub fn has_task_eq(&self, task: &dyn Task) -> Result<bool> {
+    pub fn has_task_eq(&self, task: &dyn Task) -> bool {
         let name = task.get_name();
-        if self.has_task(name.as_str())? {
+        if self.has_task(name.as_str()) {
             let tasks = self.task_list.read();
             let found_task = tasks.get(name.as_str()).unwrap();
             let t0 = found_task.clone();
             let locked_task = t0.lock();
-            return Ok(locked_task.eq(task));
+            locked_task.eq(task)
+        } else {
+            false
         }
-
-        Ok(false)
     }
 
     /// Check whether all tasks in a list are in the registry
@@ -108,13 +108,13 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * names - a list of task names (as a vector).
-    pub fn has_all_tasks(&self, names: &Vec<&str>) -> Result<bool> {
+    pub fn has_all_tasks(&self, names: &Vec<&str>) -> bool {
         for name in names {
             if !self.task_list.read().contains_key(*name) {
-                return Ok(false);
+                return false;
             }
         }
-        Ok(true)
+        true
     }
 
     /// Add already-boxed `Task` if its name is not present in the registry
@@ -127,8 +127,8 @@ impl TaskRegistry {
     ///
     /// # Arguments
     ///
-    /// * `boxed_task` - an object implementing the `base::Task` trait,
-    ///   provided to the function as a `Box<dyn Task>` aka `TaskRef`
+    /// * `task_ref` - an object implementing the `base::Task` trait, provided
+    ///    to the function as a `Box<dyn Task>` aka `TaskRef`
     ///
     /// # Returns
     ///
@@ -138,49 +138,43 @@ impl TaskRegistry {
     /// **Note**: the task is _moved_ into the registry, and can only be
     /// released (and given back stored in a `Box`) using the `remove_task`
     /// function.
-    pub fn add_task(&self, mut boxed_task: TaskRef) -> Result<bool> {
-        let name = boxed_task.get_name();
-        if self.has_task(&name)? {
-            return Ok(false);
+    pub fn add_task(&self, mut task_ref: TaskRef) -> bool {
+        let name = task_ref.get_name();
+        if self.has_task(&name) {
+            return false;
         }
         // only consume an ID if the task is not discarded, otherwise the
         // released task would be safe to run even when not registered
-        boxed_task.set_id(generate_task_id());
+        task_ref.set_id(generate_task_id());
         self.task_list
             .write()
-            .insert(name, Arc::new(Mutex::new(boxed_task)));
-        Ok(true)
+            .insert(name, Arc::new(Mutex::new(task_ref)));
+        true
     }
 
     /// Add or replace an already-boxed `Task` while running: if the registry
     /// is busy running any task all modifications are deferred
-    pub fn dynamic_add_or_replace_task(&self, boxed_task: TaskRef) -> Result<bool> {
-        let name = boxed_task.get_name();
+    pub fn dynamic_add_or_replace_task(&self, task_ref: TaskRef) -> Result<bool> {
+        let name = task_ref.get_name();
         let sessions = self.running_sessions.clone();
         let sessions = sessions.lock();
         if *sessions == 0 {
-            if self.has_task(&name)? {
+            if self.has_task(&name) {
                 match self.remove_task(&name) {
                     Ok(_) => {
-                        if let Ok(res) = self.add_task(boxed_task) {
-                            return Ok(res);
-                        } else {
-                            return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_REPLACED));
-                        }
+                        return Ok(self.add_task(task_ref));
                     }
                     _ => {
                         return Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK));
                     }
                 }
-            } else if let Ok(res) = self.add_task(boxed_task) {
-                return Ok(res);
             } else {
-                return Err(Error::new(Kind::Failed, ERR_TASKREG_TASK_NOT_ADDED));
+                return Ok(self.add_task(task_ref));
             }
         } else {
             let queue = self.items_to_add.clone();
             let mut queue = queue.lock();
-            queue.push(boxed_task);
+            queue.push(task_ref);
             log(
                 LogType::Debug,
                 LOG_EMITTER_TASK_REGISTRY,
@@ -212,7 +206,7 @@ impl TaskRegistry {
     /// * `Ok(None)` - task not found in registry
     /// * `Ok(Task)` - the removed (_pulled out_) `Task` on success.
     pub fn remove_task(&self, name: &str) -> Result<Option<TaskRef>> {
-        if self.has_task(name)? {
+        if self.has_task(name) {
             match self.task_list.write().remove(name) {
                 Some(r) => {
                     let Ok(mx) = Arc::try_unwrap(r) else {
@@ -232,7 +226,7 @@ impl TaskRegistry {
     /// Remove a named task from the list operating on a running registry: if any
     /// tasks are running all modifications to the registry are deferred
     pub fn dynamic_remove_task(&self, name: &str) -> Result<bool> {
-        if self.has_task(name)? {
+        if self.has_task(name) {
             let sessions = self.running_sessions.clone();
             let sessions = sessions.lock();
             if *sessions == 0 {
@@ -263,30 +257,25 @@ impl TaskRegistry {
     ///
     /// Return a vector containing the names of all the tasks that have been
     /// registered, as `String` elements.
-    pub fn task_names(&self) -> Result<Option<Vec<String>>> {
+    pub fn task_names(&self) -> Option<Vec<String>> {
         let mut res = Vec::new();
 
         for name in self.task_list.read().keys() {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(res))
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified task
-    pub fn task_id(&self, name: &str) -> Result<Option<i64>> {
-        if self.has_task(name)? {
-            // TO_FIX
+    pub fn task_id(&self, name: &str) -> Option<i64> {
+        if self.has_task(name) {
             let tl0 = self.task_list.read();
             let task = tl0.get(name).expect("cannot retrieve task").clone();
             drop(tl0);
             let id = task.lock().get_id();
-            Ok(Some(id))
+            Some(id)
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -330,7 +319,7 @@ impl TaskRegistry {
         break_success: bool,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
         assert!(
-            self.has_all_tasks(names)?,
+            self.has_all_tasks(names),
             "some tasks not found in registry for condition `{trigger_name}`"
         );
 
@@ -353,7 +342,7 @@ impl TaskRegistry {
         // fact there might be other branches accessing the registry right at
         // the same moment when this sequence is running
         for name in names.iter() {
-            let id = self.task_id(name)?.unwrap();
+            let id = self.task_id(name).unwrap();
             let mut breaks = false;
             let tl0 = self.task_list.read();
             let task = tl0
@@ -448,40 +437,28 @@ impl TaskRegistry {
                 {
                     let mut queue = add_queue.lock();
                     while !queue.is_empty() {
-                        if let Some(boxed_item) = queue.pop() {
-                            let name = boxed_item.get_name();
-                            if let Ok(res) = self.add_task(boxed_item) {
-                                let id = self.task_id(&name)?.unwrap();
-                                if res {
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_TASK_REGISTRY,
-                                        LOG_ACTION_INSTALL,
-                                        Some((&name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_OK,
-                                        "successfully added queued task to the registry",
-                                    );
-                                } else {
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_TASK_REGISTRY,
-                                        LOG_ACTION_INSTALL,
-                                        Some((&name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_FAIL,
-                                        "queued task already present in the registry",
-                                    );
-                                }
+                        if let Some(item_ref) = queue.pop() {
+                            let name = item_ref.get_name();
+                            let id = self.task_id(&name).unwrap();
+                            if self.add_task(item_ref) {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_TASK_REGISTRY,
+                                    LOG_ACTION_INSTALL,
+                                    Some((&name, id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    "successfully added queued task to the registry",
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
                                     LOG_ACTION_INSTALL,
-                                    None,
+                                    Some((&name, id)),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,
-                                    &format!("could not add queued task {name} to the registry"),
+                                    "queued task already present in the registry",
                                 );
                             }
                         }
@@ -512,7 +489,7 @@ impl TaskRegistry {
     /// **Note:** this function runs in the calling thread, that is blocked
     /// until it returns.
     ///
-    /// TODO: this might be reimplemented with a maximum concurrency level,
+    /// NOTE: this might be reimplemented with a maximum concurrency level,
     /// possibly using a _thread pool_.
     ///
     /// # Arguments
@@ -536,7 +513,7 @@ impl TaskRegistry {
         names: &Vec<&str>,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
         assert!(
-            self.has_all_tasks(names)?,
+            self.has_all_tasks(names),
             "some tasks not found in registry for condition `{trigger_name}`"
         );
 
@@ -669,40 +646,28 @@ impl TaskRegistry {
                 {
                     let mut queue = add_queue.lock();
                     while !queue.is_empty() {
-                        if let Some(boxed_item) = queue.pop() {
-                            let name = boxed_item.get_name();
-                            if let Ok(res) = self.add_task(boxed_item) {
-                                let id = self.task_id(&name)?.unwrap();
-                                if res {
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_TASK_REGISTRY,
-                                        LOG_ACTION_NEW,
-                                        Some((&name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_OK,
-                                        "successfully added queued task to the registry",
-                                    );
-                                } else {
-                                    log(
-                                        LogType::Debug,
-                                        LOG_EMITTER_TASK_REGISTRY,
-                                        LOG_ACTION_NEW,
-                                        Some((&name, id)),
-                                        LOG_WHEN_PROC,
-                                        LOG_STATUS_FAIL,
-                                        "queued task already present in the registry",
-                                    );
-                                }
+                        if let Some(item_ref) = queue.pop() {
+                            let name = item_ref.get_name();
+                            let id = self.task_id(&name).unwrap();
+                            if self.add_task(item_ref) {
+                                log(
+                                    LogType::Debug,
+                                    LOG_EMITTER_TASK_REGISTRY,
+                                    LOG_ACTION_NEW,
+                                    Some((&name, id)),
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_OK,
+                                    "successfully added queued task to the registry",
+                                );
                             } else {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
                                     LOG_ACTION_NEW,
-                                    None,
+                                    Some((&name, id)),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,
-                                    &format!("could not add queued task {name} to the registry"),
+                                    "queued task already present in the registry",
                                 );
                             }
                         }

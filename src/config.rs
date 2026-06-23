@@ -46,14 +46,15 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
 
     // tags are always simply checked this way
     let cur_key = "tags";
-    if let Some(item) = config_map.get(cur_key) 
-        && !item.is_list() && !item.is_map() {
-            return Err(cfg_err_invalid_config(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_INVALID_PARAMETER,
-            ));
-        
+    if let Some(item) = config_map.get(cur_key)
+        && !item.is_list()
+        && !item.is_map()
+    {
+        return Err(cfg_err_invalid_config(
+            cur_key,
+            STR_UNKNOWN_VALUE,
+            ERR_INVALID_PARAMETER,
+        ));
     }
 
     // globals
@@ -229,14 +230,15 @@ pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
 
     // tags are always simply checked this way
     let cur_key = "tags";
-    if let Some(item) = config_map.get(cur_key) 
-        && !item.is_list() && !item.is_map() {
-            return Err(cfg_err_invalid_config(
-                cur_key,
-                STR_UNKNOWN_VALUE,
-                ERR_INVALID_PARAMETER,
-            ));
-        
+    if let Some(item) = config_map.get(cur_key)
+        && !item.is_list()
+        && !item.is_map()
+    {
+        return Err(cfg_err_invalid_config(
+            cur_key,
+            STR_UNKNOWN_VALUE,
+            ERR_INVALID_PARAMETER,
+        ));
     }
 
     let cur_key = "scheduler_tick_seconds";
@@ -358,14 +360,14 @@ fn configure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Res
                             let task = task::command_task::CommandTask::load_cfgmap(
                                 entry.as_map().unwrap(),
                             )?;
-                            if !task_registry.add_task(Box::new(task))? {
+                            if !task_registry.add_task(Box::new(task)) {
                                 return Err(Error::new(Kind::Invalid, ERR_TASKREG_TASK_NOT_ADDED));
                             }
                         }
                         "lua" => {
                             let task =
                                 task::lua_task::LuaTask::load_cfgmap(entry.as_map().unwrap())?;
-                            if !task_registry.add_task(Box::new(task))? {
+                            if !task_registry.add_task(Box::new(task)) {
                                 return Err(Error::new(Kind::Invalid, ERR_TASKREG_TASK_NOT_ADDED));
                             }
                         }
@@ -373,7 +375,7 @@ fn configure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Res
                             let task = task::internal_task::InternalTask::load_cfgmap(
                                 entry.as_map().unwrap(),
                             )?;
-                            if !task_registry.add_task(Box::new(task))? {
+                            if !task_registry.add_task(Box::new(task)) {
                                 return Err(Error::new(Kind::Invalid, ERR_TASKREG_TASK_NOT_ADDED));
                             }
                         }
@@ -394,7 +396,7 @@ fn configure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Res
 // reconfigure tasks according to the provided configuration map
 fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> Result<()> {
     let mut to_remove: Vec<String> = Vec::new();
-    if let Some(e) = task_registry.task_names()? {
+    if let Some(e) = task_registry.task_names() {
         to_remove = e.clone();
     }
 
@@ -413,8 +415,8 @@ fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> R
                                 entry.as_map().unwrap(),
                             )?;
                             let task_name = task.get_name();
-                            if !task_registry.has_task(&task_name)?
-                                || !task_registry.has_task_eq(&task)?
+                            if !task_registry.has_task(&task_name)
+                                || !task_registry.has_task_eq(&task)
                             {
                                 if !task_registry.dynamic_add_or_replace_task(Box::new(task))? {
                                     return Err(Error::new(
@@ -454,8 +456,8 @@ fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> R
                             let task =
                                 task::lua_task::LuaTask::load_cfgmap(entry.as_map().unwrap())?;
                             let task_name = task.get_name();
-                            if !task_registry.has_task(&task_name)?
-                                || !task_registry.has_task_eq(&task)?
+                            if !task_registry.has_task(&task_name)
+                                || !task_registry.has_task_eq(&task)
                             {
                                 if !task_registry.dynamic_add_or_replace_task(Box::new(task))? {
                                     return Err(Error::new(
@@ -496,8 +498,8 @@ fn reconfigure_tasks(cfgmap: &CfgMap, task_registry: &'static TaskRegistry) -> R
                                 entry.as_map().unwrap(),
                             )?;
                             let task_name = task.get_name();
-                            if !task_registry.has_task(&task_name)?
-                                || !task_registry.has_task_eq(&task)?
+                            if !task_registry.has_task(&task_name)
+                                || !task_registry.has_task_eq(&task)
                             {
                                 if !task_registry.dynamic_add_or_replace_task(Box::new(task))? {
                                     return Err(Error::new(
@@ -586,7 +588,7 @@ fn configure_conditions(
                                     entry.as_map().unwrap(),
                                     task_registry,
                                 )?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -595,7 +597,7 @@ fn configure_conditions(
                                 entry.as_map().unwrap(),
                                 task_registry,
                             )?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -606,7 +608,7 @@ fn configure_conditions(
                                 task_registry,
                             )?;
                             let _ = condition.set_tick_duration(tick_secs)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -615,7 +617,7 @@ fn configure_conditions(
                                 entry.as_map().unwrap(),
                                 task_registry,
                             )?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -624,7 +626,7 @@ fn configure_conditions(
                                 entry.as_map().unwrap(),
                                 task_registry,
                             )?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -634,7 +636,7 @@ fn configure_conditions(
                                 entry.as_map().unwrap(),
                                 task_registry,
                             )?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -645,7 +647,7 @@ fn configure_conditions(
                                 entry.as_map().unwrap(),
                                 task_registry,
                             )?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -657,7 +659,7 @@ fn configure_conditions(
                                     task_registry,
                                 )?;
                             let _ = condition.set_execution_bucket(bucket)?;
-                            if !cond_registry.add_condition(Box::new(condition))? {
+                            if !cond_registry.add_condition(Box::new(condition)) {
                                 return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_NOT_ADDED));
                             }
                         }
@@ -684,7 +686,7 @@ fn reconfigure_conditions(
     tick_secs: u64,
 ) -> Result<()> {
     let mut to_remove: Vec<String> = Vec::new();
-    if let Some(e) = cond_registry.condition_names()? {
+    if let Some(e) = cond_registry.condition_names() {
         to_remove = e.clone();
     }
 
@@ -705,8 +707,8 @@ fn reconfigure_conditions(
                                     task_registry,
                                 )?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -750,8 +752,8 @@ fn reconfigure_conditions(
                                 task_registry,
                             )?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -797,8 +799,8 @@ fn reconfigure_conditions(
                             )?;
                             let _ = condition.set_tick_duration(tick_secs)?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -842,8 +844,8 @@ fn reconfigure_conditions(
                                 task_registry,
                             )?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -887,8 +889,8 @@ fn reconfigure_conditions(
                                 task_registry,
                             )?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -933,8 +935,8 @@ fn reconfigure_conditions(
                                 task_registry,
                             )?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -980,8 +982,8 @@ fn reconfigure_conditions(
                                 task_registry,
                             )?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -1028,8 +1030,8 @@ fn reconfigure_conditions(
                                 )?;
                             let _ = condition.set_execution_bucket(bucket)?;
                             let cond_name = condition.get_name();
-                            if !cond_registry.has_condition(&cond_name)?
-                                || !cond_registry.has_condition_eq(&condition)?
+                            if !cond_registry.has_condition(&cond_name)
+                                || !cond_registry.has_condition_eq(&condition)
                             {
                                 if !cond_registry
                                     .dynamic_add_or_replace_condition(Box::new(condition))?
@@ -1119,7 +1121,7 @@ fn configure_events(
                                 cond_registry,
                                 bucket,
                             )?;
-                            if !event_registry.add_event(Box::new(event))? {
+                            if !event_registry.add_event(Box::new(event)) {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1133,7 +1135,7 @@ fn configure_events(
                                 cond_registry,
                                 bucket,
                             )?;
-                            if !event_registry.add_event(Box::new(event))? {
+                            if !event_registry.add_event(Box::new(event)) {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1148,7 +1150,7 @@ fn configure_events(
                                 cond_registry,
                                 bucket,
                             )?;
-                            if !event_registry.add_event(Box::new(event))? {
+                            if !event_registry.add_event(Box::new(event)) {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1161,7 +1163,7 @@ fn configure_events(
                                 cond_registry,
                                 bucket,
                             )?;
-                            if !event_registry.add_event(Box::new(event))? {
+                            if !event_registry.add_event(Box::new(event)) {
                                 return Err(Error::new(
                                     Kind::Invalid,
                                     ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1191,7 +1193,7 @@ fn reconfigure_events(
     bucket: &'static ExecutionBucket,
 ) -> Result<()> {
     let mut to_remove: Vec<String> = Vec::new();
-    if let Some(e) = event_registry.event_names()? {
+    if let Some(e) = event_registry.event_names() {
         to_remove = e.clone();
     }
 
@@ -1212,12 +1214,12 @@ fn reconfigure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.has_event(&event_name)?
-                                || !event_registry.has_event_eq(&event)?
+                            if !event_registry.has_event(&event_name)
+                                || !event_registry.has_event_eq(&event)
                             {
                                 // the following call to remove_event puts the
                                 // received event out of scope after the block
-                                if event_registry.has_event(&event_name)?
+                                if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
@@ -1230,7 +1232,7 @@ fn reconfigure_events(
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
+                                if !event_registry.add_event(Box::new(event)) {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1272,12 +1274,12 @@ fn reconfigure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.has_event(&event_name)?
-                                || !event_registry.has_event_eq(&event)?
+                            if !event_registry.has_event(&event_name)
+                                || !event_registry.has_event_eq(&event)
                             {
                                 // the following call to remove_event puts the
                                 // received event out of scope after the block
-                                if event_registry.has_event(&event_name)?
+                                if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
@@ -1290,7 +1292,7 @@ fn reconfigure_events(
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
+                                if !event_registry.add_event(Box::new(event)) {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1333,12 +1335,12 @@ fn reconfigure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.has_event(&event_name)?
-                                || !event_registry.has_event_eq(&event)?
+                            if !event_registry.has_event(&event_name)
+                                || !event_registry.has_event_eq(&event)
                             {
                                 // the following call to remove_event puts the
                                 // received event out of scope after the block
-                                if event_registry.has_event(&event_name)?
+                                if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
@@ -1351,7 +1353,7 @@ fn reconfigure_events(
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
+                                if !event_registry.add_event(Box::new(event)) {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,
@@ -1392,12 +1394,12 @@ fn reconfigure_events(
                                 bucket,
                             )?;
                             let event_name = event.get_name();
-                            if !event_registry.has_event(&event_name)?
-                                || !event_registry.has_event_eq(&event)?
+                            if !event_registry.has_event(&event_name)
+                                || !event_registry.has_event_eq(&event)
                             {
                                 // the following call to remove_event puts the
                                 // received event out of scope after the block
-                                if event_registry.has_event(&event_name)?
+                                if event_registry.has_event(&event_name)
                                     && event_registry.remove_event(&event_name).is_err()
                                 {
                                     log(
@@ -1410,7 +1412,7 @@ fn reconfigure_events(
                                         &format!("cannot remove reconfigured event {event_name}"),
                                     );
                                 }
-                                if !event_registry.add_event(Box::new(event))? {
+                                if !event_registry.add_event(Box::new(event)) {
                                     return Err(Error::new(
                                         Kind::Invalid,
                                         ERR_EVENTREG_EVENT_NOT_ADDED,

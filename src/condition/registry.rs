@@ -7,9 +7,9 @@
 //! active until it is _registered_. A registered condition has an unique
 //! nonzero ID.
 
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::{Mutex, RwLock};
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
@@ -79,8 +79,8 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// * name - the name of the condition to check for registration.
-    pub fn has_condition(&self, name: &str) -> Result<bool> {
-        Ok(self.condition_list.read().contains_key(name))
+    pub fn has_condition(&self, name: &str) -> bool {
+        self.condition_list.read().contains_key(name)
     }
 
     /// Check whether or not a condition is in the registry.
@@ -88,17 +88,17 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// * cond - the reference to a condition to check for registration.
-    pub fn has_condition_eq(&self, cond: &dyn Condition) -> Result<bool> {
+    pub fn has_condition_eq(&self, cond: &dyn Condition) -> bool {
         let name = cond.get_name();
-        if self.has_condition(name.as_str())? {
+        if self.has_condition(name.as_str()) {
             let conditions = self.condition_list.read();
             let found_condition = conditions.get(name.as_str()).unwrap();
             let c0 = found_condition.clone();
             let locked_condition = c0.lock();
-            return Ok(locked_condition.eq(cond));
+            locked_condition.eq(cond)
+        } else {
+            false
         }
-
-        Ok(false)
     }
 
     /// Return the type of a condition given its name, or `None` if the
@@ -107,16 +107,16 @@ impl ConditionRegistry {
     /// # Arguments
     ///
     /// * name - the name of the condition.
-    pub fn condition_type(&self, name: &str) -> Result<Option<String>> {
-        if self.has_condition(name)? {
+    pub fn condition_type(&self, name: &str) -> Option<String> {
+        if self.has_condition(name) {
             let cond = self.condition_list.read();
             let cond = cond.get(name).unwrap();
             let cond = cond.clone();
             let cond = cond.lock();
             let cond_type = cond.get_type().to_string();
-            Ok(Some(cond_type))
+            Some(cond_type)
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -132,9 +132,8 @@ impl ConditionRegistry {
     ///
     /// # Arguments
     ///
-    /// * `boxed_condition` - an object implementing the `base::Condition`
-    ///   trait, provided to the function as a `Box<dyn Condition>` aka
-    ///   `ConditionRef`
+    /// * `cond_ref` - an object implementing the `base::Condition` trait,
+    ///   provided to the function as a `Box<dyn Condition>` aka `ConditionRef`
     ///
     /// # Returns
     ///
@@ -145,49 +144,43 @@ impl ConditionRegistry {
     /// released (and given back stored in a `Box`) using the `remove_condition`
     /// function. Also, although the possible outcomes include an error
     /// condition, `Err(_)` is never returned.
-    pub fn add_condition(&self, mut boxed_condition: ConditionRef) -> Result<bool> {
-        let name = boxed_condition.get_name();
-        if self.has_condition(&name)? {
-            return Ok(false);
+    pub fn add_condition(&self, mut cond_ref: ConditionRef) -> bool {
+        let name = cond_ref.get_name();
+        if self.has_condition(&name) {
+            return false;
         }
         // only consume an ID if the condition is not discarded, otherwise the
         // released condition would be safe to run even when not registered
-        boxed_condition.set_id(generate_condition_id());
+        cond_ref.set_id(generate_condition_id());
         self.condition_list
             .write()
-            .insert(name, Arc::new(Mutex::new(boxed_condition)));
-        Ok(true)
+            .insert(name, Arc::new(Mutex::new(cond_ref)));
+        true
     }
 
     /// Add or replace an already-boxed `Condition` while running: if the
     /// registry is busy running any condition all modifications are deferred
-    pub fn dynamic_add_or_replace_condition(&self, boxed_condition: ConditionRef) -> Result<bool> {
-        let name = boxed_condition.get_name();
+    pub fn dynamic_add_or_replace_condition(&self, cond_ref: ConditionRef) -> Result<bool> {
+        let name = cond_ref.get_name();
         let busy = self.conditions_busy.clone();
         let busy = busy.lock();
         if *busy == 0 {
-            if self.has_condition(&name)? {
+            if self.has_condition(&name) {
                 match self.remove_condition(&name) {
                     Ok(_) => {
-                        if let Ok(res) = self.add_condition(boxed_condition) {
-                            return Ok(res);
-                        } else {
-                            return Err(Error::new(Kind::Failed, ERR_CONDREG_COND_NOT_REPLACED));
-                        }
+                        return Ok(self.add_condition(cond_ref));
                     }
                     _ => {
                         return Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND));
                     }
                 }
-            } else if let Ok(res) = self.add_condition(boxed_condition) {
-                return Ok(res);
             } else {
-                return Err(Error::new(Kind::Failed, ERR_CONDREG_COND_NOT_ADDED));
+                return Ok(self.add_condition(cond_ref));
             }
         } else {
             let queue = self.items_to_add.clone();
             let mut queue = queue.lock();
-            queue.push(boxed_condition);
+            queue.push(cond_ref);
             log(
                 LogType::Debug,
                 LOG_EMITTER_TASK_REGISTRY,
@@ -222,7 +215,7 @@ impl ConditionRegistry {
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Condition)` - the removed (_pulled out_) `Condition` on success.
     pub fn remove_condition(&self, name: &str) -> Result<Option<ConditionRef>> {
-        if self.has_condition(name)? {
+        if self.has_condition(name) {
             let mut cl0 = self.condition_list.write();
             match cl0.remove(name) {
                 Some(c0) => {
@@ -245,7 +238,7 @@ impl ConditionRegistry {
     /// registry: if any conditions are busy all modifications to the
     /// registry are deferred.
     pub fn dynamic_remove_condition(&self, name: &str) -> Result<bool> {
-        if self.has_condition(name)? {
+        if self.has_condition(name) {
             let busy = self.conditions_busy.clone();
             let busy = busy.lock();
             if *busy == 0 {
@@ -288,12 +281,9 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry.
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        );
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
-        if !wait && !self.condition_is_free(name)? {
+        if !wait && !self.condition_is_free(name) {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_RESET_BUSY))
         } else {
             // what follows just *reads* the registry: the condition is retrieved
@@ -314,10 +304,7 @@ impl ConditionRegistry {
     /// Queue a condition for reset: the current policy is that the
     /// reset status will be set only when there are no busy condiions
     pub fn queue_reset_condition(&self, name: &str) -> Result<()> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        );
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         let mxq0 = self.conditions_to_reset.clone();
         let mut queue = mxq0.lock();
@@ -348,12 +335,9 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry.
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        );
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
-        if !wait && !self.condition_is_free(name)? {
+        if !wait && !self.condition_is_free(name) {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_SUSPEND_BUSY))
         } else {
             // what follows just *reads* the registry: the condition is retrieved
@@ -376,10 +360,7 @@ impl ConditionRegistry {
     /// Queue a condition for suspension: the current policy is that the
     /// suspended flag will be set only when there are no busy condiions.
     pub fn queue_suspend_condition(&self, name: &str) -> Result<()> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        );
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         let mxq0 = self.conditions_to_suspend.clone();
         let mut queue = mxq0.lock();
@@ -410,10 +391,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry.
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        );
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
         // parameter should not even be implemented here; however, since the
@@ -422,7 +400,7 @@ impl ConditionRegistry {
         // safer to return this error on busy conditions: another way to
         // handle this situation would be to return _Ok(false)_ here, because
         // a busy condition is certainly not suspended
-        if !wait && !self.condition_is_free(name)? {
+        if !wait && !self.condition_is_free(name) {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_RESUME_BUSY))
         } else {
             // what follows just *reads* the registry: the condition is retrieved
@@ -444,29 +422,25 @@ impl ConditionRegistry {
     ///
     /// Return a vector containing the names of all the conditions that have
     /// been registered, as `String` elements.
-    pub fn condition_names(&self) -> Result<Option<Vec<String>>> {
+    pub fn condition_names(&self) -> Option<Vec<String>> {
         let mut res = Vec::new();
 
         for name in self.condition_list.read().keys() {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(res))
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified condition
-    pub fn condition_id(&self, name: &str) -> Result<Option<i64>> {
-        if self.has_condition(name)? {
+    pub fn condition_id(&self, name: &str) -> Option<i64> {
+        if self.has_condition(name) {
             let cl0 = self.condition_list.read();
             let cond = cl0.get(name).expect("cannot retrieve condition").clone();
             drop(cl0);
             let id = cond.lock().get_id();
-            Ok(Some(id))
+            Some(id)
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -485,45 +459,15 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry.
-    pub fn condition_busy(&self, name: &str) -> Result<bool> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        ); // TO_FIX
+    pub fn condition_busy(&self, name: &str) -> bool {
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
-        // since we return after trying to lock the condition, the possibly
-        // acquired lock is immediately released
-        if self.condition_is_free(name)? {
-            log(
-                LogType::Trace,
-                LOG_EMITTER_CONDITION_REGISTRY,
-                LOG_ACTION_CONDITION_BUSY,
-                None,
-                LOG_WHEN_START,
-                LOG_STATUS_OK,
-                &format!("condition {name} is not busy"),
-            );
-            Ok(false)
-        } else {
-            log(
-                LogType::Trace,
-                LOG_EMITTER_CONDITION_REGISTRY,
-                LOG_ACTION_CONDITION_BUSY,
-                None,
-                LOG_WHEN_START,
-                LOG_STATUS_FAIL,
-                &format!("condition {name} is busy"),
-            );
-            Ok(true)
-        }
+        !self.condition_is_free(name)
     }
 
     /// Check whether the condition can be locked (private use only)
-    fn condition_is_free(&self, name: &str) -> Result<bool> {
-        assert!(
-            self.has_condition(name)?,
-            "condition {name} not in registry"
-        );
+    fn condition_is_free(&self, name: &str) -> bool {
+        assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
@@ -538,7 +482,7 @@ impl ConditionRegistry {
         // since we return after trying to lock the condition, the possibly
         // acquired lock is immediately released
         let res = cond.try_lock();
-        Ok(res.is_some())
+        res.is_some()
     }
 
     /// Report the number of busy conditions
@@ -565,14 +509,14 @@ impl ConditionRegistry {
     pub fn tick(&self, name: &str) -> Result<Option<bool>> {
         // the named condition might have disappeared due to a reconfiguration
         // while still being known to the main thread
-        if !self.has_condition(name)? {
+        if !self.has_condition(name) {
             return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_TICK_NOEXIST));
         }
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
-        let id = self.condition_id(name)?.unwrap();
+        let id = self.condition_id(name).unwrap();
         let cl0 = self.condition_list.read();
         let cond = cl0
             .get(name)
@@ -603,8 +547,6 @@ impl ConditionRegistry {
             drop(bcount);
             drop(cb0);
 
-            // TODO: this can be rewritten in a simpler way using the `?`
-            // operator, thanks to the unified error system
             // the heart of all: test the condition and run tasks if verified
             let res = match cond.test() {
                 Ok(o) => {
@@ -756,40 +698,28 @@ impl ConditionRegistry {
                 let mxq0 = self.items_to_add.clone();
                 let mut queue = mxq0.lock();
                 while !queue.is_empty() {
-                    if let Some(boxed_item) = queue.pop() {
-                        let name = boxed_item.get_name();
-                        if let Ok(res) = self.add_condition(boxed_item) {
-                            let id = self.condition_id(&name)?.unwrap();
-                            if res {
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_CONDITION_REGISTRY,
-                                    LOG_ACTION_INSTALL,
-                                    Some((&name, id)),
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    "successfully added queued condition to the registry",
-                                );
-                            } else {
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_CONDITION_REGISTRY,
-                                    LOG_ACTION_INSTALL,
-                                    Some((&name, id)),
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_FAIL,
-                                    "queued condition already present in the registry",
-                                );
-                            }
+                    if let Some(item_ref) = queue.pop() {
+                        let name = item_ref.get_name();
+                        let id = self.condition_id(&name).unwrap();
+                        if self.add_condition(item_ref) {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_CONDITION_REGISTRY,
+                                LOG_ACTION_INSTALL,
+                                Some((&name, id)),
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                "successfully added queued condition to the registry",
+                            );
                         } else {
                             log(
                                 LogType::Debug,
                                 LOG_EMITTER_CONDITION_REGISTRY,
                                 LOG_ACTION_INSTALL,
-                                None,
+                                Some((&name, id)),
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
-                                &format!("could not add queued condition {name} to the registry"),
+                                "queued condition already present in the registry",
                             );
                         }
                     }

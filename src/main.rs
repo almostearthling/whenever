@@ -153,29 +153,29 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
         return Ok(false);
     }
 
-    for name in CONDITION_REGISTRY.condition_names()?.unwrap() {
-        // go away if condition is busy
-        if CONDITION_REGISTRY.condition_busy(&name)? {
-            log(
-                LogType::Debug,
-                LOG_EMITTER_MAIN,
-                LOG_ACTION_SCHEDULER_TICK,
-                None,
-                LOG_WHEN_PROC,
-                LOG_STATUS_MSG,
-                &format!("condition {name} is busy: tick skipped"),
-            );
-            continue;
-        }
-        // else...
+    if let Some(names) = CONDITION_REGISTRY.condition_names() {
+        for name in names {
+            // go away if condition is busy
+            if CONDITION_REGISTRY.condition_busy(&name) {
+                log(
+                    LogType::Debug,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_SCHEDULER_TICK,
+                    None,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_MSG,
+                    &format!("condition {name} is busy: tick skipped"),
+                );
+                continue;
+            }
+            // else...
 
-        // create a new thread for each check: note that each thread will
-        // attempt to lock the condition registry, thus wait for it to be
-        // released by the previous owner
-        std::thread::spawn(move || {
-            let cond_type = CONDITION_REGISTRY.condition_type(&name);
-            if cond_type.is_ok() {
-                if let Some(cond_type) = cond_type.unwrap() {
+            // create a new thread for each check: note that each thread will
+            // attempt to lock the condition registry, thus wait for it to be
+            // released by the previous owner
+            std::thread::spawn(move || {
+                let cond_type = CONDITION_REGISTRY.condition_type(&name);
+                if let Some(cond_type) = cond_type {
                     if !NO_DELAY_CONDITIONS.contains(&cond_type) {
                         if let Some(ms) = rand_millis_range {
                             let mut rng = rng();
@@ -185,11 +185,32 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
                         }
                     }
                 }
-            }
-            if let Ok(outcome) = CONDITION_REGISTRY.tick(&name) {
-                match outcome {
-                    Some(res) => {
-                        if res {
+                if let Ok(outcome) = CONDITION_REGISTRY.tick(&name) {
+                    match outcome {
+                        Some(res) => {
+                            if res {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_MAIN,
+                                    LOG_ACTION_SCHEDULER_TICK,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!("condition {name} tested (tasks executed)"),
+                                );
+                            } else {
+                                log(
+                                    LogType::Trace,
+                                    LOG_EMITTER_MAIN,
+                                    LOG_ACTION_SCHEDULER_TICK,
+                                    None,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!("condition {name} tested (tasks executed unsuccessfully)"),
+                                );
+                            }
+                        }
+                        None => {
                             log(
                                 LogType::Trace,
                                 LOG_EMITTER_MAIN,
@@ -197,46 +218,24 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
                                 None,
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_MSG,
-                                &format!("condition {name} tested (tasks executed)"),
-                            );
-                        } else {
-                            log(
-                                LogType::Trace,
-                                LOG_EMITTER_MAIN,
-                                LOG_ACTION_SCHEDULER_TICK,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_MSG,
-                                &format!("condition {name} tested (tasks executed unsuccessfully)"),
+                                &format!("condition {name} tested (tasks not executed)"),
                             );
                         }
                     }
-                    None => {
-                        log(
-                            LogType::Trace,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_SCHEDULER_TICK,
-                            None,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_MSG,
-                            &format!("condition {name} tested (tasks not executed)"),
-                        );
-                    }
+                } else {
+                    log(
+                        LogType::Debug,
+                        LOG_EMITTER_MAIN,
+                        LOG_ACTION_SCHEDULER_TICK,
+                        None,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_FAIL,
+                        &format!("condition {name} could not be tested"),
+                    );
                 }
-            } else {
-                log(
-                    LogType::Debug,
-                    LOG_EMITTER_MAIN,
-                    LOG_ACTION_SCHEDULER_TICK,
-                    None,
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_FAIL,
-                    &format!("condition {name} could not be tested"),
-                );
-            }
-        });
+            });
+        }
     }
-
     Ok(true)
 }
 
@@ -261,8 +260,9 @@ macro_rules! exit_if_fails {
 
 // reset the conditions whose names are provided in a vector of &str
 fn reset_conditions(names: &[String]) -> Result<bool> {
+    let mut outcome = true;
     for name in names {
-        if !CONDITION_REGISTRY.has_condition(name)? {
+        if !CONDITION_REGISTRY.has_condition(name) {
             log(
                 LogType::Error,
                 LOG_EMITTER_MAIN,
@@ -272,6 +272,7 @@ fn reset_conditions(names: &[String]) -> Result<bool> {
                 LOG_STATUS_ERR,
                 &format!("cannot reset non existent condition: {name}"),
             );
+            outcome = false;
         } else {
             log(
                 LogType::Trace,
@@ -306,6 +307,7 @@ fn reset_conditions(names: &[String]) -> Result<bool> {
                         LOG_STATUS_FAIL,
                         &format!("condition {name} could not be queued for reset"),
                     );
+                    outcome = false;
                 }
             } else {
                 log(
@@ -321,12 +323,12 @@ fn reset_conditions(names: &[String]) -> Result<bool> {
         }
     }
 
-    Ok(true)
+    Ok(outcome)
 }
 
 // set the suspended state for a condition identified by its name
 fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
-    if !CONDITION_REGISTRY.has_condition(name)? {
+    if !CONDITION_REGISTRY.has_condition(name) {
         log(
             LogType::Error,
             LOG_EMITTER_MAIN,
@@ -526,8 +528,8 @@ fn reconfigure(config_file: &str) -> Result<()> {
 }
 
 // attempt to trigger an event
-fn trigger_event(name: &str) -> Result<bool> {
-    if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name)? {
+fn trigger_event(name: &str) {
+    if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
         if triggerable {
             log(
                 LogType::Debug,
@@ -538,46 +540,26 @@ fn trigger_event(name: &str) -> Result<bool> {
                 LOG_STATUS_OK,
                 &format!("triggering event {name}"),
             );
-            match EVENT_REGISTRY.trigger_event(name) {
-                Ok(res) => {
-                    if res {
-                        log(
-                            LogType::Info,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_EVENT_TRIGGER,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_OK,
-                            &format!("event {name} successfully triggered"),
-                        );
-                        Ok(true)
-                    } else {
-                        log(
-                            LogType::Warn,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_EVENT_TRIGGER,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_ERR,
-                            &format!(
-                                "event {name} could not be triggered or condition cannot fire"
-                            ),
-                        );
-                        Ok(false)
-                    }
-                }
-                Err(e) => {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_EVENT_TRIGGER,
-                        None,
-                        LOG_WHEN_END,
-                        LOG_STATUS_ERR,
-                        &format!("error triggering event {name}: {e}"),
-                    );
-                    Ok(false)
-                }
+            if EVENT_REGISTRY.trigger_event(name) {
+                log(
+                    LogType::Info,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_EVENT_TRIGGER,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("event {name} triggered"),
+                );
+            } else {
+                log(
+                    LogType::Error,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_EVENT_TRIGGER,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_ERR,
+                    &format!("event {name} could not be triggered"),
+                );
             }
         } else {
             log(
@@ -589,7 +571,6 @@ fn trigger_event(name: &str) -> Result<bool> {
                 LOG_STATUS_ERR,
                 &format!("event {name} cannot be triggered"),
             );
-            Ok(false)
         }
     } else {
         log(
@@ -601,7 +582,6 @@ fn trigger_event(name: &str) -> Result<bool> {
             LOG_STATUS_ERR,
             &format!("cannot trigger non existent event: {name}"),
         );
-        Ok(false)
     }
 }
 
@@ -787,7 +767,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                         LOG_STATUS_MSG,
                         "no names provided: attempt to reset all conditions",
                     );
-                    if let Some(v) = CONDITION_REGISTRY.condition_names()? {
+                    if let Some(v) = CONDITION_REGISTRY.condition_names() {
                         if !v.is_empty() {
                             let _ = reset_conditions(v.as_slice());
                             Ok(true)
@@ -964,7 +944,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                     // same considerations as above
                     let arg = args[0].to_string();
                     thread::spawn(move || {
-                        let _ = trigger_event(&arg);
+                        trigger_event(&arg);
                     });
                     Ok(true)
                 }

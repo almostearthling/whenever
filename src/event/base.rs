@@ -54,6 +54,18 @@ pub trait Event: Send + Sync {
         false
     }
 
+    /// Explicitly trigger an event: this method should just panic for
+    /// non manually triggerable events, so they must not override it;
+    /// returns `false` if the event could not be triggered, or an error
+    fn trigger(&self) -> bool {
+        assert!(
+            self.triggerable(),
+            "event {} cannot be manually triggered",
+            self.get_name(),
+        );
+        unreachable!()
+    }
+
     /// Assign the condition bucket to put verified conditions into
     fn set_condition_bucket(&mut self, bucket: &'static ExecutionBucket);
 
@@ -86,7 +98,7 @@ pub trait Event: Send + Sync {
     /// has not been set: each would indicate an error in the program flow.
     fn assign_condition(&mut self, cond_name: &str) -> Result<bool> {
         if let Some(cond_registry) = self.condition_registry() {
-            if let Some(s) = cond_registry.condition_type(cond_name)? {
+            if let Some(s) = cond_registry.condition_type(cond_name) {
                 if s == "bucket" || s == "event" {
                     self._assign_condition(cond_name);
                     Ok(true)
@@ -162,10 +174,7 @@ pub trait Event: Send + Sync {
     /// This function is a wrapper for the actual asynchronous event receiver:
     /// it returns the name of the event that triggered, mostly in order for
     /// the registry to issue a log line, or None for non triggered events
-    async fn event_triggered(&mut self) -> Result<Option<String>> {
-        self.fire_condition()?;
-        Ok(Some(self.get_name()))
-    }
+    async fn event_triggered(&mut self) -> Result<Option<String>>;
 
     /// Setup for the listener initializing all internals if necessary
     ///

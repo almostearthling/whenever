@@ -3,7 +3,7 @@
 //! Various public string constants used throughout the crate, mostly error
 //! messages or other kinds of hints. Also, expose some regular expressions
 //! that are used to identify various items, to all modules.
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -23,9 +23,10 @@ pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440_DEBUG";
 #[cfg(not(debug_assertions))]
 pub const APP_GUID: &str = "663f98a9-a1ef-46ef-a7bc-bb2482f42440";
 
-#[allow(dead_code)]
 // error messages
+#[allow(dead_code)]
 pub const ERR_OK: &str = "OK";
+
 pub const ERR_FAILED: &str = "failed";
 pub const ERR_LOCK_FAILED: &str = "could not lock resource";
 pub const ERR_ACCESS_FAILED: &str = "could not access resource";
@@ -35,10 +36,8 @@ pub const ERR_INVALID_COND_CONFIG: &str = "invalid condition configuration";
 pub const ERR_INVALID_EVENT_CONFIG: &str = "invalid event configuration";
 pub const ERR_INVALID_CONFIG: &str = "invalid configuration";
 pub const ERR_TASKREG_TASK_NOT_ADDED: &str = "could not add task to the registry";
-pub const ERR_TASKREG_TASK_NOT_REPLACED: &str = "could not replace task in the registry";
 pub const ERR_TASKREG_CANNOT_PULL_TASK: &str = "could not pull task out from the registry";
 pub const ERR_CONDREG_COND_NOT_ADDED: &str = "could not add condition to the registry";
-pub const ERR_CONDREG_COND_NOT_REPLACED: &str = "could not replace condition in the registry";
 pub const ERR_CONDREG_CANNOT_PULL_COND: &str = "could not pull condition out from the registry";
 pub const ERR_CONDREG_COND_RESET_BUSY: &str = "attempt to reset condition while busy";
 pub const ERR_CONDREG_COND_SUSPEND_BUSY: &str = "attempt to suspend condition while busy";
@@ -81,6 +80,9 @@ pub const ERR_INVALID_TICK_SECONDS: &str = "invalid number of seconds for tick";
 pub const ERR_INVALID_VALUE_FOR: &str = "invalid value for";
 pub const ERR_INVALID_VALUE_FOR_ENTRY: &str = "invalid value for entry";
 pub const ERR_INVALID_VALUE_FOR_LIST_ENTRY: &str = "invalid value for list entry";
+
+// the following is only used for DBus now, but might come in handy
+#[allow(dead_code)]
 pub const ERR_INVALID_CONFIG_FOR_ENTRY: &str = "cannot configure entry";
 
 pub const ERR_INVALID_TASK_TYPE: &str = "task type invalid or mismatched";
@@ -90,7 +92,6 @@ pub const ERR_INVALID_EVENT_CONDITION: &str = "condition not found for event";
 
 // Lua specific runtime error messages
 pub const ERR_LUA_INVALID_PARAMETER: &str = "invalid parameter";
-pub const ERR_LUA_INVALID_CALL: &str = "invalid function call";
 #[cfg(feature = "lua_httpreq")]
 pub const ERR_LUA_HTTPREQ_ERROR: &str = "error within HTTP request";
 
@@ -157,7 +158,6 @@ pub const LOG_ACTION_SCHEDULER_TICK: &str = "scheduler_tick";
 pub const LOG_ACTION_RESET_CONDITIONS: &str = "reset_conditions";
 pub const LOG_ACTION_SUSPEND_CONDITION: &str = "suspend_condition";
 pub const LOG_ACTION_RESUME_CONDITION: &str = "resume_condition";
-pub const LOG_ACTION_CONDITION_BUSY: &str = "condition_busy";
 pub const LOG_ACTION_CONDITION_STATE: &str = "condition_state";
 pub const LOG_ACTION_EVENT_TRIGGER: &str = "event_trigger";
 pub const LOG_ACTION_RUN_COMMAND: &str = "command";

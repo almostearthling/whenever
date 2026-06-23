@@ -5,9 +5,9 @@
 //! Implements the event registry which is created as the static repository of
 //! all the events that are listened for in the main program.
 
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::{Mutex, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 
@@ -94,7 +94,7 @@ impl EventRegistry {
 
             // WARNING: the event list is acquired and locked here, this means
             // that it cannot be modified while we are waiting for any event
-            // to occcur; this can be a problem when the list should changed,
+            // to occcur; this can be a problem when the list should change,
             // generally because of a reconfiguration, however the listener is
             // stopped and restarted in that case, this should limit problems;
             // also, check that the list of futures is not empty (which would
@@ -110,7 +110,6 @@ impl EventRegistry {
                 let res = select_all(catch_events).await;
                 TriggeredOrQuitMessage::Triggered(res.0)
             }
-
         }
 
         // simplify collection of ToQMs sent through `listener_quit_messenger`
@@ -166,7 +165,7 @@ impl EventRegistry {
                         None,
                         LOG_WHEN_INIT,
                         LOG_STATUS_MSG,
-                        &format!("initialization skipped for event {name}",),
+                        &format!("initialization skipped for event {name}"),
                     );
                 } else {
                     log(
@@ -176,7 +175,7 @@ impl EventRegistry {
                         None,
                         LOG_WHEN_INIT,
                         LOG_STATUS_MSG,
-                        &format!("event {name} successfully initialized",),
+                        &format!("event {name} successfully initialized"),
                     );
                 }
             }
@@ -294,21 +293,21 @@ impl EventRegistry {
                     log(
                         LogType::Trace,
                         LOG_EMITTER_EVENT_REGISTRY,
-                        LOG_ACTION_INSTALL,
+                        LOG_ACTION_UNINSTALL,
                         None,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &format!("cleanup skipped for event {name}",),
+                        &format!("cleanup skipped for event {name}"),
                     );
                 } else {
                     log(
                         LogType::Trace,
                         LOG_EMITTER_EVENT_REGISTRY,
-                        LOG_ACTION_INSTALL,
+                        LOG_ACTION_UNINSTALL,
                         None,
                         LOG_WHEN_END,
                         LOG_STATUS_MSG,
-                        &format!("event {name} successfully cleaned up",),
+                        &format!("event {name} successfully cleaned up"),
                     );
                 }
             }
@@ -367,7 +366,7 @@ impl EventRegistry {
                         None,
                         LOG_WHEN_END,
                         LOG_STATUS_FAIL,
-                        "an error occurred while requesting to stop the event listener",
+                        "error occurred while requesting the event listener to stop",
                     );
                 }
             });
@@ -402,8 +401,8 @@ impl EventRegistry {
     /// # Arguments
     ///
     /// * name - the name of the event to check for registration.
-    pub fn has_event(&self, name: &str) -> Result<bool> {
-        Ok(self.events.clone().lock().contains_key(name))
+    pub fn has_event(&self, name: &str) -> bool {
+        self.events.clone().lock().contains_key(name)
     }
 
     /// Check whether or not the provided event is in the registry
@@ -411,17 +410,16 @@ impl EventRegistry {
     /// # Arguments
     ///
     /// * event - the reference to an event to check for registration.
-    pub fn has_event_eq(&self, event: &dyn Event) -> Result<bool> {
+    pub fn has_event_eq(&self, event: &dyn Event) -> bool {
         let name = event.get_name();
-        if self.has_event(name.as_str())? {
+        if self.has_event(name.as_str()) {
             let el0 = self.events.clone();
             let el0 = el0.lock();
             let found_event = el0.get(name.as_str()).unwrap();
-            let equals = found_event.eq(event);
-            return Ok(equals);
+            found_event.eq(event)
+        } else {
+            false
         }
-
-        Ok(false)
     }
 
     /// Add an already-boxed `Event` if its name is not present in the
@@ -436,7 +434,7 @@ impl EventRegistry {
     ///
     /// # Arguments
     ///
-    /// * `boxed_event` - an object implementing the `base::Event` trait,
+    /// * `event_ref` - an object implementing the `base::Event` trait,
     ///   provided to the function as a `Box<dyn Event>` aka `EventRef`
     ///
     /// # Returns
@@ -447,19 +445,19 @@ impl EventRegistry {
     /// **Note**: the event is _moved_ into the registry, and can only be
     /// released (and given back stored in a `Box`) using the `remove_event`
     /// function.
-    pub fn add_event(&self, mut boxed_event: EventRef) -> Result<bool> {
-        let name = boxed_event.get_name();
-        if self.has_event(&name)? {
-            return Ok(false);
+    pub fn add_event(&self, mut event_ref: EventRef) -> bool {
+        let name = event_ref.get_name();
+        if self.has_event(&name) {
+            return false;
         }
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
-        boxed_event.set_id(generate_event_id());
+        event_ref.set_id(generate_event_id());
         self.triggerable_events
             .write()
-            .insert(name.clone(), boxed_event.triggerable());
-        self.events.clone().lock().insert(name, boxed_event);
-        Ok(true)
+            .insert(name.clone(), event_ref.triggerable());
+        self.events.clone().lock().insert(name, event_ref);
+        true
     }
 
     /// Remove a named event from the list and give it back stored in a Box
@@ -485,7 +483,7 @@ impl EventRegistry {
     /// * `Ok(None)` - condition not found in registry
     /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success.
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
-        if self.has_event(name)? {
+        if self.has_event(name) {
             match self.events.clone().lock().remove(name) {
                 Some(e) => {
                     let mut event = e;
@@ -499,70 +497,53 @@ impl EventRegistry {
         }
     }
 
-    /// Return the list of event names as owned strings
-    ///
     /// Return a vector containing the names of all the events that have been
     /// registered, as `String` elements.
-    pub fn event_names(&self) -> Result<Option<Vec<String>>> {
+    pub fn event_names(&self) -> Option<Vec<String>> {
         let mut res = Vec::new();
 
         for name in self.events.clone().lock().keys() {
             res.push(name.clone())
         }
-        if res.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(res))
-        }
+        if res.is_empty() { None } else { Some(res) }
     }
 
     /// Return the id of the specified event
-    pub fn event_id(&self, name: &str) -> Result<Option<i64>> {
-        if self.has_event(name)? {
+    pub fn event_id(&self, name: &str) -> Option<i64> {
+        if self.has_event(name) {
             let el0 = self.events.clone();
             let el0 = el0.lock();
             let event = el0.get(name).expect("cannot retrieve event");
             let id = event.get_id();
-            Ok(Some(id))
+            Some(id)
         } else {
-            Ok(None)
+            None
         }
     }
 
     /// Tell whether or not an event is triggerable, `None` if event not found
-    pub fn event_triggerable(&self, name: &str) -> Result<Option<bool>> {
-        if self.has_event(name)? {
-            let triggerable = *self.triggerable_events.read().get(name).unwrap();
-            Ok(Some(triggerable))
-        } else {
-            Ok(None)
-        }
+    pub fn event_triggerable(&self, name: &str) -> Option<bool> {
+        self.triggerable_events.read().get(name).map(|v| *v)
     }
 
-    /// Trigger an event
-    ///
-    /// If the event can be manually triggered, fire its associated condition
-    /// and return the result of the call to the event `fire_condition()` call,
-    /// otherwise return `Ok(false)`.
+    /// If the event can be manually triggered, store it into the list of
+    /// triggered events.
     ///
     /// # Panics
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
-    pub fn trigger_event(&self, name: &str) -> Result<bool> {
-        assert!(self.has_event(name)?, "event {name} not in registry");
+    pub fn trigger_event(&self, name: &str) -> bool {
+        assert!(self.has_event(name), "event {name} not in registry");
         assert!(
-            self.event_triggerable(name)?.unwrap(),
+            self.event_triggerable(name).unwrap(),
             "event {name} cannot be manually triggered",
         );
 
-        // what follows just *reads* the registry: the event is retrieved
-        // and the corresponding structure is operated in a way that mutates
-        // only its inner state, and not the wrapping pointer
-        let id = self.event_id(name)?.unwrap();
+        let id = self.event_id(name).unwrap();
         let el0 = self.events.clone();
         let el0 = el0.lock();
-        let event = el0.get(name).expect("cannot retrieve event for triggering");
+        let event = el0.get(name).expect("cannot retrieve event for activation");
 
         log(
             LogType::Debug,
@@ -573,44 +554,9 @@ impl EventRegistry {
             LOG_STATUS_OK,
             &format!("manually triggering event {name}"),
         );
-        match event.fire_condition() {
-            Ok(res) => {
-                if res {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_EVENT_REGISTRY,
-                        LOG_ACTION_FIRE,
-                        Some((name, id)),
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_OK,
-                        &format!("condition for event {name} fired"),
-                    );
-                } else {
-                    log(
-                        LogType::Debug,
-                        LOG_EMITTER_EVENT_REGISTRY,
-                        LOG_ACTION_FIRE,
-                        Some((name, id)),
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        &format!("condition for event {name} could not fire"),
-                    );
-                }
-                Ok(res)
-            }
-            Err(e) => {
-                log(
-                    LogType::Debug,
-                    LOG_EMITTER_EVENT_REGISTRY,
-                    LOG_ACTION_FIRE,
-                    Some((name, id)),
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_FAIL,
-                    &format!("condition for event {name} failed to fire"),
-                );
-                Err(e)
-            }
-        }
+
+        // all checks have passed and the following cannot panic
+        event.trigger()
     }
 
     /// Fire the condition associated to the named event.
@@ -624,12 +570,12 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     fn fire_condition_for(&self, name: &str) -> Result<()> {
-        assert!(self.has_event(name)?, "event {name} not in registry");
+        assert!(self.has_event(name), "event {name} not in registry");
 
         // what follows just *reads* the registry: the event is retrieved
         // and the corresponding structure is operated in a way that mutates
         // only its inner state, and not the wrapping pointer
-        let id = self.event_id(name)?.unwrap();
+        let id = self.event_id(name).unwrap();
         let el0 = self.events.clone();
         let el0 = el0.lock();
         let event = el0.get(name).expect("cannot retrieve event for activation");
