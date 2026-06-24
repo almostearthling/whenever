@@ -402,33 +402,20 @@ impl Event for FilesystemChangeEvent {
                     LOG_STATUS_OK,
                     &format!("event notification caught: {evt_s}"),
                 );
-                match self.fire_condition() {
-                    Ok(res) => {
-                        if res {
-                            self.log(
-                                LogType::Debug,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_OK,
-                                "condition fired successfully",
-                            );
-                        } else {
-                            self.log(
-                                LogType::Trace,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_MSG,
-                                "condition already fired: further schedule skipped",
-                            );
-                        }
-                    }
-                    Err(e) => {
-                        self.log(
-                            LogType::Warn,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_FAIL,
-                            &format!("error firing condition: {e}"),
-                        );
-                        return Err(e);
-                    }
+                if self.fire_condition() {
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_OK,
+                        "condition fired successfully",
+                    );
+                } else {
+                    self.log(
+                        LogType::Trace,
+                        LOG_WHEN_PROC,
+                        LOG_STATUS_MSG,
+                        "condition already fired: further schedule skipped",
+                    );
                 }
             } else {
                 // an access only notification is a non triggered event

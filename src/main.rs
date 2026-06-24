@@ -529,38 +529,26 @@ fn reconfigure(config_file: &str) -> Result<()> {
 
 // attempt to trigger an event
 fn trigger_event(name: &str) {
-    if let Some(triggerable) = EVENT_REGISTRY.event_triggerable(name) {
-        if triggerable {
+    if EVENT_REGISTRY.has_event_triggerable(name) {
+        log(
+            LogType::Debug,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_EVENT_TRIGGER,
+            None,
+            LOG_WHEN_START,
+            LOG_STATUS_OK,
+            &format!("triggering event {name}"),
+        );
+        if EVENT_REGISTRY.trigger_event(name) {
             log(
-                LogType::Debug,
+                LogType::Info,
                 LOG_EMITTER_MAIN,
                 LOG_ACTION_EVENT_TRIGGER,
                 None,
-                LOG_WHEN_START,
+                LOG_WHEN_END,
                 LOG_STATUS_OK,
-                &format!("triggering event {name}"),
+                &format!("event {name} triggered"),
             );
-            if EVENT_REGISTRY.trigger_event(name) {
-                log(
-                    LogType::Info,
-                    LOG_EMITTER_MAIN,
-                    LOG_ACTION_EVENT_TRIGGER,
-                    None,
-                    LOG_WHEN_END,
-                    LOG_STATUS_OK,
-                    &format!("event {name} triggered"),
-                );
-            } else {
-                log(
-                    LogType::Error,
-                    LOG_EMITTER_MAIN,
-                    LOG_ACTION_EVENT_TRIGGER,
-                    None,
-                    LOG_WHEN_END,
-                    LOG_STATUS_ERR,
-                    &format!("event {name} could not be triggered"),
-                );
-            }
         } else {
             log(
                 LogType::Error,
@@ -569,7 +557,7 @@ fn trigger_event(name: &str) {
                 None,
                 LOG_WHEN_END,
                 LOG_STATUS_ERR,
-                &format!("event {name} cannot be triggered"),
+                &format!("event {name} could not be triggered"),
             );
         }
     } else {
@@ -580,7 +568,7 @@ fn trigger_event(name: &str) {
             None,
             LOG_WHEN_START,
             LOG_STATUS_ERR,
-            &format!("cannot trigger non existent event: {name}"),
+            &format!("item {name} is not a triggerable event"),
         );
     }
 }

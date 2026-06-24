@@ -6,7 +6,6 @@
 //! main program acts as its service instead.
 
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::Arc;
 
 use cfgmap::CfgMap;
 
@@ -15,7 +14,6 @@ use async_trait::async_trait;
 use super::base::Event;
 use crate::common::logging::{LogType, log};
 use crate::common::wres::Result;
-use crate::common::async_flip::AsyncFlip;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
@@ -41,7 +39,7 @@ pub struct ManualCommandEvent {
     // (none here)
 
     // internal values
-    triggered: Option<Arc<AsyncFlip>>,
+    // (none here)
 }
 
 // implement the hash protocol
@@ -76,7 +74,6 @@ impl Clone for ManualCommandEvent {
             // parameters
 
             // internal values
-            triggered: None,
         }
     }
 }
@@ -108,7 +105,6 @@ impl ManualCommandEvent {
             // parameters
 
             // internal values
-            triggered: None,
         }
     }
 
@@ -246,21 +242,6 @@ impl Event for ManualCommandEvent {
         true
     }
 
-    fn trigger(&self) -> bool {
-        if let Some(triggered) = &self.triggered.clone() {
-            triggered.flip();
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_PROC,
-                LOG_STATUS_OK,
-                "event has been manually triggered",
-            );
-            true
-        } else {
-            false
-        }
-    }
-
     fn get_condition(&self) -> Option<String> {
         self.condition_name.clone()
     }
@@ -284,54 +265,6 @@ impl Event for ManualCommandEvent {
     fn _assign_condition(&mut self, cond_name: &str) {
         // correctness has already been checked by the caller
         self.condition_name = Some(String::from(cond_name));
-    }
-
-    async fn event_triggered(&mut self) -> Result<Option<String>> {
-        // create the future upon call to be sure that we are not polling
-        // a completed future: it is discarded when completed, and recreated
-        // at the subsequent call
-        // WARNING: This code does not work!
-        let triggered = Arc::new(AsyncFlip::new().await);
-        self.triggered = Some(triggered.clone());
-        if triggered.wait_flipped().await {
-            self.log(
-                LogType::Debug,
-                LOG_WHEN_PROC,
-                LOG_STATUS_OK,
-                "manually triggered event caught",
-            );
-            self.triggered = None;
-            match self.fire_condition() {
-                Ok(res) => {
-                    if res {
-                        self.log(
-                            LogType::Debug,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_OK,
-                            "condition fired successfully",
-                        );
-                    } else {
-                        self.log(
-                            LogType::Trace,
-                            LOG_WHEN_PROC,
-                            LOG_STATUS_MSG,
-                            "condition already fired: further schedule skipped",
-                        );
-                    }
-                }
-                Err(e) => {
-                    self.log(
-                        LogType::Warn,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        &format!("error firing condition: {e}"),
-                    );
-                }
-            }
-            Ok(Some(self.get_name()))
-        } else {
-            Ok(None)
-        }
     }
 }
 

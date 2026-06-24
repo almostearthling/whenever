@@ -258,25 +258,18 @@ impl TaskRegistry {
     /// Return a vector containing the names of all the tasks that have been
     /// registered, as `String` elements.
     pub fn task_names(&self) -> Option<Vec<String>> {
-        let mut res = Vec::new();
-
-        for name in self.task_list.read().keys() {
-            res.push(name.clone())
-        }
-        if res.is_empty() { None } else { Some(res) }
+        let l0 = self.task_list.read();
+        let names: Vec<String> = l0.keys().into_iter().map(|k| k.to_string()).collect();
+        if names.is_empty() { None } else { Some(names) }
     }
 
     /// Return the id of the specified task
     pub fn task_id(&self, name: &str) -> Option<i64> {
-        if self.has_task(name) {
-            let tl0 = self.task_list.read();
-            let task = tl0.get(name).expect("cannot retrieve task").clone();
-            drop(tl0);
-            let id = task.lock().get_id();
-            Some(id)
-        } else {
-            None
-        }
+        self.task_list.read().get(name).map(|item| {
+            let item = item.clone();
+            let item = item.lock();
+            item.get_id()
+        })
     }
 
     /// Run a list of tasks sequentially

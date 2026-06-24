@@ -1377,7 +1377,7 @@ pub mod lua_httpreq {
 
         let resp = req
             .send()
-            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
+            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: {e}")))?;
         Ok((
             BStr::new(&resp.as_bytes()).into_lua(lua)?,
             resp.status_code as i64,
@@ -1403,7 +1403,7 @@ pub mod lua_httpreq {
 
         let resp = req
             .send()
-            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: `{e}`")))?;
+            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: {e}")))?;
 
         Ok((
             BStr::new(&resp.as_bytes()).into_lua(lua)?,
@@ -3009,78 +3009,6 @@ pub mod wmiitem {
             ref_log_status,
             log_message,
         )
-    }
-}
-
-/// A switch that can be flipped only once
-#[allow(dead_code)]
-pub mod async_flip {
-    use std::pin::Pin;
-    use std::sync::Arc;
-    use std::task::{Context, Poll, Waker};
-    use parking_lot::Mutex;
-
-    // let's consider it an exercise from the (old) Async Book
-    struct SharedState {
-        flipped: bool,
-        waker: Option<Waker>,
-    }
-
-    #[derive(Clone)]
-    pub struct AsyncFlip {
-        // cloning the struct actually clones the `Arc` around the shared state
-        shared_state: Arc<Mutex<SharedState>>,
-    }
-
-    impl AsyncFlip {
-        /// Create a new unflipped `AsyncFlip`
-        pub fn new() -> Self {
-            AsyncFlip {
-                shared_state: Arc::new(Mutex::new(SharedState {
-                    flipped: false,
-                    waker: None,
-                })),
-            }
-        }
-
-        /// Flip this `AsyncFlip`
-        pub fn flip(&self) {
-            let s0 =self.shared_state.clone();
-            let mut shared_state = s0.lock();
-            shared_state.flipped = true;
-            if let Some(waker) = shared_state.waker.take() {
-                waker.wake();
-            }
-        }
-
-        /// Check whether the value has changed
-        pub fn flipped(&self) -> bool {
-            let s0 =self.shared_state.clone();
-            let shared_state = s0.lock();
-            shared_state.flipped
-        }
-
-        /// Asynchronous version that waits for the value to change
-        pub async fn wait_flipped(&self) -> bool {
-            // WARNING: This code does not work!
-            self.clone().into_future().await;
-            self.flipped()
-        }
-    }
-
-    impl Future for AsyncFlip {
-        type Output = AsyncFlip;
-
-        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            let mut shared_state = self.shared_state.lock();
-            if shared_state.flipped {
-                let s0 = self.shared_state.clone();
-                Poll::Ready(AsyncFlip { shared_state: s0 })
-            } else {
-                shared_state.waker = Some(cx.waker().clone());
-                Poll::Pending
-            }
-        }
     }
 }
 

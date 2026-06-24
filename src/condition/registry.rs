@@ -423,25 +423,18 @@ impl ConditionRegistry {
     /// Return a vector containing the names of all the conditions that have
     /// been registered, as `String` elements.
     pub fn condition_names(&self) -> Option<Vec<String>> {
-        let mut res = Vec::new();
-
-        for name in self.condition_list.read().keys() {
-            res.push(name.clone())
-        }
-        if res.is_empty() { None } else { Some(res) }
+        let l0 = self.condition_list.read();
+        let names: Vec<String> = l0.keys().into_iter().map(|k| k.to_string()).collect();
+        if names.is_empty() { None } else { Some(names) }
     }
 
     /// Return the id of the specified condition
     pub fn condition_id(&self, name: &str) -> Option<i64> {
-        if self.has_condition(name) {
-            let cl0 = self.condition_list.read();
-            let cond = cl0.get(name).expect("cannot retrieve condition").clone();
-            drop(cl0);
-            let id = cond.lock().get_id();
-            Some(id)
-        } else {
-            None
-        }
+        self.condition_list.read().get(name).map(|item| {
+            let item = item.clone();
+            let item = item.lock();
+            item.get_id()
+        })
     }
 
     /// Check whether a condition is busy
@@ -564,7 +557,7 @@ impl ConditionRegistry {
                         None,
                         LOG_WHEN_END,
                         LOG_STATUS_ERR,
-                        &format!("error testing condition {name}: `{e}`"),
+                        &format!("error testing condition {name}: {e}"),
                     );
                     Err(e)
                 }

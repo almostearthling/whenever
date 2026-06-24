@@ -147,7 +147,6 @@ pub const LOG_EMITTER_CONDITION_WMI: &str = "WMI_CONDITION";
 
 pub const LOG_ACTION_NEW: &str = "new";
 pub const LOG_ACTION_TICK: &str = "tick";
-pub const LOG_ACTION_FIRE: &str = "fire";
 pub const LOG_ACTION_TRIGGER: &str = "trigger";
 pub const LOG_ACTION_INSTALL: &str = "install";
 pub const LOG_ACTION_UNINSTALL: &str = "uninstall";

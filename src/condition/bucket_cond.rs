@@ -46,38 +46,35 @@ impl ExecutionBucket {
     }
 
     /// Return `true` if the condition name is in the bucket
-    pub fn has_condition(&self, name: &str) -> Result<bool> {
-        Ok(self
-            .execution_list
+    pub fn has_condition(&self, name: &str) -> bool {
+        self.execution_list
             .clone()
             .lock()
-            .contains(&String::from(name)))
+            .contains(&String::from(name))
     }
 
     /// Try to insert the condition in the bucket, return `false` if the name
     /// is already present, in which case the condition is not inserted
-    pub fn insert_condition(&self, name: &str) -> Result<bool> {
-        if !self.has_condition(name)? {
-            Ok(self
-                .execution_list
+    pub fn insert_condition(&self, name: &str) -> bool {
+        if !self.has_condition(name) {
+            self.execution_list
                 .clone()
                 .lock()
-                .insert(String::from(name)))
+                .insert(String::from(name))
         } else {
-            Ok(false)
+            false
         }
     }
 
     /// Remove a condition if present and return `true`, `false` if not present
-    pub fn remove_condition(&self, name: &str) -> Result<bool> {
-        if self.has_condition(name)? {
-            Ok(self
-                .execution_list
+    pub fn remove_condition(&self, name: &str) -> bool {
+        if self.has_condition(name) {
+            self.execution_list
                 .clone()
                 .lock()
-                .remove(&String::from(name)))
+                .remove(&String::from(name))
         } else {
-            Ok(false)
+            false
         }
     }
 
@@ -582,8 +579,8 @@ impl Condition for BucketCondition {
         );
         if let Some(bucket) = self.execution_bucket {
             let name = self.get_name();
-            if bucket.has_condition(&name)? {
-                bucket.remove_condition(&name)?;
+            if bucket.has_condition(&name) {
+                bucket.remove_condition(&name);
                 self.log(
                     LogType::Debug,
                     LOG_WHEN_END,

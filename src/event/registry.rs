@@ -44,14 +44,9 @@ fn generate_event_id() -> i64 {
 /// instance of the process, and should have `'static` lifetime. It may be
 /// passed around as a reference for events.
 pub struct EventRegistry {
-    // the entire map is synchronized in order to avoid concurrent access
-    events: Arc<Mutex<HashMap<String, EventRef>>>,
-
-    // the triggerable list is kept separate because the triggerable
-    // attribute is actually a constant that can be retrieved at startup
-    // and we do not want to be blocked while directly asking an active
-    // event on its ability to be manually triggered
-    triggerable_events: RwLock<HashMap<String, bool>>,
+    // the maps are synchronized in order to avoid concurrent access
+    external_events: RwLock<HashMap<String, EventRef>>,
+    triggerable_events: RwLock<HashMap<String, EventRef>>,
 
     // the channel over which a request to stop the listener can be sent
     listener_quit_messenger: Arc<Mutex<Option<futures::channel::mpsc::Sender<()>>>>,
@@ -65,7 +60,7 @@ impl EventRegistry {
     /// Create a new, empty `EventRegistry`
     pub fn new() -> Self {
         EventRegistry {
-            events: Arc::new(Mutex::new(HashMap::new())),
+            external_events: RwLock::new(HashMap::new()),
             triggerable_events: RwLock::new(HashMap::new()),
             listener_quit_messenger: Arc::new(Mutex::new(None)),
             listener_handle: Arc::new(Mutex::new(None)),
@@ -89,7 +84,7 @@ impl EventRegistry {
         async fn next_event(registry: Arc<Mutex<&EventRegistry>>) -> TriggeredOrQuitMessage {
             let r0 = registry.clone();
             let r0 = r0.lock();
-            let el0 = r0.events.clone();
+            let mut el0 = r0.external_events.write();
             drop(r0);
 
             // WARNING: the event list is acquired and locked here, this means
@@ -100,7 +95,6 @@ impl EventRegistry {
             // also, check that the list of futures is not empty (which would
             // cause a panic), and if empty return None as data, which is just
             // a no-op in the event poller
-            let mut el0 = el0.lock();
             if el0.is_empty() {
                 TriggeredOrQuitMessage::Triggered(Ok(None))
             } else {
@@ -153,8 +147,8 @@ impl EventRegistry {
         let handle = thread::spawn(move || {
             let r0 = registry.clone();
             let r0 = r0.lock();
-            let el0 = r0.events.clone();
-            let mut el0 = el0.lock();
+            let mut el0 = r0.external_events.write();
+            drop(r0);
 
             for (name, event) in el0.iter_mut() {
                 if !event.initial_setup()? {
@@ -180,7 +174,6 @@ impl EventRegistry {
                 }
             }
             drop(el0);
-            drop(r0);
 
             log(
                 LogType::Trace,
@@ -285,8 +278,7 @@ impl EventRegistry {
 
             let r0 = registry.clone();
             let r0 = r0.lock();
-            let el0 = r0.events.clone();
-            let mut el0 = el0.lock();
+            let mut el0 = r0.external_events.write();
 
             for (name, event) in el0.iter_mut() {
                 if !event.final_cleanup()? {
@@ -402,7 +394,28 @@ impl EventRegistry {
     ///
     /// * name - the name of the event to check for registration.
     pub fn has_event(&self, name: &str) -> bool {
-        self.events.clone().lock().contains_key(name)
+        self.external_events.read().contains_key(name)
+            || self.triggerable_events.read().contains_key(name)
+    }
+
+    /// Check whether or not an external event with the provided name
+    /// is in the registry
+    ///
+    /// # Arguments
+    ///
+    /// * name - the name of the event to check for.
+    pub fn has_event_external(&self, name: &str) -> bool {
+        self.external_events.read().contains_key(name)
+    }
+
+    /// Check whether or not a triggerable event with the provided name
+    /// is in the registry
+    ///
+    /// # Arguments
+    ///
+    /// * name - the name of the event to check for.
+    pub fn has_event_triggerable(&self, name: &str) -> bool {
+        self.triggerable_events.read().contains_key(name)
     }
 
     /// Check whether or not the provided event is in the registry
@@ -413,10 +426,15 @@ impl EventRegistry {
     pub fn has_event_eq(&self, event: &dyn Event) -> bool {
         let name = event.get_name();
         if self.has_event(name.as_str()) {
-            let el0 = self.events.clone();
-            let el0 = el0.lock();
-            let found_event = el0.get(name.as_str()).unwrap();
-            found_event.eq(event)
+            if event.triggerable() {
+                let el0 = self.triggerable_events.read();
+                let found_event = el0.get(name.as_str()).unwrap();
+                found_event.eq(event)
+            } else {
+                let el0 = self.external_events.read();
+                let found_event = el0.get(name.as_str()).unwrap();
+                found_event.eq(event)
+            }
         } else {
             false
         }
@@ -453,10 +471,11 @@ impl EventRegistry {
         // only consume an ID if the event is not discarded, otherwise the
         // released event would be safe to use even when not registered
         event_ref.set_id(generate_event_id());
-        self.triggerable_events
-            .write()
-            .insert(name.clone(), event_ref.triggerable());
-        self.events.clone().lock().insert(name, event_ref);
+        if event_ref.triggerable() {
+            self.triggerable_events.write().insert(name, event_ref);
+        } else {
+            self.external_events.write().insert(name, event_ref);
+        }
         true
     }
 
@@ -484,13 +503,26 @@ impl EventRegistry {
     /// * `Ok(Event)` - the removed (_pulled out_) `Event` on success.
     pub fn remove_event(&self, name: &str) -> Result<Option<EventRef>> {
         if self.has_event(name) {
-            match self.events.clone().lock().remove(name) {
-                Some(e) => {
-                    let mut event = e;
-                    event.set_id(0);
-                    Ok(Some(event))
+            if self.external_events.read().contains_key(name) {
+                match self.external_events.write().remove(name) {
+                    Some(e) => {
+                        let mut event = e;
+                        event.set_id(0);
+                        Ok(Some(event))
+                    }
+                    _ => Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_REMOVE_EVENT)),
                 }
-                _ => Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_REMOVE_EVENT)),
+            } else if self.triggerable_events.read().contains_key(name) {
+                match self.triggerable_events.write().remove(name) {
+                    Some(e) => {
+                        let mut event = e;
+                        event.set_id(0);
+                        Ok(Some(event))
+                    }
+                    _ => Err(Error::new(Kind::Failed, ERR_EVENTREG_CANNOT_REMOVE_EVENT)),
+                }
+            } else {
+                unreachable!()
             }
         } else {
             Ok(None)
@@ -500,49 +532,67 @@ impl EventRegistry {
     /// Return a vector containing the names of all the events that have been
     /// registered, as `String` elements.
     pub fn event_names(&self) -> Option<Vec<String>> {
-        let mut res = Vec::new();
-
-        for name in self.events.clone().lock().keys() {
-            res.push(name.clone())
-        }
-        if res.is_empty() { None } else { Some(res) }
+        let mut names: Vec<String> = self
+            .external_events
+            .read()
+            .keys()
+            .into_iter()
+            .map(|k| k.to_string())
+            .collect();
+        names.extend(
+            self.triggerable_events
+                .read()
+                .keys()
+                .into_iter()
+                .map(|k| k.to_string())
+                .collect::<Vec<_>>(),
+        );
+        if names.is_empty() { None } else { Some(names) }
     }
 
     /// Return the id of the specified event
     pub fn event_id(&self, name: &str) -> Option<i64> {
-        if self.has_event(name) {
-            let el0 = self.events.clone();
-            let el0 = el0.lock();
-            let event = el0.get(name).expect("cannot retrieve event");
-            let id = event.get_id();
-            Some(id)
+        if self.external_events.read().contains_key(name) {
+            Some(self.external_events.read().get(name).unwrap().get_id())
+        } else if self.triggerable_events.read().contains_key(name) {
+            Some(self.triggerable_events.read().get(name).unwrap().get_id())
         } else {
             None
         }
     }
 
-    /// Tell whether or not an event is triggerable, `None` if event not found
-    pub fn event_triggerable(&self, name: &str) -> Option<bool> {
-        self.triggerable_events.read().get(name).map(|v| *v)
+    /// Return the id of the specified external event
+    fn event_id_external(&self, name: &str) -> Option<i64> {
+        if self.external_events.read().contains_key(name) {
+            Some(self.external_events.read().get(name).unwrap().get_id())
+        } else {
+            None
+        }
     }
 
-    /// If the event can be manually triggered, store it into the list of
-    /// triggered events.
+    /// Return the id of the specified triggerable event
+    fn event_id_triggerable(&self, name: &str) -> Option<i64> {
+        if self.triggerable_events.read().contains_key(name) {
+            Some(self.triggerable_events.read().get(name).unwrap().get_id())
+        } else {
+            None
+        }
+    }
+
+    /// If the event can be manually triggered, fire its condition.
     ///
     /// # Panics
     ///
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn trigger_event(&self, name: &str) -> bool {
-        assert!(self.has_event(name), "event {name} not in registry");
         assert!(
-            self.event_triggerable(name).unwrap(),
-            "event {name} cannot be manually triggered",
+            self.has_event_triggerable(name),
+            "event {name} is not a manually triggerable event",
         );
 
-        let id = self.event_id(name).unwrap();
-        let el0 = self.events.clone();
-        let el0 = el0.lock();
+        let id = self.event_id_triggerable(name).unwrap();
+        let el0 = self.triggerable_events.read();
         let event = el0.get(name).expect("cannot retrieve event for activation");
 
         log(
@@ -556,66 +606,7 @@ impl EventRegistry {
         );
 
         // all checks have passed and the following cannot panic
-        event.trigger()
-    }
-
-    /// Fire the condition associated to the named event.
-    ///
-    /// This version calls in turn the events `fire_condition()` method, but
-    /// has the advantage of being implemented on an object that has a
-    /// `'static` lifetime.
-    ///
-    /// # Panics
-    ///
-    /// When the event it is called upon is not registered: in no way this
-    /// should be called for unregistered events.
-    fn fire_condition_for(&self, name: &str) -> Result<()> {
-        assert!(self.has_event(name), "event {name} not in registry");
-
-        // what follows just *reads* the registry: the event is retrieved
-        // and the corresponding structure is operated in a way that mutates
-        // only its inner state, and not the wrapping pointer
-        let id = self.event_id(name).unwrap();
-        let el0 = self.events.clone();
-        let el0 = el0.lock();
-        let event = el0.get(name).expect("cannot retrieve event for activation");
-
-        if let Ok(res) = event.fire_condition() {
-            if res {
-                log(
-                    LogType::Trace,
-                    LOG_EMITTER_EVENT_REGISTRY,
-                    LOG_ACTION_FIRE,
-                    Some((name, id)),
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_OK,
-                    &format!("condition for event {name} fired"),
-                );
-            } else {
-                log(
-                    LogType::Trace,
-                    LOG_EMITTER_EVENT_REGISTRY,
-                    LOG_ACTION_FIRE,
-                    Some((name, id)),
-                    LOG_WHEN_PROC,
-                    LOG_STATUS_FAIL,
-                    &format!("condition for event {name} could not fire"),
-                );
-            }
-        } else {
-            log(
-                LogType::Debug,
-                LOG_EMITTER_EVENT_REGISTRY,
-                LOG_ACTION_FIRE,
-                Some((name, id)),
-                LOG_WHEN_PROC,
-                LOG_STATUS_FAIL,
-                &format!("condition for event {name} failed to fire"),
-            );
-        }
-
-        // possible failures have been logged
-        Ok(())
+        event.fire_condition()
     }
 }
 
