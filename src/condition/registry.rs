@@ -7,9 +7,9 @@
 //! active until it is _registered_. A registered condition has an unique
 //! nonzero ID.
 
-use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
+use parking_lot::{Mutex, RwLock};
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
@@ -280,7 +280,7 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry.
-    pub fn reset_condition(&self, name: &str, wait: bool) -> Result<bool> {
+    pub fn reset_condition(&self, name: &str, wait: bool) -> Result<()> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && !self.condition_is_free(name) {
@@ -297,7 +297,8 @@ impl ConditionRegistry {
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
             let mut cond = cond.lock();
-            cond.reset()
+            cond.reset();
+            Ok(())
         }
     }
 
@@ -334,7 +335,7 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry.
-    pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<bool> {
+    pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<()> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && !self.condition_is_free(name) {
@@ -353,7 +354,8 @@ impl ConditionRegistry {
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
             let mut cond = cond.lock();
-            cond.suspend()
+            cond.suspend();
+            Ok(())
         }
     }
 
@@ -390,7 +392,7 @@ impl ConditionRegistry {
     ///
     /// This function panics when called upon a name that does not exist in
     /// the registry.
-    pub fn resume_condition(&self, name: &str, wait: bool) -> Result<bool> {
+    pub fn resume_condition(&self, name: &str, wait: bool) -> Result<()> {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
@@ -414,7 +416,8 @@ impl ConditionRegistry {
             // when we acquire the lock, we can safely reset the condition right
             // here and return the operation result from the condition itself
             let mut cond = cond.lock();
-            cond.resume()
+            cond.resume();
+            Ok(())
         }
     }
 
@@ -437,29 +440,8 @@ impl ConditionRegistry {
         })
     }
 
-    /// Check whether a condition is busy
-    ///
-    /// This function allows to test whether or not a condition is in a busy
-    /// state at the moment of invocation. The synchronization system is
-    /// exploited for this purpose and the result is not 100% reliable, as
-    /// the condition could change its state immediately after the function
-    /// has exited. However it is almost sure that this will not happen, as
-    /// conditions are scheduled at discrete intervals and the purpose of this
-    /// method is actually to help decide whether or not to rerun the `tick`
-    /// operation.
-    ///
-    /// # Panics
-    ///
-    /// This function panics when called upon a name that does not exist in
-    /// the registry.
-    pub fn condition_busy(&self, name: &str) -> bool {
-        assert!(self.has_condition(name), "condition {name} not in registry");
-
-        !self.condition_is_free(name)
-    }
-
-    /// Check whether the condition can be locked (private use only)
-    fn condition_is_free(&self, name: &str) -> bool {
+    /// Check whether the condition is free
+    pub fn condition_is_free(&self, name: &str) -> bool {
         assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
@@ -481,11 +463,10 @@ impl ConditionRegistry {
     /// Report the number of busy conditions
     ///
     /// Report an unsigned integer corresponding to how many conditions are
-    /// busy at the time of invocation: when the result is `Ok(Some(0))` there
-    /// are no active condition tests and no active tasks.
-    pub fn conditions_busy(&self) -> Result<Option<u64>> {
-        let res: u64 = *self.conditions_busy.clone().lock();
-        Ok(Some(res))
+    /// busy at the time of invocation: when the result is 0 there are no
+    /// active condition tests and no active tasks.
+    pub fn conditions_busy(&self) -> u64 {
+        *self.conditions_busy.clone().lock()
     }
 
     /// Perform a condition test and run associated tasks if successful
@@ -583,30 +564,19 @@ impl ConditionRegistry {
                 // these messages are at Info/Warn level because in other places (main) the
                 // caller emits a visible log message when resetting or queuing a condition
                 // for reset, and the actual reset is not logged when queued
-                if cond.reset().is_ok() {
-                    log(
-                        LogType::Info,
-                        LOG_EMITTER_CONDITION_REGISTRY,
-                        LOG_ACTION_RESET_CONDITIONS,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_OK,
-                        &format!("condition {name} successfully reset"),
-                    );
-                    // since it has been reset we can remove it from the queue
-                    let i = queue.iter().position(|x| *x == sname).unwrap();
-                    queue.swap_remove(i);
-                } else {
-                    log(
-                        LogType::Warn,
-                        LOG_EMITTER_CONDITION_REGISTRY,
-                        LOG_ACTION_RESET_CONDITIONS,
-                        None,
-                        LOG_WHEN_PROC,
-                        LOG_STATUS_FAIL,
-                        &format!("condition {name} could not be reset"),
-                    );
-                }
+                cond.reset();
+                log(
+                    LogType::Info,
+                    LOG_EMITTER_CONDITION_REGISTRY,
+                    LOG_ACTION_RESET_CONDITIONS,
+                    None,
+                    LOG_WHEN_PROC,
+                    LOG_STATUS_OK,
+                    &format!("condition {name} has been reset"),
+                );
+                // since it has been reset we can remove it from the queue
+                let i = queue.iter().position(|x| *x == sname).unwrap();
+                queue.swap_remove(i);
             }
             drop(queue);
             drop(mxq0);
@@ -616,7 +586,7 @@ impl ConditionRegistry {
             if queue.contains(&sname) {
                 // since suspend too is an action that can be requested through a frontend,
                 // also making suspend outcomes visible is coherent, thus Info/Warn level
-                if cond.suspend().is_ok() {
+                if cond.suspend() {
                     log(
                         LogType::Info,
                         LOG_EMITTER_CONDITION_REGISTRY,
@@ -624,20 +594,20 @@ impl ConditionRegistry {
                         None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_OK,
-                        &format!("condition {name} successfully suspended"),
+                        &format!("condition {name} has been suspended"),
                     );
                     // since it has been suspended we can remove it from the queue
                     let i = queue.iter().position(|x| *x == sname).unwrap();
                     queue.swap_remove(i);
                 } else {
                     log(
-                        LogType::Warn,
+                        LogType::Info,
                         LOG_EMITTER_CONDITION_REGISTRY,
                         LOG_ACTION_SUSPEND_CONDITION,
                         None,
                         LOG_WHEN_PROC,
                         LOG_STATUS_FAIL,
-                        &format!("condition {name} could not be suspended"),
+                        &format!("condition {name} already suspended"),
                     );
                 }
             }

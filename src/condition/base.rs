@@ -97,19 +97,19 @@ pub trait Condition: Send {
     fn startup_time(&self) -> Option<Instant>;
 
     /// Set the internal _checked_ state to `true`
-    fn set_checked(&mut self) -> Result<bool>;
+    fn set_checked(&mut self);
 
     /// Set the internal _succeeded_ state to `true`
-    fn set_succeeded(&mut self) -> Result<bool>;
+    fn set_succeeded(&mut self);
 
     /// Set the internal _succeeded_ state to `false`
-    fn reset_succeeded(&mut self) -> Result<bool>;
+    fn reset_succeeded(&mut self);
 
     /// Fully reset internal state of the condition
-    fn reset(&mut self) -> Result<bool>;
+    fn reset(&mut self);
 
     /// Return how many times the tasks can be retried, `None` means forever
-    fn left_retries(&self) -> Option<i64>;
+    fn left_retries(&self) -> Option<u64>;
 
     /// Consume a retry
     fn set_retried(&mut self);
@@ -124,20 +124,20 @@ pub trait Condition: Send {
     }
 
     /// Set the startup time to `Instant::now()`
-    fn start(&mut self) -> Result<bool>;
+    fn start(&mut self);
 
     /// Set the internal _suspended_ state to `true`
-    fn suspend(&mut self) -> Result<bool>;
+    fn suspend(&mut self) -> bool;
 
     /// Set the internal _suspended_ state to `false`
-    fn resume(&mut self) -> Result<bool>;
+    fn resume(&mut self) -> bool;
 
     /// Get a list of task names as owned strings
-    fn task_names(&self) -> Result<Vec<String>>;
+    fn task_names(&self) -> Vec<String>;
 
     /// Check whether or not there are associated tasks
-    fn has_tasks(&self) -> Result<bool> {
-        Ok(!self.task_names()?.is_empty())
+    fn has_tasks(&self) -> bool {
+        !self.task_names().is_empty()
     }
 
     /// Check whether any tasks failed in the last run
@@ -153,15 +153,15 @@ pub trait Condition: Send {
     /// This function can be used only once after a check: it resets the
     /// internal _succeeded_ status for next call. May return an error if
     /// it wasn't possible to reset the internal _succeeded_ status.
-    fn verify(&mut self) -> Result<bool> {
+    fn verify(&mut self) -> bool {
         if let Some(tc) = self.last_checked()
             && let Some(ts) = self.last_succeeded()
         {
             let res = ts == tc;
-            self.reset_succeeded()?;
-            return Ok(res);
+            self.reset_succeeded();
+            return res;
         }
-        Ok(false)
+        false
     }
 
     /// Mandatory check function
@@ -182,10 +182,10 @@ pub trait Condition: Send {
     fn _check_condition(&mut self) -> Result<Option<bool>>;
 
     /// Mandatory to add task names: should return `Ok(true)` on success
-    fn _add_task(&mut self, name: &str) -> Result<bool>;
+    fn _add_task(&mut self, name: &str) -> bool;
 
     /// Mandatory to remove task names: should return `Ok(true)` on success
-    fn _remove_task(&mut self, name: &str) -> Result<bool>;
+    fn _remove_task(&mut self, name: &str) -> bool;
 
     /// Log a message in the specific `Condition` format
     ///
@@ -243,7 +243,7 @@ pub trait Condition: Send {
         // bail out if the condition has no associated tasks, if it
         // is suspended, or if it has been successful once and is not
         // set to be recurrent, and check otherwise
-        if !self.has_tasks().unwrap_or(false) {
+        if !self.has_tasks() {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
@@ -276,15 +276,7 @@ pub trait Condition: Send {
             );
             Ok(None)
         } else {
-            if !self.reset_succeeded()? {
-                self.log(
-                    LogType::Error,
-                    LOG_WHEN_END,
-                    LOG_STATUS_FAIL,
-                    "aborting: condition could not reset success status",
-                );
-                return Err(Error::new(Kind::Failed, ERR_COND_CANNOT_RESET));
-            }
+            self.reset_succeeded();
             self.log(
                 LogType::Trace,
                 LOG_WHEN_PROC,
@@ -293,51 +285,33 @@ pub trait Condition: Send {
             );
 
             // call the inner mandatory checker
-            if self.set_checked()? {
-                if let Some(outcome) = self._check_condition()? {
-                    if outcome {
-                        if self.set_succeeded()? {
-                            self.log(
-                                LogType::Debug,
-                                LOG_WHEN_END,
-                                LOG_STATUS_OK,
-                                "success: condition checked with positive outcome",
-                            );
-                        } else {
-                            self.log(
-                                LogType::Error,
-                                LOG_WHEN_END,
-                                LOG_STATUS_FAIL,
-                                "aborting: condition could not be set to succeeded",
-                            );
-                            return Err(Error::new(Kind::Failed, ERR_COND_CANNOT_SET_SUCCESS));
-                        }
-                    } else {
-                        self.log(
-                            LogType::Debug,
-                            LOG_WHEN_END,
-                            LOG_STATUS_OK,
-                            "failure: condition checked with negative outcome",
-                        );
-                    }
-                    Ok(Some(outcome))
+            self.set_checked();
+            if let Some(outcome) = self._check_condition()? {
+                if outcome {
+                    self.set_succeeded();
+                    self.log(
+                        LogType::Debug,
+                        LOG_WHEN_END,
+                        LOG_STATUS_OK,
+                        "success: condition checked with positive outcome",
+                    );
                 } else {
                     self.log(
-                        LogType::Warn,
+                        LogType::Debug,
                         LOG_WHEN_END,
-                        LOG_STATUS_FAIL,
-                        "exiting: condition provided NO outcome",
+                        LOG_STATUS_OK,
+                        "failure: condition checked with negative outcome",
                     );
-                    Ok(None)
                 }
+                Ok(Some(outcome))
             } else {
                 self.log(
-                    LogType::Error,
+                    LogType::Warn,
                     LOG_WHEN_END,
                     LOG_STATUS_FAIL,
-                    "aborting: condition could not be set to checked",
+                    "exiting: condition provided NO outcome",
                 );
-                Err(Error::new(Kind::Failed, ERR_COND_CANNOT_SET_CHECKED))
+                Ok(None)
             }
         }
     }
@@ -383,8 +357,8 @@ pub trait Condition: Send {
         }
 
         // actually try to add the task
-        let outcome = self._add_task(name)?;
-        if outcome {
+        let outcome = self._add_task(name);
+        if self._add_task(name) {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
@@ -410,7 +384,7 @@ pub trait Condition: Send {
     /// removed, any other return value indicates a failure.
     fn remove_task(&mut self, name: &str) -> Result<bool> {
         // actually try to remove the task
-        let outcome = self._remove_task(name)?;
+        let outcome = self._remove_task(name);
         if outcome {
             self.log(
                 LogType::Debug,
@@ -458,7 +432,7 @@ pub trait Condition: Send {
 
         let registry = self.task_registry().unwrap();
         let mut s_task_names = String::new();
-        let names = self.task_names()?;
+        let names = self.task_names();
 
         if !names.is_empty() {
             for name in names.clone().iter() {

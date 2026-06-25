@@ -5,11 +5,11 @@
 //! Implements the event registry which is created as the static repository of
 //! all the events that are listened for in the main program.
 
-use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
+use parking_lot::{Mutex, RwLock};
 
 use futures;
 use futures::SinkExt;

@@ -667,7 +667,7 @@ impl DbusMethodCondition {
 
         // start the condition if the configuration did not suspend it
         if !new_condition.suspended {
-            new_condition.start()?;
+            new_condition.start();
         }
 
         Ok(new_condition)
@@ -1029,37 +1029,33 @@ impl Condition for DbusMethodCondition {
         self.startup_time
     }
 
-    fn set_checked(&mut self) -> Result<bool> {
+    fn set_checked(&mut self) {
         self.last_tested = Some(Instant::now());
-        Ok(true)
     }
 
-    fn set_succeeded(&mut self) -> Result<bool> {
+    fn set_succeeded(&mut self) {
         self.last_succeeded = self.last_tested;
         self.has_succeeded = true;
-        Ok(true)
     }
 
-    fn reset_succeeded(&mut self) -> Result<bool> {
+    fn reset_succeeded(&mut self) {
         self.last_succeeded = None;
         self.has_succeeded = false;
-        Ok(true)
     }
 
-    fn reset(&mut self) -> Result<bool> {
+    fn reset(&mut self) {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
         self.left_retries = self.max_retries + 1;
         self.tasks_failed = true;
-        Ok(true)
     }
 
-    fn left_retries(&self) -> Option<i64> {
-        if self.max_retries == -1 {
+    fn left_retries(&self) -> Option<u64> {
+        if self.max_retries < 0 {
             None
         } else {
-            Some(self.left_retries)
+            Some(self.left_retries as u64)
         }
     }
 
@@ -1069,7 +1065,7 @@ impl Condition for DbusMethodCondition {
         }
     }
 
-    fn start(&mut self) -> Result<bool> {
+    fn start(&mut self) {
         self.suspended = false;
         self.left_retries = self.max_retries + 1;
         self.startup_time = Some(Instant::now());
@@ -1078,29 +1074,28 @@ impl Condition for DbusMethodCondition {
         // and this is equivalent to a failure; the flag was set to `false`
         // upon creation in order to have a zero-initialization
         self.tasks_failed = true;
-        Ok(true)
     }
 
-    fn suspend(&mut self) -> Result<bool> {
+    fn suspend(&mut self) -> bool {
         if self.suspended {
-            Ok(false)
+            false
         } else {
             self.suspended = true;
-            Ok(true)
+            true
         }
     }
 
-    fn resume(&mut self) -> Result<bool> {
+    fn resume(&mut self) -> bool {
         if self.suspended {
             self.suspended = false;
-            Ok(true)
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 
-    fn task_names(&self) -> Result<Vec<String>> {
-        Ok(self.task_names.clone())
+    fn task_names(&self) -> Vec<String> {
+        self.task_names.clone()
     }
 
     fn any_tasks_failed(&self) -> bool {
@@ -1111,24 +1106,24 @@ impl Condition for DbusMethodCondition {
         self.tasks_failed = failed;
     }
 
-    fn _add_task(&mut self, name: &str) -> Result<bool> {
+    fn _add_task(&mut self, name: &str) -> bool {
         let name = String::from(name);
         if self.task_names.contains(&name) {
-            Ok(false)
+            false
         } else {
             self.task_names.push(name);
-            Ok(true)
+            true
         }
     }
 
-    fn _remove_task(&mut self, name: &str) -> Result<bool> {
+    fn _remove_task(&mut self, name: &str) -> bool {
         let name = String::from(name);
         if self.task_names.contains(&name) {
             self.task_names
                 .remove(self.task_names.iter().position(|x| x == &name).unwrap());
-            Ok(true)
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 

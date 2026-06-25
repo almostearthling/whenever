@@ -99,31 +99,29 @@ fn check_single_instance(instance: &SingleInstance) -> Result<()> {
 // threads as there are conditions to check, so that the short-running ones can
 // finish and get out of the way to allow execution of subsequent ticks; within
 // the new thread the tick might wait for a random duration,
-fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
+fn sched_tick(rand_millis_range: Option<u64>) -> bool {
     // log whether or not there are any busy conditions
-    let busy_conds = CONDITION_REGISTRY.conditions_busy()?;
-    if let Some(busy_conds) = busy_conds {
-        if busy_conds > 0 {
-            log(
-                LogType::Trace,
-                LOG_EMITTER_MAIN,
-                LOG_ACTION_SCHEDULER_TICK,
-                None,
-                LOG_WHEN_BUSY,
-                LOG_STATUS_YES,
-                &format!("busy conditions reported (total: {busy_conds})"),
-            );
-        } else {
-            log(
-                LogType::Trace,
-                LOG_EMITTER_MAIN,
-                LOG_ACTION_SCHEDULER_TICK,
-                None,
-                LOG_WHEN_BUSY,
-                LOG_STATUS_NO,
-                "no busy conditions present (total: 0)",
-            );
-        }
+    let busy_conds = CONDITION_REGISTRY.conditions_busy();
+    if busy_conds > 0 {
+        log(
+            LogType::Trace,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_SCHEDULER_TICK,
+            None,
+            LOG_WHEN_BUSY,
+            LOG_STATUS_YES,
+            &format!("busy conditions reported (total: {busy_conds})"),
+        );
+    } else {
+        log(
+            LogType::Trace,
+            LOG_EMITTER_MAIN,
+            LOG_ACTION_SCHEDULER_TICK,
+            None,
+            LOG_WHEN_BUSY,
+            LOG_STATUS_NO,
+            "no busy conditions present (total: 0)",
+        );
     }
 
     // skip if application has been intentionally paused
@@ -137,7 +135,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
             LOG_STATUS_MSG,
             "application is paused: tick skipped",
         );
-        return Ok(false);
+        return false;
     }
     // also skip if application has been paused for reconfiguration
     if *APPLICATION_IS_RECONFIGURING.read() {
@@ -150,13 +148,13 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
             LOG_STATUS_MSG,
             "application is reconfiguring: tick skipped",
         );
-        return Ok(false);
+        return false;
     }
 
     if let Some(names) = CONDITION_REGISTRY.condition_names() {
         for name in names {
             // go away if condition is busy
-            if CONDITION_REGISTRY.condition_busy(&name) {
+            if !CONDITION_REGISTRY.condition_is_free(&name) {
                 log(
                     LogType::Debug,
                     LOG_EMITTER_MAIN,
@@ -236,7 +234,7 @@ fn sched_tick(rand_millis_range: Option<u64>) -> Result<bool> {
             });
         }
     }
-    Ok(true)
+    true
 }
 
 // this is similar to my usual exiterror
@@ -259,7 +257,7 @@ macro_rules! exit_if_fails {
 }
 
 // reset the conditions whose names are provided in a vector of &str
-fn reset_conditions(names: &[String]) -> Result<bool> {
+fn reset_conditions(names: &[String]) -> bool {
     let mut outcome = true;
     for name in names {
         if !CONDITION_REGISTRY.has_condition(name) {
@@ -323,11 +321,11 @@ fn reset_conditions(names: &[String]) -> Result<bool> {
         }
     }
 
-    Ok(outcome)
+    outcome
 }
 
 // set the suspended state for a condition identified by its name
-fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
+fn set_suspended_condition(name: &str, suspended: bool) {
     if !CONDITION_REGISTRY.has_condition(name) {
         log(
             LogType::Error,
@@ -391,61 +389,40 @@ fn set_suspended_condition(name: &str, suspended: bool) -> Result<bool> {
             // the resume case is different, because in most cases the
             // condition is suspended and can be directly resumed, while if
             // not an error is returned and logged
-            match CONDITION_REGISTRY.resume_condition(name, true) {
-                Ok(res) => {
-                    if res {
-                        // we also want to reset the condition after it has
-                        // been resumed, otherwise conditions based upon time
-                        // intervals might fire immediately; reset will always
-                        // succeed, so this construct to build the right log
-                        // message is only here for consistency
-                        let info =
-                            if let Ok(res_rst) = CONDITION_REGISTRY.reset_condition(name, true) {
-                                if res_rst {
-                                    "resumed and reset"
-                                } else {
-                                    "resumed"
-                                }
-                            } else {
-                                "resumed"
-                            };
-                        log(
-                            LogType::Info,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_RESUME_CONDITION,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_OK,
-                            &format!("condition {name} has been {info}"),
-                        );
+            if let Err(e) = CONDITION_REGISTRY.resume_condition(name, true) {
+                log(
+                    LogType::Error,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_RESUME_CONDITION,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_FAIL,
+                    &format!("error while resuming condition {name}: {e}"),
+                );
+            } else {
+                // we also want to reset the condition after it has
+                // been resumed, otherwise conditions based upon time
+                // intervals might fire immediately; reset will always
+                // succeed, so this construct to build the right log
+                // message is only here for consistency
+                let info =
+                    if CONDITION_REGISTRY.reset_condition(name, true).is_ok() {
+                        "resumed and reset"
                     } else {
-                        log(
-                            LogType::Warn,
-                            LOG_EMITTER_MAIN,
-                            LOG_ACTION_RESUME_CONDITION,
-                            None,
-                            LOG_WHEN_END,
-                            LOG_STATUS_FAIL,
-                            &format!("condition {name} was not suspended"),
-                        );
-                    }
-                }
-                Err(e) => {
-                    log(
-                        LogType::Error,
-                        LOG_EMITTER_MAIN,
-                        LOG_ACTION_RESUME_CONDITION,
-                        None,
-                        LOG_WHEN_END,
-                        LOG_STATUS_FAIL,
-                        &format!("error while resuming condition {name}: {e}"),
-                    );
-                }
+                        "resumed"
+                    };
+                log(
+                    LogType::Info,
+                    LOG_EMITTER_MAIN,
+                    LOG_ACTION_RESUME_CONDITION,
+                    None,
+                    LOG_WHEN_END,
+                    LOG_STATUS_OK,
+                    &format!("condition {name} has been {info}"),
+                );
             }
         }
     }
-
-    Ok(true)
 }
 
 // attempt to reconfigure the application using the provided config file name
@@ -846,7 +823,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                     // same considerations as above
                     let arg = args[0].to_string();
                     thread::spawn(move || {
-                        let _ = set_suspended_condition(&arg, true);
+                        set_suspended_condition(&arg, true);
                     });
                     Ok(true)
                 }
@@ -878,7 +855,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                     // condition is freed and the command can be executed
                     let arg = args[0].to_string();
                     thread::spawn(move || {
-                        let _ = set_suspended_condition(&arg, false);
+                        set_suspended_condition(&arg, false);
                     });
                     Ok(true)
                 }
@@ -974,7 +951,7 @@ pub fn run_command(line: &str) -> Result<bool> {
 // the following is a separate thread that reads stdin and interprets commands
 // passed to the application through it: it is the only thread that reads
 // from the standard input, therefore no explicit synchronization
-fn command_loop() -> Result<bool> {
+fn command_loop() {
     let mut buffer = String::new();
     let rest_time = Duration::from_millis(MAIN_STDIN_READ_WAIT_MILLISECONDS);
     let mut handle = STDIN.lock();
@@ -987,8 +964,6 @@ fn command_loop() -> Result<bool> {
         buffer.clear();
         thread::sleep(rest_time);
     }
-
-    Ok(true)
 }
 
 // argument parsing and command execution: doc comments are used by clap
@@ -1228,7 +1203,7 @@ fn main() {
     // add a thread for stdin interpreter (no args function thus no closure)
     // this thread can be abruptly killed without worrying, so it is not added
     // to the threads to wait for before leaving
-    let _ = thread::spawn(command_loop);
+    thread::spawn(command_loop);
 
     // shortcut to spawn a tick in the background
     fn spawn_tick(rand_millis_range: Option<u64>) {
@@ -1288,12 +1263,8 @@ fn main() {
                 // wait for all currently running conditions to finish their
                 // tick: during this time no `sched.run_pending();` is run, to
                 // ensure that no new tests or tasks are initiated again
-                while let Some(c) = CONDITION_REGISTRY.conditions_busy().unwrap() {
-                    if c > 0 {
-                        thread::sleep(free_pending);
-                    } else {
-                        break;
-                    }
+                while CONDITION_REGISTRY.conditions_busy() > 0 {
+                    thread::sleep(free_pending);
                 }
 
                 // stop the event listener

@@ -39,7 +39,6 @@ async-trait = "0.1"
 system-idle-time = "1.0"
 parking_lot = "0.12"
 bstr = "1.12"
-# minreq = { version = "2.14", features = ["https-native"], optional = true }
 minreq = { version = "3.0", features = ["https-native-tls"], optional = true }
 
 [target.'cfg(windows)'.dependencies]

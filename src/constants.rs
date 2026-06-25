@@ -47,9 +47,6 @@ pub const ERR_EVENTREG_EVENT_NOT_ADDED: &str = "could not add event to the regis
 pub const ERR_EVENTREG_CANNOT_REMOVE_EVENT: &str = "could not remove event from the registry";
 pub const ERR_EVENTREG_CANNOT_STOP_LISTENER: &str = "could not shut down the event listener";
 
-pub const ERR_COND_CANNOT_RESET: &str = "condition could not reset status";
-pub const ERR_COND_CANNOT_SET_SUCCESS: &str = "condition could not set success status";
-pub const ERR_COND_CANNOT_SET_CHECKED: &str = "condition could not set checked status";
 pub const ERR_COND_TASK_NOT_ADDED: &str = "condition could not add task";
 
 pub const ERR_EVENT_INVALID_COND_TYPE: &str = "invalid condition type for assignment to event";
