@@ -951,7 +951,7 @@ impl Condition for TimeCondition {
         self.has_succeeded = false;
     }
 
-    fn reset(&mut self){
+    fn reset(&mut self) {
         self.last_tested = None;
         self.last_succeeded = None;
         self.has_succeeded = false;
@@ -1041,7 +1041,10 @@ impl Condition for TimeCondition {
     /// time has passed since last successful check (which may be the initial
     /// check only if not recurring), the outcome is successful.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-        assert!(self.tick_duration > 0, "tick seconds must be greater than zero");
+        assert!(
+            self.tick_duration > 0,
+            "tick seconds must be greater than zero",
+        );
 
         let dt = Local::now();
         self.log(

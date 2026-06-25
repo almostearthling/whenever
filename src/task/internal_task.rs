@@ -7,8 +7,8 @@
 //! or, for instance, to pause itself so that only the user intervention can
 //! wake it up (once paused, a `resume` command cannot be run unattended).
 
-use std::hash::{DefaultHasher, Hash, Hasher};
 use parking_lot::Mutex;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::SystemTime;
 
 use cfgmap::CfgMap;
@@ -17,7 +17,7 @@ use lazy_static::lazy_static;
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
 use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Result, Kind};
+use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
@@ -133,14 +133,15 @@ impl InternalTask {
 
         // tags are always simply checked this way as no value is needed
         let cur_key = "tags";
-        if let Some(item) = cfgmap.get(cur_key) 
-            && !item.is_list() && !item.is_map() {
-                return Err(cfg_err_invalid_config(
-                    cur_key,
-                    STR_UNKNOWN_VALUE,
-                    ERR_INVALID_PARAMETER,
-                ));
-            
+        if let Some(item) = cfgmap.get(cur_key)
+            && !item.is_list()
+            && !item.is_map()
+        {
+            return Err(cfg_err_invalid_config(
+                cur_key,
+                STR_UNKNOWN_VALUE,
+                ERR_INVALID_PARAMETER,
+            ));
         }
 
         // specific optional parameter initialization
@@ -235,7 +236,7 @@ impl Task for InternalTask {
         let duration = SystemTime::now()
             .duration_since(startup_time)
             .map_err(|e| Error::new(Kind::Failed, &e.to_string()))?;
-        
+
         if let Ok(r) = res {
             if r {
                 self.log(

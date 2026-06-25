@@ -7,9 +7,9 @@
 //! active until it is _registered_. A registered condition has an unique
 //! nonzero ID.
 
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::{Mutex, RwLock};
 
 use lazy_static::lazy_static;
 use unique_id::Generator;
@@ -427,7 +427,7 @@ impl ConditionRegistry {
     /// been registered, as `String` elements.
     pub fn condition_names(&self) -> Option<Vec<String>> {
         let l0 = self.condition_list.read();
-        let names: Vec<String> = l0.keys().into_iter().map(|k| k.to_string()).collect();
+        let names: Vec<String> = l0.keys().map(|k| k.to_string()).collect();
         if names.is_empty() { None } else { Some(names) }
     }
 

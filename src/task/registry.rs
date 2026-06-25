@@ -259,7 +259,7 @@ impl TaskRegistry {
     /// registered, as `String` elements.
     pub fn task_names(&self) -> Option<Vec<String>> {
         let l0 = self.task_list.read();
-        let names: Vec<String> = l0.keys().into_iter().map(|k| k.to_string()).collect();
+        let names: Vec<String> = l0.keys().map(|k| k.to_string()).collect();
         if names.is_empty() { None } else { Some(names) }
     }
 
