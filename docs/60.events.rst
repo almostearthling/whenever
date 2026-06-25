@@ -24,7 +24,7 @@ specific one, can therefore notify **whenever** that a specific event took place
 user explicitly required to trigger it from the available user interface. This type of event is
 the simplest one to define, as it has no criteria to be specified.
 
-Note that if an event arises more that once within the tick interval, it is automatically
+Note that if an event arises more than once within the tick interval, it is automatically
 *debounced* and a single occurrence is counted.
 
 All *event* definition sections must start with the TOML ``[[event]]`` header.
@@ -287,8 +287,15 @@ and the details of the configuration entries are described in the table below:
      - N/A
      - the name of the associated *event* based condition (mandatory)
 
-No listening service is installed, so the impact on resource consumption and performance is almost
-unnoticeable.
+This type of event is directly handled by the main program, and is not caught by the event
+listener.
+
+.. tip::
+    This type of event might seem of little or no use. In fact, for instance, `When`_ itself does
+    not implement or exploit it. However, in case a frontend is made available for a particular
+    platform, that is able to react to signals that are not directly handled by **whenever**,
+    it can trigger specific events directly in order to exploit **whenever** as a context where
+    tasks are executed consistently.
 
 
 .. _When: https://github.com/almostearthling/when-command
