@@ -358,7 +358,7 @@ pub trait Condition: Send {
 
         // actually try to add the task
         let outcome = self._add_task(name);
-        if self._add_task(name) {
+        if outcome {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
