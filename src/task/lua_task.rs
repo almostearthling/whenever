@@ -605,22 +605,15 @@ impl Task for LuaTask {
                 mlua::Lua::unsafe_new_with(mlua::StdLib::ALL, mlua::LuaOptions::new())
             }
             #[cfg(not(feature = "lua_unsafe"))]
-            {
-                let l = mlua::Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::new());
-                if let Err(e) = l {
-                    self.log(
-                        LogType::Debug,
-                        LOG_WHEN_START,
-                        LOG_STATUS_FAIL,
-                        &format!("(trigger: {trigger_name}) cannot start Lua interpreter ({e})"),
-                    );
-                    return Err(Error::new(
-                        Kind::Failed,
-                        &format!("cannot start Lua interpreter ({e})"),
-                    ));
-                }
-                l.unwrap()
-            }
+            mlua::Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::new()).map_err(|e| {
+                self.log(
+                    LogType::Debug,
+                    LOG_WHEN_START,
+                    LOG_STATUS_FAIL,
+                    &format!("(trigger: {trigger_name}) cannot start Lua interpreter ({e})"),
+                );
+                Error::new(Kind::Failed, &format!("cannot start Lua interpreter ({e})"))
+            })?
         };
 
         self.log(
