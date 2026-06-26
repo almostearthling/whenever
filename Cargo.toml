@@ -53,15 +53,16 @@ winresource = "0.1"
 # 1. "dbus": enables DBus support, available on both Linux and Windows, but
 #    almost useless on Windows
 # 2. "wmi": enable WMI support, only available on Windows (ignored on Linux)
-# 3. "lua_extras": extra features for Lua script (see documentation)
-# 4. "lua_unsafe": compiles the unsafe Lua interpreter, which is able to load
+# 3. "lua_sync": synchronization features for Lua scripts (see docs)
+# 4. "lua_httpreq": simple HTTP(S) requests for Lua scripts (see docs)
+# 5. "lua_unsafe": compiles the unsafe Lua interpreter, which is able to load
 #    Lua C (binary) modules, is supported on both Linux and Windows, but it
 #    is still experimental
 #
 # the suggested configuration can be built using:
 #
-# - cargo build --release --features "linux_std"        (Linux)
-# - cargo build --release --features "windows_std"      (Windows)
+# - cargo build --release --features linux_std      (Linux)
+# - cargo build --release --features windows_std    (Windows)
 #
 # as the default configuration does not include any option.
 [features]
