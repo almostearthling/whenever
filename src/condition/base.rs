@@ -357,14 +357,14 @@ pub trait Condition: Send {
         }
 
         // actually try to add the task
-        let outcome = self._add_task(name);
-        if outcome {
+        Ok(if self._add_task(name) {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
                 LOG_STATUS_OK,
                 &format!("task {name} successfully added to condition"),
             );
+            true
         } else {
             self.log(
                 LogType::Error,
@@ -372,9 +372,8 @@ pub trait Condition: Send {
                 LOG_STATUS_FAIL,
                 &format!("could not add task {name} to condition"),
             );
-        }
-
-        Ok(outcome)
+            false
+        })
     }
 
     /// Remove a task from this `Condition`
@@ -384,14 +383,15 @@ pub trait Condition: Send {
     /// removed, any other return value indicates a failure.
     fn remove_task(&mut self, name: &str) -> Result<bool> {
         // actually try to remove the task
-        let outcome = self._remove_task(name);
-        if outcome {
+        // NOTE: this still returns a Result<bool> just for symmetry
+        Ok(if self._remove_task(name) {
             self.log(
                 LogType::Debug,
                 LOG_WHEN_PROC,
                 LOG_STATUS_OK,
                 &format!("task {name} successfully removed from condition"),
             );
+            true
         } else {
             self.log(
                 LogType::Error,
@@ -399,9 +399,8 @@ pub trait Condition: Send {
                 LOG_STATUS_FAIL,
                 &format!("could not remove task {name} from condition"),
             );
-        }
-
-        Ok(outcome)
+            false
+        })
     }
 
     /// Run the associated tasks

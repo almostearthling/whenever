@@ -84,12 +84,12 @@ pub trait Event: Send + Sync {
     ///
     /// When either the condition is not registered or the condition registry
     /// has not been set: each would indicate an error in the program flow.
-    fn assign_condition(&mut self, cond_name: &str) -> Result<bool> {
+    fn assign_condition(&mut self, cond_name: &str) -> Result<()> {
         if let Some(cond_registry) = self.condition_registry() {
             if let Some(s) = cond_registry.condition_type(cond_name) {
                 if s == "bucket" || s == "event" {
                     self._assign_condition(cond_name);
-                    Ok(true)
+                    Ok(())
                 } else {
                     Err(Error::new(Kind::Unsupported, ERR_EVENT_INVALID_COND_TYPE))
                 }
@@ -161,10 +161,8 @@ pub trait Event: Send + Sync {
 
     /// This function is a wrapper for the actual asynchronous event receiver:
     /// it returns the name of the event that triggered, mostly in order for
-    /// the registry to issue a log line, or None for non triggered events
-    /// This function is a wrapper for the actual asynchronous event receiver:
-    /// it returns the name of the event that triggered, mostly in order for
-    /// the registry to issue a log line, or None for non triggered events
+    /// the registry to issue a log line, or None for non triggered events; it
+    /// **must** be implemented for _external events_.
     async fn event_triggered(&mut self) -> Result<Option<String>> {
         self.fire_condition();
         Ok(Some(self.get_name()))

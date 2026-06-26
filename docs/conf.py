@@ -9,7 +9,7 @@
 project = "whenever"
 author = "Francesco Garosi"
 copyright = "2023-%Y, Francesco Garosi"
-release = "1.3.0"
+release = "1.3.1"
 
 html_logo = "graphics/metronome.png"
 

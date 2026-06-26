@@ -98,7 +98,7 @@ pub trait Task: Send {
         assert!(
             self.get_id() != 0,
             "task {} not registered",
-            self.get_name()
+            self.get_name(),
         );
 
         self.log(
