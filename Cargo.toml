@@ -66,8 +66,7 @@ winresource = "0.1"
 #
 # as the default configuration does not include any option.
 [features]
-default = []
-# default = ["wmi", "dbus", "lua_sync", "lua_httpreq"]
+default = ["check_std"]
 dbus = ["dep:zbus"]
 wmi = ["dep:wmi"]
 lua_sync = []
