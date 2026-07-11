@@ -55,7 +55,7 @@ lazy_static! {
     // single instance name
     static ref INSTANCE_GUID: String = format!(
         "{APP_NAME}-{}-{APP_GUID}",
-        { if let Ok(s) = username() { s } else { String::from(STR_UNKNOWN_VALUE) }},
+        username().unwrap_or(String::from(STR_UNKNOWN_VALUE)),
     );
 
     // set this if the application must exit
@@ -88,10 +88,10 @@ lazy_static! {
 // check whether an instance is already running, and return an error if so
 fn check_single_instance(instance: &SingleInstance) -> Result<()> {
     if !instance.is_single() {
-        return Err(Error::new(Kind::Forbidden, ERR_ALREADY_RUNNING));
+        Err(Error::new(Kind::Forbidden, ERR_ALREADY_RUNNING))
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
 
 // execute a (very basic but working) scheduler tick: the call to this function
@@ -1086,11 +1086,10 @@ fn main() {
     exit_if_fails!(args.quiet, check_single_instance(&instance));
 
     // now check that the config file name has been provided
-    if args.config.is_none() {
+    let config = args.config.unwrap_or_else(|| {
         eprintln!("{APP_NAME} error: configuration file not specified");
         std::process::exit(2);
-    }
-    let config = args.config.unwrap();
+    });
 
     // configure the logger
     let level = match args.log_level {
