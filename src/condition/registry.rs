@@ -166,17 +166,9 @@ impl ConditionRegistry {
         let busy = busy.lock();
         if *busy == 0 {
             if self.has_condition(&name) {
-                match self.remove_condition(&name) {
-                    Ok(_) => {
-                        return Ok(self.add_condition(cond_ref));
-                    }
-                    _ => {
-                        return Err(Error::new(Kind::Failed, ERR_CONDREG_CANNOT_PULL_COND));
-                    }
-                }
-            } else {
-                return Ok(self.add_condition(cond_ref));
+                self.remove_condition(&name)?;
             }
+            Ok(self.add_condition(cond_ref))
         } else {
             let queue = self.items_to_add.clone();
             let mut queue = queue.lock();
@@ -192,9 +184,8 @@ impl ConditionRegistry {
                     "registry busy: condition {name} set to be added when no conditions are busy",
                 ),
             );
+            Ok(true)
         }
-
-        Ok(true)
     }
 
     /// Remove a named condition from the list and give it back stored in a Box.

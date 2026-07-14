@@ -160,17 +160,9 @@ impl TaskRegistry {
         let sessions = sessions.lock();
         if *sessions == 0 {
             if self.has_task(&name) {
-                match self.remove_task(&name) {
-                    Ok(_) => {
-                        return Ok(self.add_task(task_ref));
-                    }
-                    _ => {
-                        return Err(Error::new(Kind::Failed, ERR_TASKREG_CANNOT_PULL_TASK));
-                    }
-                }
-            } else {
-                return Ok(self.add_task(task_ref));
+                self.remove_task(&name)?;
             }
+            Ok(self.add_task(task_ref))
         } else {
             let queue = self.items_to_add.clone();
             let mut queue = queue.lock();
@@ -184,9 +176,8 @@ impl TaskRegistry {
                 LOG_STATUS_OK,
                 &format!("registry busy: task {name} set to be added when no tasks are running"),
             );
+            Ok(true)
         }
-
-        Ok(true)
     }
 
     /// Remove a named task from the list and give it back stored in a Box.
@@ -313,7 +304,7 @@ impl TaskRegistry {
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
         assert!(
             self.has_all_tasks(names),
-            "some tasks not found in registry for condition `{trigger_name}`"
+            "some tasks not found in registry for condition `{trigger_name}`",
         );
 
         let mut res: HashMap<String, Result<Option<bool>>> = HashMap::new();
@@ -507,7 +498,7 @@ impl TaskRegistry {
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
         assert!(
             self.has_all_tasks(names),
-            "some tasks not found in registry for condition `{trigger_name}`"
+            "some tasks not found in registry for condition `{trigger_name}`",
         );
 
         // count the active running sessions: there can be more than a

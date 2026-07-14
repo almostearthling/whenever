@@ -237,7 +237,7 @@ pub trait Condition: Send {
         assert!(
             self.get_id() != 0,
             "condition {} not registered",
-            self.get_name()
+            self.get_name(),
         );
 
         // bail out if the condition has no associated tasks, if it
@@ -422,7 +422,7 @@ pub trait Condition: Send {
         assert!(
             self.get_id() != 0,
             "condition {} not registered",
-            self.get_name()
+            self.get_name(),
         );
         assert!(
             self.task_registry().is_some(),
