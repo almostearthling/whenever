@@ -960,16 +960,17 @@ impl Condition for LuaCondition {
         // decides whether or not to pollute the Lua environment also setting
         // the variables configured by the user
         if self.set_vars {
-            let _ = globals.set(LUAVAR_NAME_COND.as_str(), self.cond_name.to_string());
+            globals.set(LUAVAR_NAME_COND.as_str(), self.cond_name.to_string())?;
 
             for varname in self.variables.keys() {
                 if let Some(v) = self.variables.get(varname.as_str()) {
-                    let res = match v {
+                    if match v {
                         LuaValue::LuaBoolean(x) => globals.set(varname.as_str(), *x),
                         LuaValue::LuaNumber(x) => globals.set(varname.as_str(), *x),
                         LuaValue::LuaString(x) => globals.set(varname.as_str(), x.as_str()),
-                    };
-                    if res.is_err() {
+                    }
+                    .is_err()
+                    {
                         self.log(
                             LogType::Warn,
                             LOG_WHEN_START,
@@ -1351,7 +1352,7 @@ impl Condition for LuaCondition {
                             LogType::Debug,
                             LOG_WHEN_PROC,
                             LOG_STATUS_MSG,
-                            &format!("checking results: {}", &self.repr_checks()),
+                            &format!("checking results: {}", self.repr_checks()),
                         );
                         if self.expect_all {
                             failure_reason = FailureReason::NoFailure;

@@ -117,7 +117,7 @@ pub mod logging {
             "[{}] ({APP_NAME}) {} {}",
             now.format(NOW_FMT),
             format_args!("{:5}", record.level()),
-            &record.args(),
+            record.args(),
         )
     }
 
@@ -1672,7 +1672,7 @@ pub mod dbusitem {
                 // zvariant is able to directly compare values
                 zvariant::Value::Array(a) => {
                     let v = zvariant::Value::from(*self);
-                    a.iter().any(|x| v == *x)
+                    a.contains(&v)
                 }
                 _ => false,
             }
@@ -1870,11 +1870,8 @@ pub mod dbusitem {
         fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             let mut a: Vec<zvariant::Value> = Vec::new();
             for item in self.iter() {
-                if let Some(v) = item.to_variant() {
-                    a.push(v)
-                } else {
-                    return None;
-                }
+                let v = item.to_variant()?;
+                a.push(v);
             }
             Some(zvariant::Value::new(a))
         }
@@ -1888,11 +1885,8 @@ pub mod dbusitem {
         fn to_variant(&self) -> Option<zvariant::Value<'_>> {
             let mut d: HashMap<String, zvariant::Value> = HashMap::new();
             for (key, item) in self.iter() {
-                if let Some(v) = item.to_variant() {
-                    d.insert(key.clone(), v);
-                } else {
-                    return None;
-                }
+                let v = item.to_variant()?;
+                d.insert(key.clone(), v);
             }
             Some(zvariant::Value::new(d))
         }
@@ -1922,15 +1916,8 @@ pub mod dbusitem {
                 let map = self.as_map().unwrap();
                 let mut h: HashMap<String, zvariant::Value> = HashMap::new();
                 for key in map.keys() {
-                    if let Some(value) = map.get(key) {
-                        if let Some(v) = value.to_variant() {
-                            h.insert(key.clone(), v);
-                        } else {
-                            return None;
-                        }
-                    } else {
-                        return None;
-                    }
+                    let v = map.get(key)?.to_variant()?;
+                    h.insert(key.clone(), v);
                 }
                 Some(zvariant::Value::new(h))
             } else {
@@ -3125,9 +3112,9 @@ pub mod wres {
     impl fmt::Display for Error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             if self.origin != Origin::Native {
-                write!(f, "{} ({}): {}", &self.kind, &self.origin, &self.message)
+                write!(f, "{} ({}): {}", self.kind, self.origin, self.message)
             } else {
-                write!(f, "{}: {}", &self.kind, &self.message)
+                write!(f, "{}: {}", self.kind, self.message)
             }
         }
     }
