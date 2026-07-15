@@ -11,6 +11,11 @@ is running, it only needs to be initialized and provided the script that, in tur
 loaded at startup. Tasks (or checks) that would last even seconds, can be performed in a small
 fraction of the time.
 
+.. note::
+  The default *Lua* interpreter is *Lua v5.4*: this is intentional, as this version can be
+  considered stable and well supported. However the interpreter version can be changed at build
+  time by modifying the ``"lua54"`` entry in *Cargo.toml*.
+
 The embedded interpreter makes the standard *Lua* library available for scripts, which includes:
 
 * string manipulation
@@ -306,7 +311,7 @@ script from within **whenever**: for more complex needs, external commands can b
 anyway.
 
 .. note::
-  The *http* module is only available when the ``lua_httpreq`` feature is enabled; however, 
+  The *http* module is only available when the ``lua_httpreq`` feature is enabled; however,
   both the standard configurations and the provided binaries come with the feature enabled.
 
 

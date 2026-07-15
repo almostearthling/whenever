@@ -8,38 +8,41 @@ authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 repository = "https://github.com/almostearthling/whenever/"
 edition = "2024"
 
+
 [dependencies]
-time = "0.3"
+async-std = "1.12"
+async-trait = "0.1"
+bstr = "1.12"
+cfgmap = { version = "0.4", features = ["from_toml"] }
 chrono = "0.4"
+clap = { version = "4.1", features = ["derive"] }
+clokwerk = "0.4"
+ctrlc = { version = "3.5", features = ["termination"] }
+flexi_logger = "0.31"
+futures = "0.3"
+itertools = "0.15"
+lazy_static = "1.5"
+listenfd = "1.0"
+log = "0.4"
+minreq = { version = "3.0", features = ["https-native-tls"], optional = true }
+nu-ansi-term = "0.50"
+notify = "8.1"
+parking_lot = "0.12"
 rand = "0.10"
 regex = "1.7"
-log = "0.4"
-flexi_logger = "0.31"
-nu-ansi-term = "0.50"
-clokwerk = "0.4"
-listenfd = "1.0"
-toml = "1.0"
 serde = "1.0"
-lazy_static = "1.5"
-subprocess = "1.1"
-ctrlc = { version = "3.5", features = ["termination"] }
-cfgmap = { version = "0.4", features = ["from_toml", "from_json"] }
-clap = { version = "4.1", features = ["derive"] }
-mlua = { version = "0.12", features = ["lua54", "vendored"] }
-unique_id = "0.1"
 serde_json = "1.0"
 single-instance = "0.3"
-notify = "8.1"
-async-std = "1.12"
-zbus = { version = "5.17", optional = true }
-whoami = "2.1"
-itertools = "0.15"
-futures = "0.3"
-async-trait = "0.1"
+subprocess = "1.1"
 system-idle-time = "1.0"
-parking_lot = "0.12"
-bstr = "1.12"
-minreq = { version = "3.0", features = ["https-native-tls"], optional = true }
+time = "0.3"
+toml = "1.0"
+unique_id = "0.1"
+whoami = "2.1"
+zbus = { version = "5.17", optional = true }
+
+# the "lua54" feature can be modified to use a different Lua version
+mlua = { version = "0.12", features = ["lua54", "vendored"] }
 
 [target.'cfg(windows)'.dependencies]
 wmi = { version = "0.18", optional = true }
@@ -65,6 +68,7 @@ winresource = "0.1"
 # - cargo build --release --features windows_std    (Windows)
 #
 # as the default configuration does not include any option.
+
 [features]
 default = []
 # default = ["check_std"]
@@ -80,10 +84,10 @@ check_std = ["wmi", "dbus", "lua_sync", "lua_httpreq"]
 
 # make the executable memory footprint as small as possible for release
 [profile.release]
-strip = true        # strip executable
-opt-level = "z"     # optimize for size
+strip = true    # strip executable
+opt-level = "z" # optimize for size
 lto = true
-panic = 'abort'     # remove garbage strings from executable
+panic = 'abort' # remove garbage strings from executable
 
 
 # end
