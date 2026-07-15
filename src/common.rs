@@ -6,8 +6,8 @@ pub mod cmditem {
     use std::time::{Duration, SystemTime};
     use subprocess::{Exec, ExitStatus};
 
-    use crate::utility::logging::LogType;
     use crate::constants::*;
+    use crate::utility::logging::LogType;
 
     /// In case of failure, the reason will be one of the provided values
     #[derive(Debug, PartialEq)]
@@ -909,8 +909,8 @@ pub mod luaitem {
     // implement synchronization utilities: sleep and named mutexes
     #[cfg(feature = "lua_sync")]
     pub mod sync {
-        use crate::utility::named_mutex::*;
         use crate::constants::*;
+        use crate::utility::named_mutex::*;
         use std::thread;
         use std::time::Duration;
 
@@ -952,10 +952,10 @@ pub mod luaitem {
     // simple HTTP request functonality
     #[cfg(feature = "lua_httpreq")]
     pub mod httpreq {
-        use std::collections::HashMap;
         use bstr::BStr;
         use minreq;
         use mlua::IntoLua;
+        use std::collections::HashMap;
 
         use crate::constants::*;
 
@@ -1133,8 +1133,8 @@ pub mod luaitem {
 #[cfg(feature = "dbus")]
 #[allow(dead_code)]
 pub mod dbusitem {
-    use crate::utility::logging::LogType;
     use crate::constants::*;
+    use crate::utility::logging::LogType;
     use cfgmap::CfgValue;
     use regex::Regex;
     use std::collections::HashMap;
@@ -2351,8 +2351,8 @@ pub mod dbusitem {
 #[cfg(feature = "wmi")]
 #[allow(dead_code)]
 pub mod wmiitem {
-    use crate::utility::logging::LogType;
     use crate::constants::*;
+    use crate::utility::logging::LogType;
     use regex::Regex;
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};

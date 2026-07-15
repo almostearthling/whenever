@@ -23,9 +23,9 @@ mod task;
 
 mod cfghelp;
 mod common;
-mod utility;
 mod config;
 mod constants;
+mod utility;
 
 // bring the registries in scope
 use condition::registry::ConditionRegistry;
@@ -35,10 +35,10 @@ use task::registry::TaskRegistry;
 use condition::bucket_cond::ExecutionBucket;
 use task::internal_task::set_command_runner;
 
-use utility::result::{Error, Kind, Result};
-use utility::logging::{LogType, init as log_init, log};
 use config::*;
 use constants::*;
+use utility::logging::{LogType, init as log_init, log};
+use utility::result::{Error, Kind, Result};
 
 lazy_static! {
     // the global task registry: all conditions will be associated to this
@@ -205,7 +205,9 @@ fn sched_tick(rand_millis_range: Option<u64>) -> bool {
                                     None,
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_MSG,
-                                    &format!("condition {name} tested (tasks executed unsuccessfully)"),
+                                    &format!(
+                                        "condition {name} tested (tasks executed unsuccessfully)"
+                                    ),
                                 );
                             }
                         }
@@ -406,12 +408,11 @@ fn set_suspended_condition(name: &str, suspended: bool) {
                 // intervals might fire immediately; reset will always
                 // succeed, so this construct to build the right log
                 // message is only here for consistency
-                let info =
-                    if CONDITION_REGISTRY.reset_condition(name, true).is_ok() {
-                        "resumed and reset"
-                    } else {
-                        "resumed"
-                    };
+                let info = if CONDITION_REGISTRY.reset_condition(name, true).is_ok() {
+                    "resumed and reset"
+                } else {
+                    "resumed"
+                };
                 log(
                     LogType::Info,
                     LOG_EMITTER_MAIN,
