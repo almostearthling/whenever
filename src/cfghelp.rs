@@ -8,7 +8,7 @@
 use cfgmap::CfgMap;
 use regex::Regex;
 
-use crate::common::wres::{Error, Kind, Result};
+use crate::utility::result::{Error, Kind, Result};
 use crate::constants::*;
 
 /// use this to specify that a configuration element is mandatory

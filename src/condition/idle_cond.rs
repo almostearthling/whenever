@@ -12,8 +12,8 @@ use cfgmap::CfgMap;
 use system_idle_time::get_idle_time;
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
-use crate::common::wres::Result;
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 

@@ -16,8 +16,8 @@ use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
 use super::base::{Condition, ConditionRef};
-use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Kind, Result};
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::{Error, Kind, Result};
 use crate::constants::*;
 
 // module-wide values

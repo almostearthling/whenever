@@ -23,8 +23,8 @@
 
 use std::time::Instant;
 
-use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Kind, Result};
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::{Error, Kind, Result};
 
 use crate::constants::*;
 use crate::task::registry::TaskRegistry;

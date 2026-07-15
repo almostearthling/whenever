@@ -16,8 +16,8 @@ use lazy_static::lazy_static;
 
 // we implement the Task trait here in order to enqueue tasks
 use super::base::Task;
-use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Kind, Result};
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;

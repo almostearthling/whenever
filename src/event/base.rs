@@ -15,8 +15,8 @@
 
 use async_trait::async_trait;
 
-use crate::common::logging::{LogType, log};
-use crate::common::wres::{Error, Kind, Result};
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;

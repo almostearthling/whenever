@@ -22,9 +22,9 @@ use std::collections::HashMap;
 use wmi::{Variant, WMIConnection};
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
+use crate::utility::logging::{LogType, log};
 use crate::common::wmiitem::*;
-use crate::common::wres::Result;
+use crate::utility::result::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 

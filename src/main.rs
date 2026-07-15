@@ -23,6 +23,7 @@ mod task;
 
 mod cfghelp;
 mod common;
+mod utility;
 mod config;
 mod constants;
 
@@ -34,8 +35,8 @@ use task::registry::TaskRegistry;
 use condition::bucket_cond::ExecutionBucket;
 use task::internal_task::set_command_runner;
 
-use crate::common::wres::{Error, Kind, Result};
-use common::logging::{LogType, init as log_init, log};
+use utility::result::{Error, Kind, Result};
+use utility::logging::{LogType, init as log_init, log};
 use config::*;
 use constants::*;
 

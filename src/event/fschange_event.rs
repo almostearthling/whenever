@@ -20,8 +20,8 @@ use cfgmap::CfgMap;
 use notify::{self, Watcher};
 
 use super::base::Event;
-use crate::common::logging::{LogType, log};
-use crate::common::wres::Result;
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::Result;
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};

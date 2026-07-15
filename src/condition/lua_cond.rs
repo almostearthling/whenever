@@ -18,9 +18,9 @@ use cfgmap::CfgMap;
 use mlua;
 
 use super::base::Condition;
-use crate::common::logging::{LogType, log};
+use crate::utility::logging::{LogType, log};
 use crate::common::luaitem::*;
-use crate::common::wres::{Error, Kind, Result};
+use crate::utility::result::{Error, Kind, Result};
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
