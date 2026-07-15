@@ -9,12 +9,6 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::SystemTime;
 
-#[cfg(feature = "lua_sync")]
-use std::time::Duration;
-
-#[cfg(feature = "lua_sync")]
-use std::thread;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -31,12 +25,6 @@ use crate::common::wres::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
-
-#[cfg(feature = "lua_sync")]
-use crate::common::named_mutex::*;
-
-#[cfg(feature = "lua_httpreq")]
-use crate::common::lua_httpreq;
 
 /// _Lua_ script Based Task
 ///
@@ -721,41 +709,23 @@ impl Task for LuaTask {
         // the following features are optional
         #[cfg(feature = "lua_sync")]
         {
+            // this `use` is preferred for readability
+            use crate::common::luaitem;
+
             // create synchronization functions in a table
             let syncftab = lua.create_table()?;
 
             let _ = syncftab.set(
                 "sleep",
-                lua.create_function(move |_, secs: f64| {
-                    let ms = (secs * 1000.0).round() as i64;
-                    let ms = if ms < 0 { 0 } else { ms } as u64;
-                    thread::sleep(Duration::from_millis(ms));
-                    Ok(())
-                })?,
+                lua.create_function(|_, secs: f64| { luaitem::sync::sleep(secs) })?,
             );
 
             // for no particular reason we enforce the mutex name to carry an
             // identifier-like name, otherwise an error is thrown
             let _ = syncftab.set(
                 "lock",
-                lua.create_function(move |_, (name, timeout): (String, Option<f64>)| {
-                    if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
-                        if let Some(ms) = timeout {
-                            let ms = (ms * 1000.0).round() as i64;
-                            if ms >= 0 {
-                                Ok(namedmutex_lock(
-                                    name.as_str(),
-                                    Some(Duration::from_millis(ms as u64)),
-                                ))
-                            } else {
-                                Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
-                            }
-                        } else {
-                            Ok(namedmutex_lock(name.as_str(), None))
-                        }
-                    } else {
-                        Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
-                    }
+                lua.create_function(|_, (name, timeout): (String, Option<f64>)| {
+                    luaitem::sync::lock(name, timeout)
                 })?,
             );
 
@@ -763,7 +733,7 @@ impl Task for LuaTask {
             // and the unlock will simply fail and return `false`
             let _ = syncftab.set(
                 "release",
-                lua.create_function(move |_, name: String| Ok(namedmutex_release(name.as_str())))?,
+                lua.create_function(|_, name: String| luaitem::sync::release(name))?,
             );
 
             // ...
@@ -811,28 +781,16 @@ impl Task for LuaTask {
 
         #[cfg(feature = "lua_httpreq")]
         {
+            // this `use` is preferred for readability
+            use crate::common::luaitem;
+
             // HTTP request capability
             let httpftab = lua.create_table()?;
 
             let _ = httpftab.set(
                 "get",
                 lua.create_function(|lua: &mlua::Lua, (url, headers): (String, mlua::Value)| {
-                    if headers.is_nil() {
-                        Ok(lua_httpreq::request_get(lua, url.as_str(), None)?)
-                    } else if headers.is_table() {
-                        let mut h: HashMap<String, String> = HashMap::new();
-                        for pair in headers
-                            .as_table()
-                            .unwrap()
-                            .pairs::<mlua::Value, mlua::Value>()
-                        {
-                            let (key, value) = pair?;
-                            h.insert(key.to_string()?, value.to_string()?);
-                        }
-                        Ok(lua_httpreq::request_get(lua, url.as_str(), Some(h))?)
-                    } else {
-                        Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
-                    }
+                    luaitem::httpreq::get(lua, url, headers)
                 })?,
             );
 
@@ -840,40 +798,7 @@ impl Task for LuaTask {
                 "post",
                 lua.create_function(
                     |lua: &mlua::Lua, (url, body, headers): (String, mlua::Value, mlua::Value)| {
-                        if headers.is_nil() {
-                            if body.is_nil() {
-                                Ok(lua_httpreq::request_post(lua, url.as_str(), None, None)?)
-                            } else {
-                                Ok(lua_httpreq::request_post(
-                                    lua,
-                                    url.as_str(),
-                                    Some(body.to_string()?.as_bytes()),
-                                    None,
-                                )?)
-                            }
-                        } else if headers.is_table() {
-                            let mut h: HashMap<String, String> = HashMap::new();
-                            for pair in headers
-                                .as_table()
-                                .unwrap()
-                                .pairs::<mlua::Value, mlua::Value>()
-                            {
-                                let (key, value) = pair?;
-                                h.insert(key.to_string()?, value.to_string()?);
-                            }
-                            if body.is_nil() {
-                                Ok(lua_httpreq::request_post(lua, url.as_str(), None, Some(h))?)
-                            } else {
-                                Ok(lua_httpreq::request_post(
-                                    lua,
-                                    url.as_str(),
-                                    Some(body.to_string()?.as_bytes()),
-                                    Some(h),
-                                )?)
-                            }
-                        } else {
-                            Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
-                        }
+                        luaitem::httpreq::post(lua, url, body, headers)
                     },
                 )?,
             );

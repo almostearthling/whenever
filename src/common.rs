@@ -1348,71 +1348,6 @@ pub mod named_mutex {
     }
 }
 
-/// Provide a simplified HTTP(S) request for Lua
-///
-/// The capability offered by this module can be added to a table so that it
-/// works as a preloaded module
-#[cfg(feature = "lua_httpreq")]
-#[allow(dead_code)]
-pub mod lua_httpreq {
-    use std::collections::HashMap;
-
-    use bstr::BStr;
-    use minreq;
-    use mlua::IntoLua;
-
-    use crate::constants::ERR_LUA_HTTPREQ_ERROR;
-
-    /// Perform a request using the GET method: parameters must be urlencoded
-    /// directly in the `url` argument
-    pub fn request_get(
-        lua: &mlua::Lua,
-        url: &str,
-        headers: Option<HashMap<String, String>>,
-    ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
-        let mut req = minreq::get(url);
-        if let Some(headers) = headers {
-            req = req.with_headers(headers);
-        }
-
-        let resp = req
-            .send()
-            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: {e}")))?;
-        Ok((
-            BStr::new(&resp.as_bytes()).into_lua(lua)?,
-            resp.status_code as i64,
-            lua.create_table_from(resp.headers)?,
-        ))
-    }
-
-    /// Perform a request using the POST method: parameters must be urlencoded
-    /// in the body, which is provided as a blob (reasonably a string)
-    pub fn request_post(
-        lua: &mlua::Lua,
-        url: &str,
-        body: Option<&[u8]>,
-        headers: Option<HashMap<String, String>>,
-    ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
-        let mut req = minreq::post(url);
-        if let Some(headers) = headers {
-            req = req.with_headers(headers);
-        }
-        if let Some(body) = body {
-            req = req.with_body(body);
-        }
-
-        let resp = req
-            .send()
-            .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: {e}")))?;
-
-        Ok((
-            BStr::new(&resp.as_bytes()).into_lua(lua)?,
-            resp.status_code as i64,
-            lua.create_table_from(resp.headers)?,
-        ))
-    }
-}
-
 #[allow(dead_code)]
 /// This module provides utilities for Lua based items
 pub mod luaitem {
@@ -1486,6 +1421,176 @@ pub mod luaitem {
 
     #[cfg(feature = "lua_sync")]
     pub use helper_sync::{LuaState, del_shared_state, get_shared_state, set_shared_state};
+
+    // implement synchronization utilities: sleep and named mutexes
+    #[cfg(feature = "lua_sync")]
+    pub mod sync {
+        use crate::common::named_mutex::*;
+        use crate::constants::*;
+        use std::thread;
+        use std::time::Duration;
+
+        /// Sleep for a number of seconds: can be fractional
+        pub fn sleep(secs: f64) -> mlua::Result<()> {
+            let ms = (secs * 1000.0).round() as i64;
+            let ms = if ms < 0 { 0 } else { ms } as u64;
+            thread::sleep(Duration::from_millis(ms));
+            Ok(())
+        }
+
+        /// Try to lock a named mutex possibly with a timeout
+        pub fn lock(name: String, timeout: Option<f64>) -> mlua::Result<bool> {
+            if RE_LUA_MUTEX_NAME.is_match(name.as_str()) {
+                if let Some(ms) = timeout {
+                    let ms = (ms * 1000.0).round() as i64;
+                    if ms >= 0 {
+                        Ok(namedmutex_lock(
+                            name.as_str(),
+                            Some(Duration::from_millis(ms as u64)),
+                        ))
+                    } else {
+                        Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
+                    }
+                } else {
+                    Ok(namedmutex_lock(name.as_str(), None))
+                }
+            } else {
+                Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
+            }
+        }
+
+        /// Release a locked named mutex
+        pub fn release(name: String) -> mlua::Result<bool> {
+            Ok(namedmutex_release(name.as_str()))
+        }
+    }
+
+    // simple HTTP request functonality
+    #[cfg(feature = "lua_httpreq")]
+    pub mod httpreq {
+        use std::collections::HashMap;
+        use bstr::BStr;
+        use minreq;
+        use mlua::IntoLua;
+
+        use crate::constants::*;
+
+        /// Perform a request using the GET method: parameters must be urlencoded
+        /// directly in the `url` argument
+        fn request_get(
+            lua: &mlua::Lua,
+            url: &str,
+            headers: Option<HashMap<String, String>>,
+        ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
+            let mut req = minreq::get(url);
+            if let Some(headers) = headers {
+                req = req.with_headers(headers);
+            }
+
+            let resp = req
+                .send()
+                .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: {e}")))?;
+            Ok((
+                BStr::new(&resp.as_bytes()).into_lua(lua)?,
+                resp.status_code as i64,
+                lua.create_table_from(resp.headers)?,
+            ))
+        }
+
+        /// Perform a request using the POST method: parameters must be urlencoded
+        /// in the body, which is provided as a blob (reasonably a string)
+        fn request_post(
+            lua: &mlua::Lua,
+            url: &str,
+            body: Option<&[u8]>,
+            headers: Option<HashMap<String, String>>,
+        ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
+            let mut req = minreq::post(url);
+            if let Some(headers) = headers {
+                req = req.with_headers(headers);
+            }
+            if let Some(body) = body {
+                req = req.with_body(body);
+            }
+
+            let resp = req
+                .send()
+                .map_err(|e| mlua::Error::runtime(format!("{ERR_LUA_HTTPREQ_ERROR}: {e}")))?;
+
+            Ok((
+                BStr::new(&resp.as_bytes()).into_lua(lua)?,
+                resp.status_code as i64,
+                lua.create_table_from(resp.headers)?,
+            ))
+        }
+
+        /// Lua specific HTTP GET utility
+        pub fn get(
+            lua: &mlua::Lua,
+            url: String,
+            headers: mlua::Value,
+        ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
+            if headers.is_nil() {
+                Ok(request_get(lua, url.as_str(), None)?)
+            } else if headers.is_table() {
+                let mut h: HashMap<String, String> = HashMap::new();
+                for pair in headers
+                    .as_table()
+                    .unwrap()
+                    .pairs::<mlua::Value, mlua::Value>()
+                {
+                    let (key, value) = pair?;
+                    h.insert(key.to_string()?, value.to_string()?);
+                }
+                Ok(request_get(lua, url.as_str(), Some(h))?)
+            } else {
+                Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
+            }
+        }
+
+        /// Lua specific HTTP POST utility
+        pub fn post(
+            lua: &mlua::Lua,
+            url: String,
+            body: mlua::Value,
+            headers: mlua::Value,
+        ) -> mlua::Result<(mlua::Value, i64, mlua::Table)> {
+            if headers.is_nil() {
+                if body.is_nil() {
+                    Ok(request_post(lua, url.as_str(), None, None)?)
+                } else {
+                    Ok(request_post(
+                        lua,
+                        url.as_str(),
+                        Some(body.to_string()?.as_bytes()),
+                        None,
+                    )?)
+                }
+            } else if headers.is_table() {
+                let mut h: HashMap<String, String> = HashMap::new();
+                for pair in headers
+                    .as_table()
+                    .unwrap()
+                    .pairs::<mlua::Value, mlua::Value>()
+                {
+                    let (key, value) = pair?;
+                    h.insert(key.to_string()?, value.to_string()?);
+                }
+                if body.is_nil() {
+                    Ok(request_post(lua, url.as_str(), None, Some(h))?)
+                } else {
+                    Ok(request_post(
+                        lua,
+                        url.as_str(),
+                        Some(body.to_string()?.as_bytes()),
+                        Some(h),
+                    )?)
+                }
+            } else {
+                Err(mlua::Error::runtime(ERR_LUA_INVALID_PARAMETER))
+            }
+        }
+    }
 
     /// The possible values to be checked from Lua
     #[derive(Debug, Clone)]
