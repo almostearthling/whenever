@@ -1218,26 +1218,25 @@ impl Condition for LuaCondition {
                 let mut state_updated = false;
                 if let Ok(table) = globals.get::<mlua::Table>(LUA_TABLE_STATE_PRIVATE) {
                     for pair in table.pairs::<mlua::Value, mlua::Value>() {
-                        if let Ok((name, value)) = pair {
-                            if let Ok(name) = lua.convert::<String>(name) {
-                                if RE_LUA_STATE_INDEX.is_match(name.as_str()) {
-                                    if let Ok(value) = lua.convert::<LuaValue>(value) {
-                                        self.log(
-                                            LogType::Trace,
-                                            LOG_WHEN_PROC,
-                                            LOG_STATUS_MSG,
-                                            &format!("private state entry with index `{name}` set to {value}"),
-                                        );
-                                        state.insert(name, value);
-                                        state_updated = true;
-                                    }
-                                } else {
-                                    save_error = true;
-                                    break;
-                                }
-                            } else {
-                                save_error = true;
-                                break;
+                        if pair.is_err() {
+                            save_error = true;
+                            break;
+                        }
+                        let (name, value) = pair.unwrap();
+                        if let Ok(name) = lua.convert::<String>(name)
+                            && RE_LUA_STATE_INDEX.is_match(name.as_str())
+                        {
+                            if let Ok(value) = lua.convert::<LuaValue>(value) {
+                                self.log(
+                                    LogType::Trace,
+                                    LOG_WHEN_PROC,
+                                    LOG_STATUS_MSG,
+                                    &format!(
+                                        "private state entry with index `{name}` set to {value}"
+                                    ),
+                                );
+                                state.insert(name, value);
+                                state_updated = true;
                             }
                         } else {
                             save_error = true;
@@ -1286,21 +1285,18 @@ impl Condition for LuaCondition {
                             failure_reason = FailureReason::NoFailure;
                             for (varname, value) in self.expected.iter() {
                                 if let Some(res) = match value {
-                                    LuaValue::LuaString(v) => {
-                                        let r: std::result::Result<String, mlua::Error> =
-                                            globals.get(varname.as_str());
-                                        if let Ok(r) = r { Some(r == *v) } else { None }
-                                    }
-                                    LuaValue::LuaNumber(v) => {
-                                        let r: std::result::Result<f64, mlua::Error> =
-                                            globals.get(varname.as_str());
-                                        if let Ok(r) = r { Some(r == *v) } else { None }
-                                    }
-                                    LuaValue::LuaBoolean(v) => {
-                                        let r: std::result::Result<bool, mlua::Error> =
-                                            globals.get(varname.as_str());
-                                        if let Ok(r) = r { Some(r == *v) } else { None }
-                                    }
+                                    LuaValue::LuaString(v) => globals
+                                        .get(varname.as_str())
+                                        .map(|x: String| Some(x == *v))
+                                        .unwrap_or(None),
+                                    LuaValue::LuaNumber(v) => globals
+                                        .get(varname.as_str())
+                                        .map(|x: f64| Some(x == *v))
+                                        .unwrap_or(None),
+                                    LuaValue::LuaBoolean(v) => globals
+                                        .get(varname.as_str())
+                                        .map(|x: bool| Some(x == *v))
+                                        .unwrap_or(None),
                                 } {
                                     if !res {
                                         self.log(
@@ -1330,35 +1326,30 @@ impl Condition for LuaCondition {
                         } else {
                             failure_reason = FailureReason::VariableMatch;
                             for (varname, value) in self.expected.iter() {
-                                if let Some(res) = match value {
-                                    LuaValue::LuaString(v) => {
-                                        let r: std::result::Result<String, mlua::Error> =
-                                            globals.get(varname.as_str());
-                                        if let Ok(r) = r { Some(r == *v) } else { None }
-                                    }
-                                    LuaValue::LuaNumber(v) => {
-                                        let r: std::result::Result<f64, mlua::Error> =
-                                            globals.get(varname.as_str());
-                                        if let Ok(r) = r { Some(r == *v) } else { None }
-                                    }
-                                    LuaValue::LuaBoolean(v) => {
-                                        let r: std::result::Result<bool, mlua::Error> =
-                                            globals.get(varname.as_str());
-                                        if let Ok(r) = r { Some(r == *v) } else { None }
-                                    }
+                                if match value {
+                                    LuaValue::LuaString(v) => globals
+                                        .get(varname.as_str())
+                                        .map(|x: String| x == *v)
+                                        .unwrap_or(false),
+                                    LuaValue::LuaNumber(v) => globals
+                                        .get(varname.as_str())
+                                        .map(|x: f64| x == *v)
+                                        .unwrap_or(false),
+                                    LuaValue::LuaBoolean(v) => globals
+                                        .get(varname.as_str())
+                                        .map(|x: bool| x == *v)
+                                        .unwrap_or(false),
                                 } {
-                                    if res {
-                                        self.log(
-                                            LogType::Debug,
-                                            LOG_WHEN_END,
-                                            LOG_STATUS_MSG,
-                                            &format!(
-                                                "result match on at least one variable ({varname}): success"
-                                            ),
-                                        );
-                                        failure_reason = FailureReason::NoFailure;
-                                        break;
-                                    }
+                                    self.log(
+                                        LogType::Debug,
+                                        LOG_WHEN_PROC,
+                                        LOG_STATUS_OK,
+                                        &format!(
+                                            "result match on at least one variable ({varname}): success"
+                                        ),
+                                    );
+                                    failure_reason = FailureReason::NoFailure;
+                                    break;
                                 }
                             }
                         }

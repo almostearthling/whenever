@@ -128,7 +128,7 @@ impl TaskRegistry {
     /// # Arguments
     ///
     /// * `task_ref` - an object implementing the `base::Task` trait, provided
-    ///  to the function as a `Box<dyn Task>` aka `TaskRef`
+    ///   to the function as a `Box<dyn Task>` aka `TaskRef`
     ///
     /// # Returns
     ///
