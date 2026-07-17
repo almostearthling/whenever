@@ -16,7 +16,7 @@ use crate::utility::result::Result;
 use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
-use crate::cfghelp::*;
+use crate::utility::cfghelp::*;
 
 /// Time Interval Based Condition
 ///

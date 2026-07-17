@@ -21,7 +21,6 @@ mod condition;
 mod event;
 mod task;
 
-mod cfghelp;
 mod common;
 mod config;
 mod constants;

@@ -22,7 +22,7 @@ use crate::event::base::Event;
 use crate::task;
 use crate::task::base::Task;
 
-use crate::cfghelp::*;
+use crate::utility::cfghelp::*;
 
 /// Check the configuration from a string
 pub fn check_configuration(config_file: &str) -> Result<()> {

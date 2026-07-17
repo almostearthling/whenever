@@ -26,7 +26,7 @@ use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
 
-use crate::cfghelp::*;
+use crate::utility::cfghelp::*;
 
 // default seconds to wayt between active polls: generally ignored
 const DEFAULT_FSCHANGE_POLL_SECONDS: u64 = 2;

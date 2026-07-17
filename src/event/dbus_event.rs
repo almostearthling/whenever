@@ -28,7 +28,7 @@ use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::{cfg_mandatory, constants::*};
 
-use crate::cfghelp::*;
+use crate::utility::cfghelp::*;
 
 // see the DBus specification
 const DBUS_MAX_NUMBER_OF_ARGUMENTS: i64 = 63;

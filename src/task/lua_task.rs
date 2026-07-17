@@ -24,7 +24,7 @@ use crate::common::luaitem::*;
 use crate::utility::result::{Error, Kind, Result};
 use crate::{cfg_mandatory, constants::*};
 
-use crate::cfghelp::*;
+use crate::utility::cfghelp::*;
 
 /// _Lua_ script Based Task
 ///
