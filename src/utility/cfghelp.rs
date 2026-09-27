@@ -75,16 +75,46 @@ pub fn cfg_check_keys(cfgmap: &CfgMap, check: &[&str]) -> Result<()> {
     Ok(())
 }
 
+
 /// get a value of type T
 fn cfg_value<T>(
     cfgmap: &CfgMap,
     key: &str,
     as_variant: impl Fn(&CfgValue) -> Option<T>,
 ) -> Result<Option<T>> {
+    // thanks Claude
     cfgmap.get(key).map_or(Ok(None), |item| {
         as_variant(item)
             .map(Some)
             .ok_or_else(|| cfg_err_invalid_config(key, STR_INVALID_TYPE, ERR_INVALID_PARAMETER))
+    })
+}
+
+/// get a vector of type T
+fn cfg_vec_value<T>(
+    cfgmap: &CfgMap,
+    key: &str,
+    as_variant: impl Fn(&CfgValue) -> Option<T>,
+) -> Result<Option<Vec<T>>> {
+    // thanks Claude
+    cfgmap.get(key).map_or(Ok(None), |item| {
+        if !item.is_list() {
+            return Err(cfg_err_invalid_config(
+                key,
+                STR_INVALID_TYPE,
+                ERR_INVALID_PARAMETER,
+            ));
+        }
+        item.as_list()
+            .unwrap()
+            .iter()
+            .map(|e| {
+                as_variant(e).ok_or_else(|| {
+                    cfg_err_invalid_config(key, STR_INVALID_TYPE, ERR_INVALID_PARAMETER_LIST)
+                })
+            })
+            .collect::<Result<Vec<T>>>()
+            .map(Some)
     })
 }
 
@@ -253,58 +283,12 @@ pub fn cfg_string_check_regex(cfgmap: &CfgMap, key: &str, check: &Regex) -> Resu
 
 /// get a list of booleans
 pub fn cfg_vec_bool(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<bool>>> {
-    if let Some(item) = cfgmap.get(key) {
-        if !item.is_list() {
-            return Err(cfg_err_invalid_config(
-                key,
-                STR_INVALID_TYPE,
-                ERR_INVALID_PARAMETER,
-            ));
-        }
-        let mut v: Vec<bool> = Vec::new();
-        for elem in item.as_list().unwrap() {
-            if !elem.is_bool() {
-                return Err(cfg_err_invalid_config(
-                    key,
-                    STR_INVALID_TYPE,
-                    ERR_INVALID_PARAMETER_LIST,
-                ));
-            } else {
-                v.push(*elem.as_bool().unwrap());
-            }
-        }
-        Ok(Some(v))
-    } else {
-        Ok(None)
-    }
+    cfg_vec_value(cfgmap, key, |v| v.as_bool().copied())
 }
 
 /// get a list of integers
 pub fn cfg_vec_int(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<i64>>> {
-    if let Some(item) = cfgmap.get(key) {
-        if !item.is_list() {
-            return Err(cfg_err_invalid_config(
-                key,
-                STR_INVALID_TYPE,
-                ERR_INVALID_PARAMETER,
-            ));
-        }
-        let mut v: Vec<i64> = Vec::new();
-        for elem in item.as_list().unwrap() {
-            if !elem.is_int() {
-                return Err(cfg_err_invalid_config(
-                    key,
-                    STR_INVALID_TYPE,
-                    ERR_INVALID_PARAMETER_LIST,
-                ));
-            } else {
-                v.push(*elem.as_int().unwrap());
-            }
-        }
-        Ok(Some(v))
-    } else {
-        Ok(None)
-    }
+    cfg_vec_value(cfgmap, key, |v| v.as_int().copied())
 }
 
 /// get a list of integers checking all of them with provided closure
@@ -356,30 +340,7 @@ pub fn cfg_vec_int_check_eq(cfgmap: &CfgMap, key: &str, a: i64) -> Result<Option
 
 /// get a list of floats
 pub fn cfg_vec_float(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<f64>>> {
-    if let Some(item) = cfgmap.get(key) {
-        if !item.is_list() {
-            return Err(cfg_err_invalid_config(
-                key,
-                STR_INVALID_TYPE,
-                ERR_INVALID_PARAMETER,
-            ));
-        }
-        let mut v: Vec<f64> = Vec::new();
-        for elem in item.as_list().unwrap() {
-            if !elem.is_float() {
-                return Err(cfg_err_invalid_config(
-                    key,
-                    STR_INVALID_TYPE,
-                    ERR_INVALID_PARAMETER_LIST,
-                ));
-            } else {
-                v.push(*elem.as_float().unwrap());
-            }
-        }
-        Ok(Some(v))
-    } else {
-        Ok(None)
-    }
+    cfg_vec_value(cfgmap, key, |v| v.as_float().copied())
 }
 
 /// get a list of floats checking all of them with provided closure
@@ -439,30 +400,8 @@ pub fn cfg_vec_float_check_eq(cfgmap: &CfgMap, key: &str, a: f64) -> Result<Opti
 
 /// get a list of strings
 pub fn cfg_vec_string(cfgmap: &CfgMap, key: &str) -> Result<Option<Vec<String>>> {
-    if let Some(item) = cfgmap.get(key) {
-        if !item.is_list() {
-            return Err(cfg_err_invalid_config(
-                key,
-                STR_INVALID_TYPE,
-                ERR_INVALID_PARAMETER,
-            ));
-        }
-        let mut v: Vec<String> = Vec::new();
-        for elem in item.as_list().unwrap() {
-            if !elem.is_str() {
-                return Err(cfg_err_invalid_config(
-                    key,
-                    STR_INVALID_TYPE,
-                    ERR_INVALID_PARAMETER_LIST,
-                ));
-            } else {
-                v.push(String::from(elem.as_str().unwrap()));
-            }
-        }
-        Ok(Some(v))
-    } else {
-        Ok(None)
-    }
+    // this one is different because String is not Copy (same as non Vec)
+    cfg_vec_value(cfgmap, key, |v| v.as_str().map(|s| s.to_owned()))
 }
 
 /// get a list of strings checking all of them with provided closure
