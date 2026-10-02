@@ -174,7 +174,7 @@ pub fn init(
     // https://docs.rs/flexi_logger/latest/flexi_logger/struct.LogSpecification.html
     // FIXME: maybe we can choose the actual configuration string
     //        automatically according to the current build settings?
-    let logspec = format!("whenever={level}");
+    let logspec = format!("{APP_NAME}={level}");
     // let logspec = format!("{level}");
 
     let mut logger;
