@@ -99,22 +99,23 @@ fn cfg_vec_value<T>(
     // thanks Claude
     cfgmap.get(key).map_or(Ok(None), |item| {
         if !item.is_list() {
-            return Err(cfg_err_invalid_config(
+            Err(cfg_err_invalid_config(
                 key,
                 STR_INVALID_TYPE,
                 ERR_INVALID_PARAMETER,
-            ));
-        }
-        item.as_list()
-            .unwrap()
-            .iter()
-            .map(|e| {
-                as_variant(e).ok_or_else(|| {
-                    cfg_err_invalid_config(key, STR_INVALID_TYPE, ERR_INVALID_PARAMETER_LIST)
+            ))
+        } else {
+            item.as_list()
+                .unwrap()
+                .iter()
+                .map(|e| {
+                    as_variant(e).ok_or_else(|| {
+                        cfg_err_invalid_config(key, STR_INVALID_TYPE, ERR_INVALID_PARAMETER_LIST)
+                    })
                 })
-            })
-            .collect::<Result<Vec<T>>>()
-            .map(Some)
+                .collect::<Result<Vec<T>>>()
+                .map(Some)
+        }
     })
 }
 
