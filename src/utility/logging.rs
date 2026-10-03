@@ -79,6 +79,7 @@ use log::{debug, error, info, trace, warn};
 use nu_ansi_term::Style;
 use serde_json::json;
 use std::path::PathBuf;
+use clap::ValueEnum;
 
 // the following global flag is exposed here because it looks like there is
 // no actual way to pass anything but a string as payload to the logger, so
@@ -140,6 +141,7 @@ fn log_format_colors(
 }
 
 /// Log levels (from most verbose to least)
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LogType {
     Trace,
     Debug,

@@ -968,7 +968,7 @@ fn command_loop() {
 }
 
 // argument parsing and command execution: doc comments are used by clap
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 
 /// A lightweight task scheduler and automation tool
 #[derive(Parser)]
@@ -999,11 +999,11 @@ struct Args {
         short = 'L',
         long,
         value_name = "LEVEL",
-        default_value_t = LogLevel::Warn,
+        default_value_t = LogType::Warn,
         default_missing_value = "warn",
         value_enum,
     )]
-    log_level: LogLevel,
+    log_level: LogType,
 
     /// Append to an existing log file if found
     #[arg(short = 'a', long, requires = "log")]
@@ -1024,16 +1024,6 @@ struct Args {
     /// Path to configuration file
     #[arg(value_name = "CONFIG")]
     config: Option<String>,
-}
-
-// this is redundant but necessary for clap (the `type` alias does not work)
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
-enum LogLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
 }
 
 // entry point
@@ -1093,18 +1083,11 @@ fn main() {
     });
 
     // configure the logger
-    let level = match args.log_level {
-        LogLevel::Trace => LogType::Trace,
-        LogLevel::Debug => LogType::Debug,
-        LogLevel::Info => LogType::Info,
-        LogLevel::Warn => LogType::Warn,
-        LogLevel::Error => LogType::Error,
-    };
     let log_file_name = args.log;
     exit_if_fails!(
         args.quiet,
         log_init(
-            level,
+            args.log_level,
             log_file_name,
             args.log_append,
             args.log_color,
