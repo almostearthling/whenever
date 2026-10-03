@@ -54,20 +54,6 @@
 //! This should help using the log as a way of communicating to a wrapper
 //! utility the state of the scheduler, and possibily give the opportunity to
 //! organize communication to the user in a friendlier way.
-//!
-//! This module also contains common enums, traits, structs, and functions
-//! shared between items that use the same technology. Shared collections are
-//! organized in modules:
-//!
-//! * `cmditem` for assets common to command based tasks and conditions
-//! * `luaitem` for assets common to Lua based tasks and conditions
-//! * `dbusitem` for assets common to DBus based conditions and events
-//! * `wmiitem` for assets common to WMI based conditions and events
-//! * `wres` for the _whenever_ specific `Result`, that has automations
-//!   for conversion from many other result types
-//!
-//! in order to avoid behaviour discrepancies, and possibly to save some
-//! memory by avoiding unnecessary duplications.
 
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
