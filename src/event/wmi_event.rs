@@ -320,7 +320,7 @@ impl Event for WmiQueryEvent {
 
     async fn event_triggered(&mut self) -> Result<Option<String>> {
         let name = self.get_name();
-        assert!(
+        debug_assert!(
             self.match_query.is_some(),
             "match_query not set for WmiQueryEvent {name}",
         );

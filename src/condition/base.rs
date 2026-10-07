@@ -234,7 +234,7 @@ pub trait Condition: Send {
     /// considered a development error.
     fn test(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
-        assert!(
+        debug_assert!(
             self.get_id() != 0,
             "condition {} not registered",
             self.get_name(),
@@ -419,12 +419,12 @@ pub trait Condition: Send {
     /// considered a development error.
     fn run_tasks(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
-        assert!(
+        debug_assert!(
             self.get_id() != 0,
             "condition {} not registered",
             self.get_name(),
         );
-        assert!(
+        debug_assert!(
             self.task_registry().is_some(),
             "task registry not initialized",
         );

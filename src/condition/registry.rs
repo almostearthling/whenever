@@ -16,9 +16,9 @@ use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
 use super::base::{Condition, ConditionRef};
+use crate::constants::*;
 use crate::utility::logging::{LogType, log};
 use crate::utility::result::{Error, Kind, Result};
-use crate::constants::*;
 
 // module-wide values
 lazy_static! {
@@ -272,7 +272,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry.
     pub fn reset_condition(&self, name: &str, wait: bool) -> Result<()> {
-        assert!(self.has_condition(name), "condition {name} not in registry");
+        debug_assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && !self.condition_is_free(name) {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_RESET_BUSY))
@@ -296,7 +296,7 @@ impl ConditionRegistry {
     /// Queue a condition for reset: the current policy is that the
     /// reset status will be set only when there are no busy condiions
     pub fn queue_reset_condition(&self, name: &str) -> Result<()> {
-        assert!(self.has_condition(name), "condition {name} not in registry");
+        debug_assert!(self.has_condition(name), "condition {name} not in registry");
 
         let mxq0 = self.conditions_to_reset.clone();
         let mut queue = mxq0.lock();
@@ -327,7 +327,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry.
     pub fn suspend_condition(&self, name: &str, wait: bool) -> Result<()> {
-        assert!(self.has_condition(name), "condition {name} not in registry");
+        debug_assert!(self.has_condition(name), "condition {name} not in registry");
 
         if !wait && !self.condition_is_free(name) {
             Err(Error::new(Kind::Busy, ERR_CONDREG_COND_SUSPEND_BUSY))
@@ -353,7 +353,7 @@ impl ConditionRegistry {
     /// Queue a condition for suspension: the current policy is that the
     /// suspended flag will be set only when there are no busy condiions.
     pub fn queue_suspend_condition(&self, name: &str) -> Result<()> {
-        assert!(self.has_condition(name), "condition {name} not in registry");
+        debug_assert!(self.has_condition(name), "condition {name} not in registry");
 
         let mxq0 = self.conditions_to_suspend.clone();
         let mut queue = mxq0.lock();
@@ -384,7 +384,7 @@ impl ConditionRegistry {
     /// This function panics when called upon a name that does not exist in
     /// the registry.
     pub fn resume_condition(&self, name: &str, wait: bool) -> Result<()> {
-        assert!(self.has_condition(name), "condition {name} not in registry");
+        debug_assert!(self.has_condition(name), "condition {name} not in registry");
 
         // actually, a suspended condition **cannot** be busy, so the _wait_
         // parameter should not even be implemented here; however, since the
@@ -433,7 +433,7 @@ impl ConditionRegistry {
 
     /// Check whether the condition is free
     pub fn condition_is_free(&self, name: &str) -> bool {
-        assert!(self.has_condition(name), "condition {name} not in registry");
+        debug_assert!(self.has_condition(name), "condition {name} not in registry");
 
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates

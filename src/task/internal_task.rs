@@ -212,7 +212,7 @@ impl Task for InternalTask {
     fn _run(&mut self, trigger_name: &str) -> Result<Option<bool>> {
         // the None case would simply be a mistake, therefore the assertion
         let cr = COMMAND_RUNNER.lock();
-        assert!(cr.command_runner.is_some(), "command runner not set");
+        debug_assert!(cr.command_runner.is_some(), "command runner not set");
 
         // log the beginning
         let runner = cr.command_runner.unwrap();

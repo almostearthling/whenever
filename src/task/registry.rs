@@ -302,7 +302,7 @@ impl TaskRegistry {
         break_failure: bool,
         break_success: bool,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
-        assert!(
+        debug_assert!(
             self.has_all_tasks(names),
             "some tasks not found in registry for condition `{trigger_name}`",
         );
@@ -496,7 +496,7 @@ impl TaskRegistry {
         trigger_name: &str,
         names: &Vec<&str>,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
-        assert!(
+        debug_assert!(
             self.has_all_tasks(names),
             "some tasks not found in registry for condition `{trigger_name}`",
         );

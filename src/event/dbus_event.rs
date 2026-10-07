@@ -725,15 +725,15 @@ impl Event for DbusMessageEvent {
 
     async fn event_triggered(&mut self) -> Result<Option<String>> {
         let name = self.get_name();
-        assert!(
+        debug_assert!(
             self.bus.is_some(),
             "bus not set for DbusMessageEvent {name}",
         );
-        assert!(
+        debug_assert!(
             self.match_rule.is_some(),
             "match rule not set for DbusMessageEvent {name}",
         );
-        assert!(
+        debug_assert!(
             self.connection.is_some(),
             "connection not initialized for DbusMessageEvent {name}",
         );
@@ -831,7 +831,7 @@ impl Event for DbusMessageEvent {
     // in the event poller, in order to have a clean stream with no dupe
     // message after one is received
     fn initial_setup(&mut self) -> Result<bool> {
-        assert!(
+        debug_assert!(
             self.bus.is_some(),
             "bus not set for DbusMessageEvent {}",
             self.get_name(),

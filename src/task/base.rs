@@ -95,7 +95,7 @@ pub trait Task: Send {
     /// unregistered task must be considered a development error. Tasks can
     /// actually only be started via the registry.
     fn run(&mut self, trigger_name: &str) -> Result<Option<bool>> {
-        assert!(
+        debug_assert!(
             self.get_id() != 0,
             "task {} not registered",
             self.get_name(),

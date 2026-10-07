@@ -217,7 +217,7 @@ impl BucketCondition {
 
     /// Retry `num` times on task failure if not recurring
     pub fn retries(mut self, num: i64) -> Self {
-        assert!(num >= -1, "max number of retries must be positive or -1");
+        debug_assert!(num >= -1, "max number of retries must be positive or -1");
         self.max_retries = num;
         self
     }

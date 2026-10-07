@@ -370,11 +370,11 @@ impl Event for FilesystemChangeEvent {
     // this function is a wrapper for the actual asynchronous event receiver
     async fn event_triggered(&mut self) -> Result<Option<String>> {
         let name = self.get_name();
-        assert!(
+        debug_assert!(
             self.event_rx.is_some(),
             "uninitialized event notification channel for FilesystemChangeEvent {name}",
         );
-        assert!(
+        debug_assert!(
             self.event_watcher.is_some(),
             "uninitialized event notifier for FilesystemChangeEvent {name}",
         );
@@ -433,7 +433,7 @@ impl Event for FilesystemChangeEvent {
     }
 
     fn initial_setup(&mut self) -> Result<bool> {
-        assert!(
+        debug_assert!(
             self.event_rx.is_none(),
             "event listening channel for FilesystemChangeEvent {} is already initialized",
             self.get_name(),

@@ -584,7 +584,7 @@ impl EventRegistry {
     /// When the event it is called upon is not registered: in no way this
     /// should be called for unregistered events.
     pub fn trigger_event(&self, name: &str) -> bool {
-        assert!(
+        debug_assert!(
             self.has_event_triggerable(name),
             "event {name} is not a manually triggerable event",
         );

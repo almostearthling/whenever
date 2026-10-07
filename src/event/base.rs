@@ -15,11 +15,11 @@
 
 use async_trait::async_trait;
 
-use crate::utility::logging::{LogType, log};
-use crate::utility::result::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::condition::registry::ConditionRegistry;
 use crate::constants::*;
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::{Error, Kind, Result};
 
 /// Define the interface for `Event` objects
 ///
@@ -112,13 +112,13 @@ pub trait Event: Send + Sync {
     /// has not been set: each would indicate an error in the program flow.
     /// Also panics if the event has not been registered.
     fn fire_condition(&self) -> bool {
-        assert!(
+        debug_assert!(
             self.get_id() != 0,
             "event {} not registered",
             self.get_name(),
         );
-        assert!(self.get_condition().is_some(), "no condition assigned");
-        assert!(
+        debug_assert!(self.get_condition().is_some(), "no condition assigned");
+        debug_assert!(
             self.condition_bucket().is_some(),
             "execution bucket not set",
         );

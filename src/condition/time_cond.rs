@@ -353,7 +353,7 @@ impl TimeCondition {
 
     /// Retry `num` times on task failure if not recurring
     pub fn retries(mut self, num: i64) -> Self {
-        assert!(num >= -1, "max number of retries must be positive or -1");
+        debug_assert!(num >= -1, "max number of retries must be positive or -1");
         self.max_retries = num;
         self
     }
@@ -1041,7 +1041,7 @@ impl Condition for TimeCondition {
     /// time has passed since last successful check (which may be the initial
     /// check only if not recurring), the outcome is successful.
     fn _check_condition(&mut self) -> Result<Option<bool>> {
-        assert!(
+        debug_assert!(
             self.tick_duration > 0,
             "tick seconds must be greater than zero",
         );
