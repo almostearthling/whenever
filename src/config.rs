@@ -5,10 +5,10 @@
 use cfgmap::{CfgMap, CfgValue};
 use std::fs;
 
-use crate::utility::logging::{LogType, log};
-use crate::utility::result::{Error, Kind, Result};
 use crate::condition::bucket_cond::ExecutionBucket;
 use crate::constants::*;
+use crate::utility::logging::{LogType, log};
+use crate::utility::result::{Error, Kind, Result};
 
 // bring the registries in scope
 use crate::condition::registry::ConditionRegistry;
@@ -28,8 +28,11 @@ use crate::utility::cfghelp::*;
 pub fn check_configuration(config_file: &str) -> Result<()> {
     let config_map: CfgMap = match toml::from_str(fs::read_to_string(config_file)?.as_str()) {
         Ok(toml_text) => CfgMap::from_toml(toml_text),
-        _ => {
-            return Err(Error::new(Kind::Invalid, ERR_INVALID_CONFIG_FILE));
+        Err(e) => {
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: `{}`", e.to_string()),
+            ));
         }
     };
 
@@ -212,8 +215,11 @@ pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
         Ok(toml_text) => {
             config_map = CfgMap::from_toml(toml_text);
         }
-        _ => {
-            return Err(Error::new(Kind::Invalid, ERR_INVALID_CONFIG_FILE));
+        Err(e) => {
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: `{}`", e.to_string()),
+            ));
         }
     }
 
@@ -294,8 +300,11 @@ pub fn reconfigure_globals(config_file: &str) -> Result<CfgMap> {
         Ok(toml_text) => {
             config_map = CfgMap::from_toml(toml_text);
         }
-        _ => {
-            return Err(Error::new(Kind::Invalid, ERR_INVALID_CONFIG_FILE));
+        Err(e) => {
+            return Err(Error::new(
+                Kind::Invalid,
+                &format!("{ERR_INVALID_CONFIG_FILE}: `{}`", e.to_string()),
+            ));
         }
     }
 
