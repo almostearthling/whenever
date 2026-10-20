@@ -1084,7 +1084,7 @@ fn main() {
 
     // configure the logger
     let log_file_name = args.log;
-    exit_if_fails!(
+    let log_handle = exit_if_fails!(
         args.quiet,
         log_init(
             args.log_level,
@@ -1276,6 +1276,8 @@ fn main() {
         LOG_STATUS_OK,
         "application exit: main process terminating successfully",
     );
+
+    log_handle.flush();
     std::process::exit(0);
 }
 
