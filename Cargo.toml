@@ -10,6 +10,7 @@ edition = "2024"
 
 
 [dependencies]
+async-std = { version = "1.12", optional = true }
 async-trait = "0.1"
 bstr = "1.12"
 cfgmap = { version = "0.4", features = ["from_toml"] }
@@ -25,7 +26,7 @@ log = "0.4"
 minreq = { version = "3.0", features = ["https-native-tls"], optional = true }
 nu-ansi-term = "0.50"
 notify = "8.1"
-parking_lot = "0.12"
+parking_lot = "0.13"
 rand = "0.10"
 regex = "1.7"
 serde = "1.0"
@@ -69,7 +70,7 @@ winresource = "0.1"
 [features]
 default = []
 # default = ["check_std"]
-dbus = ["dep:zbus"]
+dbus = ["dep:zbus", "dep:async-std"]
 wmi = ["dep:wmi"]
 lua_sync = []
 lua_unsafe = []
