@@ -75,7 +75,6 @@ pub fn cfg_check_keys(cfgmap: &CfgMap, check: &[&str]) -> Result<()> {
     Ok(())
 }
 
-
 /// get a value of type T
 fn cfg_value<T>(
     cfgmap: &CfgMap,

@@ -56,13 +56,13 @@
 //! organize communication to the user in a friendlier way.
 
 use crate::constants::{APP_NAME, ERR_LOGGER_NOT_INITIALIZED};
+use clap::ValueEnum;
 use flexi_logger::{DeferredNow, FileSpec, Logger, LoggerHandle, style};
 use log::Record;
 use log::{debug, error, info, trace, warn};
 use nu_ansi_term::Style;
 use serde_json::json;
 use std::path::PathBuf;
-use clap::ValueEnum;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
@@ -157,7 +157,11 @@ pub fn init(
     #[cfg(not(debug_assertions))]
     let logspec = format!("{APP_NAME}={level}");
     #[cfg(debug_assertions)]
-    let logspec = format!("{level}");
+    let logspec = if !logjson {
+        level.to_string()
+    } else {
+        format!("{APP_NAME}={level}")
+    };
 
     let mut logger;
     logger = Logger::try_with_str(logspec);
@@ -165,11 +169,7 @@ pub fn init(
         Ok(l) => {
             if let Some(fname) = filename {
                 let log_format = {
-                    if logcolor {
-                        log_format_plain
-                    } else if logplain {
-                        log_format_plain
-                    } else if logjson {
+                    if logjson {
                         LOGGER_EMITS_JSON.store(true, Relaxed);
                         log_format_json
                     } else {
@@ -228,10 +228,7 @@ pub fn init(
         }
     }
     logger.unwrap().start().map_err(|_| {
-        std::io::Error::new(
-            std::io::ErrorKind::Unsupported,
-            ERR_LOGGER_NOT_INITIALIZED,
-        )
+        std::io::Error::new(std::io::ErrorKind::Unsupported, ERR_LOGGER_NOT_INITIALIZED)
     })
 }
 
