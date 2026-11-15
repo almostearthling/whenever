@@ -10,7 +10,6 @@ edition = "2024"
 
 
 [dependencies]
-async-std = "1.12"
 async-trait = "0.1"
 bstr = "1.12"
 cfgmap = { version = "0.4", features = ["from_toml"] }
@@ -22,7 +21,6 @@ flexi_logger = "0.31"
 futures = "0.3"
 itertools = "0.15"
 lazy_static = "1.5"
-listenfd = "1.0"
 log = "0.4"
 minreq = { version = "3.0", features = ["https-native-tls"], optional = true }
 nu-ansi-term = "0.50"
@@ -35,7 +33,6 @@ serde_json = "1.0"
 single-instance = "0.3"
 subprocess = "1.1"
 system-idle-time = "1.0"
-time = "0.3"
 toml = "1.0"
 unique_id = "0.1"
 whoami = "2.1"
