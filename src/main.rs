@@ -1000,7 +1000,6 @@ struct Args {
         long,
         value_name = "LEVEL",
         default_value_t = LogType::Warn,
-        default_missing_value = "warn",
         value_enum,
     )]
     log_level: LogType,
