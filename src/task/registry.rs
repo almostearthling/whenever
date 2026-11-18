@@ -159,9 +159,8 @@ impl TaskRegistry {
         let sessions = self.running_sessions.clone();
         let sessions = sessions.lock();
         if *sessions == 0 {
-            if self.has_task(&name) {
-                self.remove_task(&name)?;
-            }
+            // discarding a non existent item harmlessly reports false
+            self.discard_task(&name);
             Ok(self.add_task(task_ref))
         } else {
             if self.has_task(&name) {

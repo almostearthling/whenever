@@ -165,7 +165,9 @@ impl ConditionRegistry {
         let busy = self.conditions_busy.clone();
         let busy = busy.lock();
         if *busy == 0 {
-            Ok(self.discard_condition(&name) && self.add_condition(cond_ref))
+            // discarding a non existent item harmlessly reports false
+            self.discard_condition(&name);
+            Ok(self.add_condition(cond_ref))
         } else {
             if self.has_condition(&name) {
                 let queue = self.items_to_remove.clone();
