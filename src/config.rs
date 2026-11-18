@@ -1528,7 +1528,9 @@ pub fn reconfigure_items(
 
     // reconfigure all items: here we reconfigure in sequennce, stepwise,
     // so that after reconfiguration, be it succesful or not, the event
-    // listener is restarted anyway
+    // listener is restarted anyway; on reconfigure, the configuration is
+    // checked before loading it, so the possibility of failing here is
+    // fairly impossible
     let res = reconfigure_tasks(cfgmap, task_registry).and_then(|_| {
         reconfigure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)
             .and_then(|_| reconfigure_events(cfgmap, event_registry, cond_registry, bucket))

@@ -230,6 +230,11 @@ impl ConditionRegistry {
         }
     }
 
+    /// Remove a named condition and discard it immediately
+    pub fn discard_condition(&self, name: &str) -> bool {
+        self.condition_list.write().remove(name).is_some()
+    }
+
     /// Remove a named condition from the list operating on a running
     /// registry: if any conditions are busy all modifications to the
     /// registry are deferred.
@@ -238,7 +243,7 @@ impl ConditionRegistry {
             let busy = self.conditions_busy.clone();
             let busy = busy.lock();
             if *busy == 0 {
-                self.remove_condition(name)?;
+                Ok(self.discard_condition(name))
             } else {
                 let queue = self.items_to_remove.clone();
                 let mut queue = queue.lock();
@@ -254,8 +259,8 @@ impl ConditionRegistry {
                         "registry busy: condition {name} set to be removed when no conditions are busy",
                     ),
                 );
+                Ok(true)
             }
-            Ok(true)
         } else {
             Ok(false)
         }
@@ -628,29 +633,26 @@ impl ConditionRegistry {
                 let mxq0 = self.items_to_remove.clone();
                 let mut queue = mxq0.lock();
                 for name in queue.iter() {
-                    if let Ok(item) = self.remove_condition(name) {
-                        if let Some(item) = item {
-                            let name = item.get_name();
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_CONDITION_REGISTRY,
-                                LOG_ACTION_UNINSTALL,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_OK,
-                                &format!("successfully removed condition {name} from the registry"),
-                            );
-                        } else {
-                            log(
-                                LogType::Debug,
-                                LOG_EMITTER_CONDITION_REGISTRY,
-                                LOG_ACTION_UNINSTALL,
-                                None,
-                                LOG_WHEN_PROC,
-                                LOG_STATUS_FAIL,
-                                &format!("condition to remove {name} not found in the registry"),
-                            );
-                        }
+                    if self.discard_condition(name) {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_CONDITION_REGISTRY,
+                            LOG_ACTION_UNINSTALL,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_OK,
+                            &format!("successfully removed condition {name} from the registry"),
+                        );
+                    } else {
+                        log(
+                            LogType::Debug,
+                            LOG_EMITTER_CONDITION_REGISTRY,
+                            LOG_ACTION_UNINSTALL,
+                            None,
+                            LOG_WHEN_PROC,
+                            LOG_STATUS_FAIL,
+                            &format!("condition to remove {name} not found in the registry"),
+                        );
                     }
                 }
                 queue.clear();

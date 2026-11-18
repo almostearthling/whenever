@@ -219,6 +219,11 @@ impl TaskRegistry {
         }
     }
 
+    /// Remove a named task and discard it immediately
+    pub fn discard_task(&self, name: &str) -> bool {
+        self.task_list.write().remove(name).is_some()
+    }
+
     /// Remove a named task from the list operating on a running registry: if any
     /// tasks are running all modifications to the registry are deferred
     pub fn dynamic_remove_task(&self, name: &str) -> Result<bool> {
@@ -226,7 +231,7 @@ impl TaskRegistry {
             let sessions = self.running_sessions.clone();
             let sessions = sessions.lock();
             if *sessions == 0 {
-                self.remove_task(name)?;
+                Ok(self.discard_task(name))
             } else {
                 let queue = self.items_to_remove.clone();
                 let mut queue = queue.lock();
@@ -242,8 +247,8 @@ impl TaskRegistry {
                         "registry busy: task {name} set to be removed when no tasks are running",
                     ),
                 );
+                Ok(true)
             }
-            Ok(true)
         } else {
             Ok(false)
         }
@@ -614,29 +619,26 @@ impl TaskRegistry {
                 {
                     let mut queue = rm_queue.lock();
                     for name in queue.iter() {
-                        if let Ok(item) = self.remove_task(name) {
-                            if let Some(item) = item {
-                                let name = item.get_name();
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_UNINSTALL,
-                                    None,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("successfully removed task {name} from the registry"),
-                                );
-                            } else {
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_UNINSTALL,
-                                    None,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("task to remove {name} not found in the registry"),
-                                );
-                            }
+                        if self.discard_task(name) {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_TASK_REGISTRY,
+                                LOG_ACTION_UNINSTALL,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("successfully removed task {name} from the registry"),
+                            );
+                        } else {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_TASK_REGISTRY,
+                                LOG_ACTION_UNINSTALL,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("task to remove {name} not found in the registry"),
+                            );
                         }
                     }
                     queue.clear();
