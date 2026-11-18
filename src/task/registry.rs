@@ -404,29 +404,26 @@ impl TaskRegistry {
                 {
                     let mut queue = rm_queue.lock();
                     for name in queue.iter() {
-                        if let Ok(item) = self.remove_task(name) {
-                            if let Some(item) = item {
-                                let name = item.get_name();
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_UNINSTALL,
-                                    None,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("successfully removed task {name} from the registry"),
-                                );
-                            } else {
-                                log(
-                                    LogType::Debug,
-                                    LOG_EMITTER_TASK_REGISTRY,
-                                    LOG_ACTION_UNINSTALL,
-                                    None,
-                                    LOG_WHEN_PROC,
-                                    LOG_STATUS_OK,
-                                    &format!("task to remove {name} not found in the registry"),
-                                );
-                            }
+                        if self.discard_task(name) {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_TASK_REGISTRY,
+                                LOG_ACTION_UNINSTALL,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("successfully removed task {name} from the registry"),
+                            );
+                        } else {
+                            log(
+                                LogType::Debug,
+                                LOG_EMITTER_TASK_REGISTRY,
+                                LOG_ACTION_UNINSTALL,
+                                None,
+                                LOG_WHEN_PROC,
+                                LOG_STATUS_OK,
+                                &format!("task to remove {name} not found in the registry"),
+                            );
                         }
                     }
                     queue.clear();
