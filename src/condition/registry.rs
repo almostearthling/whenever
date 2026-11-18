@@ -481,21 +481,18 @@ impl ConditionRegistry {
     ///
     /// `name` - the name of the condition to check.
     pub fn tick(&self, name: &str) -> Result<Option<bool>> {
-        // the named condition might have disappeared due to a reconfiguration
-        // while still being known to the main thread
-        if !self.has_condition(name) {
-            return Err(Error::new(Kind::Invalid, ERR_CONDREG_COND_TICK_NOEXIST));
-        }
-
         // what follows just *reads* the registry: the condition is retrieved
         // and the corresponding structure is operated in a way that mutates
-        // only its inner state, and not the wrapping pointer
-        let id = self.condition_id(name).unwrap();
+        // only its inner state, and not the wrapping pointer; any error might
+        // indicate that a condition has been removed meanwhile
+        let id = self
+            .condition_id(name)
+            .ok_or(Error::new(Kind::Invalid, ERR_CONDREG_COND_TICK_NOEXIST))?;
         let cl0 = self.condition_list.read();
         let cond = cl0
             .get(name)
-            .expect("cannot retrieve condition for testing");
-        let cond = cond.clone();
+            .cloned()
+            .ok_or(Error::new(Kind::Invalid, ERR_CONDREG_COND_TICK_NOEXIST))?;
         drop(cl0);
 
         let mxc0 = cond.try_lock();

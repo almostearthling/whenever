@@ -73,19 +73,21 @@ impl TaskRegistry {
     }
 
     /// Check whether or not a task with the provided name is in the registry.
-    ///
-    /// # Arguments
-    ///
-    /// * name - the name of the task to check for registration
     pub fn has_task(&self, name: &str) -> bool {
         self.task_list.read().contains_key(name)
     }
 
+    /// Check whether a task is in or about to enter the registry.
+    pub fn has_or_awaits_task(&self, name: &str) -> bool {
+        self.has_task(name)
+            || self
+                .items_to_add
+                .lock()
+                .iter()
+                .any(|item| item.get_name() == name)
+    }
+
     /// Check whether or not the provided task is in the registry.
-    ///
-    /// # Arguments
-    ///
-    /// * name - the name of the task to check for registration
     pub fn has_task_eq(&self, task: &dyn Task) -> bool {
         let name = task.get_name();
         if self.has_task(name.as_str()) {
@@ -311,14 +313,6 @@ impl TaskRegistry {
         break_failure: bool,
         break_success: bool,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
-        // tasks might have been reconfigured meanwhile: error to skip
-        if !self.has_all_tasks(names) {
-            return Err(Error::new(
-                Kind::Invalid,
-                "some tasks may have been lost in reconfiguration",
-            ));
-        }
-
         let mut res: HashMap<String, Result<Option<bool>>> = HashMap::new();
 
         // count the active running sessions: there can be more than a
@@ -330,6 +324,13 @@ impl TaskRegistry {
         // increase the number of running sessions before running tasks
         {
             let mut sessions = sessions.lock();
+            // tasks might have been reconfigured meanwhile: error to skip
+            if !self.has_all_tasks(names) {
+                return Err(Error::new(
+                    Kind::Invalid,
+                    "some tasks may have been lost in reconfiguration",
+                ));
+            }
             *sessions += 1;
         }
 
@@ -508,14 +509,6 @@ impl TaskRegistry {
         trigger_name: &str,
         names: &Vec<&str>,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
-        // tasks might have been reconfigured meanwhile: error to skip
-        if !self.has_all_tasks(names) {
-            return Err(Error::new(
-                Kind::Invalid,
-                "some tasks may have been lost in reconfiguration",
-            ));
-        }
-
         // count the active running sessions: there can be more than a
         // command task session in execution at the moment, and knowing
         // that none is running anymore is necessary to handle changes
@@ -525,6 +518,13 @@ impl TaskRegistry {
         // increase the number of running sessions before running tasks
         {
             let mut sessions = sessions.lock();
+            // tasks might have been reconfigured meanwhile: error to skip
+            if !self.has_all_tasks(names) {
+                return Err(Error::new(
+                    Kind::Invalid,
+                    "some tasks may have been lost in reconfiguration",
+                ));
+            }
             *sessions += 1;
         }
 
