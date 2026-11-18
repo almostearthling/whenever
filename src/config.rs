@@ -1526,15 +1526,18 @@ pub fn reconfigure_items(
     // first of all, stop event listener while reconfiguring
     event_registry.stop_event_listener()?;
 
-    // reconfigure all items
-    reconfigure_tasks(cfgmap, task_registry)?;
-    reconfigure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)?;
-    reconfigure_events(cfgmap, event_registry, cond_registry, bucket)?;
+    // reconfigure all items: here we reconfigure in sequennce, stepwise,
+    // so that after reconfiguration, be it succesful or not, the event
+    // listener is restarted anyway
+    let res = reconfigure_tasks(cfgmap, task_registry).and_then(|_| {
+        reconfigure_conditions(cfgmap, cond_registry, task_registry, bucket, tick_secs)
+            .and_then(|_| reconfigure_events(cfgmap, event_registry, cond_registry, bucket))
+    });
 
     // restart the listener now that it is safe
     event_registry.run_event_listener()?;
 
-    Ok(())
+    res
 }
 
 // end.

@@ -22,9 +22,9 @@ use unique_id::Generator;
 use unique_id::sequence::SequenceGenerator;
 
 use super::base::{Task, TaskRef};
+use crate::constants::*;
 use crate::utility::logging::{LogType, log};
 use crate::utility::result::{Error, Kind, Result};
-use crate::constants::*;
 
 // module-wide values
 lazy_static! {
@@ -164,6 +164,11 @@ impl TaskRegistry {
             }
             Ok(self.add_task(task_ref))
         } else {
+            if self.has_task(&name) {
+                let queue = self.items_to_remove.clone();
+                let mut queue = queue.lock();
+                queue.push(task_ref.get_name());
+            }
             let queue = self.items_to_add.clone();
             let mut queue = queue.lock();
             queue.push(task_ref);
@@ -302,10 +307,13 @@ impl TaskRegistry {
         break_failure: bool,
         break_success: bool,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
-        debug_assert!(
-            self.has_all_tasks(names),
-            "some tasks not found in registry for condition `{trigger_name}`",
-        );
+        // tasks might have been reconfigured meanwhile: error to skip
+        if !self.has_all_tasks(names) {
+            return Err(Error::new(
+                Kind::Invalid,
+                "some tasks may have been lost in reconfiguration",
+            ));
+        }
 
         let mut res: HashMap<String, Result<Option<bool>>> = HashMap::new();
 
@@ -389,7 +397,7 @@ impl TaskRegistry {
             if *sessions == 0 {
                 let rm_queue = self.items_to_remove.clone();
                 {
-                    let queue = rm_queue.lock();
+                    let mut queue = rm_queue.lock();
                     for name in queue.iter() {
                         if let Ok(item) = self.remove_task(name) {
                             if let Some(item) = item {
@@ -416,6 +424,7 @@ impl TaskRegistry {
                             }
                         }
                     }
+                    queue.clear();
                 }
                 let add_queue = self.items_to_add.clone();
                 {
@@ -423,13 +432,15 @@ impl TaskRegistry {
                     while !queue.is_empty() {
                         if let Some(item_ref) = queue.pop() {
                             let name = item_ref.get_name();
-                            let id = self.task_id(&name).unwrap();
+                            // a zero ID might indicate a task that is being
+                            // reconfigured during this add, which should
+                            // actually never happen
                             if self.add_task(item_ref) {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
                                     LOG_ACTION_INSTALL,
-                                    Some((&name, id)),
+                                    Some((&name, self.task_id(&name).unwrap_or_default())),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_OK,
                                     "successfully added queued task to the registry",
@@ -439,7 +450,7 @@ impl TaskRegistry {
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
                                     LOG_ACTION_INSTALL,
-                                    Some((&name, id)),
+                                    Some((&name, self.task_id(&name).unwrap_or_default())),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,
                                     "queued task already present in the registry",
@@ -496,10 +507,13 @@ impl TaskRegistry {
         trigger_name: &str,
         names: &Vec<&str>,
     ) -> Result<HashMap<String, Result<Option<bool>>>> {
-        debug_assert!(
-            self.has_all_tasks(names),
-            "some tasks not found in registry for condition `{trigger_name}`",
-        );
+        // tasks might have been reconfigured meanwhile: error to skip
+        if !self.has_all_tasks(names) {
+            return Err(Error::new(
+                Kind::Invalid,
+                "some tasks may have been lost in reconfiguration",
+            ));
+        }
 
         // count the active running sessions: there can be more than a
         // command task session in execution at the moment, and knowing
@@ -598,7 +612,7 @@ impl TaskRegistry {
             if *sessions == 0 {
                 let rm_queue = self.items_to_remove.clone();
                 {
-                    let queue = rm_queue.lock();
+                    let mut queue = rm_queue.lock();
                     for name in queue.iter() {
                         if let Ok(item) = self.remove_task(name) {
                             if let Some(item) = item {
@@ -625,6 +639,7 @@ impl TaskRegistry {
                             }
                         }
                     }
+                    queue.clear();
                 }
                 let add_queue = self.items_to_add.clone();
                 {
@@ -632,13 +647,15 @@ impl TaskRegistry {
                     while !queue.is_empty() {
                         if let Some(item_ref) = queue.pop() {
                             let name = item_ref.get_name();
-                            let id = self.task_id(&name).unwrap();
+                            // a zero ID might indicate a task that is being
+                            // reconfigured during this add, which should
+                            // actually never happen
                             if self.add_task(item_ref) {
                                 log(
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
                                     LOG_ACTION_NEW,
-                                    Some((&name, id)),
+                                    Some((&name, self.task_id(&name).unwrap_or_default())),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_OK,
                                     "successfully added queued task to the registry",
@@ -648,7 +665,7 @@ impl TaskRegistry {
                                     LogType::Debug,
                                     LOG_EMITTER_TASK_REGISTRY,
                                     LOG_ACTION_NEW,
-                                    Some((&name, id)),
+                                    Some((&name, self.task_id(&name).unwrap_or_default())),
                                     LOG_WHEN_PROC,
                                     LOG_STATUS_FAIL,
                                     "queued task already present in the registry",

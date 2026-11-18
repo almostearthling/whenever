@@ -170,6 +170,11 @@ impl ConditionRegistry {
             }
             Ok(self.add_condition(cond_ref))
         } else {
+            if self.has_condition(&name) {
+                let queue = self.items_to_remove.clone();
+                let mut queue = queue.lock();
+                queue.push(cond_ref.get_name());
+            }
             let queue = self.items_to_add.clone();
             let mut queue = queue.lock();
             queue.push(cond_ref);
@@ -280,7 +285,7 @@ impl ConditionRegistry {
             // what follows just *reads* the registry: the condition is retrieved
             // and the corresponding structure is operated in a way that mutates
             // only its inner state, and not the wrapping pointer
-            let cl0 = self.condition_list.write();
+            let cl0 = self.condition_list.read();
             let cond = cl0.get(name).expect("cannot retrieve condition for reset");
             let cond = cond.clone();
             drop(cl0);
@@ -605,6 +610,9 @@ impl ConditionRegistry {
             drop(queue);
             drop(mxq0);
 
+            // we are not using the condition from here on: free all locks
+            drop(cond);
+
             // this is the right time to operate on the registry if there are
             // no busy conditions remaining, thus in this order:
             //
@@ -654,13 +662,13 @@ impl ConditionRegistry {
                 while !queue.is_empty() {
                     if let Some(item_ref) = queue.pop() {
                         let name = item_ref.get_name();
-                        let id = self.condition_id(&name).unwrap();
+                        // a zero condition ID might indicate an error
                         if self.add_condition(item_ref) {
                             log(
                                 LogType::Debug,
                                 LOG_EMITTER_CONDITION_REGISTRY,
                                 LOG_ACTION_INSTALL,
-                                Some((&name, id)),
+                                Some((&name, self.condition_id(&name).unwrap_or_default())),
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_OK,
                                 "successfully added queued condition to the registry",
@@ -670,7 +678,7 @@ impl ConditionRegistry {
                                 LogType::Debug,
                                 LOG_EMITTER_CONDITION_REGISTRY,
                                 LOG_ACTION_INSTALL,
-                                Some((&name, id)),
+                                Some((&name, self.condition_id(&name).unwrap_or_default())),
                                 LOG_WHEN_PROC,
                                 LOG_STATUS_FAIL,
                                 "queued condition already present in the registry",

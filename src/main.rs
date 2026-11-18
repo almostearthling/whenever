@@ -866,8 +866,8 @@ pub fn run_command(line: &str) -> Result<bool> {
                 // space character in the command line, because the
                 // filename might contain spaces, and in case of relative
                 // paths even the first characters could be spaces:
-                // "configure_".len() == 10
-                let (_, fname) = buffer_save.split_at(10);
+                // "configure".len() == 9
+                let (_, fname) = buffer_save.trim_start().split_at(9);
                 let fname = String::from(fname.to_string().trim());
                 log(
                     LogType::Debug,
@@ -957,7 +957,7 @@ fn command_loop() {
     let rest_time = Duration::from_millis(MAIN_STDIN_READ_WAIT_MILLISECONDS);
     let mut handle = STDIN.lock();
 
-    while let Ok(_n) = handle.read_line(&mut buffer) {
+    while let Ok(n) = handle.read_line(&mut buffer) && n > 0 {
         // we will decide what to do with this, for now ignore it and just log
         let _res = run_command(&buffer);
 
