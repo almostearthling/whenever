@@ -98,6 +98,11 @@ There are no breaking changes between the two most recent versions, therefore th
 If there is a bug in the **whenever** application, please use the project [issue tracker](https://github.com/almostearthling/whenever/issues) to report it.
 
 
+## :pill: Use of LLMs and AI
+
+LLMs have been used in this utility only for code reviews: no code has been provided by LLMs, however _Claude Code_ helped a lot by spotting possible bugs and race conditions. Fixes and amendments have been manually coded, even when following AI provided suggestions.
+
+
 ## :balance_scale: License
 
 **whenever** is released under the terms of the [LGPL v2.1](LICENSE).
