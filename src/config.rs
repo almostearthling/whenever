@@ -31,7 +31,7 @@ pub fn check_configuration(config_file: &str) -> Result<()> {
         Err(e) => {
             return Err(Error::new(
                 Kind::Invalid,
-                &format!("{ERR_INVALID_CONFIG_FILE}: `{}`", e.to_string()),
+                &format!("{ERR_INVALID_CONFIG_FILE}: `{e}`"),
             ));
         }
     };
@@ -218,7 +218,7 @@ pub fn configure_globals(config_file: &str) -> Result<CfgMap> {
         Err(e) => {
             return Err(Error::new(
                 Kind::Invalid,
-                &format!("{ERR_INVALID_CONFIG_FILE}: `{}`", e.to_string()),
+                &format!("{ERR_INVALID_CONFIG_FILE}: `{e}`"),
             ));
         }
     }
@@ -303,7 +303,7 @@ pub fn reconfigure_globals(config_file: &str) -> Result<CfgMap> {
         Err(e) => {
             return Err(Error::new(
                 Kind::Invalid,
-                &format!("{ERR_INVALID_CONFIG_FILE}: `{}`", e.to_string()),
+                &format!("{ERR_INVALID_CONFIG_FILE}: `{e}`"),
             ));
         }
     }
