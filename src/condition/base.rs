@@ -415,7 +415,7 @@ pub trait Condition: Send {
     /// # Panics
     ///
     /// This method can only be invoked on **registered** conditions, any
-    /// attempt to run tasks associated to an unregistered condition must be
+    /// attempt to run tasks associated with an unregistered condition must be
     /// considered a development error.
     fn run_tasks(&mut self) -> Result<Option<bool>> {
         // panic if the condition has not yet been registered
@@ -446,7 +446,7 @@ pub trait Condition: Send {
                 LogType::Warn,
                 LOG_WHEN_END,
                 LOG_STATUS_FAIL,
-                "no tasks found associated to condition",
+                "no tasks found associated with condition",
             );
             return Ok(None);
         }

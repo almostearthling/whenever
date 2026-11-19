@@ -40,7 +40,7 @@ use utility::logging::{LogType, init as log_init, log};
 use utility::result::{Error, Kind, Result};
 
 lazy_static! {
-    // the global task registry: all conditions will be associated to this
+    // the global task registry: all conditions will be associated with this
     static ref TASK_REGISTRY: TaskRegistry = TaskRegistry::new();
 
     // the global condition registry: the scheduler will use this
@@ -694,7 +694,7 @@ pub fn run_command(line: &str) -> Result<bool> {
                     // based conditions (NOTE: this is questionable, since
                     // multiple insertions are debounced it is probably more
                     // correct to just obey instructions and verify conditions
-                    // associated to these events: commented out for now)
+                    // associated with these events: commented out for now)
                     // EXECUTION_BUCKET.clear();
                     *APPLICATION_IS_PAUSED.write() = false;
                     // this log line is for wrappers, to reset a possible pause

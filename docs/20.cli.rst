@@ -37,8 +37,8 @@ By invoking **whenever** and specifying ``--help`` as argument, the output is th
 
 The only elements that should be highlighted are the following:
 
-* **whenever** also suppresses errors in *quiet* mode, it is recommended to at least specify a log
-  file
+* **whenever** also suppresses errors in *quiet* mode: therefore it is recommended to at least
+  specify a log file
 * it is possible to suppress colors when logging to console, by specifying ``--log-plain`` as an
   argument
 * when run within a wrapper, **whenever** can emit log messages in the JSON format, to make it
@@ -48,16 +48,16 @@ The only elements that should be highlighted are the following:
   immediately with a ``0`` exit code if another instance is found, ``1`` otherwise: it also writes
   an answer to the standard output that can be suppressed using the ``--quiet`` switch.\ [#fn-1]_
 * if a launcher behaves differently according to optional features available in the **whenever**
-  executable, it can use the ``--options`` switch to determine which ones are available, the
+  executable, it can use the ``--options`` switch to determine which ones are available; the
   command output is the string ``options:`` followed by one or more of the following:
 
   * ``dbus``: the executable has been compiled with DBus support (generally on Linux)
   * ``wmi``: the executable has WMI support (available on Windows only)
   * ``lua_sync``: the embedded *Lua* interpreter supports synchronization and data sharing among
     scripts that run at different times
-  * ``lua_httpreq``: the embedded *Lua* interpreter is capable of performing HTTP request without
+  * ``lua_httpreq``: the embedded *Lua* interpreter is capable of performing HTTP requests without
     external tools
-  * ``lua_unsafe``: the embedded *Lua* interpreter allows to call external functions: this feature
+  * ``lua_unsafe``: the embedded *Lua* interpreter allows calling external functions: this feature
     is experimental and unsupported, and usually disabled in binary releases.
 
   For the *Lua* related features, please refer to the specific documentation
@@ -70,12 +70,12 @@ An important thing to notice is that configuration errors will cause **whenever*
 issuing a very brief message on the console.
 
 Also, **whenever** will refuse to start when another instance is running for the same user (that
-is, most of the times in the same session): the ``--check-running`` switch has been introduced to
+is, most of the time in the same session): the ``--check-running`` switch has been introduced to
 possibly allow a launcher to perform a test before attempting to actually start the scheduler. On
 the same host, however, different users can launch instances of **whenever**, which are
 considered different.
 
-To exit from **whenever** (when running as a CLI program from an interactive shell) che usual
+To exit from **whenever** (when running as a CLI program from an interactive shell) the usual
 *Ctrl+C* key combination can be used. This will however wait for all currently running activities,
 be it condition checks or tasks, to finish. In order to force **whenever** to exit abruptly,
 either a :ref:`command <70-intcli-input-commands>` must be used or it must be explicitly killed.

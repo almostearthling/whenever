@@ -472,7 +472,7 @@ impl ConditionRegistry {
     /// Perform a condition test and run associated tasks if successful
     ///
     /// This function is called directly by the scheduler in order to actually
-    /// perform the test associated to a registered condition and, if the test
+    /// perform the test associated with a registered condition and, if the test
     /// succeeds, execute the associated tasks according to the required order
     /// (if sequentially) or simultaneously. A result of `Ok(Some(true))` is
     /// returned if execution succeeded.
