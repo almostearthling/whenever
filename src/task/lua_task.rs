@@ -768,7 +768,7 @@ impl Task for LuaTask {
             );
 
             // remove a shared state entry: returns the removed table, safe to
-            // be ignored most of the times
+            // be ignored most of the time
             let _ = sharedstateftab.set(
                 "remove",
                 lua.create_function(|lua, name: String| del_shared_state(lua, name.as_str()))?,

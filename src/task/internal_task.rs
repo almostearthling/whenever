@@ -92,7 +92,7 @@ impl InternalTask {
     /// * `command` - an internal command as described in the README file
     ///
     /// No other arguments are needed, and the configuration of the item
-    /// only allows to specify the command.
+    /// only allows the user to specify the command.
     pub fn new(name: &str, command: &str) -> Self {
         log(
             LogType::Debug,

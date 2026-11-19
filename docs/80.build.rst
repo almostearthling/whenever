@@ -4,10 +4,10 @@ Building **whenever**
 =====================
 
 **whenever** is being thoroughly tested on Windows and Linux. It should work on Mac too, although
-I have no possibility to test it personally. On Windows, the build process is seamless as long as
-*Rust* and all its dependencies are installed.
+I have no way to test it personally. On Windows, the build process is seamless as long as *Rust*
+and all its dependencies are installed.
 
-The resulting binaries are generally autosufficient on the destination platform: no extra
+The resulting binaries are generally self-contained on the destination platform: no extra
 libraries, other than the ones provided by the OS itself, are needed to run it from the command
 line. Copying the executable file to a directory in the *PATH* or just invoking it using the
 full path to the file should be enough to have it up and running.
@@ -58,4 +58,4 @@ well; however, in particular, *idle time detection* can fail on Wayland desktops
 is not available.
 
 To enable and build the `lua_httpreq` feature, the *libssl-dev* package (or an equivalent,
-according to the distributon) must be installed on Linux systems.
+according to the distribution) must be installed on Linux systems.

@@ -32,7 +32,7 @@ use crate::{cfg_mandatory, constants::*};
 
 use crate::cfghelp::*;
 
-// the constructor only allows to specify all values on invocation, so this
+// the constructor only allows specifying all values on invocation, so this
 // structure remainss private
 struct TimeSpecification {
     year: Option<i32>,   // e.g. 2023

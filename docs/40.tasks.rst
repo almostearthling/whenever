@@ -31,7 +31,7 @@ no check is performed, but the user can choose, for instance, to consider a zero
 successful execution (quite common for OS commands). It is possible to consider another exit code
 as successful, or the zero exit code as a failure (for example, if a file should not be found,
 performing ``ls`` on it would have the zero exit code as an *undesirable* outcome). Also, a
-particular substring can be sought in the standard output or standard error streams both as
+particular substring can be sought in the standard output or standard error streams either as
 expected or as unexpected. The two streams can be matched against a provided *regular expression*
 if just seeking a certain substring is not fine-grained enough. Both substrings and regular
 expressions can be respectively sought or matched either case-sensitively or case-insensitively.
@@ -81,7 +81,7 @@ and the following table provides a detailed description of the entries:
      - must be set to ``"command"`` (mandatory)
    * - ``startup_path``
      - N/A
-     - the directory in which the command is started
+     - the directory in which the command is started (mandatory)
    * - ``command``
      - N/A
      - path to the executable (mandatory; if the path is omitted, the executable should be found
@@ -97,7 +97,7 @@ and the following table provides a detailed description of the entries:
      - if *true*, the match strings are considered regular expressions instead of substrings
    * - ``case_sensitive``
      - *false*
-     - if *true*, substring search or match and regular expressions match is performed
+     - if *true*, substring search or match and regular expressions matching is performed
        case-sensitively
    * - ``timeout_seconds``
      - (empty)
@@ -157,7 +157,7 @@ for scripts or other executables that might be aware of **whenever**.
 .. tip::
     Many times the success or failure status can be disregarded, especially in situations where
     a condition causes a single task to be executed. When an execution flow must be respected,
-    providing the correct parameters to identify success or failure becomes substantial, as well
+    providing the correct parameters to identify success or failure becomes essential, as well
     as in cases when the associated condition is set to retry the task (or a sequence where it
     is contained) until it succeeds.
 
@@ -174,7 +174,7 @@ configuration file -- TOML helps in this sense, by allowing multiline strings by
 
 *Lua* based tasks can be considered more lightweight than *command* tasks, as the interpreter is
 embedded in **whenever**. Also, the embedded *Lua* interpreter is enriched with several utility
-functions, that are explained in detail in the dedicated `section <_65-lua-enhancements>`__.
+functions, that are explained in detail in the dedicated :ref:`section <65-lua-enhancements>`.
 
 The configuration of *Lua* based tasks has the following form:
 
@@ -233,7 +233,7 @@ More details about *Lua* in **whenever** can be found in the dedicated :ref:`cha
 Internal input command
 ----------------------
 
-This type of task is useful in case the ability of **whenever** to unattendendly do something is
+This type of task is useful in case the ability of **whenever** to unattendedly do something is
 needed to control the running instance of **whenever** itself: it is possible in fact to instruct
 the scheduler to execute one of the :ref:`commands <70-intcli-input-commands>` that have been
 implemented to be used by wrapper applications. This means that the scheduler:
@@ -249,9 +249,9 @@ and so on upon verification of a condition.
     run without administration rights; obviously every kind of automation tool, which performs
     unattended operations, might execute malicious actions under the hood, however the absence of
     particular privileges when running and the ability to read the configuration file without the
-    need of specific tools, allow for complete control on what **whenever** does.
+    need of specific tools allow for complete control on what **whenever** does.
 
-The configuration for such a type of task is simple, as it only requires to set the ``command``
+The configuration for such a type of task is simple, as it only requires setting the ``command``
 parameter in addition to the name and type. An example internal command based task is the
 following:
 
@@ -281,16 +281,16 @@ of the parameter entries follows:
      - N/A
      - the internal command to be run, as a single string that includes its parameters
 
-As mentioned above, a comprehensivew list of possible internal commands can be found in the
+As mentioned above, a comprehensive list of possible internal commands can be found in the
 appropriate :ref:`section <70-intcli-input-commands>`.
 
 This type of item is mostly intended as a way to automate part of the behavior of **whenever**
 during a session on behalf of a wrapper, that might expose part of the configuration implemented
-as a combination of internally managed conditions and specific tasks (even of this type) as single
-and simpler configuration element: an example could be the use of the *org.freedesktop.UPower*
+as a combination of internally managed conditions and specific tasks (even of this type) as a
+single, simpler configuration element: an example could be the use of the *org.freedesktop.UPower*
 interface in DBus to catch a *system resume* event in order to reset all the conditions.
 
 .. warning::
-    The provided command will *not* be checked upon configuration, it will *fail* instead, causing
+    The provided command will *not* be checked upon configuration; instead it will *fail*, causing
     a warning to be logged, in case it is invalid or malformed.
 

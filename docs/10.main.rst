@@ -5,7 +5,7 @@ The **whenever** Documentation
 
 **whenever** is a lightweight automation tool capable of executing *tasks* (in particular, OS
 commands and *Lua* scripts) according to specific *conditions*. Conditions are of various types:
-depending on time (both intervals or specific more-or-less defined instants), execution of OS
+depending on time (either intervals or specific more-or-less defined instants), execution of OS
 commands or *Lua* scripts, changes in specific files and directories, session inactivity, DBus
 and WMI signals or property checks.\ [#fn-1]_ The scheduler intends to be as lightweight as
 possible in terms of used computational resources, and to run at a low priority level.
@@ -49,7 +49,7 @@ operating systems, with the exception of
   the Windows platform, and is therefore not included in the prebuilt binaries, and
 * *WMI support*, which is only available on Windows.
 
-**whenever** tries to be conservative in terms of resource cosumption (especially CPU and RAM),
+**whenever** tries to be conservative in terms of resource consumption (especially CPU and RAM),
 and, since it does not interact with the user normally, it should be able to run at low priority.
 Therefore, **whenever** does not implement a GUI by itself: on the contrary, it offers a
 :ref:`simple stdin-based interface <70-intcli-input-commands>` that is mostly aimed at interacting
@@ -66,19 +66,19 @@ the condition checks and therefore the execution of tasks that would derive from
 minimalistic wrapper also hides the console window on Windows environments. Due to the use of
 *stdin*/*stdout* for communication, it is possible to build more elaborate wrappers in any
 language that supports the possibility to spawn a process and control its I/O, at the expense of
-a larger resource occupation but possibly without drawbacks in terms of performance, as the
+a larger resource usage but possibly without drawbacks in terms of performance, as the
 scheduler runs in a separate process anyway. The original *Python* based `When`_ application had
-an occupation in RAM of about 70MB on Ubuntu Linux using a not-too-populated configuration file,
+a memory footprint of about 70MB on Ubuntu Linux using a not-too-populated configuration file,
 and could noticeably use the CPU.
 
 This version, written in the `Rust <https://www.rust-lang.org/>`__ programming language, uses
 around 2MB of RAM on Windows\ [#fn-2]_ with a reasonable configuration file that uses *tasks*,
 *conditions*, and *events* supported on the platform. Although small in footprint, **whenever**
 is fully multithreaded, condition checks have no influence on each other and, when needed, may
-run concurrently. Consequential task execution also takes place with full parallelism -- with the
+run concurrently. Subsequent task execution also takes place with full parallelism -- with the
 exception of those tasks that, per configuration, are set to run sequentially.
 
-The former version of `When`_ itself has currently been converted to a frontend wrapper for
+The former version of `When`_ itself has since been converted to a frontend wrapper for
 **whenever**: see the specific repository and documentation for details.
 
 
@@ -112,7 +112,7 @@ The supported types of :ref:`condition <50-conditions>` are the following:
   session has been idle for the specified amount of time
 * :ref:`Command execution <50-conditions-command>`: an available executable (be it a script,
   a batch file on Windows, a binary) is run, its exit code or output is checked and, when an
-  expected outcome is found, the condition is considered verified - or failed on an explicitly
+  expected outcome is found, the condition is considered verified -- or failed on an explicitly
   undesired outcome
 * :ref:`Lua script execution <50-conditions-lua>`: a *Lua* script is run using the embedded
   interpreter, and if the contents of one or more variables meet the specified expectations
@@ -121,8 +121,8 @@ The supported types of :ref:`condition <50-conditions>` are the following:
   is checked against some criteria provided in the configuration file
 * :ref:`WMI query (optional, Windows only) <50-conditions-wmi>`: a *WMI* query is executed and
   the result is checked against some criteria provided in the configuration file
-* :ref:`Event based <50-conditions-event>`: are verified when a certain event occurs that fires
-  the condition.
+* :ref:`Event based <50-conditions-event>`: these conditions are verified when a certain event
+  occurs that fires them.
 
 The :ref:`events <60-events>` that can fire *event* based conditions are:
 
@@ -130,11 +130,11 @@ The :ref:`events <60-events>` that can fire *event* based conditions are:
   that are set to be monitored
 * :ref:`DBus signals (optional) <60-events-dbus>`, that may be filtered for an expected payload
 * :ref:`WMI events (optional, Windows only) <60-events-wmi>`, subscribed via specific *WQL* queries
-* :ref:`Command line <60-events-cli>`, that are manually triggered by writing to **whenever**
+* :ref:`Command line events <60-events-cli>`, that are manually triggered by writing to **whenever**
   standard input.
 
 Note that *DBus* events and conditions are also supported on Windows, being one of the *DBus* target
-platforms, and enabled by default.  *WMI* events and conditions, on the contrary, are only supported
+platforms, but is disabled in the specific configuration. *WMI* events and conditions, on the contrary, are only supported
 on Windows platforms. Both *DBus* and *WMI* support can be **disabled** on build, by respectively
 removing ``dbus`` and/or ``wmi`` from the default features in the *Cargo.toml* file, or by building
 the executable without specifying that the *standard* features for the hosting platform are desired
@@ -146,14 +146,14 @@ specified as the only mandatory argument on the command line. The syntax of the 
 is described in the following sections.
 
 Every type of check is performed periodically, even the ones involving *event* based
-conditions:\ [#fn-3]_ the periodic time interval at which the conditions are checked is referred
-here as *tick*, and the tick interval can be specified in the configuration file -- defaulting at
+conditions:\ [#fn-3]_ the periodic time interval at which the conditions are checked is referred to
+here as *tick*, and the tick interval can be specified in the configuration file -- defaulting to
 5 seconds. Note that, since performing all checks in the same instant at every tick could cause
 usage peaks in terms of computational resources, there is the option to attempt to randomly
 distribute some of the checks within the tick interval, by explicitly specifying this behavior in
 the configuration file.
 
-The configuration can be also modified while the scheduler application is running, using a specific
+The configuration can also be modified while the scheduler application is running, using a specific
 :ref:`command <70-intcli-input-commands>`, in a dynamic fashion that does not reset the items
 whose configuration is unchanged.
 
@@ -194,9 +194,9 @@ to the tool itself.
            ship *without* DBus support.
 .. [#fn-2] When run alone, with no wrapper: using the minimal provided wrapper, both programs
            together use less than 4MB of RAM and the combined CPU consumption in rare occasions
-           reaches the 0.2% -- as reported by the Windows *Task Manager*.
+           reaches 0.2% -- as reported by the Windows *Task Manager*.
 .. [#fn-3] The occurrence of an *event*, in fact, raises a flag that specifies that the
            associated condition will be considered as verified at the following tick: the condition
-           is said to be thrown in a sort of "execution bucket", from which it is withdrawn by the
+           is said to be thrown into a sort of "execution bucket", from which it is withdrawn by the
            scheduler that executes the related tasks. Therefore *event* based conditions are also
            referred to as *bucket* conditions.
