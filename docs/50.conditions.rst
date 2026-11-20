@@ -86,7 +86,7 @@ There is another optional entry, namely ``tags``, that is accepted in item confi
 entry is ignored by **whenever** itself, however it is checked for correctness at startup and the
 configuration is refused if not set to an array (of strings) or a table.
 
-Another entry is common to several condition types, that is `check_after`: it can be set to the
+Another entry is common to several condition types, that is ``check_after``: it can be set to the
 number of seconds that **whenever** has to wait after startup (and after the last check for
 *recurring* conditions) for a subsequent check: this is useful for conditions that can run on a
 more relaxed schedule, or whose check process has a significant cost in terms of resources, or
@@ -820,9 +820,9 @@ that check for inclusion are not available. The supported operators are, therefo
 * ``"eq"`` for *equality*
 * ``"neq"`` for *inequality*
 * ``"gt"`` meaning *greater than*
-* ``"ge"`` meaning *greater or equal to*
+* ``"ge"`` meaning *greater than or equal to*
 * ``"lt"`` meaning *less than*
-* ``"le"`` meaning *less or equal to*
+* ``"le"`` meaning *less than or equal to*
 * ``"match"`` to indicate that the second operand has to be interpreted as a *regular expression* to
   be matched.
 
