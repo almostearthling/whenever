@@ -299,4 +299,4 @@ listener.
 
 
 .. _When: https://github.com/almostearthling/when-command
-.. _WML queries: https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications
+.. _WQL queries: https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-event-notifications
