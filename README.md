@@ -102,6 +102,8 @@ If there is a bug in the **whenever** application, please use the project [issue
 
 LLMs have been used in this utility only for code reviews: no code has been provided by LLMs, however _Claude Code_ helped a lot by spotting possible bugs and race conditions. Fixes and amendments have been manually coded, even when following AI provided suggestions.
 
+_Claude Code_ also has been helpful in proofreading the documentation, and in other automatic conversion tasks where stated in the related commits.
+
 
 ## :balance_scale: License
 
