@@ -820,9 +820,9 @@ that check for inclusion are not available. The supported operators are, therefo
 * ``"eq"`` for *equality*
 * ``"neq"`` for *inequality*
 * ``"gt"`` meaning *greater than*
-* ``"ge"`` meaning *greater or equal to*
+* ``"ge"`` meaning *greater than or equal to*
 * ``"lt"`` meaning *less than*
-* ``"le"`` meaning *less or equal to*
+* ``"le"`` meaning *less than or equal to*
 * ``"match"`` to indicate that the second operand has to be interpreted as a *regular expression* to
   be matched.
 
