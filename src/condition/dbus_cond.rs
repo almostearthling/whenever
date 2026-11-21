@@ -16,15 +16,14 @@ use regex::Regex;
 
 use async_std::task;
 use zbus;
-use zbus::zvariant;
 
 use std::str::FromStr;
 
 use super::base::Condition;
 use crate::common::dbusitem::*;
+use crate::task::registry::TaskRegistry;
 use crate::utility::logging::{LogType, log};
 use crate::utility::result::Result;
-use crate::task::registry::TaskRegistry;
 use crate::{cfg_mandatory, constants::*};
 
 use crate::utility::cfghelp::*;
@@ -65,7 +64,7 @@ pub struct DbusMethodCondition {
     object_path: Option<String>,
     interface: Option<String>,
     method: Option<String>,
-    param_call: Option<Vec<zvariant::OwnedValue>>,
+    param_call: Option<Vec<zbus::OwnedVariant>>,
     param_checks: Option<Vec<ParameterCheckTest>>,
     param_checks_all: bool,
     recur_after_failed_check: bool,
@@ -618,7 +617,7 @@ impl DbusMethodCondition {
             }
         }
 
-        // here we must build a list of `zvariant::Value` objects, which are
+        // here we must build a list of `zbus::Variant` objects, which are
         // dynamic: the list will be formally a valid parameter list but it is
         // not assured to be compatible with the called method (that is, no
         // check against signature is made here); in case of incompatibility
@@ -626,7 +625,7 @@ impl DbusMethodCondition {
         // logged
         let cur_key = "parameter_call";
         if let Some(item) = cfgmap.get(cur_key) {
-            let mut param_call: Vec<zvariant::OwnedValue> = Vec::new();
+            let mut param_call: Vec<zbus::OwnedVariant> = Vec::new();
             let params = if !item.is_list() {
                 return Err(cfg_err_invalid_config(
                     cur_key,
@@ -933,7 +932,7 @@ impl DbusMethodCondition {
             cfg_bool(cfgmap, "parameter_check_all")?;
         }
 
-        // here we must build a list of `zvariant::Value` objects, which are
+        // here we must build a list of `zbus::Variant` objects, which are
         // dynamic: the list will be formally a valid parameter list but it is
         // not assured to be compatible with the called method (that is, no
         // check against signature is made here); in case of incompatibility
@@ -1214,9 +1213,9 @@ impl Condition for DbusMethodCondition {
         // arguments if not by passing a pointer to the unit as argument to
         // the `call_method` function
         let message = if let Some(params) = self.param_call.clone() {
-            let mut arg = zvariant::StructureBuilder::new();
+            let mut arg = zbus::wire::StructureBuilder::new();
             for p in params {
-                let v = zvariant::Value::from(p);
+                let v = zbus::Variant::from(p);
                 arg.push_value(v);
             }
             if let Ok(arg) = arg.build() {

@@ -3,7 +3,7 @@ name = "whenever"
 description = "Whenever Automation Tool"
 readme = "README.md"
 license = "LGPL-2.1-or-later"
-version = "1.3.6"
+version = "1.3.7"
 authors = ["Francesco Garosi <francesco.garosi@gmail.com>"]
 repository = "https://github.com/almostearthling/whenever/"
 edition = "2024"
@@ -37,7 +37,7 @@ system-idle-time = "1.0"
 toml = "1.0"
 unique_id = "0.1"
 whoami = "2.1"
-zbus = { version = "5.17", optional = true }
+zbus = { version = "6", optional = true }
 
 # the "lua54" feature can be modified to use a different Lua version
 mlua = { version = "0.12", features = ["lua54", "vendored"] }

@@ -1140,9 +1140,8 @@ pub mod dbusitem {
     use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
     use zbus;
-    use zbus::Message;
-    use zbus::zvariant;
-    use zbus::zvariant::Signature;
+    use zbus::Signature;
+    use zbus::message::Message;
 
     /// an enum to store the operators for checking signal parameters
     #[derive(PartialEq, Hash, Clone, Debug)]
@@ -1240,27 +1239,27 @@ pub mod dbusitem {
     /// a trait that defines containable types: implementations are provided for
     /// all types found in the `ParameterCheckValue` enum defined above
     pub trait Containable {
-        fn is_contained_in(&self, v: &zvariant::Value) -> bool;
+        fn is_contained_in(&self, v: &zbus::Variant) -> bool;
     }
 
     // implementations: dictionary value lookup will be provided as soon as there
     // will be a way, in _zbus_, to at least retrieve the dictionary keys (if not
     // directly the mapped values) in order to compare the contents with the value
     impl Containable for bool {
-        fn is_contained_in(&self, v: &zvariant::Value) -> bool {
+        fn is_contained_in(&self, v: &zbus::Variant) -> bool {
             match v {
-                zvariant::Value::Array(a) => a.contains(&zvariant::Value::from(self)),
+                zbus::Variant::Array(a) => a.contains(&zbus::Variant::from(self)),
                 _ => false,
             }
         }
     }
 
     impl Containable for i64 {
-        fn is_contained_in(&self, v: &zvariant::Value) -> bool {
+        fn is_contained_in(&self, v: &zbus::Variant) -> bool {
             match v {
                 // zvariant is able to directly compare values
-                zvariant::Value::Array(a) => {
-                    let v = zvariant::Value::from(*self);
+                zbus::Variant::Array(a) => {
+                    let v = zbus::Variant::from(*self);
                     a.contains(&v)
                 }
                 _ => false,
@@ -1269,9 +1268,9 @@ pub mod dbusitem {
     }
 
     impl Containable for f64 {
-        fn is_contained_in(&self, v: &zvariant::Value) -> bool {
+        fn is_contained_in(&self, v: &zbus::Variant) -> bool {
             match v {
-                zvariant::Value::Array(a) => a.contains(&zvariant::Value::from(*self)),
+                zbus::Variant::Array(a) => a.contains(&zbus::Variant::from(*self)),
                 _ => false,
             }
         }
@@ -1281,16 +1280,16 @@ pub mod dbusitem {
     // (both of `Str` and `ObjectPath`) or, alternatively, to match a substring
     // of the returned `Str` or `ObjectPath`
     impl Containable for String {
-        fn is_contained_in(&self, v: &zvariant::Value) -> bool {
+        fn is_contained_in(&self, v: &zbus::Variant) -> bool {
             match v {
-                zvariant::Value::Str(s) => s.as_str().contains(self.as_str()),
-                zvariant::Value::ObjectPath(s) => s.as_str().contains(self.as_str()),
-                zvariant::Value::Array(a) => match a.element_signature() {
-                    Signature::Str => a.contains(&zvariant::Value::from(self)),
+                zbus::Variant::Str(s) => s.as_str().contains(self.as_str()),
+                zbus::Variant::ObjectPath(s) => s.as_str().contains(self.as_str()),
+                zbus::Variant::Array(a) => match a.element_signature() {
+                    Signature::Str => a.contains(&zbus::Variant::from(self)),
                     Signature::ObjectPath => {
                         // in this case we first check for `ObjectPath` compliance
-                        if zvariant::ObjectPath::try_from(self.as_str()).is_ok() {
-                            a.contains(&zvariant::Value::from(self.as_str()))
+                        if zbus::wire::ObjectPath::try_from(self.as_str()).is_ok() {
+                            a.contains(&zbus::Variant::from(self.as_str()))
                         } else {
                             false
                         }
@@ -1298,17 +1297,17 @@ pub mod dbusitem {
                     _ => false,
                 },
                 // check for presence of a `Str` or `ObjectPath` within the keys of a dictionary
-                zvariant::Value::Dict(d) => {
+                zbus::Variant::Dict(d) => {
                     if let Signature::Dict { key: ks, value: _ } = d.signature() {
                         match ks.signature() {
                             Signature::Str => {
-                                let k = zbus::zvariant::Value::from(self.as_str());
+                                let k = zbus::Variant::from(self.as_str());
                                 d.iter().any(|(s, _)| k == *s)
                             }
                             Signature::ObjectPath => {
                                 // in this case we first check for `ObjectPath` compliance
-                                if zvariant::ObjectPath::try_from(self.as_str()).is_ok() {
-                                    let k = zvariant::Value::from(self.as_str());
+                                if zbus::wire::ObjectPath::try_from(self.as_str()).is_ok() {
+                                    let k = zbus::Variant::from(self.as_str());
                                     d.iter().any(|(s, _)| k == *s)
                                 } else {
                                     false
@@ -1328,11 +1327,11 @@ pub mod dbusitem {
     // the following is totally arbitrary and will actually not be used: it is
     // provided here only in order to complete the "required" implementations
     impl Containable for Regex {
-        fn is_contained_in(&self, v: &zvariant::Value) -> bool {
+        fn is_contained_in(&self, v: &zbus::Variant) -> bool {
             match v {
-                zvariant::Value::Array(a) => {
+                zbus::Variant::Array(a) => {
                     for elem in a.iter() {
-                        if let zvariant::Value::Str(s) = elem
+                        if let zbus::Variant::Str(s) = elem
                             && self.is_match(s.as_str())
                         {
                             return true;
@@ -1345,109 +1344,109 @@ pub mod dbusitem {
         }
     }
 
-    // the trait used to convert values to `zvariant::Value`
+    // the trait used to convert values to `zbus::Variant`
     pub trait ToVariant {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>>;
+        fn to_variant(&self) -> Option<zbus::Variant<'_>>;
     }
 
     impl ToVariant for bool {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
-            Some(zvariant::Value::Bool(*self))
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
+            Some(zbus::Variant::Bool(*self))
         }
     }
 
     impl ToVariant for i64 {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
-            Some(zvariant::Value::I64(*self))
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
+            Some(zbus::Variant::I64(*self))
         }
     }
 
     impl ToVariant for f64 {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
-            Some(zvariant::Value::F64(*self))
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
+            Some(zbus::Variant::F64(*self))
         }
     }
 
     impl ToVariant for str {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
             let s = &self.to_string();
             if s.starts_with('\\') {
                 let rest = s.clone().split_off(2);
                 if s.starts_with("\\b") {
                     let rest = rest.to_lowercase();
                     if rest == "true" || rest == "1" {
-                        Some(zvariant::Value::Bool(true))
+                        Some(zbus::Variant::Bool(true))
                     } else if rest == "false" || rest == "0" {
-                        Some(zvariant::Value::Bool(false))
+                        Some(zbus::Variant::Bool(false))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\y") {
                     if let Ok(v) = rest.parse::<u8>() {
-                        Some(zvariant::Value::U8(v))
+                        Some(zbus::Variant::U8(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\n") {
                     if let Ok(v) = rest.parse::<i16>() {
-                        Some(zvariant::Value::I16(v))
+                        Some(zbus::Variant::I16(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\q") {
                     if let Ok(v) = rest.parse::<u16>() {
-                        Some(zvariant::Value::U16(v))
+                        Some(zbus::Variant::U16(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\i") {
                     if let Ok(v) = rest.parse::<i32>() {
-                        Some(zvariant::Value::I32(v))
+                        Some(zbus::Variant::I32(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\u") {
                     if let Ok(v) = rest.parse::<u32>() {
-                        Some(zvariant::Value::U32(v))
+                        Some(zbus::Variant::U32(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\x") {
                     if let Ok(v) = rest.parse::<i64>() {
-                        Some(zvariant::Value::I64(v))
+                        Some(zbus::Variant::I64(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\t") {
                     if let Ok(v) = rest.parse::<u64>() {
-                        Some(zvariant::Value::U64(v))
+                        Some(zbus::Variant::U64(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\d") {
                     if let Ok(v) = rest.parse::<f64>() {
-                        Some(zvariant::Value::F64(v))
+                        Some(zbus::Variant::F64(v))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\s") {
-                    Some(zvariant::Value::new(rest.clone()))
+                    Some(zbus::Variant::new(rest.clone()))
                 } else if s.starts_with("\\o") {
                     // here we check it, having the RE at hand
                     if RE_DBUS_OBJECT_PATH.is_match(&rest) {
-                        Some(zvariant::Value::new(
-                            zvariant::ObjectPath::try_from(rest.clone()).unwrap(),
+                        Some(zbus::Variant::new(
+                            zbus::wire::ObjectPath::try_from(rest.clone()).unwrap(),
                         ))
                     } else {
                         None
                     }
                 } else if s.starts_with("\\\\") {
-                    Some(zvariant::Value::new(String::from("\\") + &rest))
+                    Some(zbus::Variant::new(String::from("\\") + &rest))
                 } else {
-                    Some(zvariant::Value::new(String::from(s)))
+                    Some(zbus::Variant::new(String::from(s)))
                 }
             } else {
-                Some(zvariant::Value::new(String::from(s)))
+                Some(zbus::Variant::new(String::from(s)))
             }
         }
     }
@@ -1456,13 +1455,13 @@ pub mod dbusitem {
     where
         T: ToVariant,
     {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
-            let mut a: Vec<zvariant::Value> = Vec::new();
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
+            let mut a: Vec<zbus::Variant> = Vec::new();
             for item in self.iter() {
                 let v = item.to_variant()?;
                 a.push(v);
             }
-            Some(zvariant::Value::new(a))
+            Some(zbus::Variant::new(a))
         }
     }
 
@@ -1471,26 +1470,26 @@ pub mod dbusitem {
     where
         T: ToVariant,
     {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
-            let mut d: HashMap<String, zvariant::Value> = HashMap::new();
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
+            let mut d: HashMap<String, zbus::Variant> = HashMap::new();
             for (key, item) in self.iter() {
                 let v = item.to_variant()?;
                 d.insert(key.clone(), v);
             }
-            Some(zvariant::Value::new(d))
+            Some(zbus::Variant::new(d))
         }
     }
 
     // this is necessary for the following conversion
-    impl ToVariant for zvariant::Value<'_> {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
+    impl ToVariant for zbus::Variant<'_> {
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
             Some(self.clone())
         }
     }
 
     // and finally we support CfgValue, which is similar to a variant
     impl ToVariant for CfgValue {
-        fn to_variant(&self) -> Option<zvariant::Value<'_>> {
+        fn to_variant(&self) -> Option<zbus::Variant<'_>> {
             if self.is_bool() {
                 self.as_bool().unwrap().to_variant()
             } else if self.is_int() {
@@ -1503,12 +1502,12 @@ pub mod dbusitem {
                 self.as_list().unwrap().to_variant()
             } else if self.is_map() {
                 let map = self.as_map().unwrap();
-                let mut h: HashMap<String, zvariant::Value> = HashMap::new();
+                let mut h: HashMap<String, zbus::Variant> = HashMap::new();
                 for key in map.keys() {
                     let v = map.get(key)?.to_variant()?;
                     h.insert(key.clone(), v);
                 }
-                Some(zvariant::Value::new(h))
+                Some(zbus::Variant::new(h))
             } else {
                 None
             }
@@ -1538,7 +1537,7 @@ pub mod dbusitem {
     }
 
     // the following function allows for better readability
-    fn _contained_in<T: Containable>(v: &T, a: &zvariant::Value) -> bool {
+    fn _contained_in<T: Containable>(v: &T, a: &zbus::Variant) -> bool {
         v.is_contained_in(a)
     }
 
@@ -1570,7 +1569,7 @@ pub mod dbusitem {
         let mut log_message: String = String::from("message or return parameter check ended");
 
         let b = message.body();
-        let bs = b.deserialize::<zvariant::Structure>();
+        let bs = b.deserialize::<zbus::Structure>();
         if let Ok(mbody) = bs {
             // the label is set to make sure that we can break out from
             // any nested loop on shortcut evaluation condition (that is
@@ -1609,7 +1608,7 @@ pub mod dbusitem {
                                     ParameterIndex::Integer(i) => {
                                         let i = *i as usize;
                                         match field_value {
-                                            zvariant::Value::Array(f) => {
+                                            zbus::Variant::Array(f) => {
                                                 if i >= f.len() {
                                                     severity = LogType::Warn;
                                                     ref_log_when = LOG_WHEN_PROC;
@@ -1624,7 +1623,7 @@ pub mod dbusitem {
                                                 // or the next "parameter shift" will go berserk
                                                 field_value = &f[i];
                                             }
-                                            zvariant::Value::Structure(f) => {
+                                            zbus::Variant::Structure(f) => {
                                                 let f = f.fields();
                                                 if i >= f.len() {
                                                     severity = LogType::Warn;
@@ -1671,7 +1670,7 @@ pub mod dbusitem {
                                     // releases of zbus, which provide enum variants for signature nested structures
                                     ParameterIndex::String(s) => {
                                         match field_value {
-                                            zvariant::Value::Dict(f) => {
+                                            zbus::Variant::Dict(f) => {
                                                 // in order to match either strings or object paths, match key signature
                                                 let m = if let Signature::Dict {
                                                     key: ks,
@@ -1681,7 +1680,7 @@ pub mod dbusitem {
                                                     match **ks {
                                                         Signature::Str => f.get(s),
                                                         Signature::ObjectPath => {
-                                                            if zvariant::ObjectPath::try_from(
+                                                            if zbus::wire::ObjectPath::try_from(
                                                                 s.as_str(),
                                                             )
                                                             .is_err()
@@ -1762,7 +1761,7 @@ pub mod dbusitem {
                             }
 
                             // if the result is still encapsulated in a Value, take it out
-                            while let zvariant::Value::Value(v) = field_value {
+                            while let zbus::Variant::Variant(v) = field_value {
                                 field_value = v;
                             }
 
@@ -1771,7 +1770,7 @@ pub mod dbusitem {
                                 ParameterCheckValue::Boolean(b) => {
                                     if ck.operator == ParamCheckOperator::Equal {
                                         match field_value {
-                                            zvariant::Value::Bool(v) => {
+                                            zbus::Variant::Bool(v) => {
                                                 if *b == *v {
                                                     verified = true;
                                                     if !checks_all {
@@ -1797,8 +1796,8 @@ pub mod dbusitem {
                                         }
                                     } else if ck.operator == ParamCheckOperator::Contains {
                                         match field_value {
-                                            zvariant::Value::Array(_) => {
-                                                if _contained_in(b, field_value) {
+                                            zbus::Variant::Array(_) => {
+                                                if _contained_in(b, &field_value) {
                                                     verified = true;
                                                     if !checks_all {
                                                         break 'params;
@@ -1817,8 +1816,8 @@ pub mod dbusitem {
                                         }
                                     } else if ck.operator == ParamCheckOperator::NotContains {
                                         match field_value {
-                                            zvariant::Value::Array(_) => {
-                                                if !_contained_in(b, field_value) {
+                                            zbus::Variant::Array(_) => {
+                                                if !_contained_in(b, &field_value) {
                                                     verified = true;
                                                     if !checks_all {
                                                         break 'params;
@@ -1846,7 +1845,7 @@ pub mod dbusitem {
                                     }
                                 }
                                 ParameterCheckValue::Integer(i) => match field_value {
-                                    zvariant::Value::U8(v) => {
+                                    zbus::Variant::U8(v) => {
                                         if _oper(&ck.operator, *v as i64, *i) {
                                             verified = true;
                                             if !checks_all {
@@ -1859,7 +1858,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::I16(v) => {
+                                    zbus::Variant::I16(v) => {
                                         if _oper(&ck.operator, *v as i64, *i) {
                                             verified = true;
                                             if !checks_all {
@@ -1872,7 +1871,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::U16(v) => {
+                                    zbus::Variant::U16(v) => {
                                         if _oper(&ck.operator, *v as i64, *i) {
                                             verified = true;
                                             if !checks_all {
@@ -1885,7 +1884,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::I32(v) => {
+                                    zbus::Variant::I32(v) => {
                                         if _oper(&ck.operator, *v as i64, *i) {
                                             verified = true;
                                             if !checks_all {
@@ -1898,7 +1897,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::U32(v) => {
+                                    zbus::Variant::U32(v) => {
                                         if _oper(&ck.operator, *v as i64, *i) {
                                             verified = true;
                                             if !checks_all {
@@ -1911,7 +1910,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::I64(v) => {
+                                    zbus::Variant::I64(v) => {
                                         if _oper(&ck.operator, *v, *i) {
                                             verified = true;
                                             if !checks_all {
@@ -1924,7 +1923,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::U64(v) => {
+                                    zbus::Variant::U64(v) => {
                                         if _oper(&ck.operator, *v as i128, *i as i128) {
                                             verified = true;
                                             if !checks_all {
@@ -1937,7 +1936,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::F64(v) => {
+                                    zbus::Variant::F64(v) => {
                                         if _oper(&ck.operator, *v, *i as f64) {
                                             verified = true;
                                             if !checks_all {
@@ -1950,7 +1949,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::Array(_) => {
+                                    zbus::Variant::Array(_) => {
                                         if ck.operator == ParamCheckOperator::Contains {
                                             if _contained_in(i, field_value) {
                                                 verified = true;
@@ -1999,7 +1998,7 @@ pub mod dbusitem {
                                     }
                                 },
                                 ParameterCheckValue::Float(f) => match field_value {
-                                    zvariant::Value::U8(v) => {
+                                    zbus::Variant::U8(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2012,7 +2011,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::I16(v) => {
+                                    zbus::Variant::I16(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2025,7 +2024,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::U16(v) => {
+                                    zbus::Variant::U16(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2038,7 +2037,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::I32(v) => {
+                                    zbus::Variant::I32(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2051,7 +2050,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::U32(v) => {
+                                    zbus::Variant::U32(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2064,7 +2063,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::I64(v) => {
+                                    zbus::Variant::I64(v) => {
                                         if _oper(&ck.operator, *v as f64, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2077,7 +2076,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::F64(v) => {
+                                    zbus::Variant::F64(v) => {
                                         if _oper(&ck.operator, *v, *f) {
                                             verified = true;
                                             if !checks_all {
@@ -2090,7 +2089,7 @@ pub mod dbusitem {
                                             }
                                         }
                                     }
-                                    zvariant::Value::Array(_) => {
+                                    zbus::Variant::Array(_) => {
                                         if ck.operator == ParamCheckOperator::Contains {
                                             if _contained_in(f, field_value) {
                                                 verified = true;
@@ -2141,7 +2140,7 @@ pub mod dbusitem {
                                 ParameterCheckValue::String(s) => {
                                     if ck.operator == ParamCheckOperator::Equal {
                                         match field_value {
-                                            zvariant::Value::Str(v) => {
+                                            zbus::Variant::Str(v) => {
                                                 if *s == v.to_string() {
                                                     verified = true;
                                                     if !checks_all {
@@ -2154,7 +2153,7 @@ pub mod dbusitem {
                                                     }
                                                 }
                                             }
-                                            zvariant::Value::ObjectPath(v) => {
+                                            zbus::Variant::ObjectPath(v) => {
                                                 if *s == v.to_string() {
                                                     verified = true;
                                                     if !checks_all {
@@ -2180,7 +2179,7 @@ pub mod dbusitem {
                                         }
                                     } else if ck.operator == ParamCheckOperator::NotEqual {
                                         match field_value {
-                                            zvariant::Value::Str(v) => {
+                                            zbus::Variant::Str(v) => {
                                                 if *s != v.to_string() {
                                                     verified = true;
                                                     if !checks_all {
@@ -2193,7 +2192,7 @@ pub mod dbusitem {
                                                     }
                                                 }
                                             }
-                                            zvariant::Value::ObjectPath(v) => {
+                                            zbus::Variant::ObjectPath(v) => {
                                                 if *s != v.to_string() {
                                                     verified = true;
                                                     if !checks_all {
@@ -2253,7 +2252,7 @@ pub mod dbusitem {
                                 ParameterCheckValue::Regex(re) => {
                                     if ck.operator == ParamCheckOperator::Match {
                                         match field_value {
-                                            zvariant::Value::Str(v) => {
+                                            zbus::Variant::Str(v) => {
                                                 if re.is_match(v.as_str()) {
                                                     verified = true;
                                                     if !checks_all {
@@ -2266,7 +2265,7 @@ pub mod dbusitem {
                                                     }
                                                 }
                                             }
-                                            zvariant::Value::ObjectPath(v) => {
+                                            zbus::Variant::ObjectPath(v) => {
                                                 if re.is_match(v.as_str()) {
                                                     verified = true;
                                                     if !checks_all {
